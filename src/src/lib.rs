@@ -373,13 +373,9 @@ fn write_slice(roc_path: &RocList<u8>, bytes: &[u8]) -> RocResult<(), WriteErr> 
     match File::create(path_from_roc_path(roc_path)) {
         Ok(mut file) => match file.write_all(bytes) {
             Ok(()) => RocResult::ok(()),
-            Err(_) => {
-                todo!("Report a file write error");
-            }
+            Err(err) => RocResult::err(toRocWriteError(err)),
         },
-        Err(_) => {
-            todo!("Report a file open error");
-        }
+        Err(err) => RocResult::err(toRocWriteError(err)),
     }
 }
 
@@ -413,12 +409,12 @@ pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocL
     match File::open(path_from_roc_path(roc_path)) {
         Ok(mut file) => match file.read_to_end(&mut bytes) {
             Ok(_bytes_read) => RocResult::ok(RocList::from(bytes.as_slice())),
-            Err(_) => {
-                todo!("Report a file write error");
+            Err(err) => {
+                RocResult::err(toRocReadError(err))
             }
         },
-        Err(_) => {
-            todo!("Report a file open error");
+        Err(err) => {
+            RocResult::err(toRocReadError(err))
         }
     }
 }
@@ -427,8 +423,8 @@ pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocL
 pub extern "C" fn roc_fx_fileDelete(roc_path: &RocList<u8>) -> RocResult<(), ReadErr> {
     match std::fs::remove_file(path_from_roc_path(roc_path)) {
         Ok(()) => RocResult::ok(()),
-        Err(_) => {
-            todo!("Report a file write error");
+        Err(err) => {
+            RocResult::err(toRocReadError(err))
         }
     }
 }
@@ -463,8 +459,8 @@ pub extern "C" fn roc_fx_dirList(
                 })
                 .collect::<RocList<RocList<u8>>>(),
         ),
-        Err(_) => {
-            todo!("handle Dir.list error");
+        Err(err) => {
+            RocResult::err(toRocWriteError(err))
         }
     }
 }
@@ -572,5 +568,46 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &glue::Request) -> glue::Respo
                 glue::Response::NetworkError
             }
         }
+    }
+}
+
+fn toRocWriteError(err : std::io::Error) -> file_glue::WriteErr {
+    match err.kind(){
+        std::io::ErrorKind::NotFound => file_glue::WriteErr::NotFound,
+        std::io::ErrorKind::AlreadyExists => file_glue::WriteErr::AlreadyExists,
+        std::io::ErrorKind::Interrupted => file_glue::WriteErr::Interrupted,
+        std::io::ErrorKind::OutOfMemory => file_glue::WriteErr::OutOfMemory,
+        std::io::ErrorKind::PermissionDenied => file_glue::WriteErr::PermissionDenied,
+        std::io::ErrorKind::TimedOut => file_glue::WriteErr::TimedOut,
+        // TODO investigate support the following IO errors may need to update API
+        std::io::ErrorKind::WriteZero => file_glue::WriteErr::WriteZero,
+        _ => file_glue::WriteErr::Unsupported,
+        // TODO investigate support the following IO errors
+        // std::io::ErrorKind::FileTooLarge <- unstable language feature 
+        // std::io::ErrorKind::ExecutableFileBusy <- unstable language feature 
+        // std::io::ErrorKind::FilesystemQuotaExceeded <- unstable language feature 
+        // std::io::ErrorKind::InvalidFilename <- unstable language feature 
+        // std::io::ErrorKind::ResourceBusy <- unstable language feature 
+        // std::io::ErrorKind::ReadOnlyFilesystem <- unstable language feature 
+        // std::io::ErrorKind::TooManyLinks <- unstable language feature 
+        // std::io::ErrorKind::StaleNetworkFileHandle <- unstable language feature 
+        // std::io::ErrorKind::StorageFull <- unstable language feature
+    }
+}
+
+fn toRocReadError(err : std::io::Error) -> file_glue::ReadErr {
+    match err.kind(){
+        std::io::ErrorKind::Interrupted => file_glue::ReadErr::Interrupted,
+        std::io::ErrorKind::NotFound => file_glue::ReadErr::NotFound,
+        std::io::ErrorKind::OutOfMemory => file_glue::ReadErr::OutOfMemory,
+        std::io::ErrorKind::PermissionDenied => file_glue::ReadErr::PermissionDenied,
+        std::io::ErrorKind::TimedOut => file_glue::ReadErr::TimedOut,
+        // TODO investigate support the following IO errors may need to update API
+        // std::io::ErrorKind:: => file_glue::ReadErr::TooManyHardlinks,
+        // std::io::ErrorKind:: => file_glue::ReadErr::TooManySymlinks,
+        // std::io::ErrorKind:: => file_glue::ReadErr::Unrecognized,
+        // std::io::ErrorKind::StaleNetworkFileHandle <- unstable language feature
+        // std::io::ErrorKind::InvalidFilename <- unstable language feature
+        _ => file_glue::ReadErr::Unsupported,
     }
 }
