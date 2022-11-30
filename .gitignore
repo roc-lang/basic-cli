@@ -41,3 +41,6 @@ bench-folder*
 *.roc-format-failed
 *.roc-format-failed-ast-after
 *.roc-format-failed-ast-before
+
+# Tests
+file-test

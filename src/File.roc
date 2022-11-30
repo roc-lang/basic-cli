@@ -1,5 +1,5 @@
 interface File
-    exposes [ReadErr, ReadUtf8Err, ReadProblem, WriteErr, WriteProblem, write, writeUtf8, writeBytes, readUtf8, readBytes, delete]
+    exposes [ReadErr, ReadUtf8Err, ReadProblem, WriteErr, WriteProblem, write, writeUtf8, writeBytes, readUtf8, readBytes, delete, writeErrToStr, readErrToStr]
     imports [Task.{ Task }, InternalTask, InternalFile, Path.{ Path }, InternalPath, Effect.{ Effect }]
 
 ReadErr : InternalFile.ReadErr
@@ -143,3 +143,42 @@ toReadTask = \path, toEffect ->
     |> toEffect
     |> InternalTask.fromEffect
     |> Task.mapFail \err -> FileReadErr path err
+
+displayWriteProblem : WriteProblem -> Str
+displayWriteProblem = \problem ->
+    when problem is
+        NotFound -> "NotFound"
+        Interrupted -> "Interrupted"
+        InvalidFilename -> "InvalidFilename"
+        PermissionDenied -> "PermissionDenied"
+        TooManySymlinks -> "TooManySymlinks"
+        TooManyHardlinks -> "TooManyHardlinks"
+        TimedOut -> "TimedOut"
+        StaleNetworkFileHandle -> "StaleNetworkFileHandle"
+        ReadOnlyFilesystem -> "ReadOnlyFilesystem"
+        AlreadyExists -> "AlreadyExists"
+        WasADirectory -> "WasADirectory"
+        WriteZero -> "WriteZero"
+        StorageFull -> "StorageFull"
+        FilesystemQuotaExceeded -> "FilesystemQuotaExceeded"
+        FileTooLarge -> "FileTooLarge"
+        ResourceBusy -> "ResourceBusy"
+        ExecutableFileBusy -> "ExecutableFileBusy"
+        OutOfMemory -> "OutOfMemory"
+        Unsupported -> "Unsupported"
+        _ -> "Unrecognized"
+
+displayReadProblem : ReadProblem -> Str
+displayReadProblem = \problem ->
+    when problem is
+        NotFound -> "NotFound"
+        Interrupted -> "Interrupted"
+        InvalidFilename -> "InvalidFilename"
+        PermissionDenied -> "PermissionDenied"
+        TooManySymlinks -> "TooManySymlinks"
+        TooManyHardlinks -> "TooManyHardlinks"
+        TimedOut -> "TimedOut"
+        StaleNetworkFileHandle -> "StaleNetworkFileHandle"
+        OutOfMemory -> "OutOfMemory"
+        Unsupported -> "Unsupported"
+        _ -> "Unrecognized"

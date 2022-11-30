@@ -17,7 +17,7 @@ name = "host"
 path = "src/main.rs"
 
 [dependencies]
-roc_std = { path = "../../../crates/roc_std" }
+roc_std = { git = "https://github.com/roc-lang/roc", rev = "468be47" }
 libc = "0.2"
 backtrace = "0.3"
 reqwest = { version="0.11.11", default-features=false, features=["blocking", "rustls-tls"] }
