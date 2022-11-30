@@ -2,7 +2,9 @@ interface InternalFile
     exposes [ReadErr, ReadUtf8Err, WriteErr, ReadProblem, WriteProblem]
     imports [Path.{ Path }]
 
-ReadUtf8Err : [FileReadErr Path ReadProblem, FileReadUtf8Err Path Str.Utf8Problem]
+# TODO trying to put either Utf8Problem or Str.Utf8Problem here instead of `a`
+# crashes the compiler!
+ReadUtf8Err a : [FileReadErr Path ReadProblem, FileReadUtf8Err Path a]
 
 ReadErr : [FileReadErr Path ReadProblem]
 

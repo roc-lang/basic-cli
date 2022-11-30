@@ -3,7 +3,7 @@ interface File
     imports [Task.{ Task }, InternalTask, InternalFile, Path.{ Path }, InternalPath, Effect.{ Effect }]
 
 ReadErr : InternalFile.ReadErr
-ReadUtf8Err : InternalFile.ReadUtf8Err
+ReadUtf8Err a : InternalFile.ReadUtf8Err a
 ReadProblem : InternalFile.ReadProblem
 
 WriteErr : InternalFile.WriteErr
@@ -101,7 +101,7 @@ readBytes = \path ->
 ## The task will fail with `FileReadUtf8Err` if the given file contains invalid UTF-8.
 ##
 ## To read unformatted bytes from a file, you can use [File.readBytes] instead.
-readUtf8 : Path -> Task Str ReadUtf8Err
+readUtf8 : Path -> Task Str (ReadUtf8Err _)
 readUtf8 = \path ->
     effect = Effect.map (Effect.fileReadBytes (InternalPath.toBytes path)) \result ->
         when result is
