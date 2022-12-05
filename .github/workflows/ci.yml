@@ -1,0 +1,27 @@
+on: [pull_request, workflow_dispatch] # TODO remove pull_request
+
+# this cancels runs currently in progress if you start a new one
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-linux-x86_64-files:
+    runs-on: [ubuntu-20.04]
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: fetch roc releases data and save to file
+        run: curl https://api.github.com/repos/roc-lang/roc/releases > roc_releases.json
+
+      - name: get the url of the latest release for linux_x86_64
+        run: echo "RELEASE_URL=$(./ci/get_latest_release_url.sh linux_x86_64)" >> $GITHUB_ENV
+
+      - name: get the archive from the url
+        run: mkdir roc_nightly && cd roc_nightly && curl -OL ${{ env.RELEASE_URL }}
+
+      - name: decompress the tar
+        run: cd roc_nightly && ls | grep "roc_nightly.*tar\.gz" | xargs tar -xzvf
+
+      - name: build the basic cli platform
+        run: ./roc_nightly/roc build src/main.roc

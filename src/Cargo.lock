@@ -474,7 +474,7 @@ dependencies = [
 [[package]]
 name = "roc_std"
 version = "0.0.1"
-source = "git+https://github.com/roc-lang/roc#bb89344eaab6cb03d52246a99e65294e79be87dd"
+source = "git+https://github.com/roc-lang/roc?rev=468be47#468be47da2d64e3c41b2770e9473a32e5583af46"
 dependencies = [
  "arrayvec",
  "static_assertions",
