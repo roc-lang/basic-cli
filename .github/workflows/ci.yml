@@ -10,7 +10,7 @@ jobs:
     runs-on: [ubuntu-20.04]
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: fetch roc releases data and save to file
         run: curl https://api.github.com/repos/roc-lang/roc/releases > roc_releases.json
 
@@ -24,4 +24,12 @@ jobs:
         run: cd roc_nightly && ls | grep "roc_nightly.*tar\.gz" | xargs tar -xzvf
 
       - name: build the basic cli platform
-        run: ./roc_nightly/roc build src/main.roc
+        run: ./roc_nightly/roc build examples/file.roc
+
+      - name: Save .rh1 and .rm1 files 
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-x86_64-files
+          path: |
+            linux-x86_64.rh*
+            metadata_linux-x86_64.rm*
