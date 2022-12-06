@@ -4,7 +4,12 @@
 set -euxo pipefail
 
 # fetch roc releases data and save to file
-curl https://api.github.com/repos/roc-lang/roc/releases > roc_releases.json
+# authorization is used to prevent rate limiting due to shared IP of macos ci servers
+curl --request GET \
+          --url https://api.github.com/repos/roc-lang/roc/releases \
+          --header 'authorization: Bearer $2' \
+          --header 'content-type: application/json' \
+          --output roc_releases.json
 
 # get the url of the latest release for linux_x86_64
 RELEASE_URL=$(./ci/get_latest_release_url.sh $1)
