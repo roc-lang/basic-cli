@@ -7,7 +7,7 @@ set -euxo pipefail
 curl https://api.github.com/repos/roc-lang/roc/releases > roc_releases.json
 
 # get the url of the latest release for linux_x86_64
-RELEASE_URL=$(./ci/get_latest_release_url.sh linux_x86_64)
+RELEASE_URL=$(./ci/get_latest_release_url.sh $1)
 
 # get the archive from the url
 mkdir roc_nightly && cd roc_nightly && curl -OL $RELEASE_URL
