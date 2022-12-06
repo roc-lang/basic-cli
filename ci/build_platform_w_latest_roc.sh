@@ -20,5 +20,3 @@ cd ..
 
 # build the basic cli platform
 ./roc_nightly/roc build examples/file.roc
-
-ls
