@@ -3,17 +3,6 @@
 # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 set -euxo pipefail
 
-# fetch roc releases data and save to file
-# authorization is used to prevent rate limiting due to shared IP of macos ci servers
-curl --request GET \
-          --url https://api.github.com/repos/roc-lang/roc/releases \
-          --header 'authorization: Bearer $2' \
-          --header 'content-type: application/json' \
-          --output roc_releases.json
-
-cat roc_releases.json
-cat roc_releases.json | wc -l
-
 # get the url of the latest release for linux_x86_64
 RELEASE_URL=$(./ci/get_latest_release_url.sh $1)
 
