@@ -6,17 +6,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-linux-x86_64-files:
-    runs-on: [ubuntu-20.04]
+  build-macos-x86_64-files:
+    runs-on: [macos-11] # I expect the generated files to work on macOS 12
     steps:
       - uses: actions/checkout@v3
 
       - run: ./ci/build_platform_w_latest_roc.sh
 
-      - name: Save .rh1 and .rm1 files 
+      - name: Save .o files
         uses: actions/upload-artifact@v3
         with:
-          name: linux-x86_64-files
+          name: macos-x86_64-files
           path: |
-            src/linux-x86_64.rh1
-            src/metadata_linux-x86_64.rm1
+            macos-x64.o
