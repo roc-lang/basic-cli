@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - run: ./ci/build_platform_w_latest_roc.sh macos_11_x86_64
+      - run: ./ci/build_platform_w_latest_roc.sh macos_11_x86_64 ${{ secrets.GITHUB_TOKEN }}
 
       - name: Save .o files
         uses: actions/upload-artifact@v3
