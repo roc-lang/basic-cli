@@ -11,6 +11,9 @@ curl --request GET \
           --header 'content-type: application/json' \
           --output roc_releases.json
 
+cat roc_releases.json
+cat roc_releases.json | wc -l
+
 # get the url of the latest release for linux_x86_64
 RELEASE_URL=$(./ci/get_latest_release_url.sh $1)
 
