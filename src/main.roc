@@ -1,6 +1,6 @@
 platform "cli"
     requires {} { main : Task {} [] }
-    exposes []
+    exposes [Task, Arg, Dir, Env, EnvDecoding, File, FileMetadata, Path, Process, Stdout, Stderr, Stdin, Url]
     packages {}
     imports [Task.{ Task }]
     provides [mainForHost]
