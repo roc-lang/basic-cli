@@ -13,7 +13,7 @@ interface Path
     ]
     imports [InternalPath.{ InternalPath }]
 
-## You can canonicalize a [Path] using [Path.canonicalize].
+## You can canonicalize a [Path] using `Path.canonicalize`.
 ##
 ## Comparing canonical paths is often more reliable than comparing raw ones.
 ## For example, `Path.fromStr "foo/bar/../baz" == Path.fromStr "foo/baz"` will return `Bool.false`,
@@ -21,19 +21,19 @@ interface Path
 ##
 ## Also note that canonicalization reads from the file system (in order to resolve symbolic
 ## links, and to convert relative paths into absolute ones). This means that it is not only
-## a [Task] (which can fail), but also that running [canonicalize] on the same [Path] twice
+## a [Task](../Task#Task) (which can fail), but also that running `canonicalize` on the same [Path] twice
 ## may give different answers. An example of a way this could happen is if a symbolic link
-## in the path changed on disk to point somewhere else in between the two [canonicalize] calls.
+## in the path changed on disk to point somewhere else in between the two `canonicalize` calls.
 ##
 ## Similarly, remember that canonical paths are not guaranteed to refer to a valid file. They
 ## might have referred to one when they were canonicalized, but that file may have moved or
-## been deleted since the canonical path was created. So you might [canonicalize] a [Path],
+## been deleted since the canonical path was created. So you might canonicalize a [Path],
 ## and then immediately use that [Path] to read a file from disk, and still get back an error
 ## because something relevant changed on the filesystem between the two operations.
 ##
 ## Also note that different filesystems have different rules for syntactically valid paths.
 ## Suppose you're on a machine with two disks, one formatted as ext4 and another as FAT32.
-## It's possible to list the contents of a directory on the ext4 disk, and get a [CanPath] which
+## It's possible to list the contents of a directory on the ext4 disk, and get a `CanPath` which
 ## is valid on that disk, but invalid on the other disk. One way this could happen is if the
 ## directory on the ext4 disk has a filename containing a `:` in it. `:` is allowed in ext4
 ## paths but is considered invalid in FAT32 paths.
