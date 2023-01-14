@@ -29,16 +29,11 @@ jobs:
       - name: Get the archive from the url.
         run: curl -OL ${{ env.ROC_RELEASE_URL }}
 
-      - run: ls
+      - name: rename nightly tar
+        run: mv $(ls | grep "roc_nightly.*tar\.gz") roc_nightly.tar.gz
 
       - name: decompress the tar
-        run: ls | grep "roc_nightly.*tar\.gz" | xargs tar -xzf --one-top-level
-
-      - name: remove tar
-        run: ls | grep "roc_nightly.*tar\.gz" | xargs rm -rf
-
-      - name: simplify name of nightly dir
-        run: mv $(ls | grep "roc_nightly*") roc_nightly 
+        run: tar -xzf --one-top-level roc_nightly.tar.gz      
 
       - run: ./roc_nightly/roc build ./basic-cli/src/main.roc
 
