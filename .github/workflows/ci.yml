@@ -35,7 +35,7 @@ jobs:
       - name: decompress the tar
         run: tar -xzf roc_nightly.tar.gz --one-top-level
 
-      - run: ./roc_nightly/roc build ./basic-cli/src/main.roc
+      - run: ./roc_nightly/roc build ./file-test.roc
 
 # TODO clippy rustfmt
 
