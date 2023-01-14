@@ -33,7 +33,7 @@ jobs:
         run: mv $(ls | grep "roc_nightly.*tar\.gz") roc_nightly.tar.gz
 
       - name: decompress the tar
-        run: tar -xzf --one-top-level roc_nightly.tar.gz      
+        run: tar -xzf roc_nightly.tar.gz --one-top-level
 
       - run: ./roc_nightly/roc build ./basic-cli/src/main.roc
 
