@@ -1,8 +1,14 @@
 interface InternalFile
-    exposes [ReadErr, WriteErr]
-    imports []
+    exposes [ReadErr, ReadUtf8Err, WriteErr, ReadProblem, WriteProblem]
+    imports [Path.{ Path }]
 
-ReadErr : [
+# TODO trying to put either Utf8Problem or Str.Utf8Problem here instead of `a`
+# crashes the compiler!
+ReadUtf8Err a : [FileReadErr Path ReadProblem, FileReadUtf8Err Path a]
+
+ReadErr : [FileReadErr Path ReadProblem]
+
+ReadProblem : [
     NotFound,
     Interrupted,
     InvalidFilename,
@@ -16,7 +22,9 @@ ReadErr : [
     Unrecognized I32 Str,
 ]
 
-WriteErr : [
+WriteErr : [FileWriteErr Path WriteProblem]
+
+WriteProblem : [
     NotFound,
     Interrupted,
     InvalidFilename,

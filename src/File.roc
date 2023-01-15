@@ -1,10 +1,13 @@
 interface File
-    exposes [ReadErr, WriteErr, write, writeUtf8, writeBytes, readUtf8, readBytes, delete, writeErrToStr, readErrToStr]
+    exposes [ReadErr, ReadUtf8Err, ReadProblem, WriteErr, WriteProblem, write, writeUtf8, writeBytes, readUtf8, readBytes, delete, writeErrToStr, readErrToStr]
     imports [Task.{ Task }, InternalTask, InternalFile, Path.{ Path }, InternalPath, Effect.{ Effect }]
 
 ReadErr : InternalFile.ReadErr
+ReadUtf8Err a : InternalFile.ReadUtf8Err a
+ReadProblem : InternalFile.ReadProblem
 
 WriteErr : InternalFile.WriteErr
+WriteProblem : InternalFile.WriteProblem
 
 ## Encodes a value using the given `EncodingFormat` and writes it to a file.
 ##
@@ -26,7 +29,7 @@ WriteErr : InternalFile.WriteErr
 ## This opens the file first and closes it after writing to it.
 ##
 ## To write unformatted bytes to a file, you can use [File.writeBytes] instead.
-write : Path, val, fmt -> Task {} [FileWriteErr Path WriteErr] | val has Encode.Encoding, fmt has Encode.EncoderFormatting
+write : Path, val, fmt -> Task {} WriteErr | val has Encode.Encoding, fmt has Encode.EncoderFormatting
 write = \path, val, fmt ->
     bytes = Encode.toBytes val fmt
 
@@ -41,7 +44,7 @@ write = \path, val, fmt ->
 ## This opens the file first and closes it after writing to it.
 ##
 ## To format data before writing it to a file, you can use [File.write] instead.
-writeBytes : Path, List U8 -> Task {} [FileWriteErr Path WriteErr]
+writeBytes : Path, List U8 -> Task {} WriteErr
 writeBytes = \path, bytes ->
     toWriteTask path \pathBytes -> Effect.fileWriteBytes pathBytes bytes
 
@@ -53,7 +56,7 @@ writeBytes = \path, bytes ->
 ## This opens the file first and closes it after writing to it.
 ##
 ## To write unformatted bytes to a file, you can use [File.writeBytes] instead.
-writeUtf8 : Path, Str -> Task {} [FileWriteErr Path WriteErr]
+writeUtf8 : Path, Str -> Task {} WriteErr
 writeUtf8 = \path, str ->
     toWriteTask path \bytes -> Effect.fileWriteUtf8 bytes str
 
@@ -73,7 +76,7 @@ writeUtf8 = \path, str ->
 ##
 ## On Windows, this will fail when attempting to delete a readonly file; the file's
 ## readonly permission must be disabled before it can be successfully deleted.
-delete : Path -> Task {} [FileWriteErr Path WriteErr]
+delete : Path -> Task {} WriteErr
 delete = \path ->
     toWriteTask path \bytes -> Effect.fileDelete bytes
 
@@ -85,7 +88,7 @@ delete = \path ->
 ## This opens the file first and closes it after reading its contents.
 ##
 ## To read and decode data from a file, you can use `File.read` instead.
-readBytes : Path -> Task (List U8) [FileReadErr Path ReadErr]
+readBytes : Path -> Task (List U8) ReadErr
 readBytes = \path ->
     toReadTask path \bytes -> Effect.fileReadBytes bytes
 
@@ -98,9 +101,7 @@ readBytes = \path ->
 ## The task will fail with `FileReadUtf8Err` if the given file contains invalid UTF-8.
 ##
 ## To read unformatted bytes from a file, you can use [File.readBytes] instead.
-readUtf8 :
-    Path
-    -> Task Str [FileReadErr Path ReadErr, FileReadUtf8Err Path _]
+readUtf8 : Path -> Task Str (ReadUtf8Err _)
 readUtf8 = \path ->
     effect = Effect.map (Effect.fileReadBytes (InternalPath.toBytes path)) \result ->
         when result is
@@ -143,9 +144,9 @@ toReadTask = \path, toEffect ->
     |> InternalTask.fromEffect
     |> Task.mapFail \err -> FileReadErr path err
 
-writeErrToStr : WriteErr -> Str
-writeErrToStr = \err ->
-    when err is
+displayWriteProblem : WriteProblem -> Str
+displayWriteProblem = \problem ->
+    when problem is
         NotFound -> "NotFound"
         Interrupted -> "Interrupted"
         InvalidFilename -> "InvalidFilename"
@@ -167,9 +168,9 @@ writeErrToStr = \err ->
         Unsupported -> "Unsupported"
         _ -> "Unrecognized"
 
-readErrToStr : ReadErr -> Str
-readErrToStr = \err ->
-    when err is
+displayReadProblem : ReadProblem -> Str
+displayReadProblem = \problem ->
+    when problem is
         NotFound -> "NotFound"
         Interrupted -> "Interrupted"
         InvalidFilename -> "InvalidFilename"
