@@ -1,9 +1,13 @@
+*.rh1
+*.rm1
+dynhost
 target
 generated-docs
 .direnv
 .envrc
 *.rs.bk
 *.o
+*.so
 *.obj
 *.dll
 *.lib
