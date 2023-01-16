@@ -54,5 +54,5 @@ jobs:
 
       - run: ./roc_nightly/roc build ./examples/http-get.roc
 
-# TODO clippy rustfmt
+# TODO clippy, rustfmt, roc fmt check
 
