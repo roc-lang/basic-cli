@@ -37,5 +37,22 @@ jobs:
 
       - run: ./roc_nightly/roc build ./file-test.roc
 
+      # TODO fix
+      #- run: ./roc_nightly/roc build ./examples/args.roc
+
+      - run: ./roc_nightly/roc build ./examples/countdown.roc
+
+      - run: ./roc_nightly/roc build ./examples/echo.roc
+
+      # TODO fix
+      #- run: ./roc_nightly/roc build ./examples/env.roc
+
+      # TODO fix
+      #- run: ./roc_nightly/roc build ./examples/file.roc
+
+      - run: ./roc_nightly/roc build ./examples/form.roc
+
+      - run: ./roc_nightly/roc build ./examples/http-get.roc
+
 # TODO clippy rustfmt
 
