@@ -37,18 +37,16 @@ jobs:
 
       - run: ./roc_nightly/roc build ./file-test.roc
 
-      # TODO fix
-      #- run: ./roc_nightly/roc build ./examples/args.roc
+      # --linker=legacy because 3609
+      - run: ./roc_nightly/roc build ./examples/args.roc --linker=legacy
 
       - run: ./roc_nightly/roc build ./examples/countdown.roc
 
       - run: ./roc_nightly/roc build ./examples/echo.roc
 
-      # TODO fix
-      #- run: ./roc_nightly/roc build ./examples/env.roc
+      - run: ./roc_nightly/roc build ./examples/env.roc
 
-      # TODO fix
-      #- run: ./roc_nightly/roc build ./examples/file.roc
+      - run: ./roc_nightly/roc build ./examples/file.roc
 
       - run: ./roc_nightly/roc build ./examples/form.roc
 

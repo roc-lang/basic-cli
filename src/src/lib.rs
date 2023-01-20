@@ -9,10 +9,9 @@ use core::mem::MaybeUninit;
 use glue::Metadata;
 use roc_std::{RocDict, RocList, RocResult, RocStr};
 use std::borrow::{Borrow, Cow};
-use std::ffi::{CStr, OsStr};
+use std::ffi::{OsStr};
 use std::fs::File;
 use std::io::Write;
-use std::os::raw::c_char;
 use std::path::Path;
 use std::time::Duration;
 
@@ -103,12 +102,6 @@ pub unsafe extern "C" fn roc_shm_open(
     mode: libc::mode_t,
 ) -> libc::c_int {
     libc::shm_open(name, oflag, mode as libc::c_uint)
-}
-
-#[cfg(unix)]
-#[no_mangle]
-pub unsafe extern "C" fn roc_send_signal(pid: libc::pid_t, sig: libc::c_int) -> libc::c_int {
-    libc::kill(pid, sig)
 }
 
 fn print_backtrace() {
