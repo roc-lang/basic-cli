@@ -66,7 +66,7 @@ jobs:
           LETTERS: a,c,e,j
         run: |
           ./roc_nightly/roc run ./examples/env.roc 2>&1 | tee env_received_out.txt
-          cmp env_received_out.txt ci/expected_outputs/env_correct_out.txt
+          diff env_received_out.txt ci/expected_outputs/env_correct_out.txt
 
       # <-- END RUN TESTS
 
