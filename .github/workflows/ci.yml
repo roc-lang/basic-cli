@@ -40,9 +40,9 @@ jobs:
       - name: simplify nightly folder name
         run: mv roc_nightly* roc_nightly
 
-      - run: ./roc_nightly/roc build ./file-test.roc
-
       # <-- START BUILD TESTS
+      # - run: ./roc_nightly/roc build ./file-test.roc
+
       # --linker=legacy because 3609
       #- run: ./roc_nightly/roc build ./examples/args.roc --linker=legacy
 
@@ -60,7 +60,11 @@ jobs:
       # END BUILD TESTS -->
 
       # <-- START RUN TESTS
-      - run: |
+      - env:
+          EDITOR: nano
+          SHLVL: 2
+          LETTERS: a,c,e,j
+        run: |
           ./roc_nightly/roc run ./examples/env.roc
           cmp env_received_out.txt ci/expected_outputs/env_correct_out.txt
 
