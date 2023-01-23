@@ -1,4 +1,4 @@
-🔨 Rebuilding platform...
+ 🔨 Rebuilding platform...
 Your favorite editor is nano!
-Your current shell level is 2!
-I couldn't find your favorite letters in the environment variables!
+Your current shell level is 3!
+Your favorite letters are: a c e j
