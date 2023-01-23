@@ -1,0 +1,4 @@
+🔨 Rebuilding platform...
+Your favorite editor is nano!
+Your current shell level is 2!
+I couldn't find your favorite letters in the environment variables!

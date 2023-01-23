@@ -1,5 +1,5 @@
-*.rh1
-*.rm1
+*.rh*
+*.rm*
 dynhost
 target
 generated-docs
