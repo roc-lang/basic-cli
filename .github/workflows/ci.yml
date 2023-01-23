@@ -35,6 +35,8 @@ jobs:
       - name: decompress the tar
         run: tar -xzf roc_nightly.tar.gz
 
+      - run: rm roc_nightly.tar.gz
+
       - name: simplify nightly folder name
         run: mv roc_nightly* roc_nightly
 
