@@ -1,0 +1,24 @@
+#!/usr/bin/expect
+
+# for debugging
+# exp_internal 1
+
+set timeout 7
+
+spawn ./roc_nightly/roc run ./examples/form.roc --prebuilt-platform=true
+
+
+expect "What's your first name?\r\n"
+
+send -- "John\r"
+
+expect "What's your last name?\r\n"
+
+send -- "Doe\r"
+
+expect "Hi, John Doe! 👋\r\n" {
+  expect eof
+  exit 0
+}
+
+exit 1

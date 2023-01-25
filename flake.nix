@@ -20,6 +20,8 @@
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs { inherit system overlays; };
 
+        llvmPkgs = pkgs.llvmPackages_13;
+
         # get current working directory
         cwd = builtins.toString ./.;
         rust =
@@ -36,11 +38,17 @@
 
         sharedInputs = (with pkgs; [
           rust
+          llvmPkgs.clang
+          expect
         ]);
       in {
 
         devShell = pkgs.mkShell {
           buildInputs = sharedInputs ++ darwinInputs ++ linuxInputs;
+
+          # nix does not store libs in /usr/lib or /lib
+          NIX_GLIBC_PATH =
+            if pkgs.stdenv.isLinux then "${pkgs.glibc.out}/lib" else "";
         };
 
         formatter = pkgs.nixpkgs-fmt;

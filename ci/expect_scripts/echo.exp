@@ -1,0 +1,24 @@
+#!/usr/bin/expect
+
+# for debugging
+# exp_internal 1
+
+set timeout 7
+
+spawn ./roc_nightly/roc run ./examples/echo.roc --prebuilt-platform=true
+
+
+expect -exact "🗣  Shout into this cave and hear the echo! 👂👂👂\r\n"
+
+send -- "a\r"
+expect "  a\r\n"
+
+send -- "123\r"
+expect "      123  12 1\r\n" 
+
+send -- "12 ab\r"
+expect "          12 ab    12 a   12   12 1\r\n" {
+    exit 0
+}
+
+exit 1

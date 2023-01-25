@@ -8,7 +8,7 @@ app "file-test"
     ]
     provides [main] to pf
 
-# Should print the following to the terminal
+# Running should print the following to the terminal:
 # ```
 # Pass: expected NotFound
 # Pass: expected PermissionDenied

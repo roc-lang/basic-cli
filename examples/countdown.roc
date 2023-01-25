@@ -4,9 +4,9 @@ app "countdown"
     provides [main] to pf
 
 main =
-    _ <- await (Stdout.line "\nLet's count down from 10 together - all you have to do is press <ENTER>.")
+    _ <- await (Stdout.line "\nLet's count down from 3 together - all you have to do is press <ENTER>.")
     _ <- await Stdin.line
-    loop 10 tick
+    loop 3 tick
 
 tick = \n ->
     if n == 0 then

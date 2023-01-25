@@ -5,7 +5,7 @@ app "http-get"
 
 main : Task {} []
 main =
-    _ <- Task.await (Stdout.line "Please enter a URL to fetch")
+    _ <- Task.await (Stdout.line "Enter a URL to fetch. It must contain a scheme like \"http://\" or \"https://\".")
 
     url <- Task.await Stdin.line
 

@@ -1,0 +1,28 @@
+#!/usr/bin/expect
+
+# for debugging
+# exp_internal 1
+
+set timeout 7
+
+spawn ./roc_nightly/roc run ./examples/countdown.roc --prebuilt-platform=true
+
+
+expect -exact "\r\nLet's count down from 3 together - all you have to do is press <ENTER>.\r\n"
+
+send -- "\r"
+expect "\r\n3...\r\n"
+
+send -- "\r"
+expect "\r\n2...\r\n"
+
+send -- "\r"
+expect "\r\n1...\r\n"
+
+send -- "\r"
+expect "🎉 SURPRISE! Happy Birthday! 🎂\r\n" {
+  expect eof
+  exit 0
+}
+
+exit 1
