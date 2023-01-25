@@ -3,7 +3,7 @@
 # for debugging
 # exp_internal 1
 
-set timeout 1
+set timeout 7
 
 spawn ./roc_nightly/roc run ./examples/echo.roc --prebuilt-platform=true
 
