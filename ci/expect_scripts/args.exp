@@ -1,0 +1,16 @@
+#!/usr/bin/expect
+
+# for debugging
+# exp_internal 1
+
+set timeout 1
+
+spawn ./roc_nightly/roc run ./examples/args.roc --prebuilt-platform=true --linker=legacy -- log -b 3 --num 81
+
+
+expect "4\r\n" {
+  expect eof
+  exit 0
+}
+
+exit 1

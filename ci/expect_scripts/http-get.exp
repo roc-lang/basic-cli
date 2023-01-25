@@ -1,0 +1,20 @@
+#!/usr/bin/expect
+
+# for debugging
+# exp_internal 1
+
+set timeout 1
+
+spawn ./roc_nightly/roc run ./examples/http-get.roc --prebuilt-platform=true
+
+
+expect -exact "Enter a URL to fetch. It must contain a scheme like \"http://\" or \"https://\".\r\n"
+
+send -- "http://www.example.com\r"
+
+expect "</html>\r\n" {
+  expect eof
+  exit 0
+}
+
+exit 1
