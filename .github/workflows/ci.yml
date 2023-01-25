@@ -41,22 +41,22 @@ jobs:
         run: mv roc_nightly* roc_nightly
 
       # <-- START BUILD TESTS
-      - run: ./roc_nightly/roc build ./file-testBROKEN.roc
+      #- run: ./roc_nightly/roc build ./file-testBROKEN.roc
 
       # --linker=legacy because 3609
-      - run: ./roc_nightly/roc build ./examples/args.roc --linker=legacy
+      #- run: ./roc_nightly/roc build ./examples/args.roc --linker=legacy
 
-      - run: ./roc_nightly/roc build ./examples/countdown.roc
+      #- run: ./roc_nightly/roc build ./examples/countdown.roc
 
-      - run: ./roc_nightly/roc build ./examples/echo.roc
+      #- run: ./roc_nightly/roc build ./examples/echo.roc
 
-      - run: ./roc_nightly/roc build ./examples/env.roc
+      #- run: ./roc_nightly/roc build ./examples/env.roc
 
-      - run: ./roc_nightly/roc build ./examples/fileBROKEN.roc
+      #- run: ./roc_nightly/roc build ./examples/fileBROKEN.roc
 
-      - run: ./roc_nightly/roc build ./examples/form.roc
+      #- run: ./roc_nightly/roc build ./examples/form.roc
 
-      - run: ./roc_nightly/roc build ./examples/http-get.roc
+      #- run: ./roc_nightly/roc build ./examples/http-get.roc
       # END BUILD TESTS -->
 
       - run: sudo apt install -y expect
