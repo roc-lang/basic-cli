@@ -62,9 +62,6 @@ jobs:
       - run: sudo apt install -y expect
       # <-- START RUN TESTS
       - run: expect -v
-      
-      # for debugging
-      - run: ./roc_nightly/roc run ./examples/args.roc --prebuilt-platform=true --linker=legacy -- log -b 3 --num 81
 
       - run: expect ci/expect_scripts/args.exp
 
