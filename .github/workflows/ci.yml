@@ -59,9 +59,9 @@ jobs:
       - run: ./roc_nightly/roc build ./examples/http-get.roc
       # END BUILD TESTS -->
 
+      - run: sudo apt install -y expect
       # <-- START RUN TESTS
-      - name: get version of expect command
-        run: expect -v
+      - run: expect -v
 
       - run: expect ci/expect_scripts/args.exp
 
