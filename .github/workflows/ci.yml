@@ -43,7 +43,7 @@ jobs:
       # <-- START BUILD TESTS
       - run: ./roc_nightly/roc build ./file-testBROKEN.roc
 
-      # --linker=legacy because 3609
+      # linker=legacy because 3609
       - run: ./roc_nightly/roc build ./examples/args.roc --linker=legacy
 
       - run: ./roc_nightly/roc build ./examples/countdown.roc

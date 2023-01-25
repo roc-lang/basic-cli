@@ -1,7 +1,7 @@
 #!/usr/bin/expect
 
 # for debugging
-exp_internal 1
+# exp_internal 1
 
 set timeout 7
 
