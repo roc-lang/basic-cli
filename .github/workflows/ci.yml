@@ -62,6 +62,8 @@ jobs:
       - run: sudo apt install -y expect
       # <-- START RUN TESTS
       - run: expect -v
+      
+      - run: ./roc_nightly/roc build ./examples/args.roc --linker=legacy
 
       - run: expect ci/expect_scripts/args.exp
 
