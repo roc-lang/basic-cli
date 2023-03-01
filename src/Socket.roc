@@ -1,13 +1,28 @@
 interface Socket 
-    exposes [Stream, connect, read, write]
+    exposes [Stream, withConnect, read, write]
     imports [Effect, Task.{ Task }, InternalTask]
 
 Stream := Nat
+
+withConnect : Str, (Stream -> Task {} a) -> Task {} a
+withConnect = \addr, callback ->
+    stream <- connect addr |> Task.await
+    result <- callback stream |> Task.attempt
+    {} <- close stream |> Task.await
+    Task.fromResult result
+
 
 connect : Str -> Task Stream *
 connect = \addr ->
     Effect.tcpConnect addr
     |> Effect.map (\ptr -> Ok (@Stream ptr))
+    |> InternalTask.fromEffect
+
+
+close : Stream -> Task {} *
+close = \@Stream ptr ->
+    Effect.tcpClose ptr
+    |> Effect.map (\_ -> Ok {})
     |> InternalTask.fromEffect
 
 
@@ -23,4 +38,3 @@ write = \str, @Stream ptr ->
     Effect.tcpWrite str ptr
     |> Effect.map (\_ -> Ok {})
     |> InternalTask.fromEffect
-

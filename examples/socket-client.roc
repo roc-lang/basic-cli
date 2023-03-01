@@ -5,7 +5,7 @@ app "socket-client"
 
 main : Task {} []
 main =
-    stream <- Socket.connect "127.0.0.1:8080" |> await
+    stream <- Socket.withConnect "127.0.0.1:8080"
     _ <- Stdout.line "Connected!" |> await
 
     Task.loop {} \_ -> Task.map (tick stream) Step

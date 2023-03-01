@@ -25,6 +25,7 @@ hosted Effect
         fileWriteBytes,
         processExit,
         tcpConnect,
+        tcpClose,
         tcpRead,
         tcpWrite,
     ]
@@ -58,5 +59,6 @@ cwd : Effect (List U8)
 sendRequest : Box Request -> Effect Response
 
 tcpConnect : Str -> Effect Nat
+tcpClose : Nat -> Effect {}
 tcpRead : Nat -> Effect Str
 tcpWrite : Str, Nat -> Effect {}

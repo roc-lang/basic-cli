@@ -564,10 +564,11 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &glue::Request) -> glue::Respo
     }
 }
 
+
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpConnect(address: &RocStr) -> *mut TcpStream {
     match TcpStream::connect(address.as_str()) {
-        Ok (mut stream) => {
+        Ok (stream) => {
             Box::into_raw(Box::new(stream))
         }
         Err(e) => {
@@ -575,6 +576,14 @@ pub extern "C" fn roc_fx_tcpConnect(address: &RocStr) -> *mut TcpStream {
         }
     }
 }
+
+#[no_mangle]
+pub extern "C" fn roc_fx_tcpClose(stream_ptr: *mut TcpStream) {
+    unsafe {
+        drop(Box::from_raw(stream_ptr));
+    }
+}
+
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpRead(stream_ptr: *mut TcpStream) -> RocStr {
