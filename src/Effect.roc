@@ -24,6 +24,9 @@ hosted Effect
         fileWriteUtf8,
         fileWriteBytes,
         processExit,
+        tcpConnect,
+        tcpRead,
+        tcpWrite,
     ]
     imports [InternalHttp.{ Request, Response }, InternalFile, InternalDir]
     generates Effect with [after, map, always, forever, loop]
@@ -53,3 +56,7 @@ args : Effect (List Str)
 cwd : Effect (List U8)
 
 sendRequest : Box Request -> Effect Response
+
+tcpConnect : Str -> Effect Nat
+tcpRead : Nat -> Effect Str
+tcpWrite : Str, Nat -> Effect {}

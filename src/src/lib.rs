@@ -11,9 +11,11 @@ use roc_std::{RocDict, RocList, RocResult, RocStr};
 use std::borrow::{Borrow, Cow};
 use std::ffi::{OsStr};
 use std::fs::File;
+use std::io::Read;
 use std::io::Write;
 use std::path::Path;
 use std::time::Duration;
+use std::net::TcpStream;
 
 use file_glue::ReadErr;
 use file_glue::WriteErr;
@@ -395,8 +397,6 @@ fn path_from_roc_path(bytes: &RocList<u8>) -> Cow<'_, Path> {
 
 #[no_mangle]
 pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocList<u8>, ReadErr> {
-    use std::io::Read;
-
     let mut bytes = Vec::new();
 
     match File::open(path_from_roc_path(roc_path)) {
@@ -563,6 +563,44 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &glue::Request) -> glue::Respo
         }
     }
 }
+
+#[no_mangle]
+pub extern "C" fn roc_fx_tcpConnect(address: &RocStr) -> *mut TcpStream {
+    match TcpStream::connect(address.as_str()) {
+        Ok (mut stream) => {
+            Box::into_raw(Box::new(stream))
+        }
+        Err(e) => {
+            panic!("Unable to connect")
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_tcpRead(stream_ptr: *mut TcpStream) -> RocStr {
+    use std::str::from_utf8;
+
+    let stream = unsafe { &mut *stream_ptr };
+    let mut data = [0 as u8; 1024];
+
+    stream.read(&mut data)
+        .expect("Failed to read from stream");
+
+    let msg = from_utf8(&data)
+        .expect("Failed to decode utf8");
+    
+    RocStr::from(msg)
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_tcpWrite(msg: &RocStr, stream_ptr: *mut TcpStream)  {
+    let stream = unsafe { &mut *stream_ptr };
+
+    stream.write(msg.as_str().as_bytes())
+        .expect("Failed to write to socket");
+}
+
+
 
 fn toRocWriteError(err : std::io::Error) -> file_glue::WriteErr {
     match err.kind(){
