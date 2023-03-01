@@ -11,8 +11,7 @@ use roc_std::{RocDict, RocList, RocResult, RocStr};
 use std::borrow::{Borrow, Cow};
 use std::ffi::{OsStr};
 use std::fs::File;
-use std::io::Read;
-use std::io::Write;
+use std::io::{Read, Write, BufReader, BufRead};
 use std::path::Path;
 use std::time::Duration;
 use std::net::TcpStream;
@@ -564,12 +563,12 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &glue::Request) -> glue::Respo
     }
 }
 
-
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpConnect(host: &RocStr, port: u16) -> *mut TcpStream {
+pub extern "C" fn roc_fx_tcpConnect(host: &RocStr, port: u16) -> *mut BufReader<TcpStream> {
     match TcpStream::connect((host.as_str(), port)) {
         Ok (stream) => {
-            Box::into_raw(Box::new(stream))
+            let reader = BufReader::new(stream);
+            Box::into_raw(Box::new(reader))
         }
         Err(e) => {
             panic!("Unable to connect")
@@ -577,8 +576,9 @@ pub extern "C" fn roc_fx_tcpConnect(host: &RocStr, port: u16) -> *mut TcpStream 
     }
 }
 
+
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpClose(stream_ptr: *mut TcpStream) {
+pub extern "C" fn roc_fx_tcpClose(stream_ptr: *mut BufReader<TcpStream>) {
     unsafe {
         drop(Box::from_raw(stream_ptr));
     }
@@ -586,26 +586,29 @@ pub extern "C" fn roc_fx_tcpClose(stream_ptr: *mut TcpStream) {
 
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpRead(stream_ptr: *mut TcpStream) -> RocStr {
+pub extern "C" fn roc_fx_tcpRead(stream_ptr: *mut BufReader<TcpStream>) -> RocStr {
     use std::str::from_utf8;
 
-    let stream = unsafe { &mut *stream_ptr };
-    let mut data = [0 as u8; 1024];
+    let reader = unsafe { &mut *stream_ptr };
 
-    stream.read(&mut data)
-        .expect("Failed to read from stream");
+    let received: Vec<u8> = reader.fill_buf()
+        .expect("Failed to read")
+        .to_vec();
 
-    let msg = from_utf8(&data)
+    reader.consume(received.len());
+
+    let msg = from_utf8(&received)
         .expect("Failed to decode utf8");
     
     RocStr::from(msg)
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpWrite(msg: &RocStr, stream_ptr: *mut TcpStream)  {
-    let stream = unsafe { &mut *stream_ptr };
+pub extern "C" fn roc_fx_tcpWrite(msg: &RocStr, stream_ptr: *mut BufReader<TcpStream>)  {
+    let reader = unsafe { &mut *stream_ptr };
 
-    stream.write(msg.as_str().as_bytes())
+    reader.get_ref()
+        .write(msg.as_str().as_bytes())
         .expect("Failed to write to socket");
 }
 
