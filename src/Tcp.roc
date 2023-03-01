@@ -15,7 +15,7 @@ Stream := Nat
 ##
 ##     # Connect to localhost:8080 and send "Hi from Roc!"
 ##     stream <- Tcp.withConnect "localhost" 8080
-##     Tcp.writeUtf8 "Hi from Roc!"
+##     Tcp.writeUtf8 "Hi from Roc!" stream
 ## 
 ## This closes the connection after the [Task] is completed.
 withConnect : Str, U16, (Stream -> Task {} a) -> Task {} a
