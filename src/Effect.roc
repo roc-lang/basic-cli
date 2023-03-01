@@ -60,5 +60,5 @@ sendRequest : Box Request -> Effect Response
 
 tcpConnect : Str, U16 -> Effect Nat
 tcpClose : Nat -> Effect {}
-tcpRead : Nat -> Effect Str
+tcpRead : Nat -> Effect (List U8)
 tcpWrite : Str, Nat -> Effect {}

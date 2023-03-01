@@ -1,5 +1,5 @@
 interface Socket 
-    exposes [Stream, withConnect, read, write]
+    exposes [Stream, withConnect, readUtf8, write]
     imports [Effect, Task.{ Task }, InternalTask]
 
 Stream := Nat
@@ -26,10 +26,12 @@ close = \@Stream ptr ->
     |> InternalTask.fromEffect
 
 
-read : Stream -> Task Str *
-read = \@Stream ptr ->
+readUtf8 : Stream -> Task Str [SocketReadUtf8Err _]
+readUtf8 = \@Stream ptr ->
     Effect.tcpRead ptr
-    |> Effect.map (\str -> Ok str)
+    |> Effect.map \bytes -> 
+        Str.fromUtf8 bytes
+        |> Result.mapErr \err -> SocketReadUtf8Err err
     |> InternalTask.fromEffect
 
 

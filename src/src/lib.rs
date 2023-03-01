@@ -586,9 +586,7 @@ pub extern "C" fn roc_fx_tcpClose(stream_ptr: *mut BufReader<TcpStream>) {
 
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpRead(stream_ptr: *mut BufReader<TcpStream>) -> RocStr {
-    use std::str::from_utf8;
-
+pub extern "C" fn roc_fx_tcpRead(stream_ptr: *mut BufReader<TcpStream>) -> RocList<u8> {
     let reader = unsafe { &mut *stream_ptr };
 
     let received: Vec<u8> = reader.fill_buf()
@@ -597,10 +595,7 @@ pub extern "C" fn roc_fx_tcpRead(stream_ptr: *mut BufReader<TcpStream>) -> RocSt
 
     reader.consume(received.len());
 
-    let msg = from_utf8(&received)
-        .expect("Failed to decode utf8");
-    
-    RocStr::from(msg)
+    RocList::from(&received[..])
 }
 
 #[no_mangle]
