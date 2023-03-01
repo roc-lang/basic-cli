@@ -1,12 +1,12 @@
-app "socket-client"
+app "tcp-client"
     packages { pf: "../src/main.roc" }
-    imports [pf.Socket, pf.Task.{ Task, await }, pf.Stdout, pf.Stdin, pf.Stderr, pf.Process]
+    imports [pf.Tcp, pf.Task.{ Task, await }, pf.Stdout, pf.Stdin, pf.Stderr, pf.Process]
     provides [main] to pf
 
 main : Task {} []
 main =
     task =
-        stream <- Socket.withConnect "127.0.0.1" 8080
+        stream <- Tcp.withConnect "127.0.0.1" 8080
         _ <- Stdout.line "Connected!" |> await
 
         Task.loop {} \_ -> Task.map (tick stream) Step
@@ -19,11 +19,11 @@ main =
             Err (SocketReadUtf8Err _) ->
                 Stderr.line "Received non-UTF8 data"
 
-tick : Socket.Stream -> Task.Task {} [SocketReadUtf8Err _]
+tick : Tcp.Stream -> Task.Task {} [SocketReadUtf8Err _]
 tick = \stream ->
     _ <- Stdout.write "> " |> await 
     outMsg <- Stdin.line |> await
-    _ <- Socket.writeUtf8 "\(outMsg)\n" stream |> await
+    _ <- Tcp.writeUtf8 "\(outMsg)\n" stream |> await
     
-    inMsg <- Socket.readUtf8 stream |> await
+    inMsg <- Tcp.readUtf8 stream |> await
     Stdout.line "< \(inMsg)"

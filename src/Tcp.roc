@@ -1,4 +1,4 @@
-interface Socket 
+interface Tcp 
     exposes [
         Stream, 
         withConnect,
