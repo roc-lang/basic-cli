@@ -1,5 +1,11 @@
 interface Socket 
-    exposes [Stream, withConnect, readUtf8, write]
+    exposes [
+        Stream, 
+        withConnect,
+        readBytes,
+        readUtf8,
+        write
+    ]
     imports [Effect, Task.{ Task }, InternalTask]
 
 Stream := Nat
@@ -15,14 +21,21 @@ withConnect = \host, port, callback ->
 connect : Str, U16 -> Task Stream *
 connect = \host, port ->
     Effect.tcpConnect host port
-    |> Effect.map (\ptr -> Ok (@Stream ptr))
+    |> Effect.map \ptr -> Ok (@Stream ptr)
     |> InternalTask.fromEffect
 
 
 close : Stream -> Task {} *
 close = \@Stream ptr ->
     Effect.tcpClose ptr
-    |> Effect.map (\_ -> Ok {})
+    |> Effect.map \_ -> Ok {}
+    |> InternalTask.fromEffect
+
+
+readBytes : Stream -> Task (List U8) *
+readBytes = \@Stream ptr ->
+    Effect.tcpRead ptr
+    |> Effect.map \bytes -> Ok bytes
     |> InternalTask.fromEffect
 
 
@@ -38,5 +51,5 @@ readUtf8 = \@Stream ptr ->
 write : Str, Stream -> Task {} *
 write = \str, @Stream ptr ->
     Effect.tcpWrite str ptr
-    |> Effect.map (\_ -> Ok {})
+    |> Effect.map \_ -> Ok {}
     |> InternalTask.fromEffect
