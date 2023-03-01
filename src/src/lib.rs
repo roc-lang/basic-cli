@@ -566,8 +566,8 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &glue::Request) -> glue::Respo
 
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpConnect(address: &RocStr) -> *mut TcpStream {
-    match TcpStream::connect(address.as_str()) {
+pub extern "C" fn roc_fx_tcpConnect(host: &RocStr, port: u16) -> *mut TcpStream {
+    match TcpStream::connect((host.as_str(), port)) {
         Ok (stream) => {
             Box::into_raw(Box::new(stream))
         }

@@ -4,17 +4,17 @@ interface Socket
 
 Stream := Nat
 
-withConnect : Str, (Stream -> Task {} a) -> Task {} a
-withConnect = \addr, callback ->
-    stream <- connect addr |> Task.await
+withConnect : Str, U16, (Stream -> Task {} a) -> Task {} a
+withConnect = \host, port, callback ->
+    stream <- connect host port |> Task.await
     result <- callback stream |> Task.attempt
     {} <- close stream |> Task.await
     Task.fromResult result
 
 
-connect : Str -> Task Stream *
-connect = \addr ->
-    Effect.tcpConnect addr
+connect : Str, U16 -> Task Stream *
+connect = \host, port ->
+    Effect.tcpConnect host port
     |> Effect.map (\ptr -> Ok (@Stream ptr))
     |> InternalTask.fromEffect
 
