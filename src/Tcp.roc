@@ -17,10 +17,16 @@ Stream := Nat
 ##     stream <- Tcp.withConnect "localhost" 8080
 ##     Tcp.writeUtf8 "Hi from Roc!" stream
 ## 
-## This closes the connection after the [Task] is completed.
+## Examples of valid hostnames:
+##  - 127.0.0.1
+##  - ::1
+##  - localhost
+##  - roc-lang.org
+##
+## The connection is automatically closed after the [Task] is completed.
 withConnect : Str, U16, (Stream -> Task {} a) -> Task {} a
-withConnect = \host, port, callback ->
-    stream <- connect host port |> Task.await
+withConnect = \hostname, port, callback ->
+    stream <- connect hostname port |> Task.await
     result <- callback stream |> Task.attempt
     {} <- close stream |> Task.await
     Task.fromResult result
