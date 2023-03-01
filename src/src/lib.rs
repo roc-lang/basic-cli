@@ -599,11 +599,11 @@ pub extern "C" fn roc_fx_tcpRead(stream_ptr: *mut BufReader<TcpStream>) -> RocLi
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpWrite(msg: &RocStr, stream_ptr: *mut BufReader<TcpStream>)  {
+pub extern "C" fn roc_fx_tcpWrite(msg: &RocList<u8>, stream_ptr: *mut BufReader<TcpStream>)  {
     let reader = unsafe { &mut *stream_ptr };
 
     reader.get_ref()
-        .write(msg.as_str().as_bytes())
+        .write(msg.as_slice())
         .expect("Failed to write to socket");
 }
 

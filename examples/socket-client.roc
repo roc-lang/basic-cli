@@ -23,7 +23,7 @@ tick : Socket.Stream -> Task.Task {} [SocketReadUtf8Err _]
 tick = \stream ->
     _ <- Stdout.write "> " |> await 
     outMsg <- Stdin.line |> await
-    _ <- Socket.write "\(outMsg)\n" stream |> await
+    _ <- Socket.writeUtf8 "\(outMsg)\n" stream |> await
     
     inMsg <- Socket.readUtf8 stream |> await
     Stdout.line "< \(inMsg)"

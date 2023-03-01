@@ -4,7 +4,8 @@ interface Socket
         withConnect,
         readBytes,
         readUtf8,
-        write
+        writeBytes,
+        writeUtf8,
     ]
     imports [Effect, Task.{ Task }, InternalTask]
 
@@ -48,8 +49,16 @@ readUtf8 = \@Stream ptr ->
     |> InternalTask.fromEffect
 
 
-write : Str, Stream -> Task {} *
-write = \str, @Stream ptr ->
-    Effect.tcpWrite str ptr
+writeBytes : List U8, Stream -> Task {} *
+writeBytes = \bytes, @Stream ptr ->
+    Effect.tcpWrite bytes ptr
+    |> Effect.map \_ -> Ok {}
+    |> InternalTask.fromEffect
+    
+
+writeUtf8 : Str, Stream -> Task {} *
+writeUtf8 = \str, @Stream ptr ->
+    Str.toUtf8 str
+    |> Effect.tcpWrite ptr
     |> Effect.map \_ -> Ok {}
     |> InternalTask.fromEffect
