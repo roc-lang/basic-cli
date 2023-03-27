@@ -58,7 +58,9 @@ jobs:
 
       - run: ./roc_nightly/roc build ./examples/env.roc
 
-      - run: ./roc_nightly/roc build ./examples/fileBROKEN.roc
+      - run: ./roc_nightly/roc build ./examples/file-read.roc
+
+      - run: ./roc_nightly/roc build ./examples/file-mixedBROKEN.roc
 
       - run: ./roc_nightly/roc build ./examples/form.roc
 
@@ -78,6 +80,8 @@ jobs:
       - run: expect ci/expect_scripts/env.exp
 
       - run: expect ci/expect_scripts/form.exp
+
+      - run: expect ci/expect_scripts/file-read.exp
 
       - run: expect ci/expect_scripts/http-get.exp
 
