@@ -24,7 +24,13 @@ jobs:
           --header 'content-type: application/json' \
           --output roc_releases.json
 
-      - run: echo "ROC_RELEASE_URL=$(./ci/get_latest_release_url.sh linux_x86_64)" >> $GITHUB_ENV
+      - run: echo "ROC_RELEASE_URL=$(./ci/get_latest_release_url.sh linuxTESTING_x86_64)" >> $GITHUB_ENV
+        id: try_fetching_testing_release
+
+      - name: There are no TESTING releases, checking regular releases instead
+        if: failure() && steps.try_fetching_testing_release.outcome == 'failure'
+        run: |
+          echo "ROC_RELEASE_URL=$(./ci/get_latest_release_url.sh linux_x86_64)" >> $GITHUB_ENV
 
       - name: Get the archive from the url.
         run: curl -OL ${{ env.ROC_RELEASE_URL }}
