@@ -1,0 +1,15 @@
+#!/usr/bin/expect
+
+# uncomment line below for debugging
+# exp_internal 1
+
+set timeout 7
+
+spawn ./roc_nightly/roc run ./examples/file-read.roc --prebuilt-platform=true
+
+expect "First line of README.md: # basic-cli\r\n" {
+  expect eof
+  exit 0
+}
+
+exit 1

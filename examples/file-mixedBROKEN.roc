@@ -1,4 +1,4 @@
-app "file-io"
+app "file-mixed"
     packages { pf: "../src/main.roc" }
     imports [
         pf.Process,
