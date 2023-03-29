@@ -87,7 +87,7 @@ fromBytes = \bytes ->
 ##
 ## For a conversion to [Str] that is lossy but does not return a [Result], see
 ## [display].
-# toInner : Path -> [Str Str, Bytes (List U8)]
+## toInner : Path -> [Str Str, Bytes (List U8)]
 ## Assumes a path is encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8),
 ## and converts it to a string using `Str.display`.
 ##
@@ -159,9 +159,9 @@ PathComponent : [
     # you can write back whatever separator was originally used.
 ]
 
-## Note that a root of Slash (`/`) has different meanings on UNIX and on Windows.
-## * On UNIX, `/` at the beginning of the path refers to the filesystem root, and means the path is absolute.
-## * On Windows, `/` at the beginning of the path refers to the current disk drive, and means the path is relative.
+# Note that a root of Slash (`/`) has different meanings on UNIX and on Windows.
+# * On UNIX, `/` at the beginning of the path refers to the filesystem root, and means the path is absolute.
+# * On Windows, `/` at the beginning of the path refers to the current disk drive, and means the path is relative.
 # PathRoot : [
 #     WindowsSpecificRoot WindowsRoot, # e.g. "C:" on Windows
 #     Slash,
@@ -282,14 +282,16 @@ WindowsRoot : []
 # TODO https://doc.rust-lang.org/std/path/struct.Path.html#method.strip_prefix
 # TODO idea: what if it's File.openRead and File.openWrite? And then e.g. File.metadata,
 # File.isDir, etc.
+
 ## If the last component of this path has no `.`, appends `.` followed by the given string.
 ## Otherwise, replaces everything after the last `.` with the given string.
 ##
 ## Examples:
-##
-##     Path.fromStr "foo/bar/baz" |> Path.withExtension "txt" #    foo/bar/baz.txt
-##     Path.fromStr "foo/bar/baz." |> Path.withExtension "txt" #   foo/bar/baz.txt
-##     Path.fromStr "foo/bar/baz.xz" |> Path.withExtension "txt" # foo/bar/baz.txt
+## ```
+## Path.fromStr "foo/bar/baz" |> Path.withExtension "txt" #    foo/bar/baz.txt
+## Path.fromStr "foo/bar/baz." |> Path.withExtension "txt" #   foo/bar/baz.txt
+## Path.fromStr "foo/bar/baz.xz" |> Path.withExtension "txt" # foo/bar/baz.txt
+## ```
 withExtension : Path, Str -> Path
 withExtension = \path, extension ->
     when InternalPath.unwrap path is
