@@ -29,7 +29,7 @@ hosted Effect
         tcpRead,
         tcpWrite,
     ]
-    imports [InternalHttp.{ Request, Response }, InternalFile, InternalDir]
+    imports [InternalHttp.{ Request, Response }, InternalFile, InternalDir, InternalTcp.{ TcpResult }]
     generates Effect with [after, map, always, forever, loop]
 
 stdoutLine : Str -> Effect {}
@@ -58,7 +58,7 @@ cwd : Effect (List U8)
 
 sendRequest : Box Request -> Effect Response
 
-tcpConnect : Str, U16 -> Effect Nat
+tcpConnect : Str, U16 -> Effect (InternalTcp.TcpResult Nat InternalTcp.ConnectErr)
 tcpClose : Nat -> Effect {}
 tcpRead : Nat -> Effect (List U8)
 tcpWrite : List U8, Nat -> Effect {}

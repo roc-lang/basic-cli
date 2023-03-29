@@ -1,8 +1,17 @@
 interface InternalTcp
-    exposes [ConnectErr, StreamErr, TcpResult]
+    exposes [ConnectErr, StreamErr, TcpResult, toResult]
     imports []
 
-TcpResult a fail : [ Success a, Failure fail ]
+TcpResult a fail : [Success a, Failure fail]
+
+toResult : TcpResult a fail -> Result a fail
+toResult = \result ->
+    when result is
+        Success value ->
+            Ok value
+
+        Failure fail ->
+            Err fail
 
 ConnectErr : [
     PermissionDenied,

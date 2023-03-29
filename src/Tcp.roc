@@ -1,13 +1,13 @@
-interface Tcp 
+interface Tcp
     exposes [
-        Stream, 
+        Stream,
         withConnect,
         readBytes,
         readUtf8,
         writeBytes,
         writeUtf8,
     ]
-    imports [Effect, Task.{ Task }, InternalTask]
+    imports [Effect, Task.{ Task }, InternalTask, InternalTcp]
 
 Stream := Nat
 
@@ -16,7 +16,7 @@ Stream := Nat
 ##     # Connect to localhost:8080 and send "Hi from Roc!"
 ##     stream <- Tcp.withConnect "localhost" 8080
 ##     Tcp.writeUtf8 "Hi from Roc!" stream
-## 
+##
 ## Examples of valid hostnames:
 ##  - 127.0.0.1
 ##  - ::1
@@ -24,27 +24,24 @@ Stream := Nat
 ##  - roc-lang.org
 ##
 ## The connection is automatically closed after the [Task] is completed.
-withConnect : Str, U16, (Stream -> Task {} a) -> Task {} a
+withConnect : Str, U16, (Stream -> Task {} a) -> Task {} (InternalTcp.ConnectErr a)
 withConnect = \hostname, port, callback ->
     stream <- connect hostname port |> Task.await
     result <- callback stream |> Task.attempt
     {} <- close stream |> Task.await
     Task.fromResult result
 
-
-connect : Str, U16 -> Task Stream *
+connect : Str, U16 -> Task Stream InternalTcp.ConnectErr
 connect = \host, port ->
     Effect.tcpConnect host port
-    |> Effect.map \ptr -> Ok (@Stream ptr)
+    |> Effect.map \ptr -> InternalTcp.toResult ptr @Stream
     |> InternalTask.fromEffect
-
 
 close : Stream -> Task {} *
 close = \@Stream ptr ->
     Effect.tcpClose ptr
     |> Effect.map \_ -> Ok {}
     |> InternalTask.fromEffect
-
 
 ## Reads all available bytes in the TCP Stream.
 ##
@@ -67,14 +64,14 @@ readBytes = \@Stream ptr ->
 readUtf8 : Stream -> Task Str [SocketReadUtf8Err _]
 readUtf8 = \@Stream ptr ->
     Effect.tcpRead ptr
-    |> Effect.map \bytes -> 
+    |> Effect.map \bytes ->
         Str.fromUtf8 bytes
         |> Result.mapErr \err -> SocketReadUtf8Err err
     |> InternalTask.fromEffect
 
 ## Writes bytes to a TCP stream.
 ##
-##     # Writes the bytes 1, 2, 3 
+##     # Writes the bytes 1, 2, 3
 ##     Tcp.writeBytes [1, 2, 3] stream
 ##
 ## To write a [Str], you can use [Tcp.writeUtf8] instead.
@@ -83,7 +80,6 @@ writeBytes = \bytes, @Stream ptr ->
     Effect.tcpWrite bytes ptr
     |> Effect.map \_ -> Ok {}
     |> InternalTask.fromEffect
-    
 
 ## Writes a [Str] to a TCP stream, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##

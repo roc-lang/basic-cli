@@ -10,7 +10,7 @@ main =
         _ <- Stdout.line "Connected!" |> await
 
         Task.loop {} \_ -> Task.map (tick stream) Step
-    
+
     Task.attempt task \result ->
         when result is
             Ok _ ->
@@ -21,9 +21,9 @@ main =
 
 tick : Tcp.Stream -> Task.Task {} [SocketReadUtf8Err _]
 tick = \stream ->
-    _ <- Stdout.write "> " |> await 
+    _ <- Stdout.write "> " |> await
     outMsg <- Stdin.line |> await
     _ <- Tcp.writeUtf8 "\(outMsg)\n" stream |> await
-    
+
     inMsg <- Tcp.readUtf8 stream |> await
     Stdout.line "< \(inMsg)"
