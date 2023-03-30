@@ -26,16 +26,8 @@ main =
                     $ nc -l 8080
                     """
 
-            Err (TcpPerformErr (TcpReadBadUtf8 _)) ->
-                Stderr.line "Received invalid UTF-8 data"
-
-            Err (TcpPerformErr (TcpReadErr err)) ->
-                errStr = Tcp.streamErrToStr err
-                Stderr.line "Error while reading: \(errStr)"
-
-            Err (TcpPerformErr (TcpWriteErr err)) ->
-                errStr = Tcp.streamErrToStr err
-                Stderr.line "Error while writing: \(errStr)"
+            Err (TcpPerformErr err) ->
+                Stderr.line (Tcp.errToStr err)
 
 tick : Tcp.Stream -> Task.Task {} _
 tick = \stream ->

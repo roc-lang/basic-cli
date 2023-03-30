@@ -6,6 +6,7 @@ interface Tcp
         readUtf8,
         writeBytes,
         writeUtf8,
+        errToStr,
         connectErrToStr,
         streamErrToStr,
     ]
@@ -51,7 +52,7 @@ connect = \host, port ->
 close : Stream -> Task {} *
 close = \stream ->
     Effect.tcpClose stream
-    |> Effect.map \_ -> Ok {}
+    |> Effect.map \{} -> Ok {}
     |> InternalTask.fromEffect
 
 ## Reads all available bytes in the TCP Stream.
@@ -111,6 +112,31 @@ writeUtf8 = \str, stream ->
     |> InternalTask.fromEffect
     |> Task.mapFail TcpWriteErr
 
+errToStr :
+    [
+        TcpConnectErr ConnectErr,
+        TcpReadErr StreamErr,
+        TcpReadBadUtf8 _,
+        TcpWriteErr StreamErr,
+    ]
+    -> Str
+errToStr = \tag ->
+    when tag is
+        TcpConnectErr err ->
+            errStr = Tcp.connectErrToStr err
+            "TcpConnectErr: \(errStr)"
+
+        TcpReadBadUtf8 _ ->
+            "TcpReadBadUtf8"
+
+        TcpReadErr err ->
+            errStr = streamErrToStr err
+            "TcpReadErr: \(errStr)"
+
+        TcpWriteErr err ->
+            errStr = streamErrToStr err
+            "TcpWriteErr: \(errStr)"
+
 connectErrToStr : ConnectErr -> Str
 connectErrToStr = \err ->
     when err is
@@ -137,3 +163,4 @@ streamErrToStr = \err ->
         Unrecognized code message ->
             codeStr = Num.toStr code
             "Unrecognized Error: \(codeStr) - \(message)"
+
