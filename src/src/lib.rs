@@ -642,7 +642,7 @@ pub extern "C" fn roc_fx_tcpWrite(
     let reader = unsafe { &mut *stream_ptr };
     let mut stream = reader.get_ref();
 
-    match stream.write(msg.as_slice()) {
+    match stream.write_all(msg.as_slice()) {
         Ok(_) => tcp_glue::WriteResult::Wrote,
         Err(err) => tcp_glue::WriteResult::Error(to_tcp_stream_err(err)),
     }
