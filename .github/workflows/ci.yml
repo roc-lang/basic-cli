@@ -23,12 +23,15 @@ jobs:
           --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
           --header 'content-type: application/json' \
           --output roc_releases.json
-
-      - run: echo "ROC_RELEASE_URL=$(./ci/get_latest_release_url.sh linuxTESTING_x86_64)" >> $GITHUB_ENV
-        id: try_fetching_testing_release
-
+          
+      - id: try_fetching_testing_release
+        continue-on-error: true
+        run: |
+          echo "ROC_RELEASE_URL=$(./ci/get_latest_release_url.sh linuxTESTING_x86_64)" >> $GITHUB_ENV
+          [ -z "${ROC_RELEASE_URL}" ] && exit 1 || exit 0
+    
       - name: There are no TESTING releases, checking regular releases instead
-        if: failure() && steps.try_fetching_testing_release.outcome == 'failure'
+        if: steps.try_fetching_testing_release.outcome == 'failure'
         run: |
           echo "ROC_RELEASE_URL=$(./ci/get_latest_release_url.sh linux_x86_64)" >> $GITHUB_ENV
 
@@ -58,7 +61,9 @@ jobs:
 
       - run: ./roc_nightly/roc build ./examples/env.roc
 
-      - run: ./roc_nightly/roc build ./examples/fileBROKEN.roc
+      - run: ./roc_nightly/roc build ./examples/file-read.roc
+
+      - run: ./roc_nightly/roc build ./examples/file-mixedBROKEN.roc
 
       - run: ./roc_nightly/roc build ./examples/form.roc
 
@@ -78,6 +83,8 @@ jobs:
       - run: expect ci/expect_scripts/env.exp
 
       - run: expect ci/expect_scripts/form.exp
+
+      - run: expect ci/expect_scripts/file-read.exp
 
       - run: expect ci/expect_scripts/http-get.exp
 
