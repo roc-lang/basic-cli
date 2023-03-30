@@ -9,7 +9,11 @@ interface Tcp
     ]
     imports [Effect, Task.{ Task }, InternalTask, InternalTcp]
 
-Stream := Nat
+Stream : InternalTcp.Stream
+
+ConnectErr : InternalTcp.ConnectErr
+
+StreamErr : InternalTcp.StreamErr
 
 ## Opens a TCP conenction to a remote host and perform a [Task] with it.
 ##
@@ -24,22 +28,27 @@ Stream := Nat
 ##  - roc-lang.org
 ##
 ## The connection is automatically closed after the [Task] is completed.
-withConnect : Str, U16, (Stream -> Task {} a) -> Task {} (InternalTcp.ConnectErr a)
+withConnect : Str, U16, (Stream -> Task {} err) -> Task {} [TcpConnectErr ConnectErr, TcpPerformErr err]
 withConnect = \hostname, port, callback ->
-    stream <- connect hostname port |> Task.await
-    result <- callback stream |> Task.attempt
-    {} <- close stream |> Task.await
-    Task.fromResult result
+    stream <- connect hostname port
+        |> Task.mapFail TcpConnectErr
+        |> Task.await
 
-connect : Str, U16 -> Task Stream InternalTcp.ConnectErr
+    {} <- callback stream
+        |> Task.mapFail TcpPerformErr
+        |> Task.await
+
+    close stream
+
+connect : Str, U16 -> Task Stream ConnectErr
 connect = \host, port ->
     Effect.tcpConnect host port
-    |> Effect.map \ptr -> InternalTcp.toResult ptr @Stream
+    |> Effect.map InternalTcp.fromConnectResult
     |> InternalTask.fromEffect
 
 close : Stream -> Task {} *
-close = \@Stream ptr ->
-    Effect.tcpClose ptr
+close = \stream ->
+    Effect.tcpClose stream
     |> Effect.map \_ -> Ok {}
     |> InternalTask.fromEffect
 
@@ -49,11 +58,12 @@ close = \@Stream ptr ->
 ##     File.readBytes stream
 ##
 ## To read a [Str], you can use `Tcp.readUtf8` instead.
-readBytes : Stream -> Task (List U8) *
-readBytes = \@Stream ptr ->
-    Effect.tcpRead ptr
-    |> Effect.map \bytes -> Ok bytes
+readBytes : Stream -> Task (List U8) [TcpReadError StreamErr]
+readBytes = \stream ->
+    Effect.tcpRead stream
+    |> Effect.map InternalTcp.fromReadResult
     |> InternalTask.fromEffect
+    |> Task.mapFail TcpReadError
 
 ## Reads a [Str] from all the available bytes in the TCP Stream.
 ##
@@ -61,12 +71,15 @@ readBytes = \@Stream ptr ->
 ##     File.readUtf8 stream
 ##
 ## To read unformatted bytes, you can use `Tcp.readBytes` instead.
-readUtf8 : Stream -> Task Str [SocketReadUtf8Err _]
-readUtf8 = \@Stream ptr ->
-    Effect.tcpRead ptr
-    |> Effect.map \bytes ->
-        Str.fromUtf8 bytes
-        |> Result.mapErr \err -> SocketReadUtf8Err err
+readUtf8 : Stream -> Task Str [TcpReadError StreamErr, TcpReadBadUtf8 _]
+readUtf8 = \stream ->
+    Effect.tcpRead stream
+    |> Effect.map \result ->
+        InternalTcp.fromReadResult result
+        |> Result.mapErr TcpReadError
+        |> Result.try \bytes ->
+            Str.fromUtf8 bytes
+            |> Result.mapErr \err -> TcpReadBadUtf8 err
     |> InternalTask.fromEffect
 
 ## Writes bytes to a TCP stream.
@@ -75,11 +88,12 @@ readUtf8 = \@Stream ptr ->
 ##     Tcp.writeBytes [1, 2, 3] stream
 ##
 ## To write a [Str], you can use [Tcp.writeUtf8] instead.
-writeBytes : List U8, Stream -> Task {} *
-writeBytes = \bytes, @Stream ptr ->
-    Effect.tcpWrite bytes ptr
-    |> Effect.map \_ -> Ok {}
+writeBytes : List U8, Stream -> Task {} [TcpWriteErr StreamErr]
+writeBytes = \bytes, stream ->
+    Effect.tcpWrite bytes stream
+    |> Effect.map InternalTcp.fromWriteResult
     |> InternalTask.fromEffect
+    |> Task.mapFail TcpWriteErr
 
 ## Writes a [Str] to a TCP stream, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##
@@ -87,9 +101,10 @@ writeBytes = \bytes, @Stream ptr ->
 ##     Tcp.writeUtf8 "Hi from Roc!" stream
 ##
 ## To write unformatted bytes, you can use [Tcp.writeBytes] instead.
-writeUtf8 : Str, Stream -> Task {} *
-writeUtf8 = \str, @Stream ptr ->
+writeUtf8 : Str, Stream -> Task {} [TcpWriteErr StreamErr]
+writeUtf8 = \str, stream ->
     Str.toUtf8 str
-    |> Effect.tcpWrite ptr
-    |> Effect.map \_ -> Ok {}
+    |> Effect.tcpWrite stream
+    |> Effect.map InternalTcp.fromWriteResult
     |> InternalTask.fromEffect
+    |> Task.mapFail TcpWriteErr

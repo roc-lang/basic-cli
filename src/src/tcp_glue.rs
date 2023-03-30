@@ -17,11 +17,6 @@
 #![allow(clippy::needless_borrow)]
 #![allow(clippy::clone_on_copy)]
 
-type Op_StderrWrite = roc_std::RocStr;
-type Op_StdoutWrite = roc_std::RocStr;
-type TODO_roc_function_69 = roc_std::RocStr;
-type TODO_roc_function_70 = roc_std::RocStr;
-
 #[cfg(any(
     target_arch = "arm",
     target_arch = "aarch64",
@@ -29,76 +24,242 @@ type TODO_roc_function_70 = roc_std::RocStr;
     target_arch = "x86",
     target_arch = "x86_64"
 ))]
-#[repr(transparent)]
-#[derive(Clone, Copy, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct U1 ();
-
-
-#[cfg(any(
-    target_arch = "arm",
-    target_arch = "aarch64",
-    target_arch = "wasm32",
-    target_arch = "x86",
-    target_arch = "x86_64"
-))]
-
-#[repr(C)]
-pub struct RocFunction_93 {
-    pub closure_data: roc_std::RocList<u8>,
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(u8)]
+pub enum discriminant_WriteResult {
+    Error = 0,
+    Wrote = 1,
 }
 
-impl RocFunction_93 {
-    pub fn force_thunk(mut self, arg_0: ()) -> U1 {
-        extern "C" {
-             fn roc__mainForHost_0_caller(arg_0: &(), closure_data: *mut u8, output: *mut U1);
+impl core::fmt::Debug for discriminant_WriteResult {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Error => f.write_str("discriminant_WriteResult::Error"),
+            Self::Wrote => f.write_str("discriminant_WriteResult::Wrote"),
         }
-
-        let mut output = std::mem::MaybeUninit::uninit();
-        let ptr = self.closure_data.as_mut_ptr();
-        unsafe { roc__mainForHost_0_caller(&arg_0, ptr, output.as_mut_ptr()) };
-        unsafe { output.assume_init() }
     }
 }
 
-impl U1 {
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "aarch64",
-        target_arch = "wasm32",
-        target_arch = "x86",
-        target_arch = "x86_64"
-    ))]
-    /// A tag named Err, which has no payload.
-        pub const Err: Self = Self();
-
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "aarch64",
-        target_arch = "wasm32",
-        target_arch = "x86",
-        target_arch = "x86_64"
-    ))]
-    /// Other `into_` methods return a payload, but since the Err tag
-        /// has no payload, this does nothing and is only here for completeness.
-        pub fn into_Err(self) {
-            ()
-        }
-
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "aarch64",
-        target_arch = "wasm32",
-        target_arch = "x86",
-        target_arch = "x86_64"
-    ))]
-    /// Other `as` methods return a payload, but since the Err tag
-        /// has no payload, this does nothing and is only here for completeness.
-        pub fn as_Err(&self) {
-            ()
-        }
+#[cfg(any(
+    target_arch = "arm",
+    target_arch = "aarch64",
+    target_arch = "wasm32",
+    target_arch = "x86",
+    target_arch = "x86_64"
+))]
+#[repr(C)]
+pub union WriteResult {
+    Error: core::mem::ManuallyDrop<StreamErr>,
+    _sizer: [u8; 48],
 }
 
-impl core::fmt::Debug for U1 {
+#[cfg(any(
+    target_arch = "arm",
+    target_arch = "aarch64",
+    target_arch = "wasm32",
+    target_arch = "x86",
+    target_arch = "x86_64"
+))]
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(u8)]
+pub enum discriminant_ReadResult {
+    Error = 0,
+    Read = 1,
+}
+
+impl core::fmt::Debug for discriminant_ReadResult {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Error => f.write_str("discriminant_ReadResult::Error"),
+            Self::Read => f.write_str("discriminant_ReadResult::Read"),
+        }
+    }
+}
+
+#[cfg(any(
+    target_arch = "arm",
+    target_arch = "aarch64",
+    target_arch = "wasm32",
+    target_arch = "x86",
+    target_arch = "x86_64"
+))]
+#[repr(C)]
+pub union ReadResult {
+    Error: core::mem::ManuallyDrop<StreamErr>,
+    Read: core::mem::ManuallyDrop<roc_std::RocList<u8>>,
+    _sizer: [u8; 48],
+}
+
+#[cfg(any(
+    target_arch = "arm",
+    target_arch = "aarch64",
+    target_arch = "wasm32",
+    target_arch = "x86",
+    target_arch = "x86_64"
+))]
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(u8)]
+pub enum discriminant_StreamErr {
+    BrokenPipe = 0,
+    ConnectionRefused = 1,
+    ConnectionReset = 2,
+    Interrupted = 3,
+    OutOfMemory = 4,
+    PermissionDenied = 5,
+    Unrecognized = 6,
+}
+
+impl core::fmt::Debug for discriminant_StreamErr {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::BrokenPipe => f.write_str("discriminant_StreamErr::BrokenPipe"),
+            Self::ConnectionRefused => f.write_str("discriminant_StreamErr::ConnectionRefused"),
+            Self::ConnectionReset => f.write_str("discriminant_StreamErr::ConnectionReset"),
+            Self::Interrupted => f.write_str("discriminant_StreamErr::Interrupted"),
+            Self::OutOfMemory => f.write_str("discriminant_StreamErr::OutOfMemory"),
+            Self::PermissionDenied => f.write_str("discriminant_StreamErr::PermissionDenied"),
+            Self::Unrecognized => f.write_str("discriminant_StreamErr::Unrecognized"),
+        }
+    }
+}
+
+#[cfg(any(
+    target_arch = "arm",
+    target_arch = "aarch64",
+    target_arch = "wasm32",
+    target_arch = "x86",
+    target_arch = "x86_64"
+))]
+#[repr(C)]
+pub union StreamErr {
+    Unrecognized: core::mem::ManuallyDrop<U3_Unrecognized>,
+    _sizer: [u8; 40],
+}
+
+#[cfg(any(
+    target_arch = "arm",
+    target_arch = "aarch64",
+    target_arch = "wasm32",
+    target_arch = "x86",
+    target_arch = "x86_64"
+))]
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(u8)]
+pub enum discriminant_ConnectResult {
+    Connected = 0,
+    Error = 1,
+}
+
+impl core::fmt::Debug for discriminant_ConnectResult {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Connected => f.write_str("discriminant_ConnectResult::Connected"),
+            Self::Error => f.write_str("discriminant_ConnectResult::Error"),
+        }
+    }
+}
+
+#[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+#[repr(C)]
+pub union ConnectResult {
+    Connected: u32,
+    Error: core::mem::ManuallyDrop<ConnectErr>,
+    _sizer: [u8; 48],
+}
+
+#[cfg(any(
+    target_arch = "arm",
+    target_arch = "aarch64",
+    target_arch = "wasm32",
+    target_arch = "x86",
+    target_arch = "x86_64"
+))]
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(u8)]
+pub enum discriminant_ConnectErr {
+    AddrInUse = 0,
+    AddrNotAvailable = 1,
+    ConnectionRefused = 2,
+    Interrupted = 3,
+    PermissionDenied = 4,
+    TimedOut = 5,
+    Unrecognized = 6,
+    Unsupported = 7,
+}
+
+impl core::fmt::Debug for discriminant_ConnectErr {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::AddrInUse => f.write_str("discriminant_ConnectErr::AddrInUse"),
+            Self::AddrNotAvailable => f.write_str("discriminant_ConnectErr::AddrNotAvailable"),
+            Self::ConnectionRefused => f.write_str("discriminant_ConnectErr::ConnectionRefused"),
+            Self::Interrupted => f.write_str("discriminant_ConnectErr::Interrupted"),
+            Self::PermissionDenied => f.write_str("discriminant_ConnectErr::PermissionDenied"),
+            Self::TimedOut => f.write_str("discriminant_ConnectErr::TimedOut"),
+            Self::Unrecognized => f.write_str("discriminant_ConnectErr::Unrecognized"),
+            Self::Unsupported => f.write_str("discriminant_ConnectErr::Unsupported"),
+        }
+    }
+}
+
+#[cfg(any(
+    target_arch = "arm",
+    target_arch = "aarch64",
+    target_arch = "wasm32",
+    target_arch = "x86",
+    target_arch = "x86_64"
+))]
+#[repr(C)]
+pub union ConnectErr {
+    Unrecognized: core::mem::ManuallyDrop<U3_Unrecognized>,
+    _sizer: [u8; 40],
+}
+
+#[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+#[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(C)]
+struct U3_Unrecognized {
+    pub f0: i32,
+    pub f1: roc_std::RocStr,
+}
+
+#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+#[repr(C)]
+pub union ConnectResult {
+    Connected: u64,
+    Error: core::mem::ManuallyDrop<ConnectErr>,
+    _sizer: [u8; 48],
+}
+
+#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+#[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(C)]
+struct U3_Unrecognized {
+    pub f1: roc_std::RocStr,
+    pub f0: i32,
+}
+
+impl WriteResult {
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// Returns which variant this tag union holds. Note that this never includes a payload!
+    pub fn discriminant(&self) -> discriminant_WriteResult {
+        unsafe {
+            let bytes = core::mem::transmute::<&Self, &[u8; core::mem::size_of::<Self>()]>(self);
+
+            core::mem::transmute::<u8, discriminant_WriteResult>(*bytes.as_ptr().add(20))
+        }
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// Internal helper
+    fn set_discriminant(&mut self, discriminant: discriminant_WriteResult) {
+        let discriminant_ptr: *mut discriminant_WriteResult = (self as *mut WriteResult).cast();
+
+        unsafe {
+            *(discriminant_ptr.add(20)) = discriminant;
+        }
+    }
+
     #[cfg(any(
         target_arch = "arm",
         target_arch = "aarch64",
@@ -106,6 +267,2306 @@ impl core::fmt::Debug for U1 {
         target_arch = "x86",
         target_arch = "x86_64"
     ))]
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {f.write_str("U1::Err")    }
+    /// Construct a tag named `Error`, with the appropriate payload
+    pub fn Error(arg: StreamErr) -> Self {
+        let mut answer = Self {
+            Error: core::mem::ManuallyDrop::new(arg),
+        };
 
+        answer.set_discriminant(discriminant_WriteResult::Error);
+
+        answer
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Unsafely assume this `WriteResult` has a `.discriminant()` of `Error` and convert it to `Error`'s payload.
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Error`.
+    pub unsafe fn into_Error(mut self) -> StreamErr {
+        debug_assert_eq!(self.discriminant(), discriminant_WriteResult::Error);
+        let payload = {
+            let mut uninitialized = core::mem::MaybeUninit::uninit();
+            let swapped = unsafe {
+                core::mem::replace(
+                    &mut self.Error,
+                    core::mem::ManuallyDrop::new(uninitialized.assume_init()),
+                )
+            };
+
+            core::mem::forget(self);
+
+            core::mem::ManuallyDrop::into_inner(swapped)
+        };
+
+        payload
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Unsafely assume this `WriteResult` has a `.discriminant()` of `Error` and return its payload.
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Error`.
+    pub unsafe fn as_Error(&self) -> &StreamErr {
+        debug_assert_eq!(self.discriminant(), discriminant_WriteResult::Error);
+        let payload = &self.Error;
+
+        &payload
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// A tag named Wrote, which has no payload.
+    pub const Wrote: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<WriteResult>()];
+
+        bytes[20] = discriminant_WriteResult::Wrote as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<WriteResult>()], WriteResult>(bytes)
+    };
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `into_` methods return a payload, but since the Wrote tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn into_Wrote(self) {
+        ()
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `as` methods return a payload, but since the Wrote tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn as_Wrote(&self) {
+        ()
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// Returns which variant this tag union holds. Note that this never includes a payload!
+    pub fn discriminant(&self) -> discriminant_WriteResult {
+        unsafe {
+            let bytes = core::mem::transmute::<&Self, &[u8; core::mem::size_of::<Self>()]>(self);
+
+            core::mem::transmute::<u8, discriminant_WriteResult>(*bytes.as_ptr().add(40))
+        }
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// Internal helper
+    fn set_discriminant(&mut self, discriminant: discriminant_WriteResult) {
+        let discriminant_ptr: *mut discriminant_WriteResult = (self as *mut WriteResult).cast();
+
+        unsafe {
+            *(discriminant_ptr.add(40)) = discriminant;
+        }
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// A tag named Wrote, which has no payload.
+    pub const Wrote: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<WriteResult>()];
+
+        bytes[40] = discriminant_WriteResult::Wrote as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<WriteResult>()], WriteResult>(bytes)
+    };
+}
+
+impl Drop for WriteResult {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn drop(&mut self) {
+        // Drop the payloads
+        match self.discriminant() {
+            discriminant_WriteResult::Error => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.Error)
+            },
+            discriminant_WriteResult::Wrote => {}
+        }
+    }
+}
+
+impl Eq for WriteResult {}
+
+impl PartialEq for WriteResult {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn eq(&self, other: &Self) -> bool {
+        if self.discriminant() != other.discriminant() {
+            return false;
+        }
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_WriteResult::Error => self.Error == other.Error,
+                discriminant_WriteResult::Wrote => true,
+            }
+        }
+    }
+}
+
+impl PartialOrd for WriteResult {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        match self.discriminant().partial_cmp(&other.discriminant()) {
+            Some(core::cmp::Ordering::Equal) => {}
+            not_eq => return not_eq,
+        }
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_WriteResult::Error => self.Error.partial_cmp(&other.Error),
+                discriminant_WriteResult::Wrote => Some(core::cmp::Ordering::Equal),
+            }
+        }
+    }
+}
+
+impl Ord for WriteResult {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        match self.discriminant().cmp(&other.discriminant()) {
+            core::cmp::Ordering::Equal => {}
+            not_eq => return not_eq,
+        }
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_WriteResult::Error => self.Error.cmp(&other.Error),
+                discriminant_WriteResult::Wrote => core::cmp::Ordering::Equal,
+            }
+        }
+    }
+}
+
+impl Clone for WriteResult {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn clone(&self) -> Self {
+        let mut answer = unsafe {
+            match self.discriminant() {
+                discriminant_WriteResult::Error => Self {
+                    Error: self.Error.clone(),
+                },
+                discriminant_WriteResult::Wrote => {
+                    core::mem::transmute::<core::mem::MaybeUninit<WriteResult>, WriteResult>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+            }
+        };
+
+        answer.set_discriminant(self.discriminant());
+
+        answer
+    }
+}
+
+impl core::hash::Hash for WriteResult {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        match self.discriminant() {
+            discriminant_WriteResult::Error => unsafe {
+                discriminant_WriteResult::Error.hash(state);
+                self.Error.hash(state);
+            },
+            discriminant_WriteResult::Wrote => discriminant_WriteResult::Wrote.hash(state),
+        }
+    }
+}
+
+impl core::fmt::Debug for WriteResult {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("WriteResult::")?;
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_WriteResult::Error => {
+                    f.debug_tuple("Error").field(&*self.Error).finish()
+                }
+                discriminant_WriteResult::Wrote => f.write_str("Wrote"),
+            }
+        }
+    }
+}
+
+impl ReadResult {
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// Returns which variant this tag union holds. Note that this never includes a payload!
+    pub fn discriminant(&self) -> discriminant_ReadResult {
+        unsafe {
+            let bytes = core::mem::transmute::<&Self, &[u8; core::mem::size_of::<Self>()]>(self);
+
+            core::mem::transmute::<u8, discriminant_ReadResult>(*bytes.as_ptr().add(20))
+        }
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// Internal helper
+    fn set_discriminant(&mut self, discriminant: discriminant_ReadResult) {
+        let discriminant_ptr: *mut discriminant_ReadResult = (self as *mut ReadResult).cast();
+
+        unsafe {
+            *(discriminant_ptr.add(20)) = discriminant;
+        }
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Construct a tag named `Error`, with the appropriate payload
+    pub fn Error(arg: StreamErr) -> Self {
+        let mut answer = Self {
+            Error: core::mem::ManuallyDrop::new(arg),
+        };
+
+        answer.set_discriminant(discriminant_ReadResult::Error);
+
+        answer
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Unsafely assume this `ReadResult` has a `.discriminant()` of `Error` and convert it to `Error`'s payload.
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Error`.
+    pub unsafe fn into_Error(mut self) -> StreamErr {
+        debug_assert_eq!(self.discriminant(), discriminant_ReadResult::Error);
+        let payload = {
+            let mut uninitialized = core::mem::MaybeUninit::uninit();
+            let swapped = unsafe {
+                core::mem::replace(
+                    &mut self.Error,
+                    core::mem::ManuallyDrop::new(uninitialized.assume_init()),
+                )
+            };
+
+            core::mem::forget(self);
+
+            core::mem::ManuallyDrop::into_inner(swapped)
+        };
+
+        payload
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Unsafely assume this `ReadResult` has a `.discriminant()` of `Error` and return its payload.
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Error`.
+    pub unsafe fn as_Error(&self) -> &StreamErr {
+        debug_assert_eq!(self.discriminant(), discriminant_ReadResult::Error);
+        let payload = &self.Error;
+
+        &payload
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Construct a tag named `Read`, with the appropriate payload
+    pub fn Read(arg: roc_std::RocList<u8>) -> Self {
+        let mut answer = Self {
+            Read: core::mem::ManuallyDrop::new(arg),
+        };
+
+        answer.set_discriminant(discriminant_ReadResult::Read);
+
+        answer
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Unsafely assume this `ReadResult` has a `.discriminant()` of `Read` and convert it to `Read`'s payload.
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Read`.
+    pub unsafe fn into_Read(mut self) -> roc_std::RocList<u8> {
+        debug_assert_eq!(self.discriminant(), discriminant_ReadResult::Read);
+        let payload = {
+            let mut uninitialized = core::mem::MaybeUninit::uninit();
+            let swapped = unsafe {
+                core::mem::replace(
+                    &mut self.Read,
+                    core::mem::ManuallyDrop::new(uninitialized.assume_init()),
+                )
+            };
+
+            core::mem::forget(self);
+
+            core::mem::ManuallyDrop::into_inner(swapped)
+        };
+
+        payload
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Unsafely assume this `ReadResult` has a `.discriminant()` of `Read` and return its payload.
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Read`.
+    pub unsafe fn as_Read(&self) -> &roc_std::RocList<u8> {
+        debug_assert_eq!(self.discriminant(), discriminant_ReadResult::Read);
+        let payload = &self.Read;
+
+        &payload
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// Returns which variant this tag union holds. Note that this never includes a payload!
+    pub fn discriminant(&self) -> discriminant_ReadResult {
+        unsafe {
+            let bytes = core::mem::transmute::<&Self, &[u8; core::mem::size_of::<Self>()]>(self);
+
+            core::mem::transmute::<u8, discriminant_ReadResult>(*bytes.as_ptr().add(40))
+        }
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// Internal helper
+    fn set_discriminant(&mut self, discriminant: discriminant_ReadResult) {
+        let discriminant_ptr: *mut discriminant_ReadResult = (self as *mut ReadResult).cast();
+
+        unsafe {
+            *(discriminant_ptr.add(40)) = discriminant;
+        }
+    }
+}
+
+impl Drop for ReadResult {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn drop(&mut self) {
+        // Drop the payloads
+        match self.discriminant() {
+            discriminant_ReadResult::Error => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.Error)
+            },
+            discriminant_ReadResult::Read => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.Read)
+            },
+        }
+    }
+}
+
+impl Eq for ReadResult {}
+
+impl PartialEq for ReadResult {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn eq(&self, other: &Self) -> bool {
+        if self.discriminant() != other.discriminant() {
+            return false;
+        }
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_ReadResult::Error => self.Error == other.Error,
+                discriminant_ReadResult::Read => self.Read == other.Read,
+            }
+        }
+    }
+}
+
+impl PartialOrd for ReadResult {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        match self.discriminant().partial_cmp(&other.discriminant()) {
+            Some(core::cmp::Ordering::Equal) => {}
+            not_eq => return not_eq,
+        }
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_ReadResult::Error => self.Error.partial_cmp(&other.Error),
+                discriminant_ReadResult::Read => self.Read.partial_cmp(&other.Read),
+            }
+        }
+    }
+}
+
+impl Ord for ReadResult {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        match self.discriminant().cmp(&other.discriminant()) {
+            core::cmp::Ordering::Equal => {}
+            not_eq => return not_eq,
+        }
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_ReadResult::Error => self.Error.cmp(&other.Error),
+                discriminant_ReadResult::Read => self.Read.cmp(&other.Read),
+            }
+        }
+    }
+}
+
+impl Clone for ReadResult {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn clone(&self) -> Self {
+        let mut answer = unsafe {
+            match self.discriminant() {
+                discriminant_ReadResult::Error => Self {
+                    Error: self.Error.clone(),
+                },
+                discriminant_ReadResult::Read => Self {
+                    Read: self.Read.clone(),
+                },
+            }
+        };
+
+        answer.set_discriminant(self.discriminant());
+
+        answer
+    }
+}
+
+impl core::hash::Hash for ReadResult {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        match self.discriminant() {
+            discriminant_ReadResult::Error => unsafe {
+                discriminant_ReadResult::Error.hash(state);
+                self.Error.hash(state);
+            },
+            discriminant_ReadResult::Read => unsafe {
+                discriminant_ReadResult::Read.hash(state);
+                self.Read.hash(state);
+            },
+        }
+    }
+}
+
+impl core::fmt::Debug for ReadResult {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("ReadResult::")?;
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_ReadResult::Error => {
+                    f.debug_tuple("Error").field(&*self.Error).finish()
+                }
+                discriminant_ReadResult::Read => f.debug_tuple("Read").field(&*self.Read).finish(),
+            }
+        }
+    }
+}
+
+impl StreamErr {
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// Returns which variant this tag union holds. Note that this never includes a payload!
+    pub fn discriminant(&self) -> discriminant_StreamErr {
+        unsafe {
+            let bytes = core::mem::transmute::<&Self, &[u8; core::mem::size_of::<Self>()]>(self);
+
+            core::mem::transmute::<u8, discriminant_StreamErr>(*bytes.as_ptr().add(16))
+        }
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// Internal helper
+    fn set_discriminant(&mut self, discriminant: discriminant_StreamErr) {
+        let discriminant_ptr: *mut discriminant_StreamErr = (self as *mut StreamErr).cast();
+
+        unsafe {
+            *(discriminant_ptr.add(16)) = discriminant;
+        }
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// A tag named BrokenPipe, which has no payload.
+    pub const BrokenPipe: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<StreamErr>()];
+
+        bytes[16] = discriminant_StreamErr::BrokenPipe as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<StreamErr>()], StreamErr>(bytes)
+    };
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `into_` methods return a payload, but since the BrokenPipe tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn into_BrokenPipe(self) {
+        ()
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `as` methods return a payload, but since the BrokenPipe tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn as_BrokenPipe(&self) {
+        ()
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// A tag named ConnectionRefused, which has no payload.
+    pub const ConnectionRefused: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<StreamErr>()];
+
+        bytes[16] = discriminant_StreamErr::ConnectionRefused as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<StreamErr>()], StreamErr>(bytes)
+    };
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `into_` methods return a payload, but since the ConnectionRefused tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn into_ConnectionRefused(self) {
+        ()
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `as` methods return a payload, but since the ConnectionRefused tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn as_ConnectionRefused(&self) {
+        ()
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// A tag named ConnectionReset, which has no payload.
+    pub const ConnectionReset: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<StreamErr>()];
+
+        bytes[16] = discriminant_StreamErr::ConnectionReset as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<StreamErr>()], StreamErr>(bytes)
+    };
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `into_` methods return a payload, but since the ConnectionReset tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn into_ConnectionReset(self) {
+        ()
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `as` methods return a payload, but since the ConnectionReset tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn as_ConnectionReset(&self) {
+        ()
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// A tag named Interrupted, which has no payload.
+    pub const Interrupted: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<StreamErr>()];
+
+        bytes[16] = discriminant_StreamErr::Interrupted as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<StreamErr>()], StreamErr>(bytes)
+    };
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `into_` methods return a payload, but since the Interrupted tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn into_Interrupted(self) {
+        ()
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `as` methods return a payload, but since the Interrupted tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn as_Interrupted(&self) {
+        ()
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// A tag named OutOfMemory, which has no payload.
+    pub const OutOfMemory: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<StreamErr>()];
+
+        bytes[16] = discriminant_StreamErr::OutOfMemory as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<StreamErr>()], StreamErr>(bytes)
+    };
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `into_` methods return a payload, but since the OutOfMemory tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn into_OutOfMemory(self) {
+        ()
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `as` methods return a payload, but since the OutOfMemory tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn as_OutOfMemory(&self) {
+        ()
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// A tag named PermissionDenied, which has no payload.
+    pub const PermissionDenied: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<StreamErr>()];
+
+        bytes[16] = discriminant_StreamErr::PermissionDenied as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<StreamErr>()], StreamErr>(bytes)
+    };
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `into_` methods return a payload, but since the PermissionDenied tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn into_PermissionDenied(self) {
+        ()
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `as` methods return a payload, but since the PermissionDenied tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn as_PermissionDenied(&self) {
+        ()
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// Construct a tag named `Unrecognized`, with the appropriate payload
+    pub fn Unrecognized(arg0: i32, arg1: roc_std::RocStr) -> Self {
+        let mut answer = Self {
+            Unrecognized: core::mem::ManuallyDrop::new(U3_Unrecognized { f0: arg0, f1: arg1 }),
+        };
+
+        answer.set_discriminant(discriminant_StreamErr::Unrecognized);
+
+        answer
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// Unsafely assume this `U4` has a `.discriminant()` of `Unrecognized` and convert it to `Unrecognized`'s payload.
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Unrecognized`.
+    pub unsafe fn into_Unrecognized(mut self) -> (i32, roc_std::RocStr) {
+        debug_assert_eq!(self.discriminant(), discriminant_StreamErr::Unrecognized);
+        let payload = {
+            let mut uninitialized = core::mem::MaybeUninit::uninit();
+            let swapped = unsafe {
+                core::mem::replace(
+                    &mut self.Unrecognized,
+                    core::mem::ManuallyDrop::new(uninitialized.assume_init()),
+                )
+            };
+
+            core::mem::forget(self);
+
+            core::mem::ManuallyDrop::into_inner(swapped)
+        };
+
+        (payload.f0, payload.f1)
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// Unsafely assume this `U4` has a `.discriminant()` of `Unrecognized` and return its payload.
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Unrecognized`.
+    pub unsafe fn as_Unrecognized(&self) -> (&i32, &roc_std::RocStr) {
+        debug_assert_eq!(self.discriminant(), discriminant_StreamErr::Unrecognized);
+        let payload = &self.Unrecognized;
+
+        (&payload.f0, &payload.f1)
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// Returns which variant this tag union holds. Note that this never includes a payload!
+    pub fn discriminant(&self) -> discriminant_StreamErr {
+        unsafe {
+            let bytes = core::mem::transmute::<&Self, &[u8; core::mem::size_of::<Self>()]>(self);
+
+            core::mem::transmute::<u8, discriminant_StreamErr>(*bytes.as_ptr().add(32))
+        }
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// Internal helper
+    fn set_discriminant(&mut self, discriminant: discriminant_StreamErr) {
+        let discriminant_ptr: *mut discriminant_StreamErr = (self as *mut StreamErr).cast();
+
+        unsafe {
+            *(discriminant_ptr.add(32)) = discriminant;
+        }
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// A tag named BrokenPipe, which has no payload.
+    pub const BrokenPipe: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<StreamErr>()];
+
+        bytes[32] = discriminant_StreamErr::BrokenPipe as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<StreamErr>()], StreamErr>(bytes)
+    };
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// A tag named ConnectionRefused, which has no payload.
+    pub const ConnectionRefused: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<StreamErr>()];
+
+        bytes[32] = discriminant_StreamErr::ConnectionRefused as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<StreamErr>()], StreamErr>(bytes)
+    };
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// A tag named ConnectionReset, which has no payload.
+    pub const ConnectionReset: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<StreamErr>()];
+
+        bytes[32] = discriminant_StreamErr::ConnectionReset as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<StreamErr>()], StreamErr>(bytes)
+    };
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// A tag named Interrupted, which has no payload.
+    pub const Interrupted: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<StreamErr>()];
+
+        bytes[32] = discriminant_StreamErr::Interrupted as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<StreamErr>()], StreamErr>(bytes)
+    };
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// A tag named OutOfMemory, which has no payload.
+    pub const OutOfMemory: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<StreamErr>()];
+
+        bytes[32] = discriminant_StreamErr::OutOfMemory as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<StreamErr>()], StreamErr>(bytes)
+    };
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// A tag named PermissionDenied, which has no payload.
+    pub const PermissionDenied: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<StreamErr>()];
+
+        bytes[32] = discriminant_StreamErr::PermissionDenied as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<StreamErr>()], StreamErr>(bytes)
+    };
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// Construct a tag named `Unrecognized`, with the appropriate payload
+    pub fn Unrecognized(arg0: roc_std::RocStr, arg1: i32) -> Self {
+        let mut answer = Self {
+            Unrecognized: core::mem::ManuallyDrop::new(U3_Unrecognized { f1: arg0, f0: arg1 }),
+        };
+
+        answer.set_discriminant(discriminant_StreamErr::Unrecognized);
+
+        answer
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// Unsafely assume this `U4` has a `.discriminant()` of `Unrecognized` and convert it to `Unrecognized`'s payload.
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Unrecognized`.
+    pub unsafe fn into_Unrecognized(mut self) -> (roc_std::RocStr, i32) {
+        debug_assert_eq!(self.discriminant(), discriminant_StreamErr::Unrecognized);
+        let payload = {
+            let mut uninitialized = core::mem::MaybeUninit::uninit();
+            let swapped = unsafe {
+                core::mem::replace(
+                    &mut self.Unrecognized,
+                    core::mem::ManuallyDrop::new(uninitialized.assume_init()),
+                )
+            };
+
+            core::mem::forget(self);
+
+            core::mem::ManuallyDrop::into_inner(swapped)
+        };
+
+        (payload.f1, payload.f0)
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// Unsafely assume this `U4` has a `.discriminant()` of `Unrecognized` and return its payload.
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Unrecognized`.
+    pub unsafe fn as_Unrecognized(&self) -> (&roc_std::RocStr, &i32) {
+        debug_assert_eq!(self.discriminant(), discriminant_StreamErr::Unrecognized);
+        let payload = &self.Unrecognized;
+
+        (&payload.f1, &payload.f0)
+    }
+}
+
+impl Drop for StreamErr {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn drop(&mut self) {
+        // Drop the payloads
+        match self.discriminant() {
+            discriminant_StreamErr::BrokenPipe => {}
+            discriminant_StreamErr::ConnectionRefused => {}
+            discriminant_StreamErr::ConnectionReset => {}
+            discriminant_StreamErr::Interrupted => {}
+            discriminant_StreamErr::OutOfMemory => {}
+            discriminant_StreamErr::PermissionDenied => {}
+            discriminant_StreamErr::Unrecognized => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.Unrecognized)
+            },
+        }
+    }
+}
+
+impl Eq for StreamErr {}
+
+impl PartialEq for StreamErr {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn eq(&self, other: &Self) -> bool {
+        if self.discriminant() != other.discriminant() {
+            return false;
+        }
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_StreamErr::BrokenPipe => true,
+                discriminant_StreamErr::ConnectionRefused => true,
+                discriminant_StreamErr::ConnectionReset => true,
+                discriminant_StreamErr::Interrupted => true,
+                discriminant_StreamErr::OutOfMemory => true,
+                discriminant_StreamErr::PermissionDenied => true,
+                discriminant_StreamErr::Unrecognized => self.Unrecognized == other.Unrecognized,
+            }
+        }
+    }
+}
+
+impl PartialOrd for StreamErr {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        match self.discriminant().partial_cmp(&other.discriminant()) {
+            Some(core::cmp::Ordering::Equal) => {}
+            not_eq => return not_eq,
+        }
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_StreamErr::BrokenPipe => Some(core::cmp::Ordering::Equal),
+                discriminant_StreamErr::ConnectionRefused => Some(core::cmp::Ordering::Equal),
+                discriminant_StreamErr::ConnectionReset => Some(core::cmp::Ordering::Equal),
+                discriminant_StreamErr::Interrupted => Some(core::cmp::Ordering::Equal),
+                discriminant_StreamErr::OutOfMemory => Some(core::cmp::Ordering::Equal),
+                discriminant_StreamErr::PermissionDenied => Some(core::cmp::Ordering::Equal),
+                discriminant_StreamErr::Unrecognized => {
+                    self.Unrecognized.partial_cmp(&other.Unrecognized)
+                }
+            }
+        }
+    }
+}
+
+impl Ord for StreamErr {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        match self.discriminant().cmp(&other.discriminant()) {
+            core::cmp::Ordering::Equal => {}
+            not_eq => return not_eq,
+        }
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_StreamErr::BrokenPipe => core::cmp::Ordering::Equal,
+                discriminant_StreamErr::ConnectionRefused => core::cmp::Ordering::Equal,
+                discriminant_StreamErr::ConnectionReset => core::cmp::Ordering::Equal,
+                discriminant_StreamErr::Interrupted => core::cmp::Ordering::Equal,
+                discriminant_StreamErr::OutOfMemory => core::cmp::Ordering::Equal,
+                discriminant_StreamErr::PermissionDenied => core::cmp::Ordering::Equal,
+                discriminant_StreamErr::Unrecognized => self.Unrecognized.cmp(&other.Unrecognized),
+            }
+        }
+    }
+}
+
+impl Clone for StreamErr {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn clone(&self) -> Self {
+        let mut answer = unsafe {
+            match self.discriminant() {
+                discriminant_StreamErr::BrokenPipe => {
+                    core::mem::transmute::<core::mem::MaybeUninit<StreamErr>, StreamErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_StreamErr::ConnectionRefused => {
+                    core::mem::transmute::<core::mem::MaybeUninit<StreamErr>, StreamErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_StreamErr::ConnectionReset => {
+                    core::mem::transmute::<core::mem::MaybeUninit<StreamErr>, StreamErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_StreamErr::Interrupted => {
+                    core::mem::transmute::<core::mem::MaybeUninit<StreamErr>, StreamErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_StreamErr::OutOfMemory => {
+                    core::mem::transmute::<core::mem::MaybeUninit<StreamErr>, StreamErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_StreamErr::PermissionDenied => {
+                    core::mem::transmute::<core::mem::MaybeUninit<StreamErr>, StreamErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_StreamErr::Unrecognized => Self {
+                    Unrecognized: self.Unrecognized.clone(),
+                },
+            }
+        };
+
+        answer.set_discriminant(self.discriminant());
+
+        answer
+    }
+}
+
+impl core::hash::Hash for StreamErr {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        match self.discriminant() {
+            discriminant_StreamErr::BrokenPipe => discriminant_StreamErr::BrokenPipe.hash(state),
+            discriminant_StreamErr::ConnectionRefused => {
+                discriminant_StreamErr::ConnectionRefused.hash(state)
+            }
+            discriminant_StreamErr::ConnectionReset => {
+                discriminant_StreamErr::ConnectionReset.hash(state)
+            }
+            discriminant_StreamErr::Interrupted => discriminant_StreamErr::Interrupted.hash(state),
+            discriminant_StreamErr::OutOfMemory => discriminant_StreamErr::OutOfMemory.hash(state),
+            discriminant_StreamErr::PermissionDenied => {
+                discriminant_StreamErr::PermissionDenied.hash(state)
+            }
+            discriminant_StreamErr::Unrecognized => unsafe {
+                discriminant_StreamErr::Unrecognized.hash(state);
+                self.Unrecognized.hash(state);
+            },
+        }
+    }
+}
+
+impl core::fmt::Debug for StreamErr {
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("U4::")?;
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_StreamErr::BrokenPipe => f.write_str("BrokenPipe"),
+                discriminant_StreamErr::ConnectionRefused => f.write_str("ConnectionRefused"),
+                discriminant_StreamErr::ConnectionReset => f.write_str("ConnectionReset"),
+                discriminant_StreamErr::Interrupted => f.write_str("Interrupted"),
+                discriminant_StreamErr::OutOfMemory => f.write_str("OutOfMemory"),
+                discriminant_StreamErr::PermissionDenied => f.write_str("PermissionDenied"),
+                discriminant_StreamErr::Unrecognized => f
+                    .debug_tuple("Unrecognized")
+                    .field(&(&*self.Unrecognized).f0)
+                    .field(&(&*self.Unrecognized).f1)
+                    .finish(),
+            }
+        }
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("U4::")?;
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_StreamErr::BrokenPipe => f.write_str("BrokenPipe"),
+                discriminant_StreamErr::ConnectionRefused => f.write_str("ConnectionRefused"),
+                discriminant_StreamErr::ConnectionReset => f.write_str("ConnectionReset"),
+                discriminant_StreamErr::Interrupted => f.write_str("Interrupted"),
+                discriminant_StreamErr::OutOfMemory => f.write_str("OutOfMemory"),
+                discriminant_StreamErr::PermissionDenied => f.write_str("PermissionDenied"),
+                discriminant_StreamErr::Unrecognized => f
+                    .debug_tuple("Unrecognized")
+                    .field(&(&*self.Unrecognized).f1)
+                    .field(&(&*self.Unrecognized).f0)
+                    .finish(),
+            }
+        }
+    }
+}
+
+impl ConnectResult {
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// Returns which variant this tag union holds. Note that this never includes a payload!
+    pub fn discriminant(&self) -> discriminant_ConnectResult {
+        unsafe {
+            let bytes = core::mem::transmute::<&Self, &[u8; core::mem::size_of::<Self>()]>(self);
+
+            core::mem::transmute::<u8, discriminant_ConnectResult>(*bytes.as_ptr().add(20))
+        }
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// Internal helper
+    fn set_discriminant(&mut self, discriminant: discriminant_ConnectResult) {
+        let discriminant_ptr: *mut discriminant_ConnectResult = (self as *mut ConnectResult).cast();
+
+        unsafe {
+            *(discriminant_ptr.add(20)) = discriminant;
+        }
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// Construct a tag named `Connected`, with the appropriate payload
+    pub fn Connected(arg: u32) -> Self {
+        let mut answer = Self { Connected: arg };
+
+        answer.set_discriminant(discriminant_ConnectResult::Connected);
+
+        answer
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// Unsafely assume this `ConnectResult` has a `.discriminant()` of `Connected` and convert it to `Connected`'s payload.
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Connected`.
+    pub unsafe fn into_Connected(self) -> u32 {
+        debug_assert_eq!(self.discriminant(), discriminant_ConnectResult::Connected);
+        let payload = self.Connected;
+
+        payload
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// Unsafely assume this `ConnectResult` has a `.discriminant()` of `Connected` and return its payload.
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Connected`.
+    pub unsafe fn as_Connected(&self) -> &u32 {
+        debug_assert_eq!(self.discriminant(), discriminant_ConnectResult::Connected);
+        let payload = &self.Connected;
+
+        &payload
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Construct a tag named `Error`, with the appropriate payload
+    pub fn Error(arg: ConnectErr) -> Self {
+        let mut answer = Self {
+            Error: core::mem::ManuallyDrop::new(arg),
+        };
+
+        answer.set_discriminant(discriminant_ConnectResult::Error);
+
+        answer
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Unsafely assume this `ConnectResult` has a `.discriminant()` of `Error` and convert it to `Error`'s payload.
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Error`.
+    pub unsafe fn into_Error(mut self) -> ConnectErr {
+        debug_assert_eq!(self.discriminant(), discriminant_ConnectResult::Error);
+        let payload = {
+            let mut uninitialized = core::mem::MaybeUninit::uninit();
+            let swapped = unsafe {
+                core::mem::replace(
+                    &mut self.Error,
+                    core::mem::ManuallyDrop::new(uninitialized.assume_init()),
+                )
+            };
+
+            core::mem::forget(self);
+
+            core::mem::ManuallyDrop::into_inner(swapped)
+        };
+
+        payload
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Unsafely assume this `ConnectResult` has a `.discriminant()` of `Error` and return its payload.
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Error`.
+    pub unsafe fn as_Error(&self) -> &ConnectErr {
+        debug_assert_eq!(self.discriminant(), discriminant_ConnectResult::Error);
+        let payload = &self.Error;
+
+        &payload
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// Returns which variant this tag union holds. Note that this never includes a payload!
+    pub fn discriminant(&self) -> discriminant_ConnectResult {
+        unsafe {
+            let bytes = core::mem::transmute::<&Self, &[u8; core::mem::size_of::<Self>()]>(self);
+
+            core::mem::transmute::<u8, discriminant_ConnectResult>(*bytes.as_ptr().add(40))
+        }
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// Internal helper
+    fn set_discriminant(&mut self, discriminant: discriminant_ConnectResult) {
+        let discriminant_ptr: *mut discriminant_ConnectResult = (self as *mut ConnectResult).cast();
+
+        unsafe {
+            *(discriminant_ptr.add(40)) = discriminant;
+        }
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// Construct a tag named `Connected`, with the appropriate payload
+    pub fn Connected(arg: u64) -> Self {
+        let mut answer = Self { Connected: arg };
+
+        answer.set_discriminant(discriminant_ConnectResult::Connected);
+
+        answer
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// Unsafely assume this `ConnectResult` has a `.discriminant()` of `Connected` and convert it to `Connected`'s payload.
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Connected`.
+    pub unsafe fn into_Connected(self) -> u64 {
+        debug_assert_eq!(self.discriminant(), discriminant_ConnectResult::Connected);
+        let payload = self.Connected;
+
+        payload
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// Unsafely assume this `ConnectResult` has a `.discriminant()` of `Connected` and return its payload.
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Connected`.
+    pub unsafe fn as_Connected(&self) -> &u64 {
+        debug_assert_eq!(self.discriminant(), discriminant_ConnectResult::Connected);
+        let payload = &self.Connected;
+
+        &payload
+    }
+}
+
+impl Drop for ConnectResult {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn drop(&mut self) {
+        // Drop the payloads
+        match self.discriminant() {
+            discriminant_ConnectResult::Connected => {}
+            discriminant_ConnectResult::Error => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.Error)
+            },
+        }
+    }
+}
+
+impl Eq for ConnectResult {}
+
+impl PartialEq for ConnectResult {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn eq(&self, other: &Self) -> bool {
+        if self.discriminant() != other.discriminant() {
+            return false;
+        }
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_ConnectResult::Connected => self.Connected == other.Connected,
+                discriminant_ConnectResult::Error => self.Error == other.Error,
+            }
+        }
+    }
+}
+
+impl PartialOrd for ConnectResult {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        match self.discriminant().partial_cmp(&other.discriminant()) {
+            Some(core::cmp::Ordering::Equal) => {}
+            not_eq => return not_eq,
+        }
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_ConnectResult::Connected => {
+                    self.Connected.partial_cmp(&other.Connected)
+                }
+                discriminant_ConnectResult::Error => self.Error.partial_cmp(&other.Error),
+            }
+        }
+    }
+}
+
+impl Ord for ConnectResult {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        match self.discriminant().cmp(&other.discriminant()) {
+            core::cmp::Ordering::Equal => {}
+            not_eq => return not_eq,
+        }
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_ConnectResult::Connected => self.Connected.cmp(&other.Connected),
+                discriminant_ConnectResult::Error => self.Error.cmp(&other.Error),
+            }
+        }
+    }
+}
+
+impl Clone for ConnectResult {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn clone(&self) -> Self {
+        let mut answer = unsafe {
+            match self.discriminant() {
+                discriminant_ConnectResult::Connected => Self {
+                    Connected: self.Connected.clone(),
+                },
+                discriminant_ConnectResult::Error => Self {
+                    Error: self.Error.clone(),
+                },
+            }
+        };
+
+        answer.set_discriminant(self.discriminant());
+
+        answer
+    }
+}
+
+impl core::hash::Hash for ConnectResult {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        match self.discriminant() {
+            discriminant_ConnectResult::Connected => unsafe {
+                discriminant_ConnectResult::Connected.hash(state);
+                self.Connected.hash(state);
+            },
+            discriminant_ConnectResult::Error => unsafe {
+                discriminant_ConnectResult::Error.hash(state);
+                self.Error.hash(state);
+            },
+        }
+    }
+}
+
+impl core::fmt::Debug for ConnectResult {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("ConnectResult::")?;
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_ConnectResult::Connected => {
+                    f.debug_tuple("Connected").field(&self.Connected).finish()
+                }
+                discriminant_ConnectResult::Error => {
+                    f.debug_tuple("Error").field(&*self.Error).finish()
+                }
+            }
+        }
+    }
+}
+
+impl ConnectErr {
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// Returns which variant this tag union holds. Note that this never includes a payload!
+    pub fn discriminant(&self) -> discriminant_ConnectErr {
+        unsafe {
+            let bytes = core::mem::transmute::<&Self, &[u8; core::mem::size_of::<Self>()]>(self);
+
+            core::mem::transmute::<u8, discriminant_ConnectErr>(*bytes.as_ptr().add(16))
+        }
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// Internal helper
+    fn set_discriminant(&mut self, discriminant: discriminant_ConnectErr) {
+        let discriminant_ptr: *mut discriminant_ConnectErr = (self as *mut ConnectErr).cast();
+
+        unsafe {
+            *(discriminant_ptr.add(16)) = discriminant;
+        }
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// A tag named AddrInUse, which has no payload.
+    pub const AddrInUse: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<ConnectErr>()];
+
+        bytes[16] = discriminant_ConnectErr::AddrInUse as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<ConnectErr>()], ConnectErr>(bytes)
+    };
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `into_` methods return a payload, but since the AddrInUse tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn into_AddrInUse(self) {
+        ()
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `as` methods return a payload, but since the AddrInUse tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn as_AddrInUse(&self) {
+        ()
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// A tag named AddrNotAvailable, which has no payload.
+    pub const AddrNotAvailable: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<ConnectErr>()];
+
+        bytes[16] = discriminant_ConnectErr::AddrNotAvailable as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<ConnectErr>()], ConnectErr>(bytes)
+    };
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `into_` methods return a payload, but since the AddrNotAvailable tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn into_AddrNotAvailable(self) {
+        ()
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `as` methods return a payload, but since the AddrNotAvailable tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn as_AddrNotAvailable(&self) {
+        ()
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// A tag named ConnectionRefused, which has no payload.
+    pub const ConnectionRefused: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<ConnectErr>()];
+
+        bytes[16] = discriminant_ConnectErr::ConnectionRefused as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<ConnectErr>()], ConnectErr>(bytes)
+    };
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `into_` methods return a payload, but since the ConnectionRefused tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn into_ConnectionRefused(self) {
+        ()
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `as` methods return a payload, but since the ConnectionRefused tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn as_ConnectionRefused(&self) {
+        ()
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// A tag named Interrupted, which has no payload.
+    pub const Interrupted: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<ConnectErr>()];
+
+        bytes[16] = discriminant_ConnectErr::Interrupted as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<ConnectErr>()], ConnectErr>(bytes)
+    };
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `into_` methods return a payload, but since the Interrupted tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn into_Interrupted(self) {
+        ()
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `as` methods return a payload, but since the Interrupted tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn as_Interrupted(&self) {
+        ()
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// A tag named PermissionDenied, which has no payload.
+    pub const PermissionDenied: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<ConnectErr>()];
+
+        bytes[16] = discriminant_ConnectErr::PermissionDenied as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<ConnectErr>()], ConnectErr>(bytes)
+    };
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `into_` methods return a payload, but since the PermissionDenied tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn into_PermissionDenied(self) {
+        ()
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `as` methods return a payload, but since the PermissionDenied tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn as_PermissionDenied(&self) {
+        ()
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// A tag named TimedOut, which has no payload.
+    pub const TimedOut: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<ConnectErr>()];
+
+        bytes[16] = discriminant_ConnectErr::TimedOut as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<ConnectErr>()], ConnectErr>(bytes)
+    };
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `into_` methods return a payload, but since the TimedOut tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn into_TimedOut(self) {
+        ()
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `as` methods return a payload, but since the TimedOut tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn as_TimedOut(&self) {
+        ()
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// Construct a tag named `Unrecognized`, with the appropriate payload
+    pub fn Unrecognized(arg0: i32, arg1: roc_std::RocStr) -> Self {
+        let mut answer = Self {
+            Unrecognized: core::mem::ManuallyDrop::new(U3_Unrecognized { f0: arg0, f1: arg1 }),
+        };
+
+        answer.set_discriminant(discriminant_ConnectErr::Unrecognized);
+
+        answer
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// Unsafely assume this `U3` has a `.discriminant()` of `Unrecognized` and convert it to `Unrecognized`'s payload.
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Unrecognized`.
+    pub unsafe fn into_Unrecognized(mut self) -> (i32, roc_std::RocStr) {
+        debug_assert_eq!(self.discriminant(), discriminant_ConnectErr::Unrecognized);
+        let payload = {
+            let mut uninitialized = core::mem::MaybeUninit::uninit();
+            let swapped = unsafe {
+                core::mem::replace(
+                    &mut self.Unrecognized,
+                    core::mem::ManuallyDrop::new(uninitialized.assume_init()),
+                )
+            };
+
+            core::mem::forget(self);
+
+            core::mem::ManuallyDrop::into_inner(swapped)
+        };
+
+        (payload.f0, payload.f1)
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// Unsafely assume this `U3` has a `.discriminant()` of `Unrecognized` and return its payload.
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Unrecognized`.
+    pub unsafe fn as_Unrecognized(&self) -> (&i32, &roc_std::RocStr) {
+        debug_assert_eq!(self.discriminant(), discriminant_ConnectErr::Unrecognized);
+        let payload = &self.Unrecognized;
+
+        (&payload.f0, &payload.f1)
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    /// A tag named Unsupported, which has no payload.
+    pub const Unsupported: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<ConnectErr>()];
+
+        bytes[16] = discriminant_ConnectErr::Unsupported as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<ConnectErr>()], ConnectErr>(bytes)
+    };
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `into_` methods return a payload, but since the Unsupported tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn into_Unsupported(self) {
+        ()
+    }
+
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    /// Other `as` methods return a payload, but since the Unsupported tag
+    /// has no payload, this does nothing and is only here for completeness.
+    pub fn as_Unsupported(&self) {
+        ()
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// Returns which variant this tag union holds. Note that this never includes a payload!
+    pub fn discriminant(&self) -> discriminant_ConnectErr {
+        unsafe {
+            let bytes = core::mem::transmute::<&Self, &[u8; core::mem::size_of::<Self>()]>(self);
+
+            core::mem::transmute::<u8, discriminant_ConnectErr>(*bytes.as_ptr().add(32))
+        }
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// Internal helper
+    fn set_discriminant(&mut self, discriminant: discriminant_ConnectErr) {
+        let discriminant_ptr: *mut discriminant_ConnectErr = (self as *mut ConnectErr).cast();
+
+        unsafe {
+            *(discriminant_ptr.add(32)) = discriminant;
+        }
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// A tag named AddrInUse, which has no payload.
+    pub const AddrInUse: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<ConnectErr>()];
+
+        bytes[32] = discriminant_ConnectErr::AddrInUse as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<ConnectErr>()], ConnectErr>(bytes)
+    };
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// A tag named AddrNotAvailable, which has no payload.
+    pub const AddrNotAvailable: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<ConnectErr>()];
+
+        bytes[32] = discriminant_ConnectErr::AddrNotAvailable as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<ConnectErr>()], ConnectErr>(bytes)
+    };
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// A tag named ConnectionRefused, which has no payload.
+    pub const ConnectionRefused: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<ConnectErr>()];
+
+        bytes[32] = discriminant_ConnectErr::ConnectionRefused as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<ConnectErr>()], ConnectErr>(bytes)
+    };
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// A tag named Interrupted, which has no payload.
+    pub const Interrupted: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<ConnectErr>()];
+
+        bytes[32] = discriminant_ConnectErr::Interrupted as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<ConnectErr>()], ConnectErr>(bytes)
+    };
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// A tag named PermissionDenied, which has no payload.
+    pub const PermissionDenied: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<ConnectErr>()];
+
+        bytes[32] = discriminant_ConnectErr::PermissionDenied as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<ConnectErr>()], ConnectErr>(bytes)
+    };
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// A tag named TimedOut, which has no payload.
+    pub const TimedOut: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<ConnectErr>()];
+
+        bytes[32] = discriminant_ConnectErr::TimedOut as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<ConnectErr>()], ConnectErr>(bytes)
+    };
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// Construct a tag named `Unrecognized`, with the appropriate payload
+    pub fn Unrecognized(arg0: roc_std::RocStr, arg1: i32) -> Self {
+        let mut answer = Self {
+            Unrecognized: core::mem::ManuallyDrop::new(U3_Unrecognized { f1: arg0, f0: arg1 }),
+        };
+
+        answer.set_discriminant(discriminant_ConnectErr::Unrecognized);
+
+        answer
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// Unsafely assume this `U3` has a `.discriminant()` of `Unrecognized` and convert it to `Unrecognized`'s payload.
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Unrecognized`.
+    pub unsafe fn into_Unrecognized(mut self) -> (roc_std::RocStr, i32) {
+        debug_assert_eq!(self.discriminant(), discriminant_ConnectErr::Unrecognized);
+        let payload = {
+            let mut uninitialized = core::mem::MaybeUninit::uninit();
+            let swapped = unsafe {
+                core::mem::replace(
+                    &mut self.Unrecognized,
+                    core::mem::ManuallyDrop::new(uninitialized.assume_init()),
+                )
+            };
+
+            core::mem::forget(self);
+
+            core::mem::ManuallyDrop::into_inner(swapped)
+        };
+
+        (payload.f1, payload.f0)
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// Unsafely assume this `U3` has a `.discriminant()` of `Unrecognized` and return its payload.
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Unrecognized`.
+    pub unsafe fn as_Unrecognized(&self) -> (&roc_std::RocStr, &i32) {
+        debug_assert_eq!(self.discriminant(), discriminant_ConnectErr::Unrecognized);
+        let payload = &self.Unrecognized;
+
+        (&payload.f1, &payload.f0)
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    /// A tag named Unsupported, which has no payload.
+    pub const Unsupported: Self = unsafe {
+        let mut bytes = [0; core::mem::size_of::<ConnectErr>()];
+
+        bytes[32] = discriminant_ConnectErr::Unsupported as u8;
+
+        core::mem::transmute::<[u8; core::mem::size_of::<ConnectErr>()], ConnectErr>(bytes)
+    };
+}
+
+impl Drop for ConnectErr {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn drop(&mut self) {
+        // Drop the payloads
+        match self.discriminant() {
+            discriminant_ConnectErr::AddrInUse => {}
+            discriminant_ConnectErr::AddrNotAvailable => {}
+            discriminant_ConnectErr::ConnectionRefused => {}
+            discriminant_ConnectErr::Interrupted => {}
+            discriminant_ConnectErr::PermissionDenied => {}
+            discriminant_ConnectErr::TimedOut => {}
+            discriminant_ConnectErr::Unrecognized => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.Unrecognized)
+            },
+            discriminant_ConnectErr::Unsupported => {}
+        }
+    }
+}
+
+impl Eq for ConnectErr {}
+
+impl PartialEq for ConnectErr {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn eq(&self, other: &Self) -> bool {
+        if self.discriminant() != other.discriminant() {
+            return false;
+        }
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_ConnectErr::AddrInUse => true,
+                discriminant_ConnectErr::AddrNotAvailable => true,
+                discriminant_ConnectErr::ConnectionRefused => true,
+                discriminant_ConnectErr::Interrupted => true,
+                discriminant_ConnectErr::PermissionDenied => true,
+                discriminant_ConnectErr::TimedOut => true,
+                discriminant_ConnectErr::Unrecognized => self.Unrecognized == other.Unrecognized,
+                discriminant_ConnectErr::Unsupported => true,
+            }
+        }
+    }
+}
+
+impl PartialOrd for ConnectErr {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        match self.discriminant().partial_cmp(&other.discriminant()) {
+            Some(core::cmp::Ordering::Equal) => {}
+            not_eq => return not_eq,
+        }
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_ConnectErr::AddrInUse => Some(core::cmp::Ordering::Equal),
+                discriminant_ConnectErr::AddrNotAvailable => Some(core::cmp::Ordering::Equal),
+                discriminant_ConnectErr::ConnectionRefused => Some(core::cmp::Ordering::Equal),
+                discriminant_ConnectErr::Interrupted => Some(core::cmp::Ordering::Equal),
+                discriminant_ConnectErr::PermissionDenied => Some(core::cmp::Ordering::Equal),
+                discriminant_ConnectErr::TimedOut => Some(core::cmp::Ordering::Equal),
+                discriminant_ConnectErr::Unrecognized => {
+                    self.Unrecognized.partial_cmp(&other.Unrecognized)
+                }
+                discriminant_ConnectErr::Unsupported => Some(core::cmp::Ordering::Equal),
+            }
+        }
+    }
+}
+
+impl Ord for ConnectErr {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        match self.discriminant().cmp(&other.discriminant()) {
+            core::cmp::Ordering::Equal => {}
+            not_eq => return not_eq,
+        }
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_ConnectErr::AddrInUse => core::cmp::Ordering::Equal,
+                discriminant_ConnectErr::AddrNotAvailable => core::cmp::Ordering::Equal,
+                discriminant_ConnectErr::ConnectionRefused => core::cmp::Ordering::Equal,
+                discriminant_ConnectErr::Interrupted => core::cmp::Ordering::Equal,
+                discriminant_ConnectErr::PermissionDenied => core::cmp::Ordering::Equal,
+                discriminant_ConnectErr::TimedOut => core::cmp::Ordering::Equal,
+                discriminant_ConnectErr::Unrecognized => self.Unrecognized.cmp(&other.Unrecognized),
+                discriminant_ConnectErr::Unsupported => core::cmp::Ordering::Equal,
+            }
+        }
+    }
+}
+
+impl Clone for ConnectErr {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn clone(&self) -> Self {
+        let mut answer = unsafe {
+            match self.discriminant() {
+                discriminant_ConnectErr::AddrInUse => {
+                    core::mem::transmute::<core::mem::MaybeUninit<ConnectErr>, ConnectErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_ConnectErr::AddrNotAvailable => {
+                    core::mem::transmute::<core::mem::MaybeUninit<ConnectErr>, ConnectErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_ConnectErr::ConnectionRefused => {
+                    core::mem::transmute::<core::mem::MaybeUninit<ConnectErr>, ConnectErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_ConnectErr::Interrupted => {
+                    core::mem::transmute::<core::mem::MaybeUninit<ConnectErr>, ConnectErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_ConnectErr::PermissionDenied => {
+                    core::mem::transmute::<core::mem::MaybeUninit<ConnectErr>, ConnectErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_ConnectErr::TimedOut => {
+                    core::mem::transmute::<core::mem::MaybeUninit<ConnectErr>, ConnectErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_ConnectErr::Unrecognized => Self {
+                    Unrecognized: self.Unrecognized.clone(),
+                },
+                discriminant_ConnectErr::Unsupported => {
+                    core::mem::transmute::<core::mem::MaybeUninit<ConnectErr>, ConnectErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+            }
+        };
+
+        answer.set_discriminant(self.discriminant());
+
+        answer
+    }
+}
+
+impl core::hash::Hash for ConnectErr {
+    #[cfg(any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "wasm32",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        match self.discriminant() {
+            discriminant_ConnectErr::AddrInUse => discriminant_ConnectErr::AddrInUse.hash(state),
+            discriminant_ConnectErr::AddrNotAvailable => {
+                discriminant_ConnectErr::AddrNotAvailable.hash(state)
+            }
+            discriminant_ConnectErr::ConnectionRefused => {
+                discriminant_ConnectErr::ConnectionRefused.hash(state)
+            }
+            discriminant_ConnectErr::Interrupted => {
+                discriminant_ConnectErr::Interrupted.hash(state)
+            }
+            discriminant_ConnectErr::PermissionDenied => {
+                discriminant_ConnectErr::PermissionDenied.hash(state)
+            }
+            discriminant_ConnectErr::TimedOut => discriminant_ConnectErr::TimedOut.hash(state),
+            discriminant_ConnectErr::Unrecognized => unsafe {
+                discriminant_ConnectErr::Unrecognized.hash(state);
+                self.Unrecognized.hash(state);
+            },
+            discriminant_ConnectErr::Unsupported => {
+                discriminant_ConnectErr::Unsupported.hash(state)
+            }
+        }
+    }
+}
+
+impl core::fmt::Debug for ConnectErr {
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("U3::")?;
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_ConnectErr::AddrInUse => f.write_str("AddrInUse"),
+                discriminant_ConnectErr::AddrNotAvailable => f.write_str("AddrNotAvailable"),
+                discriminant_ConnectErr::ConnectionRefused => f.write_str("ConnectionRefused"),
+                discriminant_ConnectErr::Interrupted => f.write_str("Interrupted"),
+                discriminant_ConnectErr::PermissionDenied => f.write_str("PermissionDenied"),
+                discriminant_ConnectErr::TimedOut => f.write_str("TimedOut"),
+                discriminant_ConnectErr::Unrecognized => f
+                    .debug_tuple("Unrecognized")
+                    .field(&(&*self.Unrecognized).f0)
+                    .field(&(&*self.Unrecognized).f1)
+                    .finish(),
+                discriminant_ConnectErr::Unsupported => f.write_str("Unsupported"),
+            }
+        }
+    }
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("U3::")?;
+
+        unsafe {
+            match self.discriminant() {
+                discriminant_ConnectErr::AddrInUse => f.write_str("AddrInUse"),
+                discriminant_ConnectErr::AddrNotAvailable => f.write_str("AddrNotAvailable"),
+                discriminant_ConnectErr::ConnectionRefused => f.write_str("ConnectionRefused"),
+                discriminant_ConnectErr::Interrupted => f.write_str("Interrupted"),
+                discriminant_ConnectErr::PermissionDenied => f.write_str("PermissionDenied"),
+                discriminant_ConnectErr::TimedOut => f.write_str("TimedOut"),
+                discriminant_ConnectErr::Unrecognized => f
+                    .debug_tuple("Unrecognized")
+                    .field(&(&*self.Unrecognized).f1)
+                    .field(&(&*self.Unrecognized).f0)
+                    .finish(),
+                discriminant_ConnectErr::Unsupported => f.write_str("Unsupported"),
+            }
+        }
+    }
 }

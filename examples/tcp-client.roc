@@ -16,10 +16,28 @@ main =
             Ok _ ->
                 Process.exit 0
 
-            Err (SocketReadUtf8Err _) ->
+            Err (TcpConnectErr err) ->
+                dbg
+                    err
+
+                Stderr.line
+                    """
+                    Failed to connect.
+
+                    If you don't have anything listening on port 8080, run: 
+                    $ nc -l 8080
+                    """
+
+            Err (TcpPerformErr (BadUtf8 _)) ->
                 Stderr.line "Received non-UTF8 data"
 
-tick : Tcp.Stream -> Task.Task {} [SocketReadUtf8Err _]
+            Err (TcpPerformErr err) ->
+                dbg
+                    err
+
+                Stderr.line "Something went wrong while reading or writing data"
+
+tick : Tcp.Stream -> Task.Task {} _
 tick = \stream ->
     _ <- Stdout.write "> " |> await
     outMsg <- Stdin.line |> await
