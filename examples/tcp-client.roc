@@ -17,25 +17,25 @@ main =
                 Process.exit 0
 
             Err (TcpConnectErr err) ->
-                dbg
-                    err
-
+                errStr = Tcp.connectErrToStr err
                 Stderr.line
                     """
-                    Failed to connect.
+                    Failed to connect: \(errStr)
 
                     If you don't have anything listening on port 8080, run: 
                     $ nc -l 8080
                     """
 
-            Err (TcpPerformErr (BadUtf8 _)) ->
-                Stderr.line "Received non-UTF8 data"
+            Err (TcpPerformErr (TcpReadBadUtf8 _)) ->
+                Stderr.line "Received invalid UTF-8 data"
 
-            Err (TcpPerformErr err) ->
-                dbg
-                    err
+            Err (TcpPerformErr (TcpReadErr err)) ->
+                errStr = Tcp.streamErrToStr err
+                Stderr.line "Error while reading: \(errStr)"
 
-                Stderr.line "Something went wrong while reading or writing data"
+            Err (TcpPerformErr (TcpWriteErr err)) ->
+                errStr = Tcp.streamErrToStr err
+                Stderr.line "Error while writing: \(errStr)"
 
 tick : Tcp.Stream -> Task.Task {} _
 tick = \stream ->

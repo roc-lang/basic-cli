@@ -6,6 +6,8 @@ interface Tcp
         readUtf8,
         writeBytes,
         writeUtf8,
+        connectErrToStr,
+        streamErrToStr,
     ]
     imports [Effect, Task.{ Task }, InternalTask, InternalTcp]
 
@@ -58,12 +60,12 @@ close = \stream ->
 ##     File.readBytes stream
 ##
 ## To read a [Str], you can use `Tcp.readUtf8` instead.
-readBytes : Stream -> Task (List U8) [TcpReadError StreamErr]
+readBytes : Stream -> Task (List U8) [TcpReadErr StreamErr]
 readBytes = \stream ->
     Effect.tcpRead stream
     |> Effect.map InternalTcp.fromReadResult
     |> InternalTask.fromEffect
-    |> Task.mapFail TcpReadError
+    |> Task.mapFail TcpReadErr
 
 ## Reads a [Str] from all the available bytes in the TCP Stream.
 ##
@@ -71,12 +73,12 @@ readBytes = \stream ->
 ##     File.readUtf8 stream
 ##
 ## To read unformatted bytes, you can use `Tcp.readBytes` instead.
-readUtf8 : Stream -> Task Str [TcpReadError StreamErr, TcpReadBadUtf8 _]
+readUtf8 : Stream -> Task Str [TcpReadErr StreamErr, TcpReadBadUtf8 _]
 readUtf8 = \stream ->
     Effect.tcpRead stream
     |> Effect.map \result ->
         InternalTcp.fromReadResult result
-        |> Result.mapErr TcpReadError
+        |> Result.mapErr TcpReadErr
         |> Result.try \bytes ->
             Str.fromUtf8 bytes
             |> Result.mapErr \err -> TcpReadBadUtf8 err
@@ -108,3 +110,30 @@ writeUtf8 = \str, stream ->
     |> Effect.map InternalTcp.fromWriteResult
     |> InternalTask.fromEffect
     |> Task.mapFail TcpWriteErr
+
+connectErrToStr : ConnectErr -> Str
+connectErrToStr = \err ->
+    when err is
+        PermissionDenied -> "PermissionDenied"
+        AddrInUse -> "AddrInUse"
+        AddrNotAvailable -> "AddrNotAvailable"
+        ConnectionRefused -> "ConnectionRefused"
+        Interrupted -> "Interrupted"
+        TimedOut -> "TimedOut"
+        Unsupported -> "Unsupported"
+        Unrecognized code message ->
+            codeStr = Num.toStr code
+            "Unrecognized Error: \(codeStr) - \(message)"
+
+streamErrToStr : StreamErr -> Str
+streamErrToStr = \err ->
+    when err is
+        PermissionDenied -> "PermissionDenied"
+        ConnectionRefused -> "ConnectionRefused"
+        ConnectionReset -> "ConnectionReset"
+        Interrupted -> "Interrupted"
+        OutOfMemory -> "OutOfMemory"
+        BrokenPipe -> "BrokenPipe"
+        Unrecognized code message ->
+            codeStr = Num.toStr code
+            "Unrecognized Error: \(codeStr) - \(message)"
