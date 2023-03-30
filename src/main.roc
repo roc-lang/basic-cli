@@ -6,6 +6,4 @@ platform "cli"
     provides [mainForHost]
 
 mainForHost : Task {} [] as Fx
-mainForHost =
-    main
-
+mainForHost = main
