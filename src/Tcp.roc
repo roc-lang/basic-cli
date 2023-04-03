@@ -56,15 +56,15 @@ close = \stream ->
     |> Effect.map \{} -> Ok {}
     |> InternalTask.fromEffect
 
-## Reads up to a number of bytes from the TCP stream.
+## Read up to a number of bytes from the TCP stream.
 ##
 ##     received <- File.readUpTo 64 stream |> await
 ##
 ## If you need a [Str], you can use [Str.fromUtf8]:
-##      
-##     str <- Str.fromUtf8 received |> Task.fromResult |> await
 ##
-## To read an exact number of bytes or fail, you can use [Tcp.readExact] instead.
+##     Str.fromUtf8 received
+##
+## To read an exact number of bytes or fail, you can use [Tcp.readExactly] instead.
 readUpTo : Nat, Stream -> Task (List U8) [TcpReadErr StreamErr]
 readUpTo = \bytesToRead, stream ->
     Effect.tcpReadUpTo bytesToRead stream
@@ -72,12 +72,11 @@ readUpTo = \bytesToRead, stream ->
     |> InternalTask.fromEffect
     |> Task.mapFail TcpReadErr
 
-
 ## Read an exact number of bytes or fail.
 ##
 ##     File.readExactly 64 stream
 ##
-## If we stream ends before reaching the specified number of bytes, the [Task] will fail with [TcpUnexpectedEOF].
+## [TcpUnexpectedEOF] is returned if the stream ends before the specfied number of bytes is reached.
 readExactly : Nat, Stream -> Task (List U8) [TcpReadErr StreamErr, TcpUnexpectedEOF]
 readExactly = \bytesToRead, stream ->
     Effect.tcpReadExactly bytesToRead stream
@@ -85,7 +84,14 @@ readExactly = \bytesToRead, stream ->
     |> InternalTask.fromEffect
     |> Task.mapFail TcpReadErr
 
-## TODO doc
+## Read until a delimiter or EOF is reached.
+##
+##     # Read until null terminator
+##     File.readUntil 0 stream
+##
+## If found, the delimiter is included as the last byte.
+##
+## To read until a newline is found, you can use [Tcp.readLine] for convenience.
 readUntil : U8, Stream -> Task (List U8) [TcpReadErr StreamErr]
 readUntil = \byte, stream ->
     Effect.tcpReadUntil byte stream
@@ -93,16 +99,18 @@ readUntil = \byte, stream ->
     |> InternalTask.fromEffect
     |> Task.mapFail TcpReadErr
 
-
-## TODO doc
+## Read until a newline or EOF is reached.
+##
+##     File.readLine stream
+##
+## If found, the newline is included as the last character in the [Str].
 readLine : Stream -> Task Str [TcpReadErr StreamErr, TcpReadBadUtf8 _]
 readLine = \stream ->
     bytes <- readUntil '\n' stream |> Task.await
 
-    Str.fromUtf8 bytes 
-        |> Result.mapErr TcpReadBadUtf8
-        |> Task.fromResult
-    
+    Str.fromUtf8 bytes
+    |> Result.mapErr TcpReadBadUtf8
+    |> Task.fromResult
 
 ## Writes bytes to a TCP stream.
 ##
@@ -117,7 +125,6 @@ write = \bytes, stream ->
     |> InternalTask.fromEffect
     |> Task.mapFail TcpWriteErr
 
-
 ## Writes a [Str] to a TCP stream, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##
 ##     # Write "Hi from Roc!" encoded as UTF-8
@@ -127,7 +134,6 @@ write = \bytes, stream ->
 writeUtf8 : Str, Stream -> Task {} [TcpWriteErr StreamErr]
 writeUtf8 = \str, stream ->
     write (Str.toUtf8 str) stream
-
 
 connectErrToStr : ConnectErr -> Str
 connectErrToStr = \err ->

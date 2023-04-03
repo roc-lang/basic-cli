@@ -25,6 +25,7 @@ main =
                     If you don't have anything listening on port 8080, run: 
                     $ nc -l 8080
                     """
+
             Err (TcpPerformErr (TcpReadBadUtf8 _)) ->
                 Stderr.line "Received invalid UTF-8 data"
 
