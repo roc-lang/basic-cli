@@ -299,8 +299,6 @@ pub extern "C" fn roc_fx_exePath(_roc_str: &RocStr) -> RocResult<RocList<u8>, ()
 
 #[no_mangle]
 pub extern "C" fn roc_fx_stdinLine() -> RocStr {
-    use std::io::BufRead;
-
     let stdin = std::io::stdin();
     let line1 = stdin.lock().lines().next().unwrap().unwrap();
 
