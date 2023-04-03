@@ -80,17 +80,18 @@ readUpTo = \bytesToRead, stream ->
 readExactly : Nat, Stream -> Task (List U8) [TcpReadErr StreamErr, TcpUnexpectedEOF]
 readExactly = \bytesToRead, stream ->
     Effect.tcpReadExactly bytesToRead stream
-    |> Effect.map (\result ->
-        when result is
-            Read bytes ->
-                Ok bytes
+    |> Effect.map
+        (\result ->
+            when result is
+                Read bytes ->
+                    Ok bytes
 
-            UnexpectedEOF ->
-                Err TcpUnexpectedEOF
+                UnexpectedEOF ->
+                    Err TcpUnexpectedEOF
 
-            Error err ->
-                Err (TcpReadErr err)
-    ) 
+                Error err ->
+                    Err (TcpReadErr err)
+        )
     |> InternalTask.fromEffect
 
 ## Read until a delimiter or EOF is reached.
