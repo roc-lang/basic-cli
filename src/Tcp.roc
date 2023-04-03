@@ -101,7 +101,7 @@ readExactly = \bytesToRead, stream ->
 ##
 ## If found, the delimiter is included as the last byte.
 ##
-## To read until a newline is found, you can use [Tcp.readLine] for convenience.
+## To read until a newline is found, you can use [Tcp.readLine] which conveniently decodes to a [Str].
 readUntil : U8, Stream -> Task (List U8) [TcpReadErr StreamErr]
 readUntil = \byte, stream ->
     Effect.tcpReadUntil byte stream
