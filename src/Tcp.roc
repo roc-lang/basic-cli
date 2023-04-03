@@ -145,6 +145,12 @@ writeUtf8 : Str, Stream -> Task {} [TcpWriteErr StreamErr]
 writeUtf8 = \str, stream ->
     write (Str.toUtf8 str) stream
 
+## Convert a [ConnectErr] to a [Str] you can print.
+##
+##     when err is
+##         TcpPerfomErr (TcpConnectErr connectErr) ->
+##             Stderr.line (Tcp.connectErrToStr connectErr)
+##
 connectErrToStr : ConnectErr -> Str
 connectErrToStr = \err ->
     when err is
@@ -159,6 +165,17 @@ connectErrToStr = \err ->
             codeStr = Num.toStr code
             "Unrecognized Error: \(codeStr) - \(message)"
 
+## Convert a [StreamErr] to a [Str] you can print.
+##
+##     when err is
+##         TcpPerformErr (TcpReadErr err) ->
+##             errStr = Tcp.streamErrToStr err
+##             Stderr.line "Error while reading: \(errStr)"
+##
+##         TcpPerformErr (TcpWriteErr err) ->
+##             errStr = Tcp.streamErrToStr err
+##             Stderr.line "Error while writing: \(errStr)"
+##
 streamErrToStr : StreamErr -> Str
 streamErrToStr = \err ->
     when err is
