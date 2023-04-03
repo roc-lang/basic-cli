@@ -6,7 +6,7 @@ app "tcp-client"
 main : Task {} []
 main =
     task =
-        stream <- Tcp.withConnect "127.0.0.1" 8080
+        stream <- Tcp.withConnect "127.0.0.1" 8085
         _ <- Stdout.line "Connected!" |> await
 
         Task.loop {} \_ -> Task.map (tick stream) Step
@@ -22,8 +22,8 @@ main =
                     """
                     Failed to connect: \(errStr)
 
-                    If you don't have anything listening on port 8080, run: 
-                    $ nc -l 8080
+                    If you don't have anything listening on port 8085, run: 
+                    $ nc -l 8085
                     """
 
             Err (TcpPerformErr (TcpReadBadUtf8 _)) ->

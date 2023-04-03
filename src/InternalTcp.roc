@@ -6,6 +6,7 @@ interface InternalTcp
         ConnectResult,
         WriteResult,
         ReadResult,
+        ReadExactlyResult,
         fromConnectResult,
         fromWriteResult,
         fromReadResult,
@@ -67,8 +68,7 @@ fromWriteResult = \result ->
 
 ReadResult : [
     Read (List U8),
-    StreamErr StreamErr,
-    UnexpectedEOF,
+    Error StreamErr,
 ]
 
 fromReadResult : ReadResult -> Result (List U8) StreamErr
@@ -77,8 +77,11 @@ fromReadResult = \result ->
         Read bytes ->
             Ok bytes
 
-        UnexpectedEOF ->
-            crash "eof"
-
-        StreamErr err ->
+        Error err ->
             Err err
+
+ReadExactlyResult : [
+    Read (List U8),
+    UnexpectedEOF,
+    Error StreamErr,
+]

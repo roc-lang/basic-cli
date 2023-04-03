@@ -632,12 +632,12 @@ pub extern "C" fn roc_fx_tcpReadUpTo(bytes_to_read: usize, stream_ptr: *mut BufR
             tcp_glue::ReadResult::Read(rocList)
         }
 
-        Err(err) => tcp_glue::ReadResult::StreamErr(to_tcp_stream_err(err)),
+        Err(err) => tcp_glue::ReadResult::Error(to_tcp_stream_err(err)),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpReadExactly(bytes_to_read: usize, stream_ptr: *mut BufReader<TcpStream>) -> tcp_glue::ReadResult {
+pub extern "C" fn roc_fx_tcpReadExactly(bytes_to_read: usize, stream_ptr: *mut BufReader<TcpStream>) -> tcp_glue::ReadExactlyResult {
     let reader = unsafe { &mut *stream_ptr };
 
     let mut buffer = Vec::with_capacity(bytes_to_read);
@@ -646,14 +646,14 @@ pub extern "C" fn roc_fx_tcpReadExactly(bytes_to_read: usize, stream_ptr: *mut B
     match chunk.read_to_end(&mut buffer) {
         Ok(read) => {
             if read < bytes_to_read {
-                tcp_glue::ReadResult::UnexpectedEOF
+                tcp_glue::ReadExactlyResult::UnexpectedEOF
             } else {
                 let rocList = RocList::from(&buffer[..]);
-                tcp_glue::ReadResult::Read(rocList)
+                tcp_glue::ReadExactlyResult::Read(rocList)
             }
         }
 
-        Err(err) => tcp_glue::ReadResult::StreamErr(to_tcp_stream_err(err)),
+        Err(err) => tcp_glue::ReadExactlyResult::Error(to_tcp_stream_err(err)),
     }
 }
 
@@ -669,7 +669,7 @@ pub extern "C" fn roc_fx_tcpReadUntil(byte: u8, stream_ptr: *mut BufReader<TcpSt
             tcp_glue::ReadResult::Read(rocList)
         }
 
-        Err(err) => tcp_glue::ReadResult::StreamErr(to_tcp_stream_err(err)),
+        Err(err) => tcp_glue::ReadResult::Error(to_tcp_stream_err(err)),
     }
 }
 
