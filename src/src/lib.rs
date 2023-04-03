@@ -618,10 +618,12 @@ pub extern "C" fn roc_fx_tcpClose(stream_ptr: *mut BufReader<TcpStream>) {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpRead(stream_ptr: *mut BufReader<TcpStream>) -> tcp_glue::ReadResult {
+pub extern "C" fn roc_fx_tcpReadUpTo(bytes_to_read: usize, stream_ptr: *mut BufReader<TcpStream>) -> tcp_glue::ReadResult {
     let reader = unsafe { &mut *stream_ptr };
 
-    match reader.fill_buf() {
+    let mut chunk = reader.take(bytes_to_read as u64);
+
+    match chunk.fill_buf() {
         Ok(received) => {
             let received = received.to_vec();
             reader.consume(received.len());
@@ -630,9 +632,48 @@ pub extern "C" fn roc_fx_tcpRead(stream_ptr: *mut BufReader<TcpStream>) -> tcp_g
             tcp_glue::ReadResult::Read(rocList)
         }
 
-        Err(err) => tcp_glue::ReadResult::Error(to_tcp_stream_err(err)),
+        Err(err) => tcp_glue::ReadResult::StreamErr(to_tcp_stream_err(err)),
     }
 }
+
+#[no_mangle]
+pub extern "C" fn roc_fx_tcpReadExactly(bytes_to_read: usize, stream_ptr: *mut BufReader<TcpStream>) -> tcp_glue::ReadResult {
+    let reader = unsafe { &mut *stream_ptr };
+
+    let mut buffer = Vec::with_capacity(bytes_to_read);
+    let mut chunk = reader.take(bytes_to_read as u64);
+
+    match chunk.read_to_end(&mut buffer) {
+        Ok(read) => {
+            if read < bytes_to_read {
+                tcp_glue::ReadResult::UnexpectedEOF
+            } else {
+                let rocList = RocList::from(&buffer[..]);
+                tcp_glue::ReadResult::Read(rocList)
+            }
+        }
+
+        Err(err) => tcp_glue::ReadResult::StreamErr(to_tcp_stream_err(err)),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_tcpReadUntil(byte: u8, stream_ptr: *mut BufReader<TcpStream>) -> tcp_glue::ReadResult {
+    let reader = unsafe { &mut *stream_ptr };
+
+    let mut buffer = vec![];
+
+    match reader.read_until(byte, &mut buffer) {
+        Ok(_) => {
+            let rocList = RocList::from(&buffer[..]);
+            tcp_glue::ReadResult::Read(rocList)
+        }
+
+        Err(err) => tcp_glue::ReadResult::StreamErr(to_tcp_stream_err(err)),
+    }
+}
+
+
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpWrite(

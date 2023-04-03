@@ -2,11 +2,12 @@ interface Tcp
     exposes [
         Stream,
         withConnect,
-        readBytes,
-        readUtf8,
-        writeBytes,
+        readUpTo,
+        readExactly,
+        readUntil,
+        readLine,
+        write,
         writeUtf8,
-        errToStr,
         connectErrToStr,
         streamErrToStr,
     ]
@@ -55,35 +56,53 @@ close = \stream ->
     |> Effect.map \{} -> Ok {}
     |> InternalTask.fromEffect
 
-## Reads all available bytes in the TCP Stream.
+## Reads up to a number of bytes from the TCP stream.
 ##
-##     # Read all the bytes available
-##     File.readBytes stream
+##     received <- File.readUpTo 64 stream |> await
 ##
-## To read a [Str], you can use `Tcp.readUtf8` instead.
-readBytes : Stream -> Task (List U8) [TcpReadErr StreamErr]
-readBytes = \stream ->
-    Effect.tcpRead stream
+## If you need a [Str], you can use [Str.fromUtf8]:
+##      
+##     str <- Str.fromUtf8 received |> Task.fromResult |> await
+##
+## To read an exact number of bytes or fail, you can use [Tcp.readExact] instead.
+readUpTo : Nat, Stream -> Task (List U8) [TcpReadErr StreamErr]
+readUpTo = \bytesToRead, stream ->
+    Effect.tcpReadUpTo bytesToRead stream
     |> Effect.map InternalTcp.fromReadResult
     |> InternalTask.fromEffect
     |> Task.mapFail TcpReadErr
 
-## Reads a [Str] from all the available bytes in the TCP Stream.
+
+## Read an exact number of bytes or fail.
 ##
-##     # Read all the bytes available
-##     File.readUtf8 stream
+##     File.readExactly 64 stream
 ##
-## To read unformatted bytes, you can use `Tcp.readBytes` instead.
-readUtf8 : Stream -> Task Str [TcpReadErr StreamErr, TcpReadBadUtf8 _]
-readUtf8 = \stream ->
-    Effect.tcpRead stream
-    |> Effect.map \result ->
-        InternalTcp.fromReadResult result
-        |> Result.mapErr TcpReadErr
-        |> Result.try \bytes ->
-            Str.fromUtf8 bytes
-            |> Result.mapErr \err -> TcpReadBadUtf8 err
+## If we stream ends before reaching the specified number of bytes, the [Task] will fail with [TcpUnexpectedEOF].
+readExactly : Nat, Stream -> Task (List U8) [TcpReadErr StreamErr, TcpUnexpectedEOF]
+readExactly = \bytesToRead, stream ->
+    Effect.tcpReadExactly bytesToRead stream
+    |> Effect.map InternalTcp.fromReadResult
     |> InternalTask.fromEffect
+    |> Task.mapFail TcpReadErr
+
+## TODO doc
+readUntil : U8, Stream -> Task (List U8) [TcpReadErr StreamErr]
+readUntil = \byte, stream ->
+    Effect.tcpReadUntil byte stream
+    |> Effect.map InternalTcp.fromReadResult
+    |> InternalTask.fromEffect
+    |> Task.mapFail TcpReadErr
+
+
+## TODO doc
+readLine : Stream -> Task Str [TcpReadErr StreamErr, TcpReadBadUtf8 _]
+readLine = \stream ->
+    bytes <- readUntil '\n' stream |> Task.await
+
+    Str.fromUtf8 bytes 
+        |> Result.mapErr TcpReadBadUtf8
+        |> Task.fromResult
+    
 
 ## Writes bytes to a TCP stream.
 ##
@@ -91,51 +110,24 @@ readUtf8 = \stream ->
 ##     Tcp.writeBytes [1, 2, 3] stream
 ##
 ## To write a [Str], you can use [Tcp.writeUtf8] instead.
-writeBytes : List U8, Stream -> Task {} [TcpWriteErr StreamErr]
-writeBytes = \bytes, stream ->
+write : List U8, Stream -> Task {} [TcpWriteErr StreamErr]
+write = \bytes, stream ->
     Effect.tcpWrite bytes stream
     |> Effect.map InternalTcp.fromWriteResult
     |> InternalTask.fromEffect
     |> Task.mapFail TcpWriteErr
+
 
 ## Writes a [Str] to a TCP stream, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##
 ##     # Write "Hi from Roc!" encoded as UTF-8
 ##     Tcp.writeUtf8 "Hi from Roc!" stream
 ##
-## To write unformatted bytes, you can use [Tcp.writeBytes] instead.
+## To write unformatted bytes, you can use [Tcp.write] instead.
 writeUtf8 : Str, Stream -> Task {} [TcpWriteErr StreamErr]
 writeUtf8 = \str, stream ->
-    Str.toUtf8 str
-    |> Effect.tcpWrite stream
-    |> Effect.map InternalTcp.fromWriteResult
-    |> InternalTask.fromEffect
-    |> Task.mapFail TcpWriteErr
+    write (Str.toUtf8 str) stream
 
-errToStr :
-    [
-        TcpConnectErr ConnectErr,
-        TcpReadErr StreamErr,
-        TcpReadBadUtf8 _,
-        TcpWriteErr StreamErr,
-    ]
-    -> Str
-errToStr = \tag ->
-    when tag is
-        TcpConnectErr err ->
-            errStr = Tcp.connectErrToStr err
-            "TcpConnectErr: \(errStr)"
-
-        TcpReadBadUtf8 _ ->
-            "TcpReadBadUtf8"
-
-        TcpReadErr err ->
-            errStr = streamErrToStr err
-            "TcpReadErr: \(errStr)"
-
-        TcpWriteErr err ->
-            errStr = streamErrToStr err
-            "TcpWriteErr: \(errStr)"
 
 connectErrToStr : ConnectErr -> Str
 connectErrToStr = \err ->

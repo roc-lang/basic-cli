@@ -25,15 +25,23 @@ main =
                     If you don't have anything listening on port 8080, run: 
                     $ nc -l 8080
                     """
+            Err (TcpPerformErr (TcpReadBadUtf8 _)) ->
+                Stderr.line "Received invalid UTF-8 data"
 
-            Err (TcpPerformErr err) ->
-                Stderr.line (Tcp.errToStr err)
+            Err (TcpPerformErr (TcpReadErr err)) ->
+                errStr = Tcp.streamErrToStr err
+                Stderr.line "Error while reading: \(errStr)"
+
+            Err (TcpPerformErr (TcpWriteErr err)) ->
+                errStr = Tcp.streamErrToStr err
+                Stderr.line "Error while writing: \(errStr)"
 
 tick : Tcp.Stream -> Task.Task {} _
 tick = \stream ->
     _ <- Stdout.write "> " |> await
+
     outMsg <- Stdin.line |> await
     _ <- Tcp.writeUtf8 "\(outMsg)\n" stream |> await
 
-    inMsg <- Tcp.readUtf8 stream |> await
+    inMsg <- Tcp.readLine stream |> await
     Stdout.line "< \(inMsg)"

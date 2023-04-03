@@ -26,7 +26,9 @@ hosted Effect
         processExit,
         tcpConnect,
         tcpClose,
-        tcpRead,
+        tcpReadUpTo,
+        tcpReadExactly,
+        tcpReadUntil,
         tcpWrite,
     ]
     imports [InternalHttp.{ Request, Response }, InternalFile, InternalDir, InternalTcp]
@@ -60,5 +62,7 @@ sendRequest : Box Request -> Effect Response
 
 tcpConnect : Str, U16 -> Effect InternalTcp.ConnectResult
 tcpClose : InternalTcp.Stream -> Effect {}
-tcpRead : InternalTcp.Stream -> Effect InternalTcp.ReadResult
+tcpReadUpTo : Nat, InternalTcp.Stream -> Effect InternalTcp.ReadResult
+tcpReadExactly : Nat, InternalTcp.Stream -> Effect InternalTcp.ReadResult
+tcpReadUntil : U8, InternalTcp.Stream -> Effect InternalTcp.ReadResult
 tcpWrite : List U8, InternalTcp.Stream -> Effect InternalTcp.WriteResult

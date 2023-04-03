@@ -67,7 +67,8 @@ fromWriteResult = \result ->
 
 ReadResult : [
     Read (List U8),
-    Error StreamErr,
+    StreamErr StreamErr,
+    UnexpectedEOF,
 ]
 
 fromReadResult : ReadResult -> Result (List U8) StreamErr
@@ -76,5 +77,8 @@ fromReadResult = \result ->
         Read bytes ->
             Ok bytes
 
-        Error err ->
+        UnexpectedEOF ->
+            crash "eof"
+
+        StreamErr err ->
             Err err
