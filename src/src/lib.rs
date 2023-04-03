@@ -618,7 +618,10 @@ pub extern "C" fn roc_fx_tcpClose(stream_ptr: *mut BufReader<TcpStream>) {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpReadUpTo(bytes_to_read: usize, stream_ptr: *mut BufReader<TcpStream>) -> tcp_glue::ReadResult {
+pub extern "C" fn roc_fx_tcpReadUpTo(
+    bytes_to_read: usize,
+    stream_ptr: *mut BufReader<TcpStream>,
+) -> tcp_glue::ReadResult {
     let reader = unsafe { &mut *stream_ptr };
 
     let mut chunk = reader.take(bytes_to_read as u64);
@@ -637,7 +640,10 @@ pub extern "C" fn roc_fx_tcpReadUpTo(bytes_to_read: usize, stream_ptr: *mut BufR
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpReadExactly(bytes_to_read: usize, stream_ptr: *mut BufReader<TcpStream>) -> tcp_glue::ReadExactlyResult {
+pub extern "C" fn roc_fx_tcpReadExactly(
+    bytes_to_read: usize,
+    stream_ptr: *mut BufReader<TcpStream>,
+) -> tcp_glue::ReadExactlyResult {
     let reader = unsafe { &mut *stream_ptr };
 
     let mut buffer = Vec::with_capacity(bytes_to_read);
@@ -658,7 +664,10 @@ pub extern "C" fn roc_fx_tcpReadExactly(bytes_to_read: usize, stream_ptr: *mut B
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpReadUntil(byte: u8, stream_ptr: *mut BufReader<TcpStream>) -> tcp_glue::ReadResult {
+pub extern "C" fn roc_fx_tcpReadUntil(
+    byte: u8,
+    stream_ptr: *mut BufReader<TcpStream>,
+) -> tcp_glue::ReadResult {
     let reader = unsafe { &mut *stream_ptr };
 
     let mut buffer = vec![];
@@ -672,8 +681,6 @@ pub extern "C" fn roc_fx_tcpReadUntil(byte: u8, stream_ptr: *mut BufReader<TcpSt
         Err(err) => tcp_glue::ReadResult::Error(to_tcp_stream_err(err)),
     }
 }
-
-
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpWrite(
