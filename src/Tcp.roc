@@ -40,6 +40,10 @@ withConnect = \hostname, port, callback ->
 
     {} <- callback stream
         |> Task.mapFail TcpPerformErr
+        |> Task.onFail (\err -> 
+            _ <- close stream |> Task.await
+            Task.fail err
+        )
         |> Task.await
 
     close stream
