@@ -2,6 +2,7 @@
 
 mod file_glue;
 mod glue;
+mod tcp_glue;
 
 use core::alloc::Layout;
 use core::ffi::c_void;
@@ -9,9 +10,10 @@ use core::mem::MaybeUninit;
 use glue::Metadata;
 use roc_std::{RocDict, RocList, RocResult, RocStr};
 use std::borrow::{Borrow, Cow};
-use std::ffi::{OsStr};
+use std::ffi::OsStr;
 use std::fs::File;
-use std::io::Write;
+use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
+use std::net::TcpStream;
 use std::path::Path;
 use std::time::Duration;
 
@@ -297,8 +299,6 @@ pub extern "C" fn roc_fx_exePath(_roc_str: &RocStr) -> RocResult<RocList<u8>, ()
 
 #[no_mangle]
 pub extern "C" fn roc_fx_stdinLine() -> RocStr {
-    use std::io::BufRead;
-
     let stdin = std::io::stdin();
     let line1 = stdin.lock().lines().next().unwrap().unwrap();
 
@@ -395,20 +395,14 @@ fn path_from_roc_path(bytes: &RocList<u8>) -> Cow<'_, Path> {
 
 #[no_mangle]
 pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocList<u8>, ReadErr> {
-    use std::io::Read;
-
     let mut bytes = Vec::new();
 
     match File::open(path_from_roc_path(roc_path)) {
         Ok(mut file) => match file.read_to_end(&mut bytes) {
             Ok(_bytes_read) => RocResult::ok(RocList::from(bytes.as_slice())),
-            Err(err) => {
-                RocResult::err(toRocReadError(err))
-            }
+            Err(err) => RocResult::err(toRocReadError(err)),
         },
-        Err(err) => {
-            RocResult::err(toRocReadError(err))
-        }
+        Err(err) => RocResult::err(toRocReadError(err)),
     }
 }
 
@@ -416,9 +410,7 @@ pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocL
 pub extern "C" fn roc_fx_fileDelete(roc_path: &RocList<u8>) -> RocResult<(), ReadErr> {
     match std::fs::remove_file(path_from_roc_path(roc_path)) {
         Ok(()) => RocResult::ok(()),
-        Err(err) => {
-            RocResult::err(toRocReadError(err))
-        }
+        Err(err) => RocResult::err(toRocReadError(err)),
     }
 }
 
@@ -452,9 +444,7 @@ pub extern "C" fn roc_fx_dirList(
                 })
                 .collect::<RocList<RocList<u8>>>(),
         ),
-        Err(err) => {
-            RocResult::err(toRocWriteError(err))
-        }
+        Err(err) => RocResult::err(toRocWriteError(err)),
     }
 }
 
@@ -564,37 +554,37 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &glue::Request) -> glue::Respo
     }
 }
 
-fn toRocWriteError(err : std::io::Error) -> file_glue::WriteErr {
-    match err.kind(){
-        std::io::ErrorKind::NotFound => file_glue::WriteErr::NotFound,
-        std::io::ErrorKind::AlreadyExists => file_glue::WriteErr::AlreadyExists,
-        std::io::ErrorKind::Interrupted => file_glue::WriteErr::Interrupted,
-        std::io::ErrorKind::OutOfMemory => file_glue::WriteErr::OutOfMemory,
-        std::io::ErrorKind::PermissionDenied => file_glue::WriteErr::PermissionDenied,
-        std::io::ErrorKind::TimedOut => file_glue::WriteErr::TimedOut,
+fn toRocWriteError(err: std::io::Error) -> file_glue::WriteErr {
+    match err.kind() {
+        ErrorKind::NotFound => file_glue::WriteErr::NotFound,
+        ErrorKind::AlreadyExists => file_glue::WriteErr::AlreadyExists,
+        ErrorKind::Interrupted => file_glue::WriteErr::Interrupted,
+        ErrorKind::OutOfMemory => file_glue::WriteErr::OutOfMemory,
+        ErrorKind::PermissionDenied => file_glue::WriteErr::PermissionDenied,
+        ErrorKind::TimedOut => file_glue::WriteErr::TimedOut,
         // TODO investigate support the following IO errors may need to update API
-        std::io::ErrorKind::WriteZero => file_glue::WriteErr::WriteZero,
+        ErrorKind::WriteZero => file_glue::WriteErr::WriteZero,
         _ => file_glue::WriteErr::Unsupported,
         // TODO investigate support the following IO errors
-        // std::io::ErrorKind::FileTooLarge <- unstable language feature 
-        // std::io::ErrorKind::ExecutableFileBusy <- unstable language feature 
-        // std::io::ErrorKind::FilesystemQuotaExceeded <- unstable language feature 
-        // std::io::ErrorKind::InvalidFilename <- unstable language feature 
-        // std::io::ErrorKind::ResourceBusy <- unstable language feature 
-        // std::io::ErrorKind::ReadOnlyFilesystem <- unstable language feature 
-        // std::io::ErrorKind::TooManyLinks <- unstable language feature 
-        // std::io::ErrorKind::StaleNetworkFileHandle <- unstable language feature 
+        // std::io::ErrorKind::FileTooLarge <- unstable language feature
+        // std::io::ErrorKind::ExecutableFileBusy <- unstable language feature
+        // std::io::ErrorKind::FilesystemQuotaExceeded <- unstable language feature
+        // std::io::ErrorKind::InvalidFilename <- unstable language feature
+        // std::io::ErrorKind::ResourceBusy <- unstable language feature
+        // std::io::ErrorKind::ReadOnlyFilesystem <- unstable language feature
+        // std::io::ErrorKind::TooManyLinks <- unstable language feature
+        // std::io::ErrorKind::StaleNetworkFileHandle <- unstable language feature
         // std::io::ErrorKind::StorageFull <- unstable language feature
     }
 }
 
-fn toRocReadError(err : std::io::Error) -> file_glue::ReadErr {
-    match err.kind(){
-        std::io::ErrorKind::Interrupted => file_glue::ReadErr::Interrupted,
-        std::io::ErrorKind::NotFound => file_glue::ReadErr::NotFound,
-        std::io::ErrorKind::OutOfMemory => file_glue::ReadErr::OutOfMemory,
-        std::io::ErrorKind::PermissionDenied => file_glue::ReadErr::PermissionDenied,
-        std::io::ErrorKind::TimedOut => file_glue::ReadErr::TimedOut,
+fn toRocReadError(err: std::io::Error) -> file_glue::ReadErr {
+    match err.kind() {
+        ErrorKind::Interrupted => file_glue::ReadErr::Interrupted,
+        ErrorKind::NotFound => file_glue::ReadErr::NotFound,
+        ErrorKind::OutOfMemory => file_glue::ReadErr::OutOfMemory,
+        ErrorKind::PermissionDenied => file_glue::ReadErr::PermissionDenied,
+        ErrorKind::TimedOut => file_glue::ReadErr::TimedOut,
         // TODO investigate support the following IO errors may need to update API
         // std::io::ErrorKind:: => file_glue::ReadErr::TooManyHardlinks,
         // std::io::ErrorKind:: => file_glue::ReadErr::TooManySymlinks,
@@ -602,5 +592,137 @@ fn toRocReadError(err : std::io::Error) -> file_glue::ReadErr {
         // std::io::ErrorKind::StaleNetworkFileHandle <- unstable language feature
         // std::io::ErrorKind::InvalidFilename <- unstable language feature
         _ => file_glue::ReadErr::Unsupported,
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_tcpConnect(host: &RocStr, port: u16) -> tcp_glue::ConnectResult {
+    match TcpStream::connect((host.as_str(), port)) {
+        Ok(stream) => {
+            let reader = BufReader::new(stream);
+            let ptr = Box::into_raw(Box::new(reader)) as u64;
+
+            tcp_glue::ConnectResult::Connected(ptr)
+        }
+        Err(err) => tcp_glue::ConnectResult::Error(to_tcp_connect_err(err)),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_tcpClose(stream_ptr: *mut BufReader<TcpStream>) {
+    unsafe {
+        drop(Box::from_raw(stream_ptr));
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_tcpReadUpTo(
+    bytes_to_read: usize,
+    stream_ptr: *mut BufReader<TcpStream>,
+) -> tcp_glue::ReadResult {
+    let reader = unsafe { &mut *stream_ptr };
+
+    let mut chunk = reader.take(bytes_to_read as u64);
+
+    match chunk.fill_buf() {
+        Ok(received) => {
+            let received = received.to_vec();
+            reader.consume(received.len());
+
+            let rocList = RocList::from(&received[..]);
+            tcp_glue::ReadResult::Read(rocList)
+        }
+
+        Err(err) => tcp_glue::ReadResult::Error(to_tcp_stream_err(err)),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_tcpReadExactly(
+    bytes_to_read: usize,
+    stream_ptr: *mut BufReader<TcpStream>,
+) -> tcp_glue::ReadExactlyResult {
+    let reader = unsafe { &mut *stream_ptr };
+
+    let mut buffer = Vec::with_capacity(bytes_to_read);
+    let mut chunk = reader.take(bytes_to_read as u64);
+
+    match chunk.read_to_end(&mut buffer) {
+        Ok(read) => {
+            if read < bytes_to_read {
+                tcp_glue::ReadExactlyResult::UnexpectedEOF
+            } else {
+                let rocList = RocList::from(&buffer[..]);
+                tcp_glue::ReadExactlyResult::Read(rocList)
+            }
+        }
+
+        Err(err) => tcp_glue::ReadExactlyResult::Error(to_tcp_stream_err(err)),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_tcpReadUntil(
+    byte: u8,
+    stream_ptr: *mut BufReader<TcpStream>,
+) -> tcp_glue::ReadResult {
+    let reader = unsafe { &mut *stream_ptr };
+
+    let mut buffer = vec![];
+
+    match reader.read_until(byte, &mut buffer) {
+        Ok(_) => {
+            let rocList = RocList::from(&buffer[..]);
+            tcp_glue::ReadResult::Read(rocList)
+        }
+
+        Err(err) => tcp_glue::ReadResult::Error(to_tcp_stream_err(err)),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_tcpWrite(
+    msg: &RocList<u8>,
+    stream_ptr: *mut BufReader<TcpStream>,
+) -> tcp_glue::WriteResult {
+    let reader = unsafe { &mut *stream_ptr };
+    let mut stream = reader.get_ref();
+
+    match stream.write_all(msg.as_slice()) {
+        Ok(_) => tcp_glue::WriteResult::Wrote,
+        Err(err) => tcp_glue::WriteResult::Error(to_tcp_stream_err(err)),
+    }
+}
+
+fn to_tcp_connect_err(err: std::io::Error) -> tcp_glue::ConnectErr {
+    let kind = err.kind();
+    match kind {
+        ErrorKind::PermissionDenied => tcp_glue::ConnectErr::PermissionDenied,
+        ErrorKind::AddrInUse => tcp_glue::ConnectErr::AddrInUse,
+        ErrorKind::AddrNotAvailable => tcp_glue::ConnectErr::AddrNotAvailable,
+        ErrorKind::ConnectionRefused => tcp_glue::ConnectErr::ConnectionRefused,
+        ErrorKind::Interrupted => tcp_glue::ConnectErr::Interrupted,
+        ErrorKind::TimedOut => tcp_glue::ConnectErr::TimedOut,
+        ErrorKind::Unsupported => tcp_glue::ConnectErr::Unsupported,
+        _ => tcp_glue::ConnectErr::Unrecognized(
+            RocStr::from(kind.to_string().borrow()),
+            err.raw_os_error().unwrap_or_default(),
+        ),
+    }
+}
+
+fn to_tcp_stream_err(err: std::io::Error) -> tcp_glue::StreamErr {
+    let kind = err.kind();
+    match kind {
+        ErrorKind::PermissionDenied => tcp_glue::StreamErr::PermissionDenied,
+        ErrorKind::ConnectionRefused => tcp_glue::StreamErr::ConnectionRefused,
+        ErrorKind::ConnectionReset => tcp_glue::StreamErr::ConnectionReset,
+        ErrorKind::Interrupted => tcp_glue::StreamErr::Interrupted,
+        ErrorKind::OutOfMemory => tcp_glue::StreamErr::OutOfMemory,
+        ErrorKind::BrokenPipe => tcp_glue::StreamErr::BrokenPipe,
+        _ => tcp_glue::StreamErr::Unrecognized(
+            RocStr::from(kind.to_string().borrow()),
+            err.raw_os_error().unwrap_or_default(),
+        ),
     }
 }

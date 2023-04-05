@@ -40,6 +40,7 @@
           rust
           llvmPkgs.clang
           expect
+          nmap
         ]);
       in {
 
