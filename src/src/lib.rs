@@ -15,7 +15,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
 use std::net::TcpStream;
 use std::path::Path;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use file_glue::ReadErr;
 use file_glue::WriteErr;
@@ -424,6 +424,16 @@ pub extern "C" fn roc_fx_cwd() -> RocList<u8> {
             RocList::empty()
         }
     }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_posixTime() -> roc_std::U128 {
+    let start = SystemTime::now();
+    let since_epoch = start
+        .duration_since(UNIX_EPOCH)
+        .expect("time went backwards");
+
+    roc_std::U128::from(since_epoch.as_millis())
 }
 
 #[no_mangle]
