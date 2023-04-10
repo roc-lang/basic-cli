@@ -8,7 +8,9 @@ interface Tcp
         readLine,
         write,
         writeUtf8,
+        ConnectErr,
         connectErrToStr,
+        StreamErr,
         streamErrToStr,
     ]
     imports [Effect, Task.{ Task }, InternalTask, InternalTcp]
