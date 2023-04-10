@@ -23,6 +23,7 @@ hosted Effect
         fileDelete,
         fileWriteUtf8,
         fileWriteBytes,
+        posixTime,
         processExit,
         tcpConnect,
         tcpClose,
@@ -66,3 +67,5 @@ tcpReadUpTo : Nat, InternalTcp.Stream -> Effect InternalTcp.ReadResult
 tcpReadExactly : Nat, InternalTcp.Stream -> Effect InternalTcp.ReadExactlyResult
 tcpReadUntil : U8, InternalTcp.Stream -> Effect InternalTcp.ReadResult
 tcpWrite : List U8, InternalTcp.Stream -> Effect InternalTcp.WriteResult
+
+posixTime : Effect U128
