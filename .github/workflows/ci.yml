@@ -1,7 +1,6 @@
 on: 
   pull_request:
-  schedule:
-    - cron:  '0 13 * * *'
+  workflow_dispatch:
 
 # this cancels workflows currently in progress if you start a new one
 concurrency:
