@@ -1,98 +1,48 @@
 interface Task
-    exposes [Task, succeed, fail, await, map, mapFail, onFail, attempt, forever, loop, fromResult]
-    imports [Effect, InternalTask]
+    exposes [Task, succeed, fail, await, map, mapFail, onFail, attempt, forever, loop, fromResult, stdoutLine, stdoutWrite, stdinLine]
+    imports [Op.{ Op, mapOp }]
 
-Task ok err : InternalTask.Task ok err
-
-forever : Task val err -> Task * err
-forever = \task ->
-    looper = \{} ->
-        task
-        |> InternalTask.toEffect
-        |> Effect.map
-            \res ->
-                when res is
-                    Ok _ -> Step {}
-                    Err e -> Done (Err e)
-
-    Effect.loop {} looper
-    |> InternalTask.fromEffect
-
-loop : state, (state -> Task [Step state, Done done] err) -> Task done err
-loop = \state, step ->
-    looper = \current ->
-        step current
-        |> InternalTask.toEffect
-        |> Effect.map
-            \res ->
-                when res is
-                    Ok (Step newState) -> Step newState
-                    Ok (Done result) -> Done (Ok result)
-                    Err e -> Done (Err e)
-
-    Effect.loop state looper
-    |> InternalTask.fromEffect
+Task ok err := [Return (Result ok err), Lift (Op (Task ok err))]
 
 succeed : ok -> Task ok *
-succeed = \ok -> InternalTask.succeed ok
+succeed = \ok -> @Task (Return (Ok ok))
 
 fail : err -> Task * err
-fail = \err -> InternalTask.fail err
-
-attempt : Task a b, (Result a b -> Task c d) -> Task c d
-attempt = \task, transform ->
-    effect = Effect.after
-        (InternalTask.toEffect task)
-        \result ->
-            when result is
-                Ok ok -> transform (Ok ok) |> InternalTask.toEffect
-                Err err -> transform (Err err) |> InternalTask.toEffect
-
-    InternalTask.fromEffect effect
+fail = \err -> @Task (Return (Err err))
 
 await : Task a err, (a -> Task b err) -> Task b err
-await = \task, transform ->
-    effect = Effect.after
-        (InternalTask.toEffect task)
-        \result ->
-            when result is
-                Ok a -> transform a |> InternalTask.toEffect
-                Err err -> Task.fail err |> InternalTask.toEffect
+await = \@Task task, f ->
+    when task is
+        Return (Ok v) -> f v
+        Return (Err e) -> @Task (Return (Err e))
+        Lift op -> @Task (Lift (mapOp op \task1 -> await task1 f))
 
-    InternalTask.fromEffect effect
+attempt : Task a b, (Result a b -> Task c d) -> Task c d
+attempt = \@Task task, f ->
+    when task is
+        Return res -> f res
+        Lift op -> @Task (Lift (mapOp op \task1 -> attempt task1 f))
 
 onFail : Task ok a, (a -> Task ok b) -> Task ok b
-onFail = \task, transform ->
-    effect = Effect.after
-        (InternalTask.toEffect task)
-        \result ->
-            when result is
-                Ok a -> Task.succeed a |> InternalTask.toEffect
-                Err err -> transform err |> InternalTask.toEffect
-
-    InternalTask.fromEffect effect
+onFail = \@Task task, f ->
+    when task is
+        Return (Ok v) -> @Task (Return (Ok v))
+        Return (Err e) -> f e
+        Lift op -> @Task (Lift (mapOp op \task1 -> onFail task1 f))
 
 map : Task a err, (a -> b) -> Task b err
-map = \task, transform ->
-    effect = Effect.after
-        (InternalTask.toEffect task)
-        \result ->
-            when result is
-                Ok ok -> Task.succeed (transform ok) |> InternalTask.toEffect
-                Err err -> Task.fail err |> InternalTask.toEffect
-
-    InternalTask.fromEffect effect
+map = \@Task task, f ->
+    when task is
+        Return (Ok v) -> @Task (Return (Ok (f v)))
+        Return (Err e) -> @Task (Return (Err e))
+        Lift op -> @Task (Lift (mapOp op \task1 -> map task1 f))
 
 mapFail : Task ok a, (a -> b) -> Task ok b
-mapFail = \task, transform ->
-    effect = Effect.after
-        (InternalTask.toEffect task)
-        \result ->
-            when result is
-                Ok ok -> Task.succeed ok |> InternalTask.toEffect
-                Err err -> Task.fail (transform err) |> InternalTask.toEffect
-
-    InternalTask.fromEffect effect
+mapFail = \@Task task, f ->
+    when task is
+        Return (Ok v) -> @Task (Return (Ok v))
+        Return (Err e) -> @Task (Return (Err (f e)))
+        Lift op -> @Task (Lift (mapOp op \task1 -> mapFail task1 f))
 
 ## Use a Result among other Tasks by converting it into a Task.
 fromResult : Result ok err -> Task ok err
@@ -100,3 +50,36 @@ fromResult = \result ->
     when result is
         Ok ok -> succeed ok
         Err err -> fail err
+
+loop : state, (state -> Task [Step state, Done done] err) -> Task done err
+loop = \state, step ->
+    task = step state
+    res <- Task.attempt task
+    when res is
+        Ok (Step newState) ->
+            loop newState step
+
+        Ok (Done result) ->
+            Task.succeed result
+
+        Err e ->
+            Task.fail e
+
+forever : Task val err -> Task * err
+forever = \task ->
+    looper = \{} ->
+        res <- Task.attempt task
+        when res is
+            Ok _ -> Task.succeed (Step {})
+            Err e -> Task.fail e
+
+    loop {} looper
+
+stdoutLine : Str -> Task {} *
+stdoutLine = \s -> @Task (Lift (StdoutLine s (\{} -> @Task (Return (Ok {})))))
+
+stdoutWrite : Str -> Task {} *
+stdoutWrite = \s -> @Task (Lift (StdoutWrite s (\{} -> @Task (Return (Ok {})))))
+
+stdinLine : Task Str *
+stdinLine = @Task (Lift (StdinLine (\s -> @Task (Return (Ok s)))))
