@@ -10,14 +10,13 @@ app "file-read"
     ]
     provides [main] to pf
 
-
 main : Task {} []
 main =
     fileName = "README.md"
     path = Path.fromStr fileName
     task =
         contents <- File.readUtf8 path |> await
-        lines = (Str.split contents "\n")
+        lines = Str.split contents "\n"
 
         Stdout.line (Str.concat "First line of \(fileName): " (List.first lines |> Result.withDefault "err"))
 

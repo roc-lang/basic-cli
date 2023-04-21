@@ -1,7 +1,6 @@
 on: 
   pull_request:
-  schedule:
-    - cron:  '0 13 * * *'
+  workflow_dispatch:
 
 # this cancels workflows currently in progress if you start a new one
 concurrency:
@@ -70,7 +69,9 @@ jobs:
       - run: ./roc_nightly/roc build ./examples/http-get.roc
       # END BUILD TESTS -->
 
-      - run: sudo apt install -y expect
+      - run: sudo apt install -y expect ncat
+      # expect for testsing
+      # ncat for tcp-client example
       # <-- START RUN TESTS
       - run: expect -v
 
@@ -87,6 +88,8 @@ jobs:
       - run: expect ci/expect_scripts/file-read.exp
 
       - run: expect ci/expect_scripts/http-get.exp
+
+      - run: expect ci/expect_scripts/tcp-client.exp
 
       # <-- END RUN TESTS
 
