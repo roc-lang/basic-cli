@@ -3,6 +3,9 @@ countdown
 echo
 form
 http-get
-file-io
+file-mixed
+file-read
 env
 out.txt
+tcp-client
+time

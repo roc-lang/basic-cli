@@ -23,9 +23,16 @@ hosted Effect
         fileDelete,
         fileWriteUtf8,
         fileWriteBytes,
+        posixTime,
         processExit,
+        tcpConnect,
+        tcpClose,
+        tcpReadUpTo,
+        tcpReadExactly,
+        tcpReadUntil,
+        tcpWrite,
     ]
-    imports [InternalHttp.{ Request, Response }, InternalFile, InternalDir]
+    imports [InternalHttp.{ Request, Response }, InternalFile, InternalDir, InternalTcp]
     generates Effect with [after, map, always, forever, loop]
 
 stdoutLine : Str -> Effect {}
@@ -53,3 +60,12 @@ args : Effect (List Str)
 cwd : Effect (List U8)
 
 sendRequest : Box Request -> Effect Response
+
+tcpConnect : Str, U16 -> Effect InternalTcp.ConnectResult
+tcpClose : InternalTcp.Stream -> Effect {}
+tcpReadUpTo : Nat, InternalTcp.Stream -> Effect InternalTcp.ReadResult
+tcpReadExactly : Nat, InternalTcp.Stream -> Effect InternalTcp.ReadExactlyResult
+tcpReadUntil : U8, InternalTcp.Stream -> Effect InternalTcp.ReadResult
+tcpWrite : List U8, InternalTcp.Stream -> Effect InternalTcp.WriteResult
+
+posixTime : Effect U128

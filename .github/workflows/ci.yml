@@ -1,7 +1,6 @@
 on: 
   pull_request:
-  schedule:
-    - cron:  '0 13 * * *'
+  workflow_dispatch:
 
 # this cancels workflows currently in progress if you start a new one
 concurrency:
@@ -23,12 +22,15 @@ jobs:
           --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
           --header 'content-type: application/json' \
           --output roc_releases.json
-
-      - run: echo "ROC_RELEASE_URL=$(./ci/get_latest_release_url.sh linuxTESTING_x86_64)" >> $GITHUB_ENV
-        id: try_fetching_testing_release
-
+          
+      - id: try_fetching_testing_release
+        continue-on-error: true
+        run: |
+          echo "ROC_RELEASE_URL=$(./ci/get_latest_release_url.sh linuxTESTING_x86_64)" >> $GITHUB_ENV
+          [ -z "${ROC_RELEASE_URL}" ] && exit 1 || exit 0
+    
       - name: There are no TESTING releases, checking regular releases instead
-        if: failure() && steps.try_fetching_testing_release.outcome == 'failure'
+        if: steps.try_fetching_testing_release.outcome == 'failure'
         run: |
           echo "ROC_RELEASE_URL=$(./ci/get_latest_release_url.sh linux_x86_64)" >> $GITHUB_ENV
 
@@ -58,14 +60,18 @@ jobs:
 
       - run: ./roc_nightly/roc build ./examples/env.roc
 
-      - run: ./roc_nightly/roc build ./examples/fileBROKEN.roc
+      - run: ./roc_nightly/roc build ./examples/file-read.roc
+
+      - run: ./roc_nightly/roc build ./examples/file-mixedBROKEN.roc
 
       - run: ./roc_nightly/roc build ./examples/form.roc
 
       - run: ./roc_nightly/roc build ./examples/http-get.roc
       # END BUILD TESTS -->
 
-      - run: sudo apt install -y expect
+      - run: sudo apt install -y expect ncat
+      # expect for testsing
+      # ncat for tcp-client example
       # <-- START RUN TESTS
       - run: expect -v
 
@@ -79,7 +85,11 @@ jobs:
 
       - run: expect ci/expect_scripts/form.exp
 
+      - run: expect ci/expect_scripts/file-read.exp
+
       - run: expect ci/expect_scripts/http-get.exp
+
+      - run: expect ci/expect_scripts/tcp-client.exp
 
       # <-- END RUN TESTS
 

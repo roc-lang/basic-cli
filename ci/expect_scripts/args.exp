@@ -1,6 +1,6 @@
 #!/usr/bin/expect
 
-# for debugging
+# uncomment line below for debugging
 # exp_internal 1
 
 set timeout 7
