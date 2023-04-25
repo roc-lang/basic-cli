@@ -7,7 +7,7 @@ interface Stdout
 ##
 ## (To write to `stdout` without the newline, see [Stdout.write].)
 line : Str -> Task {} *
-line = \s -> Task.fromOp (StdoutLine s (\{} -> Task.succeed {}))
+line = \s -> Task.fromOp (Stdout (Line s (\{} -> Task.succeed {})))
 
 
 ## Write the given string to [standard output](https://en.wikipedia.org/wiki/Standard_streams#Standard_output_(stdout)).
@@ -17,4 +17,4 @@ line = \s -> Task.fromOp (StdoutLine s (\{} -> Task.succeed {}))
 ##
 ## (To write to `stdout` with a newline at the end, see [Stdout.line].)
 write : Str -> Task {} *
-write = \s -> Task.fromOp (StdoutWrite s (\{} -> Task.succeed {}))
+write = \s -> Task.fromOp (Stdout (Write s (\{} -> Task.succeed {})))

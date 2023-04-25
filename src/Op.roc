@@ -2,9 +2,21 @@ interface Op
     exposes [Op, mapOp]
     imports [InternalHttp, InternalFile, InternalTcp]
 
+# These would be interface that could be defined in a pure Roc library.
+# It is not really need for this platform, but this is just to show how the api would be split.
+StdoutInfo a : [
+    Line Str ({} -> a),
+    Write Str ({} -> a),
+]
+
+mapStdoutInfo : StdoutInfo a, (a -> b) -> StdoutInfo b
+mapStdoutInfo = \info, f ->
+    when info is
+        Line str cont -> Line str (\{} -> f (cont {}))
+        Write str cont -> Write str (\{} -> f (cont {}))
+
 Op a : [
-    StdoutLine Str ({} -> a),
-    StdoutWrite Str ({} -> a),
+    Stdout (StdoutInfo a),
     StderrLine Str ({} -> a),
     StderrWrite Str ({} -> a),
     StdinLine (Str -> a),
@@ -37,8 +49,7 @@ Op a : [
 mapOp : Op a, (a -> b) -> Op b
 mapOp = \op, f ->
     when op is
-        StdoutLine str cont -> StdoutLine str (\{} -> f (cont {}))
-        StdoutWrite str cont -> StdoutWrite str (\{} -> f (cont {}))
+        Stdout info -> Stdout (mapStdoutInfo info f)
         StderrLine str cont -> StderrLine str (\{} -> f (cont {}))
         StderrWrite str cont -> StderrWrite str (\{} -> f (cont {}))
         StdinLine cont -> StdinLine (\s -> f (cont s))
