@@ -1,8 +1,11 @@
 interface Task
-    exposes [Task, succeed, fail, await, map, mapFail, onFail, attempt, forever, loop, fromResult, stdoutLine, stdoutWrite, stdinLine]
+    exposes [Task, succeed, fail, await, map, mapFail, onFail, attempt, forever, loop, fromResult, fromOp]
     imports [Op.{ Op, mapOp }]
 
 Task ok err := [Return (Result ok err), Lift (Op (Task ok err))]
+
+fromOp : Op (Task ok err) -> Task ok err
+fromOp = \op -> @Task (Lift op)
 
 succeed : ok -> Task ok *
 succeed = \ok -> @Task (Return (Ok ok))
@@ -74,12 +77,3 @@ forever = \task ->
             Err e -> Task.fail e
 
     loop {} looper
-
-stdoutLine : Str -> Task {} *
-stdoutLine = \s -> @Task (Lift (StdoutLine s (\{} -> @Task (Return (Ok {})))))
-
-stdoutWrite : Str -> Task {} *
-stdoutWrite = \s -> @Task (Lift (StdoutWrite s (\{} -> @Task (Return (Ok {})))))
-
-stdinLine : Task Str *
-stdinLine = @Task (Lift (StdinLine (\s -> @Task (Return (Ok s)))))
