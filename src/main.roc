@@ -1,9 +1,9 @@
 platform "cli"
-    requires {} { main : Task {} [] }
+    requires {} { main : Task {} [] (Op *) }
     exposes []
     packages {}
-    imports [Task.{ Task }]
+    imports [Task.{ Task }, Op.{ Op }]
     provides [mainForHost]
 
-mainForHost : Task {} [] as Fx
+mainForHost : Task {} [] (Op *) as Fx
 mainForHost = main
