@@ -17,4 +17,5 @@ expect "</html>\r\n" {
   exit 0
 }
 
+puts stderr "\nError: output was different from expected value."
 exit 1

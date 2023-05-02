@@ -21,4 +21,5 @@ expect "          12 ab    12 a   12   12 1\r\n" {
     exit 0
 }
 
+puts stderr "\nError: output was different from expected value."
 exit 1
