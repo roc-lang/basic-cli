@@ -22,5 +22,5 @@ expect "Connected!\r\n" {
     }
 }
 
-
+puts stderr "\nError: output was different from expected value."
 exit 1
