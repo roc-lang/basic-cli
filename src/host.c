@@ -1,3 +1,6 @@
-extern unsigned char rust_main();
+extern void rust_main();
 
-int main() { return (int)rust_main(); }
+int main() {
+  rust_main();
+  return 0;
+}
