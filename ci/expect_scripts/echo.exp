@@ -5,7 +5,7 @@
 
 set timeout 7
 
-spawn ./roc_nightly/roc run ./examples/echo.roc --prebuilt-platform=true
+spawn ./roc_nightly/roc run ./examples/echo.roc --prebuilt-platform
 
 
 expect -exact "🗣  Shout into this cave and hear the echo! 👂👂👂\r\n"

@@ -5,7 +5,7 @@
 
 set timeout 7
 
-spawn ./roc_nightly/roc run ./examples/form.roc --prebuilt-platform=true
+spawn ./roc_nightly/roc run ./examples/form.roc --prebuilt-platform
 
 
 expect "What's your first name?\r\n"
