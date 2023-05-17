@@ -10,7 +10,7 @@ set cat_path [exec which cat]
 # Start echo server
 spawn ncat -e $cat_path -l 8085
 
-spawn ./roc_nightly/roc run ./examples/tcp-client.roc --prebuilt-platform=true
+spawn ./roc_nightly/roc run ./examples/tcp-client.roc --prebuilt-platform
 
 
 expect "Connected!\r\n" {
