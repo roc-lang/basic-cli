@@ -1,6 +1,6 @@
 interface Stdin
     exposes [line]
-    imports [Effect, Task.{ Task }, InternalTask]
+    imports [Task.{ Task }]
 
 ## Read a line from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
 ##
@@ -10,6 +10,6 @@ interface Stdin
 ## the user knows it's necessary to enter something before the program will continue.
 line : Task Str *
 line =
-    Effect.stdinLine
-    |> Effect.map Ok
-    |> InternalTask.fromEffect
+    toNext <- Task.fromInner
+    str <- StdinLine
+    toNext (Ok str)
