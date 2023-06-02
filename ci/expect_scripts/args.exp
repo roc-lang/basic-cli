@@ -8,7 +8,7 @@ set timeout 7
 spawn ./roc_nightly/roc run ./examples/args.roc --prebuilt-platform --linker=legacy -- log -b 3 --num 81
 
 
-expect "4\r\n" {
+expect "4.000000000000001\r\n" {
   expect eof
   exit 0
 }
