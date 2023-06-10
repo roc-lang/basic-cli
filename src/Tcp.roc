@@ -21,7 +21,7 @@ ConnectErr : InternalTcp.ConnectErr
 
 StreamErr : InternalTcp.StreamErr
 
-## Opens a TCP conenction to a remote host and perform a [Task] with it.
+## Opens a TCP connection to a remote host and perform a [Task] with it.
 ##
 ##     # Connect to localhost:8080 and send "Hi from Roc!"
 ##     stream <- Tcp.withConnect "localhost" 8080
