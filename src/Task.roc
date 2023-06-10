@@ -1,5 +1,18 @@
 interface Task
-    exposes [Task, succeed, fail, await, map, mapFail, onFail, attempt, forever, loop, fromResult]
+    exposes [
+        Task,
+        succeed,
+        fail,
+        await,
+        map,
+        mapFail,
+        onFail,
+        attempt,
+        forever,
+        loop,
+        fromResult,
+        batch,
+    ]
     imports [Effect, InternalTask]
 
 Task ok err : InternalTask.Task ok err
@@ -100,3 +113,9 @@ fromResult = \result ->
     when result is
         Ok ok -> succeed ok
         Err err -> fail err
+
+batch : Task a err -> (Task (a -> b) err -> Task b err)
+batch = \current -> \next ->
+        f <- next |> await
+
+        map current f
