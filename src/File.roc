@@ -11,15 +11,14 @@ WriteErr : InternalFile.WriteErr
 ## For example, suppose you have a [JSON](https://en.wikipedia.org/wiki/JSON)
 ## `EncodingFormat` named `Json.toCompactUtf8`. Then you can use that format
 ## to write some encodable data to a file as JSON, like so:
-##
-##     File.write
-##         (Path.fromStr "output.json")
-##         { some: "json stuff" }
-##         Json.toCompactUtf8
-##     # Writes the following to the file `output.json`:
-##     #
-##     # {"some":"json stuff"}
-##
+## ```
+## File.write
+##     (Path.fromStr "output.json")
+##     { some: "json stuff" }
+##     Json.toCompactUtf8
+## # Writes the following to the file `output.json`:
+## # {"some":"json stuff"}
+## ```
 ## If writing to the file fails, for example because of a file permissions issue,
 ## the task fails with [WriteErr].
 ##
@@ -34,10 +33,10 @@ write = \path, val, fmt ->
     writeBytes path bytes
 
 ## Writes bytes to a file.
-##
-##     # Writes the bytes 1, 2, 3 to the file `myfile.dat`.
-##     File.writeBytes (Path.fromStr "myfile.dat") [1, 2, 3]
-##
+## ```
+## # Writes the bytes 1, 2, 3 to the file `myfile.dat`.
+## File.writeBytes (Path.fromStr "myfile.dat") [1, 2, 3]
+## ```
 ## This opens the file first and closes it after writing to it.
 ##
 ## To format data before writing it to a file, you can use [File.write] instead.
@@ -46,10 +45,10 @@ writeBytes = \path, bytes ->
     toWriteTask path \pathBytes -> Effect.fileWriteBytes pathBytes bytes
 
 ## Writes a [Str] to a file, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
-##
-##     # Writes "Hello!" encoded as UTF-8 to the file `myfile.txt`.
-##     File.writeUtf8 (Path.fromStr "myfile.txt") "Hello!"
-##
+## ```
+## # Writes "Hello!" encoded as UTF-8 to the file `myfile.txt`.
+## File.writeUtf8 (Path.fromStr "myfile.txt") "Hello!"
+## ```
 ## This opens the file first and closes it after writing to it.
 ##
 ## To write unformatted bytes to a file, you can use [File.writeBytes] instead.
@@ -58,10 +57,10 @@ writeUtf8 = \path, str ->
     toWriteTask path \bytes -> Effect.fileWriteUtf8 bytes str
 
 ## Deletes a file from the filesystem.
-##
-##     # Deletes the file named
-##     File.delete (Path.fromStr "myfile.dat") [1, 2, 3]
-##
+## ```
+## # Deletes the file named
+## File.delete (Path.fromStr "myfile.dat") [1, 2, 3]
+## ```
 ## Note that this does not securely erase the file's contents from disk; instead, the operating
 ## system marks the space it was occupying as safe to write over in the future. Also, the operating
 ## system may not immediately mark the space as free; for example, on Windows it will wait until
@@ -78,10 +77,10 @@ delete = \path ->
     toWriteTask path \bytes -> Effect.fileDelete bytes
 
 ## Reads all the bytes in a file.
-##
-##     # Read all the bytes in `myfile.txt`.
-##     File.readBytes (Path.fromStr "myfile.txt")
-##
+## ```
+## # Read all the bytes in `myfile.txt`.
+## File.readBytes (Path.fromStr "myfile.txt")
+## ```
 ## This opens the file first and closes it after reading its contents.
 ##
 ## To read and decode data from a file, you can use `File.read` instead.
@@ -90,10 +89,10 @@ readBytes = \path ->
     toReadTask path \bytes -> Effect.fileReadBytes bytes
 
 ## Reads a [Str] from a file containing [UTF-8](https://en.wikipedia.org/wiki/UTF-8)-encoded text.
-##
-##     # Reads UTF-8 encoded text into a `Str` from the file `myfile.txt`.
-##     File.readUtf8 (Path.fromStr "myfile.txt")
-##
+## ```
+## # Reads UTF-8 encoded text into a `Str` from the file `myfile.txt`.
+## File.readUtf8 (Path.fromStr "myfile.txt")
+## ```
 ## This opens the file first and closes it after writing to it.
 ## The task will fail with `FileReadUtf8Err` if the given file contains invalid UTF-8.
 ##

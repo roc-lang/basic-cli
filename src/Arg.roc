@@ -36,6 +36,7 @@ NamedParser a := {
 ## Describes how to parse a slice of command-line arguments.
 ## [Parser]s can be composed in various ways, including via [withParser] and
 ## [subCommand].
+##
 ## Once you have a [Parser] that describes your application's entire parsing
 ## needs, consider transforming it into a [NamedParser].
 Parser a := [
@@ -59,6 +60,7 @@ Taken : Set Nat
 
 ## A representation of parsed and unparsed arguments in a constant list of
 ## command-line arguments.
+##
 ## Used only internally, for efficient representation of parsed and unparsed
 ## arguments.
 MarkedArgs : { args : List Str, taken : Taken }
@@ -383,14 +385,14 @@ andMap = \@Parser parser, @Parser mapper ->
 program = \parser, { name, help ? "" } ->
     @NamedParser { name, help, parser }
 
+# TODO panics in alias analysis when this annotation is included
+# parse : NamedParser a, List Str -> Result a (ParseError*)
 ## Parses a list of command-line arguments with the given parser. The list of
 ## arguments is expected to contain the name of the program in the first
 ## position.
 ##
 ## If the arguments do not conform with what is expected by the parser, the
 ## first error seen will be returned.
-# TODO panics in alias analysis when this annotation is included
-# parse : NamedParser a, List Str -> Result a (ParseError*)
 parse = \@NamedParser parser, args ->
     # By convention the first string in the argument list is the program name.
     if
@@ -723,6 +725,7 @@ formatError = \err ->
 ## |> withParser (strOption { long: "host" })
 ## |> withParser (strOption { long: "port" })
 ## ```
+##
 withParser = \arg1, arg2 -> andMap arg2 arg1
 
 mark = \args -> { args, taken: Set.empty {} }

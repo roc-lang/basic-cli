@@ -37,8 +37,7 @@ exePath =
 ## Reads the given environment variable.
 ##
 ## If the value is invalid Unicode, the invalid parts will be replaced with the
-## [Unicode replacement character](https://unicode.org/glossary/#replacement_character)
-## (`�`).
+## [Unicode replacement character](https://unicode.org/glossary/#replacement_character).
 var : Str -> Task Str [VarNotFound]
 var = \name ->
     Effect.envVar name
@@ -48,7 +47,7 @@ var = \name ->
 ## Reads the given environment variable and attempts to decode it.
 ##
 ## The type being decoded into will be determined by type inference. For example,
-## if this ends up being used like a `Task U16 …` then the environment variable
+## if this ends up being used like a `Task U16` then the environment variable
 ## will be decoded as a string representation of a `U16`.
 ##
 ##     getU16Var : Str -> Task U16 [VarNotFound, DecodeErr DecodeError] [Read [Env]]
@@ -82,7 +81,7 @@ decode = \name ->
 ## Reads all the process's environment variables into a [Dict].
 ##
 ## If any key or value contains invalid Unicode, the [Unicode replacement character](https://unicode.org/glossary/#replacement_character)
-## (`�`) will be used in place of any parts of keys or values that are invalid Unicode.
+## will be used in place of any parts of keys or values that are invalid Unicode.
 dict : Task (Dict Str Str) *
 dict =
     Effect.envDict

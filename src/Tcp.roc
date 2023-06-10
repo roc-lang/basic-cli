@@ -21,7 +21,7 @@ ConnectErr : InternalTcp.ConnectErr
 
 StreamErr : InternalTcp.StreamErr
 
-## Opens a TCP conenction to a remote host and perform a [Task] with it.
+## Opens a TCP connection to a remote host and perform a [Task] with it.
 ##
 ##     # Connect to localhost:8080 and send "Hi from Roc!"
 ##     stream <- Tcp.withConnect "localhost" 8080
@@ -82,7 +82,7 @@ readUpTo = \bytesToRead, stream ->
 ##
 ##     File.readExactly 64 stream
 ##
-## [TcpUnexpectedEOF] is returned if the stream ends before the specfied number of bytes is reached.
+## `TcpUnexpectedEOF` is returned if the stream ends before the specfied number of bytes is reached.
 readExactly : Nat, Stream -> Task (List U8) [TcpReadErr StreamErr, TcpUnexpectedEOF]
 readExactly = \bytesToRead, stream ->
     Effect.tcpReadExactly bytesToRead stream
