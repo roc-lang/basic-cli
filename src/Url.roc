@@ -23,18 +23,19 @@ Url := Str
 
 ## Reserve the given number of bytes as extra capacity. This can avoid reallocation
 ## when calling multiple functions that increase the length of the URL.
+##
+## The following example reserves 50 bytes, then builds the url `https://example.com/stuff?caf%C3%A9=du%20Monde&email=hi%40example.com`;
 ## ```
 ## Url.fromStr "https://example.com"
-##     |> Url.reserve 50 # We're about to add 50 UTF-8 bytes to it
-##     |> Url.append "stuff"
-##     |> Url.appendParam "café" "du Monde"
-##     |> Url.appendParam "email" "hi@example.com"
-## # https://example.com/stuff?caf%C3%A9=du%20Monde&email=hi%40example.com
+## |> Url.reserve 50
+## |> Url.append "stuff"
+## |> Url.appendParam "café" "du Monde"
+## |> Url.appendParam "email" "hi@example.com"
 ## ```
-## The [Str.countUtf8Bytes] function can be helpful in finding out how many bytes to reserve.
+## The [Str.countUtf8Bytes](https://www.roc-lang.org/builtins/Str#countUtf8Bytes) function can be helpful in finding out how many bytes to reserve.
 ##
 ## There is no `Url.withCapacity` because it's better to reserve extra capacity
-## on a [Str] first, and then pass that string to [Url.fromStr]. This function will make use
+## on a [Str](https://www.roc-lang.org/builtins/Str) first, and then pass that string to [Url.fromStr]. This function will make use
 ## of the extra capacity.
 reserve : Url, Nat -> Url
 reserve = \@Url str, cap ->
@@ -42,61 +43,60 @@ reserve = \@Url str, cap ->
 
 ## Create a [Url] without validating or [percent-encoding](https://en.wikipedia.org/wiki/Percent-encoding)
 ## anything.
+##
 ## ```
 ## Url.fromStr "https://example.com#stuff"
-## # https://example.com#stuff
+## ```
 ##
 ## URLs can be absolute, like `https://example.com`, or they can be relative, like `/blah`.
 ##
+## ```
 ## Url.fromStr "/this/is#relative"
-## # /this/is#relative
+## ```
 ##
 ## Since nothing is validated, this can return invalid URLs.
 ##
-## Url.fromStr "https://this is not a valid URL, not at all!"
-## # https://this is not a valid URL, not at all!
 ## ```
+## Url.fromStr "https://this is not a valid URL, not at all!"
+## ```
+##
 ## Naturally, passing invalid URLs to functions that need valid ones will tend to result in errors.
+##
 fromStr : Str -> Url
 fromStr = \str -> @Url str
 
-## Return a [Str] representation of this URL.
+## Return a [Str](https://www.roc-lang.org/builtins/Str) representation of this URL.
 ## ```
+## # Gives "https://example.com/two%20words"
 ## Url.fromStr "https://example.com"
-##     |> Url.append "two words"
-##     |> Url.toStr
-## # "https://example.com/two%20words"
+## |> Url.append "two words"
+## |> Url.toStr
 ## ```
 toStr : Url -> Str
 toStr = \@Url str -> str
 
 ## [Percent-encodes](https://en.wikipedia.org/wiki/Percent-encoding) a
 ## [path component](https://en.wikipedia.org/wiki/Uniform_Resource_Identifier#Syntax)
-## and appends to the end of the URL's path.
+## and appends to the end of the URL's path. This will be appended before any queries and fragments. If the given path string begins with `/` and the URL already ends with `/`, one
+## will be ignored. This avoids turning a single slash into a double slash. If either the given URL or the given string is empty, no `/` will be added.
+##
 ## ```
+## # Gives https://example.com/some%20stuff
 ## Url.fromStr "https://example.com"
-##     |> Url.append "some stuff"
-## # https://example.com/some%20stuff
-## ```
-## This will be appended before any queries and fragments.
-## ```
+## |> Url.append "some stuff"
+## 
+## # Gives https://example.com/stuff?search=blah#fragment
 ## Url.fromStr "https://example.com?search=blah#fragment"
-##     |> Url.append "stuff"
-## # https://example.com/stuff?search=blah#fragment
-## ```
-## If the given path string begins with `"/"` and the URL already ends with `"/"`, one
-## will be ignored. This avoids turning a single slash into a double slash.
-## ```
+## |> Url.append "stuff"
+##
+## # Gives https://example.com/things/stuff/more/etc/"
 ## Url.fromStr "https://example.com/things/"
-##     |> Url.append "/stuff/"
-##     |> Url.append "/more/etc/"
-## # https://example.com/things/stuff/more/etc/"
-## ```
-## If either the given URL or the given string is empty, no `"/"` will be added.
-## ```
+## |> Url.append "/stuff/"
+## |> Url.append "/more/etc/"
+##
+## # Gives https://example.com/things
 ## Url.fromStr "https://example.com/things"
-##     |> Url.append ""
-## # https://example.com/things
+## |> Url.append ""
 ## ```
 append : Url, Str -> Url
 append = \@Url urlStr, suffixUnencoded ->
@@ -179,8 +179,8 @@ appendHelp = \prefix, suffix ->
 ## you can always do:
 ## ```
 ## Url.fromStr ""
-##     |> Url.append myStrToEncode
-##     |> Url.toStr
+## |> Url.append myStrToEncode
+## |> Url.toStr
 ## ```
 ## Note that it's not necessary to situationally encode spaces as `+` instead of `%20` -
 ## it's apparently always safe to use `%20` (but not always safe to use `+`):
@@ -223,19 +223,19 @@ percentEncode = \input ->
 
                     Str.concat output suffix
 
-## Adds a [Str] query parameter to the end of the [Url]. The key
-## and value both get [percent-encoded](https://en.wikipedia.org/wiki/Percent-encoding).
+## Adds a [Str](https://www.roc-lang.org/builtins/Str) query parameter to the 
+## end of the [Url]. The key and value both get [percent-encoded](https://en.wikipedia.org/wiki/Percent-encoding).
 ## ```
+## # Gives https://example.com?email=someone%40example.com
 ## Url.fromStr "https://example.com"
-##     |> Url.appendParam "email" "someone@example.com"
-## # https://example.com?email=someone%40example.com
+## |> Url.appendParam "email" "someone@example.com"
 ## ```
 ## This can be called multiple times on the same URL.
 ## ```
+## # Gives https://example.com?caf%C3%A9=du%20Monde&email=hi%40example.com
 ## Url.fromStr "https://example.com"
-##     |> Url.appendParam "café" "du Monde"
-##     |> Url.appendParam "email" "hi@example.com"
-## # https://example.com?caf%C3%A9=du%20Monde&email=hi%40example.com
+## |> Url.appendParam "café" "du Monde"
+## |> Url.appendParam "email" "hi@example.com"
 ## ```
 appendParam : Url, Str, Str -> Url
 appendParam = \@Url urlStr, key, value ->
@@ -269,18 +269,16 @@ appendParam = \@Url urlStr, key, value ->
     |> Str.concat afterQuery
     |> @Url
 
-## Replaces the URL's [query](https://en.wikipedia.org/wiki/URL#Syntax)—the part after
-## the `?`, if it has one, but before any `#` it might have.
+## Replaces the URL's [query](https://en.wikipedia.org/wiki/URL#Syntax)—the part
+## after the `?`, if it has one, but before any `#` it might have. Passing `""` removes the `?` (if there was one).
 ## ```
+## # Gives https://example.com?newQuery=thisRightHere#stuff
 ## Url.fromStr "https://example.com?key1=val1&key2=val2#stuff"
-##     |> Url.withQuery "newQuery=thisRightHere"
-## # https://example.com?newQuery=thisRightHere#stuff
-## ```
-## Passing `""` removes the `?` (if there was one).
-## ```
+## |> Url.withQuery "newQuery=thisRightHere"
+##
+## # Gives https://example.com#stuff
 ## Url.fromStr "https://example.com?key1=val1&key2=val2#stuff"
-##     |> Url.withQuery ""
-## # https://example.com#stuff
+## |> Url.withQuery ""
 ## ```
 withQuery : Url, Str -> Url
 withQuery = \@Url urlStr, queryStr ->
@@ -316,17 +314,15 @@ withQuery = \@Url urlStr, queryStr ->
         |> @Url
 
 ## Returns the URL's [query](https://en.wikipedia.org/wiki/URL#Syntax)—the part after
-## the `?`, if it has one, but before any `#` it might have.
+## the `?`, if it has one, but before any `#` it might have. Returns `""` if the URL has no query.
 ## ```
+## # Gives "key1=val1&key2=val2&key3=val3"
 ## Url.fromStr "https://example.com?key1=val1&key2=val2&key3=val3#stuff"
-##     |> Url.query
-## # "key1=val1&key2=val2&key3=val3"
-## ```
-## Returns `""` if the URL has no query.
-## ```
+## |> Url.query
+##
+## # Gives ""
 ## Url.fromStr "https://example.com#stuff"
-##     |> Url.query
-## # ""
+## |> Url.query
 ## ```
 query : Url -> Str
 query = \@Url urlStr ->
@@ -341,13 +337,13 @@ query = \@Url urlStr ->
 
 ## Returns `Bool.true` if the URL has a `?` in it.
 ## ```
+## # Gives `Bool.true`
 ## Url.fromStr "https://example.com?key=value#stuff"
-##     |> Url.hasQuery
-## # Bool.true
+## |> Url.hasQuery
 ##
+## # Gives `Bool.false`
 ## Url.fromStr "https://example.com#stuff"
-##     |> Url.hasQuery
-## # Bool.false
+## |> Url.hasQuery
 ## ```
 hasQuery : Url -> Bool
 hasQuery = \@Url urlStr ->
@@ -357,17 +353,15 @@ hasQuery = \@Url urlStr ->
     |> List.contains (Num.toU8 '?')
 
 ## Returns the URL's [fragment](https://en.wikipedia.org/wiki/URL#Syntax)—the part after
-## the `#`, if it has one.
+## the `#`, if it has one. Returns `""` if the URL has no fragment.
 ## ```
+## # Gives "stuff"
 ## Url.fromStr "https://example.com#stuff"
-##     |> Url.fragment
-## # "stuff"
-## ```
-## Returns `""` if the URL has no fragment.
-## ```
+## |> Url.fragment
+##
+## # Gives ""
 ## Url.fromStr "https://example.com"
-##     |> Url.fragment
-## # ""
+## |> Url.fragment
 ## ```
 fragment : Url -> Str
 fragment = \@Url urlStr ->
@@ -375,23 +369,20 @@ fragment = \@Url urlStr ->
         Ok { after } -> after
         Err NotFound -> ""
 
-## Replaces the URL's [fragment](https://en.wikipedia.org/wiki/URL#Syntax).
+## Replaces the URL's [fragment](https://en.wikipedia.org/wiki/URL#Syntax). If 
+## the URL didn't have a fragment, adds one. Passing `""` removes the fragment.
 ## ```
+## # Gives https://example.com#things
 ## Url.fromStr "https://example.com#stuff"
-##     |> Url.withFragment "things"
-## # https://example.com#things
-## ```
-## If the URL didn't have a fragment, adds one.
-## ```
+## |> Url.withFragment "things"
+##
+## # Gives https://example.com#things
 ## Url.fromStr "https://example.com"
-##     |> Url.withFragment "things"
-## # https://example.com#things
-## ```
-## Passing `""` removes the fragment.
-## ```
+## |> Url.withFragment "things"
+##
+## # Gives https://example.com
 ## Url.fromStr "https://example.com#stuff"
-##     |> Url.withFragment ""
-## # https://example.com
+## |> Url.withFragment ""
 ## ```
 withFragment : Url, Str -> Url
 withFragment = \@Url urlStr, fragmentStr ->
@@ -414,13 +405,13 @@ withFragment = \@Url urlStr, fragmentStr ->
 
 ## Returns `Bool.true` if the URL has a `#` in it.
 ## ```
+## # Gives `Bool.true`
 ## Url.fromStr "https://example.com?key=value#stuff"
-##     |> Url.hasFragment
-## # Bool.true
+## |> Url.hasFragment
 ##
+## # Gives `Bool.false`
 ## Url.fromStr "https://example.com?key=value"
-##     |> Url.hasFragment
-## # Bool.false
+## |> Url.hasFragment
 ## ```
 hasFragment : Url -> Bool
 hasFragment = \@Url urlStr ->

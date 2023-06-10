@@ -454,7 +454,7 @@ nextUnmarked = \marked ->
     help 0
 
 ## Creates a parser for a boolean option argument.
-## Options of value "true" and "false" will be parsed as [Bool.true] and [Bool.false], respectively.
+## Options of value "true" and "false" will be parsed as `Bool.true` and `Bool.false`, respectively.
 ## All other values will result in a `WrongOptionType` error.
 boolOption : _ -> Parser Bool # TODO: panics if parameter annotation given
 boolOption = \{ long, short ? "", help ? "" } ->
