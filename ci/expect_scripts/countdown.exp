@@ -5,7 +5,7 @@
 
 set timeout 7
 
-spawn ./roc_nightly/roc run ./examples/countdown.roc --prebuilt-platform=true
+spawn ./roc_nightly/roc run ./examples/countdown.roc --prebuilt-platform
 
 
 expect -exact "\r\nLet's count down from 3 together - all you have to do is press <ENTER>.\r\n"
@@ -25,4 +25,5 @@ expect "🎉 SURPRISE! Happy Birthday! 🎂\r\n" {
   exit 0
 }
 
+puts stderr "\nError: output was different from expected value."
 exit 1

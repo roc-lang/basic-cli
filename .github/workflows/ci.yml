@@ -13,29 +13,16 @@ jobs:
     runs-on: [ubuntu-20.04]
     steps:
       - uses: actions/checkout@v3
-
-      # note: moving this step to a bash script will not work, the GITHUB_TOKEN is not passed properly
-      - name: Fetch releases data and save to file. Authorization is used to prevent rate limiting.
-        run: |
-          curl --request GET \
-          --url https://api.github.com/repos/roc-lang/roc/releases \
-          --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-          --header 'content-type: application/json' \
-          --output roc_releases.json
           
       - id: try_fetching_testing_release
         continue-on-error: true
         run: |
-          echo "ROC_RELEASE_URL=$(./ci/get_latest_release_url.sh linuxTESTING_x86_64)" >> $GITHUB_ENV
-          [ -z "${ROC_RELEASE_URL}" ] && exit 1 || exit 0
+          curl -fOL https://github.com/roc-lang/roc/releases/download/nightly/roc_nightly-linuxTESTING_x86_64-latest.tar.gz
     
       - name: There are no TESTING releases, checking regular releases instead
         if: steps.try_fetching_testing_release.outcome == 'failure'
         run: |
-          echo "ROC_RELEASE_URL=$(./ci/get_latest_release_url.sh linux_x86_64)" >> $GITHUB_ENV
-
-      - name: Get the archive from the url.
-        run: curl -OL ${{ env.ROC_RELEASE_URL }}
+          curl -fOL https://github.com/roc-lang/roc/releases/download/nightly/roc_nightly-linux_x86_64-latest.tar.gz
 
       - name: rename nightly tar
         run: mv $(ls | grep "roc_nightly.*tar\.gz") roc_nightly.tar.gz

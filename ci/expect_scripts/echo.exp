@@ -5,7 +5,7 @@
 
 set timeout 7
 
-spawn ./roc_nightly/roc run ./examples/echo.roc --prebuilt-platform=true
+spawn ./roc_nightly/roc run ./examples/echo.roc --prebuilt-platform
 
 
 expect -exact "🗣  Shout into this cave and hear the echo! 👂👂👂\r\n"
@@ -21,4 +21,5 @@ expect "          12 ab    12 a   12   12 1\r\n" {
     exit 0
 }
 
+puts stderr "\nError: output was different from expected value."
 exit 1
