@@ -6,12 +6,16 @@ platform "cli"
         Dir,
         Env, 
         File,
+        FileMetadata,
         Http,
         Process, 
         Stderr,
         Stdin,
+        Stdout,
         Task,
+        Tcp,
         Url,
+        Utc,
     ]
     packages {}
     imports [Task.{ Task }]

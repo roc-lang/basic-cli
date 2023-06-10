@@ -82,7 +82,7 @@ readUpTo = \bytesToRead, stream ->
 ##
 ##     File.readExactly 64 stream
 ##
-## [TcpUnexpectedEOF] is returned if the stream ends before the specfied number of bytes is reached.
+## `TcpUnexpectedEOF` is returned if the stream ends before the specfied number of bytes is reached.
 readExactly : Nat, Stream -> Task (List U8) [TcpReadErr StreamErr, TcpUnexpectedEOF]
 readExactly = \bytesToRead, stream ->
     Effect.tcpReadExactly bytesToRead stream
