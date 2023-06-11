@@ -19,15 +19,39 @@ interface Http
     ]
     imports [Effect, InternalTask, Task.{ Task }, InternalHttp]
 
+## Represents an HTTP request.
 Request : InternalHttp.Request
+
+## Represents an HTTP method.
 Method : InternalHttp.Method
+
+## Represents an HTTP header e.g. "Content-Type: application/json"
 Header : InternalHttp.Header
+
+## Represents a timeout configuration for an HTTP request.
 TimeoutConfig : InternalHttp.TimeoutConfig
+
+## Represents an HTTP request body.
 Body : InternalHttp.Body
+
+## Represents an HTTP response.
 Response : InternalHttp.Response
+
+## Represents HTTP metadata, such as the URL or status code.
 Metadata : InternalHttp.Metadata
+
+## Represents an HTTP error.
 Error : InternalHttp.Error
 
+## A default [Request] value.
+##
+## ```
+## # GET "roc-lang.org"
+## { Http.defaultRequest &
+##     url: "https://www.roc-lang.org",
+## }
+## ```
+##
 defaultRequest : Request
 defaultRequest = {
     method: Get,
@@ -44,14 +68,30 @@ header : Str, Str -> Header
 header =
     Header
 
+## An empty HTTP request [Body].
 emptyBody : Body
 emptyBody =
     EmptyBody
 
+## A request [Body] with raw bytes.
+##
+## ```
+## # A application/json body of "{}".
+## Http.bytesBody
+##     (MimeType "application/json")
+##     [123, 125]
+## ```
 bytesBody : [MimeType Str], List U8 -> Body
 bytesBody =
     Body
 
+## A request [Body] with a string.
+##
+## ```
+## Http.stringBody
+##     (MimeType "application/json")
+##     "{\"name\": \"Louis\",\"age\": 22}"
+## ```
 stringBody : [MimeType Str], Str -> Body
 stringBody = \mimeType, str ->
     Body mimeType (Str.toUtf8 str)
@@ -79,6 +119,7 @@ stringBody = \mimeType, str ->
 # stringPart : Str, Str -> Part
 # stringPart = \name, str ->
 #     Part name (Str.toUtf8 str)
+## Map a [Response] body to a [Str] or return an [Error].
 handleStringResponse : Response -> Result Str Error
 handleStringResponse = \response ->
     when response is
@@ -94,6 +135,7 @@ handleStringResponse = \response ->
 
                     BadBody "Invalid UTF-8 at byte offset \(position)"
 
+## Convert an [Error] to a [Str].
 errorToString : Error -> Str
 errorToString = \err ->
     when err is
@@ -103,6 +145,22 @@ errorToString = \err ->
         BadStatus code -> Str.concat "Request failed with status " (Num.toStr code)
         BadBody details -> Str.concat "Request failed. Invalid body. " details
 
+## Task to send an HTTP request, succeeds with a value of [Str] or fails with an
+## [Error].
+##
+## ```
+## # Prints out the HTML of the Roc-lang website.
+## result <-
+##     { Http.defaultRequest &
+##         url: "https://www.roc-lang.org",
+##     }
+##     |> Http.send
+##     |> Task.attempt
+##
+## when result is
+##     Ok responseBody -> Stdout.line responseBody
+##     Err _ -> Stdout.line "Oops, something went wrong!"
+## ```
 send : Request -> Task Str Error
 send = \req ->
     # TODO: Fix our C ABI codegen so that we don't this Box.box heap allocation
