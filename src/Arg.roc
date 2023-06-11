@@ -27,6 +27,7 @@ list =
     |> InternalTask.fromEffect
 
 ## A parser for a command-line application.
+##
 ## A [NamedParser] is usually built from a [Parser] using [program].
 NamedParser a := {
     name : Str,
@@ -35,6 +36,7 @@ NamedParser a := {
 }
 
 ## Describes how to parse a slice of command-line arguments.
+##
 ## [Parser]s can be composed in various ways, including via [withParser] and
 ## [subCommand].
 ##
@@ -94,6 +96,7 @@ ParseError : [
 ]
 
 ## Expected type of an option, in an argument list being parsed.
+##
 ## Describes how a string option should be interpreted as a certain type.
 OptionType : [
     Str,
@@ -454,7 +457,8 @@ nextUnmarked = \marked ->
     help 0
 
 ## Creates a parser for a boolean option argument.
-## Options of value "true" and "false" will be parsed as `Bool.true` and `Bool.false`, respectively.
+##
+## Options of value "true" and "false" will be parsed as [Bool.true] and [Bool.false], respectively.
 ## All other values will result in a `WrongOptionType` error.
 boolOption : _ -> Parser Bool # TODO: panics if parameter annotation given
 boolOption = \{ long, short ? "", help ? "" } ->

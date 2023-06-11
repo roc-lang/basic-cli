@@ -17,7 +17,7 @@ FileMetadata := {
 bytes : FileMetadata -> U64
 bytes = \@FileMetadata info -> info.bytes
 
-## Returns `Bool.true` if the associated file is read-only.
+## Returns [Bool.true] if the associated file is read-only.
 isReadonly : FileMetadata -> Bool
 isReadonly = \@FileMetadata info -> info.isReadonly
 

@@ -96,7 +96,7 @@ readBytes = \path ->
 
 ## Reads a [Str] from a file containing [UTF-8](https://en.wikipedia.org/wiki/UTF-8)-encoded text.
 ## ```
-## # Reads UTF-8 encoded text into a `Str` from the file `myfile.txt`.
+## # Reads UTF-8 encoded text into a Str from the file "myfile.txt"
 ## File.readUtf8 (Path.fromStr "myfile.txt")
 ## ```
 ## This opens the file first and closes it after writing to it.

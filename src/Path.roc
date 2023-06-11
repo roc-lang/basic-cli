@@ -16,7 +16,7 @@ interface Path
 # You can canonicalize a [Path] using `Path.canonicalize`.
 #
 # Comparing canonical paths is often more reliable than comparing raw ones.
-# For example, `Path.fromStr "foo/bar/../baz" == Path.fromStr "foo/baz"` will return `Bool.false`,
+# For example, `Path.fromStr "foo/bar/../baz" == Path.fromStr "foo/baz"` will return [Bool.false],
 # because those are different paths even though their canonical equivalents would be equal.
 #
 # Also note that canonicalization reads from the file system (in order to resolve symbolic
@@ -61,7 +61,7 @@ fromStr = \str ->
     |> InternalPath.wrap
 
 ## Not all filesystems use Unicode paths. This function can be used to create a path which
-## is not valid Unicode (like a [Str](https://www.roc-lang.org/builtins/Str) is), but which is valid for a particular filesystem.
+## is not valid Unicode (like a [Str] is), but which is valid for a particular filesystem.
 ##
 ## Note that if the list contains any `0` bytes, sending this path to any file operations
 ## (e.g. `File.read` or `WriteStream.openPath`) will fail.
@@ -240,7 +240,7 @@ WindowsRoot : []
 #                 Str.concat prefixStr suffixStr
 #                 |> FromStr
 #     InternalPath.wrap content
-## Returns [Bool.true](https://www.roc-lang.org/builtins/Bool#true) if the first path begins with the second.
+## Returns [Bool.true] if the first path begins with the second.
 # startsWith : Path, Path -> Bool
 # startsWith = \path, prefix ->
 #     when InternalPath.unwrap path is
@@ -263,7 +263,7 @@ WindowsRoot : []
 #                     Str.startsWithUtf8 pathStr prefixBytes
 #                 FromStr prefixStr ->
 #                     Str.startsWith pathStr prefixStr
-## Returns [Bool.true](https://www.roc-lang.org/builtins/Bool#true) if the first path ends with the second.
+## Returns [Bool.true] if the first path ends with the second.
 # endsWith : Path, Path -> Bool
 # endsWith = \path, prefix ->
 #     when InternalPath.unwrap path is

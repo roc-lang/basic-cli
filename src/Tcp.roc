@@ -70,7 +70,7 @@ close = \stream ->
 ## Read up to a number of bytes from the TCP stream.
 ##
 ## ```
-## # Read up to 64 bytes from the stream and convert to a `Str`
+## # Read up to 64 bytes from the stream and convert to a Str
 ## received <- File.readUpTo 64 stream |> Task.await
 ## Str.fromUtf8 received
 ## ```
@@ -116,7 +116,7 @@ readExactly = \bytesToRead, stream ->
 ## ```
 ##
 ## > To read until a newline is found, you can use [Tcp.readLine] which
-## conveniently decodes to a [Str](https://www.roc-lang.org/builtins/Str).
+## conveniently decodes to a [Str].
 readUntil : U8, Stream -> Task (List U8) [TcpReadErr StreamErr]
 readUntil = \byte, stream ->
     Effect.tcpReadUntil byte stream
@@ -125,7 +125,7 @@ readUntil = \byte, stream ->
     |> Task.mapFail TcpReadErr
 
 ## Read until a newline or EOF is reached. If found, the newline is included as
-## the last character in the [Str](https://www.roc-lang.org/builtins/Str).
+## the last character in the [Str].
 ##
 ## ```
 ## # Read a line and then print it to `stdout`
@@ -148,7 +148,7 @@ readLine = \stream ->
 ## Tcp.writeBytes [1, 2, 3] stream
 ## ```
 ##
-## > To write a [Str](https://www.roc-lang.org/builtins/Str), you can use [Tcp.writeUtf8] instead.
+## > To write a [Str], you can use [Tcp.writeUtf8] instead.
 write : List U8, Stream -> Task {} [TcpWriteErr StreamErr]
 write = \bytes, stream ->
     Effect.tcpWrite bytes stream
@@ -156,7 +156,7 @@ write = \bytes, stream ->
     |> InternalTask.fromEffect
     |> Task.mapFail TcpWriteErr
 
-## Writes a [Str](https://www.roc-lang.org/builtins/Str) to a TCP stream,
+## Writes a [St to a TCP stream,
 ## encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##
 ## ```
@@ -169,7 +169,7 @@ writeUtf8 : Str, Stream -> Task {} [TcpWriteErr StreamErr]
 writeUtf8 = \str, stream ->
     write (Str.toUtf8 str) stream
 
-## Convert a [ConnectErr] to a [Str](https://www.roc-lang.org/builtins/Str)
+## Convert a [ConnectErr] to a [St
 ## you can print.
 ## ```
 ## when err is

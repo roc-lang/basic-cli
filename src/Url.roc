@@ -35,7 +35,7 @@ Url := Str
 ## The [Str.countUtf8Bytes](https://www.roc-lang.org/builtins/Str#countUtf8Bytes) function can be helpful in finding out how many bytes to reserve.
 ##
 ## There is no `Url.withCapacity` because it's better to reserve extra capacity
-## on a [Str](https://www.roc-lang.org/builtins/Str) first, and then pass that string to [Url.fromStr]. This function will make use
+## on a [Str] first, and then pass that string to [Url.fromStr]. This function will make use
 ## of the extra capacity.
 reserve : Url, Nat -> Url
 reserve = \@Url str, cap ->
@@ -65,7 +65,7 @@ reserve = \@Url str, cap ->
 fromStr : Str -> Url
 fromStr = \str -> @Url str
 
-## Return a [Str](https://www.roc-lang.org/builtins/Str) representation of this URL.
+## Return a [Str] representation of this URL.
 ## ```
 ## # Gives "https://example.com/two%20words"
 ## Url.fromStr "https://example.com"
@@ -226,7 +226,7 @@ percentEncode = \input ->
 
                     Str.concat output suffix
 
-## Adds a [Str](https://www.roc-lang.org/builtins/Str) query parameter to the
+## Adds a [Str] query parameter to the
 ## end of the [Url]. The key and value both get [percent-encoded](https://en.wikipedia.org/wiki/Percent-encoding).
 ## ```
 ## # Gives https://example.com?email=someone%40example.com
@@ -338,7 +338,7 @@ query = \@Url urlStr ->
         Ok { after } -> after
         Err NotFound -> ""
 
-## Returns [Bool.true](https://www.roc-lang.org/builtins/Bool#true) if the URL has a `?` in it.
+## Returns [Bool.true] if the URL has a `?` in it.
 ## ```
 ## # Gives Bool.true
 ## Url.fromStr "https://example.com?key=value#stuff"
@@ -406,7 +406,7 @@ withFragment = \@Url urlStr, fragmentStr ->
                 # The URL didn't have a fragment, so give it this one
                 @Url "\(urlStr)#\(fragmentStr)"
 
-## Returns [Bool.true](https://www.roc-lang.org/builtins/Bool#true) if the URL has a `#` in it.
+## Returns [Bool.true] if the URL has a `#` in it.
 ## ```
 ## # Gives Bool.true
 ## Url.fromStr "https://example.com?key=value#stuff"
