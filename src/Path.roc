@@ -37,8 +37,11 @@ interface Path
 # is valid on that disk, but invalid on the other disk. One way this could happen is if the
 # directory on the ext4 disk has a filename containing a `:` in it. `:` is allowed in ext4
 # paths but is considered invalid in FAT32 paths.
+
+## Represents a path to a file or directory on the filesystem.
 Path : InternalPath
 
+## Represents an error that can happen when canonicalizing a path.
 CanonicalizeErr a : [
     PathCanonicalizeErr {},
 ]a
@@ -147,6 +150,9 @@ display = \path ->
 #             when InternalPath.unwrap p2 is
 #                 FromOperatingSystem bytes2 | ArbitraryBytes bytes2 -> Str.compareUtf8 str1 bytes2
 #                 FromStr str2 -> Ord.compare str1 str2
+
+## Represents a attributes of a path such as a parent directory, the current 
+## directory for use when transforming a path.
 PathComponent : [
     ParentDir, # e.g. ".." on UNIX or Windows
     CurrentDir, # e.g. "." on UNIX
@@ -167,6 +173,8 @@ PathComponent : [
 #     None,
 # ]
 # TODO see https://doc.rust-lang.org/std/path/enum.Prefix.html
+## Represents the root path on Windows operating system, which refers to the 
+## current disk drive.
 WindowsRoot : []
 
 ## Returns the root of the path.
@@ -232,7 +240,7 @@ WindowsRoot : []
 #                 Str.concat prefixStr suffixStr
 #                 |> FromStr
 #     InternalPath.wrap content
-## Returns `Bool.true` if the first path begins with the second.
+## Returns [Bool.true](https://www.roc-lang.org/builtins/Bool#true) if the first path begins with the second.
 # startsWith : Path, Path -> Bool
 # startsWith = \path, prefix ->
 #     when InternalPath.unwrap path is
@@ -255,7 +263,7 @@ WindowsRoot : []
 #                     Str.startsWithUtf8 pathStr prefixBytes
 #                 FromStr prefixStr ->
 #                     Str.startsWith pathStr prefixStr
-## Returns `Bool.true` if the first path ends with the second.
+## Returns [Bool.true](https://www.roc-lang.org/builtins/Bool#true) if the first path ends with the second.
 # endsWith : Path, Path -> Bool
 # endsWith = \path, prefix ->
 #     when InternalPath.unwrap path is
@@ -285,7 +293,6 @@ WindowsRoot : []
 ## If the last component of this path has no `.`, appends `.` followed by the given string.
 ## Otherwise, replaces everything after the last `.` with the given string.
 ##
-## Examples:
 ## ```
 ## # Each of these gives "foo/bar/baz.txt"
 ## Path.fromStr "foo/bar/baz" |> Path.withExtension "txt"

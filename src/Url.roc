@@ -177,14 +177,17 @@ appendHelp = \prefix, suffix ->
 ## Internal helper. This is intentionally unexposed so that you don't accidentally
 ## double-encode things. If you really want to percent-encode an arbitrary string,
 ## you can always do:
+##
 ## ```
 ## Url.fromStr ""
 ## |> Url.append myStrToEncode
 ## |> Url.toStr
 ## ```
-## Note that it's not necessary to situationally encode spaces as `+` instead of `%20` -
-## it's apparently always safe to use `%20` (but not always safe to use `+`):
-## https://stackoverflow.com/questions/2678551/when-should-space-be-encoded-to-plus-or-20/47188851#47188851
+## 
+## > Note: it is recommended to encode spaces as `%20`, the HTML 2.0 specification
+## suggests that these can be encoded as `+`, however this is not always safe to 
+## use. See [this stackoverflow discussion](https://stackoverflow.com/questions/2678551/when-should-space-be-encoded-to-plus-or-20/47188851#47188851) 
+## for a detailed explanation.
 percentEncode : Str -> Str
 percentEncode = \input ->
     # Optimistically assume we won't need any percent encoding, and can have
@@ -335,13 +338,13 @@ query = \@Url urlStr ->
         Ok { after } -> after
         Err NotFound -> ""
 
-## Returns `Bool.true` if the URL has a `?` in it.
+## Returns [Bool.true](https://www.roc-lang.org/builtins/Bool#true) if the URL has a `?` in it.
 ## ```
-## # Gives `Bool.true`
+## # Gives Bool.true
 ## Url.fromStr "https://example.com?key=value#stuff"
 ## |> Url.hasQuery
 ##
-## # Gives `Bool.false`
+## # Gives Bool.false
 ## Url.fromStr "https://example.com#stuff"
 ## |> Url.hasQuery
 ## ```
@@ -403,13 +406,13 @@ withFragment = \@Url urlStr, fragmentStr ->
                 # The URL didn't have a fragment, so give it this one
                 @Url "\(urlStr)#\(fragmentStr)"
 
-## Returns `Bool.true` if the URL has a `#` in it.
+## Returns [Bool.true](https://www.roc-lang.org/builtins/Bool#true) if the URL has a `#` in it.
 ## ```
-## # Gives `Bool.true`
+## # Gives Bool.true
 ## Url.fromStr "https://example.com?key=value#stuff"
 ## |> Url.hasFragment
 ##
-## # Gives `Bool.false`
+## # Gives Bool.false
 ## Url.fromStr "https://example.com?key=value"
 ## |> Url.hasFragment
 ## ```

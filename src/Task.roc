@@ -52,8 +52,8 @@ loop = \state, step ->
 
 ## Create a task that always succeeds with the value provided.
 ## 
-## For example the following task always succeeds with the [Str](https://www.roc-lang.org/builtins/Str) `"Louis"`.
 ## ```
+## # Always succeeds with "Louis"
 ## getName : Task.Task Str []
 ## getName = Task.succeed "Louis"
 ## ```
@@ -63,8 +63,8 @@ succeed = \ok -> InternalTask.succeed ok
 
 ## Create a task that always failes with the error provided.
 ## 
-## For example the following task always fails with the tag `CustomError Str`.
 ## ```
+## # Always fails with the tag `CustomError Str`
 ## customError : Str -> Task.Task {} [CustomError Str]
 ## customError = \err -> Task.fail (CustomError err)
 ## ```
@@ -73,16 +73,15 @@ fail : err -> Task * err
 fail = \err -> InternalTask.fail err
 
 ## Transform a given Task with a function that handles the success or error case 
-## and returns another task based on that.
-##
-## This is useful for chaining tasks together or performing error handling and 
-## recovery.
+## and returns another task based on that. This is useful for chaining tasks 
+## together or performing error handling and recovery.
 ## 
 ## Consider a the following task;
 ##
 ## `canFail : Task {} [Failure, AnotherFail, YetAnotherFail]`
 ## 
 ## We can use [attempt] to handle the failure cases using the following;
+##
 ## ```
 ## result <- canFail |> Task.attempt
 ## when result is
@@ -91,6 +90,7 @@ fail = \err -> InternalTask.fail err
 ##     Err AnotherFail -> Stdout.line "Ooooops, another failure!"
 ##     Err YetAnotherFail -> Stdout.line "Really big oooooops, yet again!"
 ## ```
+##
 ## Here we know that the `canFail` task may fail, and so we use
 ## `Task.attempt` to convert the task to a `Result` and then use pattern 
 ## matching to handle the success and possible failure cases.
@@ -109,6 +109,7 @@ attempt = \task, transform ->
 ## Take the success value from a given [Task] and use that to generate a new [Task].
 ##
 ## For example we can use this to run tasks in sequence like follows;
+##
 ## ```
 ## # Prints "Hello World!\n" to standard output.
 ## {} <- Stdout.write "Hello "|> Task.await
@@ -129,9 +130,8 @@ await = \task, transform ->
 
 ## Take the error value from a given [Task] and use that to generate a new [Task].
 ##
-## For example the following code will print `"Something went wrong!"` to standard 
-## error if the `canFail` task fails.
 ## ```
+## # Prints "Something went wrong!" to standard error if `canFail` fails.
 ## canFail 
 ## |> Task.onFail \_ -> Stderr.line "Something went wrong!"
 ## ```
@@ -166,9 +166,8 @@ map = \task, transform ->
 
 ## Transform the error value of a given [Task] with a given function.
 ##
-## For example if the `canFail` task fails with an error, we can map that error
-## to `CustomError` tag as follows;
 ## ```
+## # Ignore the fail value, and map it to the tag `CustomError`
 ## canFail
 ## |> Task.mapFail \_ -> CustomError
 ## ```
@@ -193,9 +192,10 @@ fromResult = \result ->
 ## Apply a task to another task applicatively. This can be used with 
 ## [succeed] to build a [Task] that returns a record. 
 ##
-## For example the following task returns a record with two fields, `apples` and
-## `oranges`, each of which is a list of strings. If it fails it returns an
-## error `NoFruitAvailable` tag.
+## The following example returns a Record with two fields, `apples` and
+## `oranges`, each of which is a `List Str`. If it fails it returns the tag
+## `NoFruitAvailable`.
+## 
 ## ```
 ## getFruitBasket : Task { apples : List Str, oranges : List Str } [NoFruitAvailable]
 ## getFruitBasket = Task.succeed {

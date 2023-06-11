@@ -1,6 +1,7 @@
 interface Arg
     exposes [
         Parser,
+        ParseError,
         NamedParser,
         parse,
         toHelp,
@@ -55,14 +56,14 @@ Parser a := [
     Lazy ({} -> a),
 ]
 
-## Indices in an arguments list that have already been parsed.
+# Indices in an arguments list that have already been parsed.
 Taken : Set Nat
 
-## A representation of parsed and unparsed arguments in a constant list of
-## command-line arguments.
-##
-## Used only internally, for efficient representation of parsed and unparsed
-## arguments.
+# A representation of parsed and unparsed arguments in a constant list of
+# command-line arguments.
+#
+# Used only internally, for efficient representation of parsed and unparsed
+# arguments.
 MarkedArgs : { args : List Str, taken : Taken }
 
 ## Enumerates errors that can occur during parsing a list of command line arguments.
@@ -385,14 +386,13 @@ andMap = \@Parser parser, @Parser mapper ->
 program = \parser, { name, help ? "" } ->
     @NamedParser { name, help, parser }
 
-# TODO panics in alias analysis when this annotation is included
-# parse : NamedParser a, List Str -> Result a (ParseError*)
 ## Parses a list of command-line arguments with the given parser. The list of
 ## arguments is expected to contain the name of the program in the first
 ## position.
 ##
 ## If the arguments do not conform with what is expected by the parser, the
 ## first error seen will be returned.
+parse : NamedParser a, List Str -> Result a (ParseError *)
 parse = \@NamedParser parser, args ->
     # By convention the first string in the argument list is the program name.
     if

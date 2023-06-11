@@ -15,25 +15,29 @@ interface Tcp
     ]
     imports [Effect, Task.{ Task }, InternalTask, InternalTcp]
 
+## Represents a TCP stream.
 Stream : InternalTcp.Stream
 
+## Represents errors that can occur when connecting to a remote host.
 ConnectErr : InternalTcp.ConnectErr
 
+## Represents errors that can occur when performing a [Task] with a [Stream].
 StreamErr : InternalTcp.StreamErr
 
-## Opens a TCP connection to a remote host and perform a [Task] with it.
+## Opens a TCP connection to a remote host and perform a [Task] with it. The 
+## connection is automatically closed after the [Task] is completed. Examples of 
+## valid hostnames:
+##  - `127.0.0.1`
+##  - `::1`
+##  - `localhost`
+##  - `roc-lang.org`
 ##
-##     # Connect to localhost:8080 and send "Hi from Roc!"
-##     stream <- Tcp.withConnect "localhost" 8080
-##     Tcp.writeUtf8 "Hi from Roc!" stream
+## ```
+## # Connect to localhost:8080 and send "Hi from Roc!"
+## stream <- Tcp.withConnect "localhost" 8080
+## Tcp.writeUtf8 "Hi from Roc!" stream
+## ```
 ##
-## Examples of valid hostnames:
-##  - 127.0.0.1
-##  - ::1
-##  - localhost
-##  - roc-lang.org
-##
-## The connection is automatically closed after the [Task] is completed.
 withConnect : Str, U16, (Stream -> Task {} err) -> Task {} [TcpConnectErr ConnectErr, TcpPerformErr err]
 withConnect = \hostname, port, callback ->
     stream <- connect hostname port
@@ -64,13 +68,13 @@ close = \stream ->
 
 ## Read up to a number of bytes from the TCP stream.
 ##
-##     received <- File.readUpTo 64 stream |> await
+## ```
+## # Read up to 64 bytes from the stream and convert to a `Str`
+## received <- File.readUpTo 64 stream |> Task.await
+## Str.fromUtf8 received
+## ```
 ##
-## If you need a [Str], you can use [Str.fromUtf8]:
-##
-##     Str.fromUtf8 received
-##
-## To read an exact number of bytes or fail, you can use [Tcp.readExactly] instead.
+## > Note: to read an exact number of bytes or fail, you can use [Tcp.readExactly] instead.
 readUpTo : Nat, Stream -> Task (List U8) [TcpReadErr StreamErr]
 readUpTo = \bytesToRead, stream ->
     Effect.tcpReadUpTo bytesToRead stream
@@ -78,11 +82,13 @@ readUpTo = \bytesToRead, stream ->
     |> InternalTask.fromEffect
     |> Task.mapFail TcpReadErr
 
-## Read an exact number of bytes or fail.
+## Read an exact number of bytes or fail. `TcpUnexpectedEOF` is returned if the 
+## stream ends before the specfied number of bytes is reached.
 ##
-##     File.readExactly 64 stream
-##
-## `TcpUnexpectedEOF` is returned if the stream ends before the specfied number of bytes is reached.
+## ```
+## File.readExactly 64 stream
+## ```
+## 
 readExactly : Nat, Stream -> Task (List U8) [TcpReadErr StreamErr, TcpUnexpectedEOF]
 readExactly = \bytesToRead, stream ->
     Effect.tcpReadExactly bytesToRead stream
@@ -100,14 +106,16 @@ readExactly = \bytesToRead, stream ->
         )
     |> InternalTask.fromEffect
 
-## Read until a delimiter or EOF is reached.
+## Read until a delimiter or EOF is reached. If found, the delimiter is included
+## as the last byte.
+## 
+## ```
+## # Read until null terminator
+## File.readUntil 0 stream
+## ```
 ##
-##     # Read until null terminator
-##     File.readUntil 0 stream
-##
-## If found, the delimiter is included as the last byte.
-##
-## To read until a newline is found, you can use [Tcp.readLine] which conveniently decodes to a [Str].
+## > Note: to read until a newline is found, you can use [Tcp.readLine] which 
+## conveniently decodes to a [Str](https://www.roc-lang.org/builtins/Str).
 readUntil : U8, Stream -> Task (List U8) [TcpReadErr StreamErr]
 readUntil = \byte, stream ->
     Effect.tcpReadUntil byte stream
@@ -115,11 +123,15 @@ readUntil = \byte, stream ->
     |> InternalTask.fromEffect
     |> Task.mapFail TcpReadErr
 
-## Read until a newline or EOF is reached.
-##
-##     File.readLine stream
-##
-## If found, the newline is included as the last character in the [Str].
+## Read until a newline or EOF is reached. If found, the newline is included as 
+## the last character in the [Str](https://www.roc-lang.org/builtins/Str).
+## 
+## ```
+## # Read a line and then print it to `stdout`
+## lineStr <- File.readLine stream |> Task.await
+## Stdout.line lineStr
+## ```
+## 
 readLine : Stream -> Task Str [TcpReadErr StreamErr, TcpReadBadUtf8 _]
 readLine = \stream ->
     bytes <- readUntil '\n' stream |> Task.await
@@ -130,10 +142,12 @@ readLine = \stream ->
 
 ## Writes bytes to a TCP stream.
 ##
-##     # Writes the bytes 1, 2, 3
-##     Tcp.writeBytes [1, 2, 3] stream
-##
-## To write a [Str], you can use [Tcp.writeUtf8] instead.
+## ```
+## # Writes the bytes 1, 2, 3
+## Tcp.writeBytes [1, 2, 3] stream
+## ```
+## 
+## > Note: to write a [Str](https://www.roc-lang.org/builtins/Str), you can use [Tcp.writeUtf8] instead.
 write : List U8, Stream -> Task {} [TcpWriteErr StreamErr]
 write = \bytes, stream ->
     Effect.tcpWrite bytes stream
@@ -141,22 +155,26 @@ write = \bytes, stream ->
     |> InternalTask.fromEffect
     |> Task.mapFail TcpWriteErr
 
-## Writes a [Str] to a TCP stream, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
+## Writes a [Str](https://www.roc-lang.org/builtins/Str) to a TCP stream, 
+## encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##
-##     # Write "Hi from Roc!" encoded as UTF-8
-##     Tcp.writeUtf8 "Hi from Roc!" stream
+## ```
+## # Write "Hi from Roc!" encoded as UTF-8
+## Tcp.writeUtf8 "Hi from Roc!" stream
+## ```
 ##
-## To write unformatted bytes, you can use [Tcp.write] instead.
+## > Note: to write unformatted bytes, you can use [Tcp.write] instead.
 writeUtf8 : Str, Stream -> Task {} [TcpWriteErr StreamErr]
 writeUtf8 = \str, stream ->
     write (Str.toUtf8 str) stream
 
-## Convert a [ConnectErr] to a [Str] you can print.
-##
-##     when err is
-##         TcpPerfomErr (TcpConnectErr connectErr) ->
-##             Stderr.line (Tcp.connectErrToStr connectErr)
-##
+## Convert a [ConnectErr] to a [Str](https://www.roc-lang.org/builtins/Str)
+## you can print.
+## ```
+## when err is
+##     TcpPerfomErr (TcpConnectErr connectErr) ->
+##         Stderr.line (Tcp.connectErrToStr connectErr)
+## ```
 connectErrToStr : ConnectErr -> Str
 connectErrToStr = \err ->
     when err is
@@ -172,16 +190,16 @@ connectErrToStr = \err ->
             "Unrecognized Error: \(codeStr) - \(message)"
 
 ## Convert a [StreamErr] to a [Str] you can print.
+## ```
+## when err is
+##     TcpPerformErr (TcpReadErr err) ->
+##         errStr = Tcp.streamErrToStr err
+##         Stderr.line "Error while reading: \(errStr)"
 ##
-##     when err is
-##         TcpPerformErr (TcpReadErr err) ->
-##             errStr = Tcp.streamErrToStr err
-##             Stderr.line "Error while reading: \(errStr)"
-##
-##         TcpPerformErr (TcpWriteErr err) ->
-##             errStr = Tcp.streamErrToStr err
-##             Stderr.line "Error while writing: \(errStr)"
-##
+##     TcpPerformErr (TcpWriteErr err) ->
+##         errStr = Tcp.streamErrToStr err
+##         Stderr.line "Error while writing: \(errStr)"
+## ```
 streamErrToStr : StreamErr -> Str
 streamErrToStr = \err ->
     when err is
