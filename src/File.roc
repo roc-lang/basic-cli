@@ -12,11 +12,6 @@ WriteErr : InternalFile.WriteErr
 ##
 ## First encode a `val` using a given `fmt` which implements the ability [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
 ##
-## If writing to the file fails, for example because of a file permissions
-## issue, the task fails with [WriteErr].
-##
-## This opens the file first and closes it after writing to it.
-##
 ## For example, suppose you have a `Json.toCompactUtf8` which implements
 ## [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
 ## You can use this to write [JSON](https://en.wikipedia.org/wiki/JSON)
@@ -29,6 +24,9 @@ WriteErr : InternalFile.WriteErr
 ##     { some: "json stuff" }
 ##     Json.toCompactUtf8
 ## ```
+##
+## This opens the file first and closes it after writing to it.
+## If writing to the file fails, for example because of a file permissions issue, the task fails with [WriteErr].
 ##
 ## > To write unformatted bytes to a file, you can use [File.writeBytes] instead.
 write : Path, val, fmt -> Task {} [FileWriteErr Path WriteErr] | val has Encode.Encoding, fmt has Encode.EncoderFormatting
@@ -44,6 +42,7 @@ write = \path, val, fmt ->
 ## # Writes the bytes 1, 2, 3 to the file `myfile.dat`.
 ## File.writeBytes (Path.fromStr "myfile.dat") [1, 2, 3]
 ## ```
+##
 ## This opens the file first and closes it after writing to it.
 ##
 ## > To format data before writing it to a file, you can use [File.write] instead.
@@ -57,6 +56,7 @@ writeBytes = \path, bytes ->
 ## # Writes "Hello!" encoded as UTF-8 to the file `myfile.txt`.
 ## File.writeUtf8 (Path.fromStr "myfile.txt") "Hello!"
 ## ```
+##
 ## This opens the file first and closes it after writing to it.
 ##
 ## > To write unformatted bytes to a file, you can use [File.writeBytes] instead.
@@ -155,6 +155,7 @@ toReadTask = \path, toEffect ->
     |> InternalTask.fromEffect
     |> Task.mapFail \err -> FileReadErr path err
 
+## Converts a [WriteErr] to a [Str].
 writeErrToStr : WriteErr -> Str
 writeErrToStr = \err ->
     when err is
@@ -179,6 +180,7 @@ writeErrToStr = \err ->
         Unsupported -> "Unsupported"
         _ -> "Unrecognized"
 
+## Converts a [ReadErr] to a [Str].
 readErrToStr : ReadErr -> Str
 readErrToStr = \err ->
     when err is

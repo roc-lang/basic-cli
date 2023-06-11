@@ -26,18 +26,18 @@ StreamErr : InternalTcp.StreamErr
 
 ## Opens a TCP connection to a remote host and perform a [Task] with it. 
 ##
+## ```
+## # Connect to localhost:8080 and send "Hi from Roc!"
+## stream <- Tcp.withConnect "localhost" 8080
+## Tcp.writeUtf8 "Hi from Roc!" stream
+## ```
+##
 ## The connection is automatically closed after the [Task] is completed. Examples of
 ## valid hostnames:
 ##  - `127.0.0.1`
 ##  - `::1`
 ##  - `localhost`
 ##  - `roc-lang.org`
-##
-## ```
-## # Connect to localhost:8080 and send "Hi from Roc!"
-## stream <- Tcp.withConnect "localhost" 8080
-## Tcp.writeUtf8 "Hi from Roc!" stream
-## ```
 ##
 withConnect : Str, U16, (Stream -> Task {} err) -> Task {} [TcpConnectErr ConnectErr, TcpPerformErr err]
 withConnect = \hostname, port, callback ->
@@ -86,11 +86,11 @@ readUpTo = \bytesToRead, stream ->
 
 ## Read an exact number of bytes or fail. 
 ##
-## `TcpUnexpectedEOF` is returned if the stream ends before the specfied number of bytes is reached.
-##
 ## ```
 ## File.readExactly 64 stream
 ## ```
+##
+## `TcpUnexpectedEOF` is returned if the stream ends before the specfied number of bytes is reached.
 ##
 readExactly : Nat, Stream -> Task (List U8) [TcpReadErr StreamErr, TcpUnexpectedEOF]
 readExactly = \bytesToRead, stream ->
@@ -111,12 +111,12 @@ readExactly = \bytesToRead, stream ->
 
 ## Read until a delimiter or EOF is reached. 
 ##
-## If found, the delimiter is included as the last byte.
-##
 ## ```
 ## # Read until null terminator
 ## File.readUntil 0 stream
 ## ```
+##
+## If found, the delimiter is included as the last byte.
 ##
 ## > To read until a newline is found, you can use [Tcp.readLine] which
 ## conveniently decodes to a [Str].
@@ -129,13 +129,13 @@ readUntil = \byte, stream ->
 
 ## Read until a newline or EOF is reached. 
 ##
-## If found, the newline is included as the last character in the [Str].
-##
 ## ```
 ## # Read a line and then print it to `stdout`
 ## lineStr <- File.readLine stream |> Task.await
 ## Stdout.line lineStr
 ## ```
+##
+## If found, the newline is included as the last character in the [Str].
 ##
 readLine : Stream -> Task Str [TcpReadErr StreamErr, TcpReadBadUtf8 _]
 readLine = \stream ->
@@ -179,6 +179,7 @@ writeUtf8 = \str, stream ->
 ##     TcpPerfomErr (TcpConnectErr connectErr) ->
 ##         Stderr.line (Tcp.connectErrToStr connectErr)
 ## ```
+##
 connectErrToStr : ConnectErr -> Str
 connectErrToStr = \err ->
     when err is
@@ -205,6 +206,7 @@ connectErrToStr = \err ->
 ##         errStr = Tcp.streamErrToStr err
 ##         Stderr.line "Error while writing: \(errStr)"
 ## ```
+##
 streamErrToStr : StreamErr -> Str
 streamErrToStr = \err ->
     when err is

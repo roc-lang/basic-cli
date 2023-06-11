@@ -25,7 +25,7 @@ Request : InternalHttp.Request
 ## Represents an HTTP method.
 Method : InternalHttp.Method
 
-## Represents an HTTP header e.g. "Content-Type: application/json"
+## Represents an HTTP header e.g. `Content-Type: application/json`
 Header : InternalHttp.Header
 
 ## Represents a timeout configuration for an HTTP request.

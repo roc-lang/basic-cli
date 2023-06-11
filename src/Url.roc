@@ -77,7 +77,9 @@ toStr = \@Url str -> str
 
 ## [Percent-encodes](https://en.wikipedia.org/wiki/Percent-encoding) a
 ## [path component](https://en.wikipedia.org/wiki/Uniform_Resource_Identifier#Syntax)
-## and appends to the end of the URL's path. This will be appended before any queries and fragments. If the given path string begins with `/` and the URL already ends with `/`, one
+## and appends to the end of the URL's path. 
+##
+## This will be appended before any queries and fragments. If the given path string begins with `/` and the URL already ends with `/`, one
 ## will be ignored. This avoids turning a single slash into a double slash. If either the given URL or the given string is empty, no `/` will be added.
 ##
 ## ```
@@ -370,7 +372,9 @@ hasQuery = \@Url urlStr ->
     |> List.contains (Num.toU8 '?')
 
 ## Returns the URL's [fragment](https://en.wikipedia.org/wiki/URL#Syntax)—the part after
-## the `#`, if it has one. Returns `""` if the URL has no fragment.
+## the `#`, if it has one. 
+##
+## Returns `""` if the URL has no fragment.
 ##
 ## ```
 ## # Gives "stuff"
