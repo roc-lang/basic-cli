@@ -42,8 +42,8 @@ NamedParser a := {
 ## needs, consider transforming it into a [NamedParser].
 Parser a := [
     Succeed a,
-    Option OptionConfig (MarkedArgs -> Result { newlyTaken : Taken, val : a } (ParseError [])),
-    Positional PositionalConfig (MarkedArgs -> Result { newlyTaken : Taken, val : a } (ParseError [])),
+    Option OptionConfig (MarkedArgs -> Result { newlyTaken : Taken, val : a } ParseError),
+    Positional PositionalConfig (MarkedArgs -> Result { newlyTaken : Taken, val : a } ParseError),
     # TODO: hiding the record behind an alias currently causes a panic
     SubCommand
         (List {
@@ -67,7 +67,7 @@ Taken : Set Nat
 MarkedArgs : { args : List Str, taken : Taken }
 
 ## Enumerates errors that can occur during parsing a list of command line arguments.
-ParseError a : [
+ParseError : [
     ## The program name was not found as the first argument to be parsed.
     ProgramNameNotProvided Str,
     ## A positional argument (inherently required) was not found.
@@ -91,7 +91,7 @@ ParseError a : [
             found : Str,
             choices : List Str,
         },
-]a
+]
 
 ## Expected type of an option, in an argument list being parsed.
 ## Describes how a string option should be interpreted as a certain type.
@@ -392,7 +392,7 @@ program = \parser, { name, help ? "" } ->
 ##
 ## If the arguments do not conform with what is expected by the parser, the
 ## first error seen will be returned.
-parse : NamedParser a, List Str -> Result a (ParseError [])
+parse : NamedParser a, List Str -> Result a ParseError
 parse = \@NamedParser parser, args ->
     # By convention the first string in the argument list is the program name.
     if
@@ -404,7 +404,7 @@ parse = \@NamedParser parser, args ->
 
         parseHelp parser.parser markedArgs
 
-parseHelp : Parser a, MarkedArgs -> Result a (ParseError [])
+parseHelp : Parser a, MarkedArgs -> Result a ParseError
 parseHelp = \@Parser parser, args ->
     when parser is
         Succeed val -> Ok val
@@ -669,7 +669,7 @@ formatOptionType = \type ->
 
 quote = \s -> "\"\(s)\""
 
-formatError : ParseError [] -> Str
+formatError : ParseError -> Str
 formatError = \err ->
     when err is
         ProgramNameNotProvided programName ->
