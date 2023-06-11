@@ -24,8 +24,9 @@ ConnectErr : InternalTcp.ConnectErr
 ## Represents errors that can occur when performing a [Task] with a [Stream].
 StreamErr : InternalTcp.StreamErr
 
-## Opens a TCP connection to a remote host and perform a [Task] with it. The
-## connection is automatically closed after the [Task] is completed. Examples of
+## Opens a TCP connection to a remote host and perform a [Task] with it. 
+##
+## The connection is automatically closed after the [Task] is completed. Examples of
 ## valid hostnames:
 ##  - `127.0.0.1`
 ##  - `::1`
@@ -83,8 +84,9 @@ readUpTo = \bytesToRead, stream ->
     |> InternalTask.fromEffect
     |> Task.mapFail TcpReadErr
 
-## Read an exact number of bytes or fail. `TcpUnexpectedEOF` is returned if the
-## stream ends before the specfied number of bytes is reached.
+## Read an exact number of bytes or fail. 
+##
+## `TcpUnexpectedEOF` is returned if the stream ends before the specfied number of bytes is reached.
 ##
 ## ```
 ## File.readExactly 64 stream
@@ -107,8 +109,9 @@ readExactly = \bytesToRead, stream ->
         )
     |> InternalTask.fromEffect
 
-## Read until a delimiter or EOF is reached. If found, the delimiter is included
-## as the last byte.
+## Read until a delimiter or EOF is reached. 
+##
+## If found, the delimiter is included as the last byte.
 ##
 ## ```
 ## # Read until null terminator
@@ -124,8 +127,9 @@ readUntil = \byte, stream ->
     |> InternalTask.fromEffect
     |> Task.mapFail TcpReadErr
 
-## Read until a newline or EOF is reached. If found, the newline is included as
-## the last character in the [Str].
+## Read until a newline or EOF is reached. 
+##
+## If found, the newline is included as the last character in the [Str].
 ##
 ## ```
 ## # Read a line and then print it to `stdout`
@@ -156,8 +160,7 @@ write = \bytes, stream ->
     |> InternalTask.fromEffect
     |> Task.mapFail TcpWriteErr
 
-## Writes a [St to a TCP stream,
-## encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
+## Writes a [Str] to a TCP stream, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##
 ## ```
 ## # Write "Hi from Roc!" encoded as UTF-8
@@ -169,8 +172,8 @@ writeUtf8 : Str, Stream -> Task {} [TcpWriteErr StreamErr]
 writeUtf8 = \str, stream ->
     write (Str.toUtf8 str) stream
 
-## Convert a [ConnectErr] to a [St
-## you can print.
+## Convert a [ConnectErr] to a [Str] you can print.
+##
 ## ```
 ## when err is
 ##     TcpPerfomErr (TcpConnectErr connectErr) ->
@@ -191,6 +194,7 @@ connectErrToStr = \err ->
             "Unrecognized Error: \(codeStr) - \(message)"
 
 ## Convert a [StreamErr] to a [Str] you can print.
+##
 ## ```
 ## when err is
 ##     TcpPerformErr (TcpReadErr err) ->

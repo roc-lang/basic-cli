@@ -44,8 +44,9 @@ var = \name ->
     |> Effect.map (\result -> Result.mapErr result \{} -> VarNotFound)
     |> InternalTask.fromEffect
 
-## Reads the given environment variable and attempts to decode it. The type
-## being decoded into will be determined by type inference. For example,
+## Reads the given environment variable and attempts to decode it. 
+##
+## The type being decoded into will be determined by type inference. For example,
 ## if this ends up being used like a `Task U16 _` then the environment variable
 ## will be decoded as a string representation of a `U16`. Trying to decode into
 ## any other type will fail with a `DecodeErr`.

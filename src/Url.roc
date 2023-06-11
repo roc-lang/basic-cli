@@ -226,20 +226,25 @@ percentEncode = \input ->
 
                     Str.concat output suffix
 
-## Adds a [Str] query parameter to the
-## end of the [Url]. The key and value both get [percent-encoded](https://en.wikipedia.org/wiki/Percent-encoding).
+## Adds a [Str] query parameter to the end of the [Url]. 
+##
+## The key and value both get [percent-encoded](https://en.wikipedia.org/wiki/Percent-encoding).
+##
 ## ```
 ## # Gives https://example.com?email=someone%40example.com
 ## Url.fromStr "https://example.com"
 ## |> Url.appendParam "email" "someone@example.com"
 ## ```
+##
 ## This can be called multiple times on the same URL.
+##
 ## ```
 ## # Gives https://example.com?caf%C3%A9=du%20Monde&email=hi%40example.com
 ## Url.fromStr "https://example.com"
 ## |> Url.appendParam "café" "du Monde"
 ## |> Url.appendParam "email" "hi@example.com"
 ## ```
+##
 appendParam : Url, Str, Str -> Url
 appendParam = \@Url urlStr, key, value ->
     { withoutFragment, afterQuery } =
@@ -273,7 +278,10 @@ appendParam = \@Url urlStr, key, value ->
     |> @Url
 
 ## Replaces the URL's [query](https://en.wikipedia.org/wiki/URL#Syntax)—the part
-## after the `?`, if it has one, but before any `#` it might have. Passing `""` removes the `?` (if there was one).
+## after the `?`, if it has one, but before any `#` it might have. 
+##
+## Passing `""` removes the `?` (if there was one).
+## 
 ## ```
 ## # Gives https://example.com?newQuery=thisRightHere#stuff
 ## Url.fromStr "https://example.com?key1=val1&key2=val2#stuff"
@@ -317,7 +325,10 @@ withQuery = \@Url urlStr, queryStr ->
         |> @Url
 
 ## Returns the URL's [query](https://en.wikipedia.org/wiki/URL#Syntax)—the part after
-## the `?`, if it has one, but before any `#` it might have. Returns `""` if the URL has no query.
+## the `?`, if it has one, but before any `#` it might have. 
+##
+## Returns `""` if the URL has no query.
+##
 ## ```
 ## # Gives "key1=val1&key2=val2&key3=val3"
 ## Url.fromStr "https://example.com?key1=val1&key2=val2&key3=val3#stuff"
@@ -327,6 +338,7 @@ withQuery = \@Url urlStr, queryStr ->
 ## Url.fromStr "https://example.com#stuff"
 ## |> Url.query
 ## ```
+##
 query : Url -> Str
 query = \@Url urlStr ->
     withoutFragment =
@@ -339,6 +351,7 @@ query = \@Url urlStr ->
         Err NotFound -> ""
 
 ## Returns [Bool.true] if the URL has a `?` in it.
+##
 ## ```
 ## # Gives Bool.true
 ## Url.fromStr "https://example.com?key=value#stuff"
@@ -348,6 +361,7 @@ query = \@Url urlStr ->
 ## Url.fromStr "https://example.com#stuff"
 ## |> Url.hasQuery
 ## ```
+##
 hasQuery : Url -> Bool
 hasQuery = \@Url urlStr ->
     # TODO use Str.contains once it exists. It should have a "fast path"
@@ -357,6 +371,7 @@ hasQuery = \@Url urlStr ->
 
 ## Returns the URL's [fragment](https://en.wikipedia.org/wiki/URL#Syntax)—the part after
 ## the `#`, if it has one. Returns `""` if the URL has no fragment.
+##
 ## ```
 ## # Gives "stuff"
 ## Url.fromStr "https://example.com#stuff"
@@ -366,14 +381,17 @@ hasQuery = \@Url urlStr ->
 ## Url.fromStr "https://example.com"
 ## |> Url.fragment
 ## ```
+##
 fragment : Url -> Str
 fragment = \@Url urlStr ->
     when Str.splitLast urlStr "#" is
         Ok { after } -> after
         Err NotFound -> ""
 
-## Replaces the URL's [fragment](https://en.wikipedia.org/wiki/URL#Syntax). If
-## the URL didn't have a fragment, adds one. Passing `""` removes the fragment.
+## Replaces the URL's [fragment](https://en.wikipedia.org/wiki/URL#Syntax). 
+##
+## If the URL didn't have a fragment, adds one. Passing `""` removes the fragment.
+##
 ## ```
 ## # Gives https://example.com#things
 ## Url.fromStr "https://example.com#stuff"
@@ -387,6 +405,7 @@ fragment = \@Url urlStr ->
 ## Url.fromStr "https://example.com#stuff"
 ## |> Url.withFragment ""
 ## ```
+##
 withFragment : Url, Str -> Url
 withFragment = \@Url urlStr, fragmentStr ->
     when Str.splitLast urlStr "#" is
@@ -407,6 +426,7 @@ withFragment = \@Url urlStr, fragmentStr ->
                 @Url "\(urlStr)#\(fragmentStr)"
 
 ## Returns [Bool.true] if the URL has a `#` in it.
+##
 ## ```
 ## # Gives Bool.true
 ## Url.fromStr "https://example.com?key=value#stuff"
@@ -416,6 +436,7 @@ withFragment = \@Url urlStr, fragmentStr ->
 ## Url.fromStr "https://example.com?key=value"
 ## |> Url.hasFragment
 ## ```
+##
 hasFragment : Url -> Bool
 hasFragment = \@Url urlStr ->
     # TODO use Str.contains once it exists. It should have a "fast path"

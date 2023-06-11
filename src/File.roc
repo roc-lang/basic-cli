@@ -8,8 +8,9 @@ ReadErr : InternalFile.ReadErr
 ## Tag union of possible errors when writing a file or directory.
 WriteErr : InternalFile.WriteErr
 
-## Write data to a file. First encode a `val` using a given `fmt` which
-## implements the ability [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
+## Write data to a file. 
+##
+## First encode a `val` using a given `fmt` which implements the ability [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
 ##
 ## If writing to the file fails, for example because of a file permissions
 ## issue, the task fails with [WriteErr].
@@ -38,6 +39,7 @@ write = \path, val, fmt ->
     writeBytes path bytes
 
 ## Writes bytes to a file.
+##
 ## ```
 ## # Writes the bytes 1, 2, 3 to the file `myfile.dat`.
 ## File.writeBytes (Path.fromStr "myfile.dat") [1, 2, 3]
@@ -50,6 +52,7 @@ writeBytes = \path, bytes ->
     toWriteTask path \pathBytes -> Effect.fileWriteBytes pathBytes bytes
 
 ## Writes a [Str] to a file, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
+##
 ## ```
 ## # Writes "Hello!" encoded as UTF-8 to the file `myfile.txt`.
 ## File.writeUtf8 (Path.fromStr "myfile.txt") "Hello!"
@@ -61,7 +64,9 @@ writeUtf8 : Path, Str -> Task {} [FileWriteErr Path WriteErr]
 writeUtf8 = \path, str ->
     toWriteTask path \bytes -> Effect.fileWriteUtf8 bytes str
 
-## Deletes a file from the filesystem. Performs a [`DeleteFile`](https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-deletefile)
+## Deletes a file from the filesystem. 
+##
+## Performs a [`DeleteFile`](https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-deletefile)
 ## on Windows and [`unlink`](https://en.wikipedia.org/wiki/Unlink_(Unix)) on
 ## UNIX systems. On Windows, this will fail when attempting to delete a readonly
 ## file; the file's readonly permission must be disabled before it can be
@@ -83,10 +88,12 @@ delete = \path ->
     toWriteTask path \bytes -> Effect.fileDelete bytes
 
 ## Reads all the bytes in a file.
+##
 ## ```
 ## # Read all the bytes in `myfile.txt`.
 ## File.readBytes (Path.fromStr "myfile.txt")
 ## ```
+##
 ## This opens the file first and closes it after reading its contents.
 ##
 ## > To read and decode data from a file, you can use `File.read` instead.
@@ -95,10 +102,12 @@ readBytes = \path ->
     toReadTask path \bytes -> Effect.fileReadBytes bytes
 
 ## Reads a [Str] from a file containing [UTF-8](https://en.wikipedia.org/wiki/UTF-8)-encoded text.
+##
 ## ```
 ## # Reads UTF-8 encoded text into a Str from the file "myfile.txt"
 ## File.readUtf8 (Path.fromStr "myfile.txt")
 ## ```
+##
 ## This opens the file first and closes it after writing to it.
 ## The task will fail with `FileReadUtf8Err` if the given file contains invalid UTF-8.
 ##

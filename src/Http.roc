@@ -61,8 +61,9 @@ defaultRequest = {
     timeout: NoTimeout,
 }
 
-## An HTTP header for configuring requests. See a bunch of common headers
-## [here](https://en.wikipedia.org/wiki/List_of_HTTP_header_fields).
+## An HTTP header for configuring requests. 
+## 
+## See common headers [here](https://en.wikipedia.org/wiki/List_of_HTTP_header_fields).
 ##
 header : Str, Str -> Header
 header =
