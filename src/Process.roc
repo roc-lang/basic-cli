@@ -2,7 +2,7 @@ interface Process
     exposes [exit]
     imports [Task.{ Task }, InternalTask, Effect]
 
-## Terminates the current process with the specified exit code. This function 
+## Terminates the current process with the specified exit code. This function
 ## will never return and will immediately terminate the current process.
 ##
 ## ```

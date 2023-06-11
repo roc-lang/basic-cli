@@ -15,7 +15,7 @@ interface Task
     ]
     imports [Effect, InternalTask]
 
-## A Task represents an effect; an interaction with state outside your Roc 
+## A Task represents an effect; an interaction with state outside your Roc
 ## program, such as the terminal's standard output, or a file.
 Task ok err : InternalTask.Task ok err
 
@@ -51,7 +51,7 @@ loop = \state, step ->
     |> InternalTask.fromEffect
 
 ## Create a task that always succeeds with the value provided.
-## 
+##
 ## ```
 ## # Always succeeds with "Louis"
 ## getName : Task.Task Str []
@@ -62,7 +62,7 @@ succeed : ok -> Task ok *
 succeed = \ok -> InternalTask.succeed ok
 
 ## Create a task that always failes with the error provided.
-## 
+##
 ## ```
 ## # Always fails with the tag `CustomError Str`
 ## customError : Str -> Task.Task {} [CustomError Str]
@@ -72,14 +72,14 @@ succeed = \ok -> InternalTask.succeed ok
 fail : err -> Task * err
 fail = \err -> InternalTask.fail err
 
-## Transform a given Task with a function that handles the success or error case 
-## and returns another task based on that. This is useful for chaining tasks 
+## Transform a given Task with a function that handles the success or error case
+## and returns another task based on that. This is useful for chaining tasks
 ## together or performing error handling and recovery.
-## 
+##
 ## Consider a the following task;
 ##
 ## `canFail : Task {} [Failure, AnotherFail, YetAnotherFail]`
-## 
+##
 ## We can use [attempt] to handle the failure cases using the following;
 ##
 ## ```
@@ -92,7 +92,7 @@ fail = \err -> InternalTask.fail err
 ## ```
 ##
 ## Here we know that the `canFail` task may fail, and so we use
-## `Task.attempt` to convert the task to a `Result` and then use pattern 
+## `Task.attempt` to convert the task to a `Result` and then use pattern
 ## matching to handle the success and possible failure cases.
 ##
 attempt : Task a b, (Result a b -> Task c d) -> Task c d
@@ -114,7 +114,7 @@ attempt = \task, transform ->
 ## # Prints "Hello World!\n" to standard output.
 ## {} <- Stdout.write "Hello "|> Task.await
 ## {} <- Stdout.srite "World!\n"|> Task.await
-## 
+##
 ## Task.succeed {}
 ## ```
 await : Task a err, (a -> Task b err) -> Task b err
@@ -132,7 +132,7 @@ await = \task, transform ->
 ##
 ## ```
 ## # Prints "Something went wrong!" to standard error if `canFail` fails.
-## canFail 
+## canFail
 ## |> Task.onFail \_ -> Stderr.line "Something went wrong!"
 ## ```
 onFail : Task ok a, (a -> Task ok b) -> Task ok b
@@ -189,13 +189,13 @@ fromResult = \result ->
         Ok ok -> succeed ok
         Err err -> fail err
 
-## Apply a task to another task applicatively. This can be used with 
-## [succeed] to build a [Task] that returns a record. 
+## Apply a task to another task applicatively. This can be used with
+## [succeed] to build a [Task] that returns a record.
 ##
 ## The following example returns a Record with two fields, `apples` and
 ## `oranges`, each of which is a `List Str`. If it fails it returns the tag
 ## `NoFruitAvailable`.
-## 
+##
 ## ```
 ## getFruitBasket : Task { apples : List Str, oranges : List Str } [NoFruitAvailable]
 ## getFruitBasket = Task.succeed {

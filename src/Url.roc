@@ -84,7 +84,7 @@ toStr = \@Url str -> str
 ## # Gives https://example.com/some%20stuff
 ## Url.fromStr "https://example.com"
 ## |> Url.append "some stuff"
-## 
+##
 ## # Gives https://example.com/stuff?search=blah#fragment
 ## Url.fromStr "https://example.com?search=blah#fragment"
 ## |> Url.append "stuff"
@@ -183,10 +183,10 @@ appendHelp = \prefix, suffix ->
 ## |> Url.append myStrToEncode
 ## |> Url.toStr
 ## ```
-## 
+##
 ## > Note: it is recommended to encode spaces as `%20`, the HTML 2.0 specification
-## suggests that these can be encoded as `+`, however this is not always safe to 
-## use. See [this stackoverflow discussion](https://stackoverflow.com/questions/2678551/when-should-space-be-encoded-to-plus-or-20/47188851#47188851) 
+## suggests that these can be encoded as `+`, however this is not always safe to
+## use. See [this stackoverflow discussion](https://stackoverflow.com/questions/2678551/when-should-space-be-encoded-to-plus-or-20/47188851#47188851)
 ## for a detailed explanation.
 percentEncode : Str -> Str
 percentEncode = \input ->
@@ -226,7 +226,7 @@ percentEncode = \input ->
 
                     Str.concat output suffix
 
-## Adds a [Str](https://www.roc-lang.org/builtins/Str) query parameter to the 
+## Adds a [Str](https://www.roc-lang.org/builtins/Str) query parameter to the
 ## end of the [Url]. The key and value both get [percent-encoded](https://en.wikipedia.org/wiki/Percent-encoding).
 ## ```
 ## # Gives https://example.com?email=someone%40example.com
@@ -372,7 +372,7 @@ fragment = \@Url urlStr ->
         Ok { after } -> after
         Err NotFound -> ""
 
-## Replaces the URL's [fragment](https://en.wikipedia.org/wiki/URL#Syntax). If 
+## Replaces the URL's [fragment](https://en.wikipedia.org/wiki/URL#Syntax). If
 ## the URL didn't have a fragment, adds one. Passing `""` removes the fragment.
 ## ```
 ## # Gives https://example.com#things

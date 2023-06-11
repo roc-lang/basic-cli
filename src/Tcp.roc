@@ -24,8 +24,8 @@ ConnectErr : InternalTcp.ConnectErr
 ## Represents errors that can occur when performing a [Task] with a [Stream].
 StreamErr : InternalTcp.StreamErr
 
-## Opens a TCP connection to a remote host and perform a [Task] with it. The 
-## connection is automatically closed after the [Task] is completed. Examples of 
+## Opens a TCP connection to a remote host and perform a [Task] with it. The
+## connection is automatically closed after the [Task] is completed. Examples of
 ## valid hostnames:
 ##  - `127.0.0.1`
 ##  - `::1`
@@ -46,10 +46,11 @@ withConnect = \hostname, port, callback ->
 
     {} <- callback stream
         |> Task.mapFail TcpPerformErr
-        |> Task.onFail (\err -> 
-            _ <- close stream |> Task.await
-            Task.fail err
-        )
+        |> Task.onFail
+            (\err ->
+                _ <- close stream |> Task.await
+                Task.fail err
+            )
         |> Task.await
 
     close stream
@@ -82,13 +83,13 @@ readUpTo = \bytesToRead, stream ->
     |> InternalTask.fromEffect
     |> Task.mapFail TcpReadErr
 
-## Read an exact number of bytes or fail. `TcpUnexpectedEOF` is returned if the 
+## Read an exact number of bytes or fail. `TcpUnexpectedEOF` is returned if the
 ## stream ends before the specfied number of bytes is reached.
 ##
 ## ```
 ## File.readExactly 64 stream
 ## ```
-## 
+##
 readExactly : Nat, Stream -> Task (List U8) [TcpReadErr StreamErr, TcpUnexpectedEOF]
 readExactly = \bytesToRead, stream ->
     Effect.tcpReadExactly bytesToRead stream
@@ -108,13 +109,13 @@ readExactly = \bytesToRead, stream ->
 
 ## Read until a delimiter or EOF is reached. If found, the delimiter is included
 ## as the last byte.
-## 
+##
 ## ```
 ## # Read until null terminator
 ## File.readUntil 0 stream
 ## ```
 ##
-## > Note: to read until a newline is found, you can use [Tcp.readLine] which 
+## > Note: to read until a newline is found, you can use [Tcp.readLine] which
 ## conveniently decodes to a [Str](https://www.roc-lang.org/builtins/Str).
 readUntil : U8, Stream -> Task (List U8) [TcpReadErr StreamErr]
 readUntil = \byte, stream ->
@@ -123,15 +124,15 @@ readUntil = \byte, stream ->
     |> InternalTask.fromEffect
     |> Task.mapFail TcpReadErr
 
-## Read until a newline or EOF is reached. If found, the newline is included as 
+## Read until a newline or EOF is reached. If found, the newline is included as
 ## the last character in the [Str](https://www.roc-lang.org/builtins/Str).
-## 
+##
 ## ```
 ## # Read a line and then print it to `stdout`
 ## lineStr <- File.readLine stream |> Task.await
 ## Stdout.line lineStr
 ## ```
-## 
+##
 readLine : Stream -> Task Str [TcpReadErr StreamErr, TcpReadBadUtf8 _]
 readLine = \stream ->
     bytes <- readUntil '\n' stream |> Task.await
@@ -146,7 +147,7 @@ readLine = \stream ->
 ## # Writes the bytes 1, 2, 3
 ## Tcp.writeBytes [1, 2, 3] stream
 ## ```
-## 
+##
 ## > Note: to write a [Str](https://www.roc-lang.org/builtins/Str), you can use [Tcp.writeUtf8] instead.
 write : List U8, Stream -> Task {} [TcpWriteErr StreamErr]
 write = \bytes, stream ->
@@ -155,7 +156,7 @@ write = \bytes, stream ->
     |> InternalTask.fromEffect
     |> Task.mapFail TcpWriteErr
 
-## Writes a [Str](https://www.roc-lang.org/builtins/Str) to a TCP stream, 
+## Writes a [Str](https://www.roc-lang.org/builtins/Str) to a TCP stream,
 ## encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##
 ## ```

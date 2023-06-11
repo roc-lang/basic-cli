@@ -151,7 +151,7 @@ display = \path ->
 #                 FromOperatingSystem bytes2 | ArbitraryBytes bytes2 -> Str.compareUtf8 str1 bytes2
 #                 FromStr str2 -> Ord.compare str1 str2
 
-## Represents a attributes of a path such as a parent directory, the current 
+## Represents a attributes of a path such as a parent directory, the current
 ## directory for use when transforming a path.
 PathComponent : [
     ParentDir, # e.g. ".." on UNIX or Windows
@@ -173,7 +173,7 @@ PathComponent : [
 #     None,
 # ]
 # TODO see https://doc.rust-lang.org/std/path/enum.Prefix.html
-## Represents the root path on Windows operating system, which refers to the 
+## Represents the root path on Windows operating system, which refers to the
 ## current disk drive.
 WindowsRoot : []
 

@@ -8,17 +8,17 @@ ReadErr : InternalFile.ReadErr
 ## Tag union of possible errors when writing a file or directory.
 WriteErr : InternalFile.WriteErr
 
-## Write data to a file. First encode a `val` using a given `fmt` which 
-## implements the ability [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting). 
+## Write data to a file. First encode a `val` using a given `fmt` which
+## implements the ability [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
 ##
-## If writing to the file fails, for example because of a file permissions 
-## issue, the task fails with [WriteErr]. 
+## If writing to the file fails, for example because of a file permissions
+## issue, the task fails with [WriteErr].
 ##
-## This opens the file first and closes it after writing to it. 
+## This opens the file first and closes it after writing to it.
 ##
-## For example, suppose you have a `Json.toCompactUtf8` which implements 
-## [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting). 
-## You can use this to write [JSON](https://en.wikipedia.org/wiki/JSON) 
+## For example, suppose you have a `Json.toCompactUtf8` which implements
+## [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
+## You can use this to write [JSON](https://en.wikipedia.org/wiki/JSON)
 ## data to a file like this:
 ##
 ## ```
@@ -28,7 +28,7 @@ WriteErr : InternalFile.WriteErr
 ##     { some: "json stuff" }
 ##     Json.toCompactUtf8
 ## ```
-## 
+##
 ## > Note: to write unformatted bytes to a file, you can use [File.writeBytes] instead.
 write : Path, val, fmt -> Task {} [FileWriteErr Path WriteErr] | val has Encode.Encoding, fmt has Encode.EncoderFormatting
 write = \path, val, fmt ->
@@ -62,22 +62,22 @@ writeUtf8 = \path, str ->
     toWriteTask path \bytes -> Effect.fileWriteUtf8 bytes str
 
 ## Deletes a file from the filesystem. Performs a [`DeleteFile`](https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-deletefile)
-## on Windows and [`unlink`](https://en.wikipedia.org/wiki/Unlink_(Unix)) on 
-## UNIX systems. On Windows, this will fail when attempting to delete a readonly 
-## file; the file's readonly permission must be disabled before it can be 
+## on Windows and [`unlink`](https://en.wikipedia.org/wiki/Unlink_(Unix)) on
+## UNIX systems. On Windows, this will fail when attempting to delete a readonly
+## file; the file's readonly permission must be disabled before it can be
 ## successfully deleted.
 ##
 ## ```
 ## # Deletes the file named
 ## File.delete (Path.fromStr "myfile.dat") [1, 2, 3]
 ## ```
-## 
+##
 ## > Note: this does not securely erase the file's contents from disk; instead, the operating
 ## system marks the space it was occupying as safe to write over in the future. Also, the operating
 ## system may not immediately mark the space as free; for example, on Windows it will wait until
 ## the last file handle to it is closed, and on UNIX, it will not remove it until the last
 ## [hard link](https://en.wikipedia.org/wiki/Hard_link) to it has been deleted.
-## 
+##
 delete : Path -> Task {} [FileWriteErr Path WriteErr]
 delete = \path ->
     toWriteTask path \bytes -> Effect.fileDelete bytes

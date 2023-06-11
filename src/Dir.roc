@@ -5,7 +5,7 @@ interface Dir
 ## Tag union of possible errors when reading a file or directory.
 ReadErr : InternalDir.ReadErr
 
-## Tag union of posisble errors when deleting a file or directory. 
+## Tag union of posisble errors when deleting a file or directory.
 DeleteErr : InternalDir.DeleteErr
 
 ## Record which represents a directory
