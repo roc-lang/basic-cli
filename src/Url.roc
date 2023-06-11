@@ -184,7 +184,7 @@ appendHelp = \prefix, suffix ->
 ## |> Url.toStr
 ## ```
 ##
-## > Note: it is recommended to encode spaces as `%20`, the HTML 2.0 specification
+## > It is recommended to encode spaces as `%20`, the HTML 2.0 specification
 ## suggests that these can be encoded as `+`, however this is not always safe to
 ## use. See [this stackoverflow discussion](https://stackoverflow.com/questions/2678551/when-should-space-be-encoded-to-plus-or-20/47188851#47188851)
 ## for a detailed explanation.

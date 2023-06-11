@@ -75,7 +75,7 @@ close = \stream ->
 ## Str.fromUtf8 received
 ## ```
 ##
-## > Note: to read an exact number of bytes or fail, you can use [Tcp.readExactly] instead.
+## > To read an exact number of bytes or fail, you can use [Tcp.readExactly] instead.
 readUpTo : Nat, Stream -> Task (List U8) [TcpReadErr StreamErr]
 readUpTo = \bytesToRead, stream ->
     Effect.tcpReadUpTo bytesToRead stream
@@ -115,7 +115,7 @@ readExactly = \bytesToRead, stream ->
 ## File.readUntil 0 stream
 ## ```
 ##
-## > Note: to read until a newline is found, you can use [Tcp.readLine] which
+## > To read until a newline is found, you can use [Tcp.readLine] which
 ## conveniently decodes to a [Str](https://www.roc-lang.org/builtins/Str).
 readUntil : U8, Stream -> Task (List U8) [TcpReadErr StreamErr]
 readUntil = \byte, stream ->
@@ -148,7 +148,7 @@ readLine = \stream ->
 ## Tcp.writeBytes [1, 2, 3] stream
 ## ```
 ##
-## > Note: to write a [Str](https://www.roc-lang.org/builtins/Str), you can use [Tcp.writeUtf8] instead.
+## > To write a [Str](https://www.roc-lang.org/builtins/Str), you can use [Tcp.writeUtf8] instead.
 write : List U8, Stream -> Task {} [TcpWriteErr StreamErr]
 write = \bytes, stream ->
     Effect.tcpWrite bytes stream
@@ -164,7 +164,7 @@ write = \bytes, stream ->
 ## Tcp.writeUtf8 "Hi from Roc!" stream
 ## ```
 ##
-## > Note: to write unformatted bytes, you can use [Tcp.write] instead.
+## > To write unformatted bytes, you can use [Tcp.write] instead.
 writeUtf8 : Str, Stream -> Task {} [TcpWriteErr StreamErr]
 writeUtf8 = \str, stream ->
     write (Str.toUtf8 str) stream

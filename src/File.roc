@@ -29,7 +29,7 @@ WriteErr : InternalFile.WriteErr
 ##     Json.toCompactUtf8
 ## ```
 ##
-## > Note: to write unformatted bytes to a file, you can use [File.writeBytes] instead.
+## > To write unformatted bytes to a file, you can use [File.writeBytes] instead.
 write : Path, val, fmt -> Task {} [FileWriteErr Path WriteErr] | val has Encode.Encoding, fmt has Encode.EncoderFormatting
 write = \path, val, fmt ->
     bytes = Encode.toBytes val fmt
@@ -44,7 +44,7 @@ write = \path, val, fmt ->
 ## ```
 ## This opens the file first and closes it after writing to it.
 ##
-## > Note: to format data before writing it to a file, you can use [File.write] instead.
+## > To format data before writing it to a file, you can use [File.write] instead.
 writeBytes : Path, List U8 -> Task {} [FileWriteErr Path WriteErr]
 writeBytes = \path, bytes ->
     toWriteTask path \pathBytes -> Effect.fileWriteBytes pathBytes bytes
@@ -56,7 +56,7 @@ writeBytes = \path, bytes ->
 ## ```
 ## This opens the file first and closes it after writing to it.
 ##
-## > Note: to write unformatted bytes to a file, you can use [File.writeBytes] instead.
+## > To write unformatted bytes to a file, you can use [File.writeBytes] instead.
 writeUtf8 : Path, Str -> Task {} [FileWriteErr Path WriteErr]
 writeUtf8 = \path, str ->
     toWriteTask path \bytes -> Effect.fileWriteUtf8 bytes str
@@ -72,7 +72,7 @@ writeUtf8 = \path, str ->
 ## File.delete (Path.fromStr "myfile.dat") [1, 2, 3]
 ## ```
 ##
-## > Note: this does not securely erase the file's contents from disk; instead, the operating
+## > This does not securely erase the file's contents from disk; instead, the operating
 ## system marks the space it was occupying as safe to write over in the future. Also, the operating
 ## system may not immediately mark the space as free; for example, on Windows it will wait until
 ## the last file handle to it is closed, and on UNIX, it will not remove it until the last
@@ -89,7 +89,7 @@ delete = \path ->
 ## ```
 ## This opens the file first and closes it after reading its contents.
 ##
-## > Note: to read and decode data from a file, you can use `File.read` instead.
+## > To read and decode data from a file, you can use `File.read` instead.
 readBytes : Path -> Task (List U8) [FileReadErr Path ReadErr]
 readBytes = \path ->
     toReadTask path \bytes -> Effect.fileReadBytes bytes
@@ -102,7 +102,7 @@ readBytes = \path ->
 ## This opens the file first and closes it after writing to it.
 ## The task will fail with `FileReadUtf8Err` if the given file contains invalid UTF-8.
 ##
-## > Note: to read unformatted bytes from a file, you can use [File.readBytes] instead.
+## > To read unformatted bytes from a file, you can use [File.readBytes] instead.
 readUtf8 : Path -> Task Str [FileReadErr Path ReadErr, FileReadUtf8Err Path _]
 readUtf8 = \path ->
     effect = Effect.map (Effect.fileReadBytes (InternalPath.toBytes path)) \result ->
