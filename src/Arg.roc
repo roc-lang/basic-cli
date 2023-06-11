@@ -392,7 +392,7 @@ program = \parser, { name, help ? "" } ->
 ##
 ## If the arguments do not conform with what is expected by the parser, the
 ## first error seen will be returned.
-parse : NamedParser a, List Str -> Result a (ParseError *)
+parse : NamedParser a, List Str -> Result a (ParseError [])
 parse = \@NamedParser parser, args ->
     # By convention the first string in the argument list is the program name.
     if
