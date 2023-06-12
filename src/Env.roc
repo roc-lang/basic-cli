@@ -37,7 +37,7 @@ exePath =
 ## Reads the given environment variable.
 ##
 ## If the value is invalid Unicode, the invalid parts will be replaced with the
-## [Unicode replacement character](https://unicode.org/glossary/#replacement_character).
+## [Unicode replacement character](https://unicode.org/glossary/#replacement_character) ('�').
 var : Str -> Task Str [VarNotFound]
 var = \name ->
     Effect.envVar name
@@ -47,23 +47,28 @@ var = \name ->
 ## Reads the given environment variable and attempts to decode it.
 ##
 ## The type being decoded into will be determined by type inference. For example,
-## if this ends up being used like a `Task U16` then the environment variable
-## will be decoded as a string representation of a `U16`.
+## if this ends up being used like a `Task U16 _` then the environment variable
+## will be decoded as a string representation of a `U16`. Trying to decode into
+## any other type will fail with a `DecodeErr`.
 ##
-##     getU16Var : Str -> Task U16 [VarNotFound, DecodeErr DecodeError] [Read [Env]]
-##     getU16Var = \var -> Env.decode var
-##     # If the environment contains a variable NUM_THINGS=123, then calling
-##     # (getU16Var "NUM_THINGS") would return a task which succeeds with the U16 number 123.
-##     #
-##     # However, if the NUM_THINGS environment variable was set to 1234567, then
-##     # (getU16Var "NUM_THINGS") would fail because that number is too big to fit in a U16.
+## Supported types include;
+## - Strings,
+## - Numbers, as long as they contain only numeric digits, up to one `.`, and an optional `-` at the front for negative numbers, and
+## - Comma-separated lists (of either strings or numbers), as long as there are no spaces after the commas.
 ##
-## Supported types:
-## - strings
-## - numbers, as long as they contain only numeric digits, up to one `.`, and an optional `-` at the front for negative numbers
-## - comma-separated lists (of either strings or numbers), as long as there are no spaces after the commas
+## For example, consider we want to decode the environment variable `NUM_THINGS`;
 ##
-## Trying to decode into any other types will always fail with a `DecodeErr`.
+## ```
+## # Reads "NUM_THINGS" and decodes into a U16
+## getU16Var : Str -> Task U16 [VarNotFound, DecodeErr DecodeError] [Read [Env]]
+## getU16Var = \var -> Env.decode var
+## ```
+##
+## If `NUM_THINGS=123` then `getU16Var` succeeds with the value of `123u16`.
+## However if `NUM_THINGS=123456789`, then `getU16Var` will
+## fail with [DecodeErr](https://www.roc-lang.org/builtins/Decode#DecodeError)
+## because `123456789` is too large to fit in a [U16](https://www.roc-lang.org/builtins/Num#U16).
+##
 decode : Str -> Task val [VarNotFound, DecodeErr DecodeError] | val has Decoding
 decode = \name ->
     Effect.envVar name

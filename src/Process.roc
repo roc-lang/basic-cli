@@ -2,7 +2,10 @@ interface Process
     exposes [exit]
     imports [Task.{ Task }, InternalTask, Effect]
 
-## Exit the process with
+## Terminates the current process with the specified exit code. 
+##
+## This function will never return and will immediately terminate the current process.
+##
 ## ```
 ## {} <- Stderr.line "Exiting right now!" |> Task.await
 ## Process.exit 1

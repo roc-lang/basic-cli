@@ -1,6 +1,7 @@
 interface Arg
     exposes [
         Parser,
+        ParseError,
         NamedParser,
         parse,
         toHelp,
@@ -26,6 +27,7 @@ list =
     |> InternalTask.fromEffect
 
 ## A parser for a command-line application.
+##
 ## A [NamedParser] is usually built from a [Parser] using [program].
 NamedParser a := {
     name : Str,
@@ -34,6 +36,7 @@ NamedParser a := {
 }
 
 ## Describes how to parse a slice of command-line arguments.
+##
 ## [Parser]s can be composed in various ways, including via [withParser] and
 ## [subCommand].
 ##
@@ -41,8 +44,8 @@ NamedParser a := {
 ## needs, consider transforming it into a [NamedParser].
 Parser a := [
     Succeed a,
-    Option OptionConfig (MarkedArgs -> Result { newlyTaken : Taken, val : a } (ParseError [])),
-    Positional PositionalConfig (MarkedArgs -> Result { newlyTaken : Taken, val : a } (ParseError [])),
+    Option OptionConfig (MarkedArgs -> Result { newlyTaken : Taken, val : a } ParseError),
+    Positional PositionalConfig (MarkedArgs -> Result { newlyTaken : Taken, val : a } ParseError),
     # TODO: hiding the record behind an alias currently causes a panic
     SubCommand
         (List {
@@ -55,18 +58,18 @@ Parser a := [
     Lazy ({} -> a),
 ]
 
-## Indices in an arguments list that have already been parsed.
+# Indices in an arguments list that have already been parsed.
 Taken : Set Nat
 
-## A representation of parsed and unparsed arguments in a constant list of
-## command-line arguments.
-##
-## Used only internally, for efficient representation of parsed and unparsed
-## arguments.
+# A representation of parsed and unparsed arguments in a constant list of
+# command-line arguments.
+#
+# Used only internally, for efficient representation of parsed and unparsed
+# arguments.
 MarkedArgs : { args : List Str, taken : Taken }
 
 ## Enumerates errors that can occur during parsing a list of command line arguments.
-ParseError a : [
+ParseError : [
     ## The program name was not found as the first argument to be parsed.
     ProgramNameNotProvided Str,
     ## A positional argument (inherently required) was not found.
@@ -90,9 +93,10 @@ ParseError a : [
             found : Str,
             choices : List Str,
         },
-]a
+]
 
 ## Expected type of an option, in an argument list being parsed.
+##
 ## Describes how a string option should be interpreted as a certain type.
 OptionType : [
     Str,
@@ -385,14 +389,13 @@ andMap = \@Parser parser, @Parser mapper ->
 program = \parser, { name, help ? "" } ->
     @NamedParser { name, help, parser }
 
-# TODO panics in alias analysis when this annotation is included
-# parse : NamedParser a, List Str -> Result a (ParseError*)
 ## Parses a list of command-line arguments with the given parser. The list of
 ## arguments is expected to contain the name of the program in the first
 ## position.
 ##
 ## If the arguments do not conform with what is expected by the parser, the
 ## first error seen will be returned.
+parse : NamedParser a, List Str -> Result a ParseError
 parse = \@NamedParser parser, args ->
     # By convention the first string in the argument list is the program name.
     if
@@ -404,7 +407,7 @@ parse = \@NamedParser parser, args ->
 
         parseHelp parser.parser markedArgs
 
-parseHelp : Parser a, MarkedArgs -> Result a (ParseError [])
+parseHelp : Parser a, MarkedArgs -> Result a ParseError
 parseHelp = \@Parser parser, args ->
     when parser is
         Succeed val -> Ok val
@@ -454,6 +457,7 @@ nextUnmarked = \marked ->
     help 0
 
 ## Creates a parser for a boolean option argument.
+##
 ## Options of value "true" and "false" will be parsed as [Bool.true] and [Bool.false], respectively.
 ## All other values will result in a `WrongOptionType` error.
 boolOption : _ -> Parser Bool # TODO: panics if parameter annotation given
@@ -669,7 +673,7 @@ formatOptionType = \type ->
 
 quote = \s -> "\"\(s)\""
 
-formatError : ParseError [] -> Str
+formatError : ParseError -> Str
 formatError = \err ->
     when err is
         ProgramNameNotProvided programName ->

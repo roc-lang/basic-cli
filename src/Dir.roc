@@ -2,10 +2,13 @@ interface Dir
     exposes [ReadErr, DeleteErr, DirEntry, deleteEmptyDir, deleteRecursive, list]
     imports [Effect, Task.{ Task }, InternalTask, Path.{ Path }, InternalPath, InternalDir]
 
+## Tag union of possible errors when reading a file or directory.
 ReadErr : InternalDir.ReadErr
 
+## Tag union of posisble errors when deleting a file or directory.
 DeleteErr : InternalDir.DeleteErr
 
+## Record which represents a directory
 DirEntry : InternalDir.DirEntry
 
 ## Lists the files and directories inside the directory.
