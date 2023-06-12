@@ -44,7 +44,7 @@ var = \name ->
     |> Effect.map (\result -> Result.mapErr result \{} -> VarNotFound)
     |> InternalTask.fromEffect
 
-## Reads the given environment variable and attempts to decode it. 
+## Reads the given environment variable and attempts to decode it.
 ##
 ## The type being decoded into will be determined by type inference. For example,
 ## if this ends up being used like a `Task U16 _` then the environment variable
