@@ -24,7 +24,7 @@ main =
     |> Str.concat (Str.joinWith oranges ", ")
     |> Stdout.line
 
-getFruit : [Apples, Oranges] -> Task (List Str) []
+getFruit : [Apples, Oranges] -> Task (List Str) *
 getFruit = \request ->
     when request is
         Apples -> Task.succeed ["Granny Smith", "Pink Lady", "Golden Delicious"]
