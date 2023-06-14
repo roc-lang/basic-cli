@@ -4,13 +4,14 @@ app "time"
         pf.Stdout,
         pf.Task,
         pf.Utc,
+        pf.Sleep,
     ]
     provides [main] to pf
 
 main =
     start <- Utc.now |> Task.await
 
-    {} <- Utc.sleepMillis 1500 |> Task.await
+    {} <- Sleep.millis 1500 |> Task.await
 
     finish <- Utc.now |> Task.await
 
