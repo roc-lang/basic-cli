@@ -8,7 +8,7 @@ main =
     _ <- Task.await (Stdout.line "🗣  Shout into this cave and hear the echo! 👂👂👂")
     Task.loop {} \_ -> Task.map tick Step
 
-tick : Task.Task {} []
+tick : Task.Task {} *
 tick =
     shout <- Task.await Stdin.line
     Stdout.line (echo shout)

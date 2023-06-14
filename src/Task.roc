@@ -54,7 +54,7 @@ loop = \state, step ->
 ##
 ## ```
 ## # Always succeeds with "Louis"
-## getName : Task.Task Str []
+## getName : Task.Task Str *
 ## getName = Task.succeed "Louis"
 ## ```
 ##

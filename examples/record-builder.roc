@@ -9,7 +9,7 @@ app "record-builder"
     provides [main] to pf
 
 main =
-    myrecord : Task { apples : List Str, oranges : List Str } *
+    myrecord : Task { apples : List Str, oranges : List Str } []
     myrecord = Task.succeed {
         apples: <- getFruit Apples |> Task.batch,
         oranges: <- getFruit Oranges |> Task.batch,
