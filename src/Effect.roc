@@ -18,6 +18,7 @@ hosted Effect
         stderrLine,
         stderrWrite,
         stdinLine,
+        stdinByte,
         sendRequest,
         fileReadBytes,
         fileDelete,
@@ -40,6 +41,7 @@ stdoutWrite : Str -> Effect {}
 stderrLine : Str -> Effect {}
 stderrWrite : Str -> Effect {}
 stdinLine : Effect Str
+stdinByte : Effect U8
 
 fileWriteBytes : List U8, List U8 -> Effect (Result {} InternalFile.WriteErr)
 fileWriteUtf8 : List U8, Str -> Effect (Result {} InternalFile.WriteErr)

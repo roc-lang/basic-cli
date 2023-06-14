@@ -1,5 +1,5 @@
 interface Stdin
-    exposes [line]
+    exposes [line, byte]
     imports [Effect, Task.{ Task }, InternalTask]
 
 ## Read a line from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
@@ -11,5 +11,14 @@ interface Stdin
 line : Task Str *
 line =
     Effect.stdinLine
+    |> Effect.map Ok
+    |> InternalTask.fromEffect
+
+## Read a single byte from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
+##
+## > This task will block the program from continuing until `stdin` receives a byte.
+byte : Task U8 *
+byte =
+    Effect.stdinByte
     |> Effect.map Ok
     |> InternalTask.fromEffect

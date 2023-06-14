@@ -306,6 +306,16 @@ pub extern "C" fn roc_fx_stdinLine() -> RocStr {
 }
 
 #[no_mangle]
+pub extern "C" fn roc_fx_stdinByte() -> u8 {
+    let stdin = std::io::stdin();
+    let mut byte: [u8; 1] = [0];
+
+    stdin.lock().read_exact(&mut byte).unwrap();
+
+    byte[0]
+}
+
+#[no_mangle]
 pub extern "C" fn roc_fx_stdoutLine(line: &RocStr) {
     let string = line.as_str();
     println!("{}", string);
