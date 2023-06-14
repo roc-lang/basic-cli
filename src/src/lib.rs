@@ -447,6 +447,12 @@ pub extern "C" fn roc_fx_posixTime() -> roc_std::U128 {
 }
 
 #[no_mangle]
+pub extern "C" fn roc_fx_sleepMillis(milliseconds: u64) {
+    let duration = Duration::from_millis(milliseconds);
+    std::thread::sleep(duration);
+}
+
+#[no_mangle]
 pub extern "C" fn roc_fx_dirList(
     // TODO: this RocResult should use Dir.WriteErr - but right now it's File.WriteErr
     // because glue doesn't have Dir.WriteErr yet.

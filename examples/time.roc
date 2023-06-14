@@ -4,28 +4,17 @@ app "time"
         pf.Stdout,
         pf.Task,
         pf.Utc,
-        pf.File,
-        pf.Path,
+        pf.Sleep,
     ]
     provides [main] to pf
 
 main =
     start <- Utc.now |> Task.await
 
-    {} <- slowTask |> Task.await
+    {} <- Sleep.millis 1500 |> Task.await
 
     finish <- Utc.now |> Task.await
 
     duration = Utc.deltaAsNanos start finish |> Num.toStr
 
     Stdout.line "Completed in \(duration)ns"
-
-slowTask : Task.Task {} []
-slowTask =
-
-    path = Path.fromStr "not-a-file-but-try-to-read-anyway"
-
-    result <- File.readUtf8 path |> Task.attempt
-
-    when result is
-        _ -> Stdout.line "Tried to open a file..."
