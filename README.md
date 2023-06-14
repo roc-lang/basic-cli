@@ -2,8 +2,6 @@
 
 A basic [CLI](https://en.wikipedia.org/wiki/Command-line_interface) Roc Platform.
 
-Documentation will be available when we fix the issue in [PR#22](https://github.com/roc-lang/basic-cli/pull/22).
-
 ## Docs generation
 
 You can generate the documentation locally and then start a web server to host your files.
