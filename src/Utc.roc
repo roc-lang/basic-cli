@@ -8,6 +8,7 @@ interface Utc
         fromNanosSinceEpoch,
         deltaAsMillis,
         deltaAsNanos,
+        sleepMillis,
     ]
     imports [Effect, InternalTask, Task.{ Task }]
 
@@ -53,3 +54,10 @@ deltaAsMillis = \@Utc first, @Utc second ->
 deltaAsNanos : Utc, Utc -> U128
 deltaAsNanos = \@Utc first, @Utc second ->
     Num.absDiff first second
+
+## Sleep for a given number of milliseconds
+sleepMillis : U64 -> Task {} *
+sleepMillis = \millis ->
+    Effect.sleepMillis millis
+    |> Effect.map Ok
+    |> InternalTask.fromEffect

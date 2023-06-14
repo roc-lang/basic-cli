@@ -31,6 +31,7 @@ hosted Effect
         tcpReadExactly,
         tcpReadUntil,
         tcpWrite,
+        sleepMillis,
     ]
     imports [InternalHttp.{ Request, Response }, InternalFile, InternalDir, InternalTcp]
     generates Effect with [after, map, always, forever, loop]
@@ -69,3 +70,4 @@ tcpReadUntil : U8, InternalTcp.Stream -> Effect InternalTcp.ReadResult
 tcpWrite : List U8, InternalTcp.Stream -> Effect InternalTcp.WriteResult
 
 posixTime : Effect U128
+sleepMillis : U64 -> Effect {}
