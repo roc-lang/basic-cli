@@ -765,3 +765,19 @@ pub extern "C" fn roc_fx_commandStatus(program: &RocStr) -> u8 {
         None => 1,
     }
 }
+
+#[no_mangle]
+pub extern "C" fn roc_fx_commandOutput(program: &RocStr) -> RocResult<RocList<u8>, u8> {
+    let status = std::process::Command::new(program.as_str())
+        .status()
+        .expect("failed to execute command");
+
+    // TODO get actual output to return
+    let output: RocList<u8> = RocList::empty();
+
+    match status.code() {
+        Some(0) => RocResult::ok(output),
+        Some(code) => RocResult::err(code.try_into().unwrap_or_default()),
+        None => RocResult::err(1),
+    }
+}

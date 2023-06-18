@@ -3,6 +3,7 @@ interface Command
         Command,
         new,
         status,
+        output,
     ]
     imports [
         Task.{ Task },
@@ -36,6 +37,10 @@ new = \program ->
 # TODO envs : Command, Dict Str Str -> Command
 
 # TODO output : Command -> Task (List U8) I32
+output : Command -> Task (List U8) U8
+output = \@Command { program } ->
+    Effect.commandOutput program
+    |> InternalTask.fromEffect
 
 ## Execute command and return status code if the command returns non-zero code
 status : Command -> Task U8 *

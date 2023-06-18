@@ -34,6 +34,7 @@ hosted Effect
         tcpWrite,
         sleepMillis,
         commandStatus,
+        commandOutput,
     ]
     imports [InternalHttp.{ Request, Response }, InternalFile, InternalDir, InternalTcp]
     generates Effect with [after, map, always, forever, loop]
@@ -76,3 +77,4 @@ posixTime : Effect U128
 sleepMillis : U64 -> Effect {}
 
 commandStatus : Str -> Effect U8
+commandOutput : Str -> Effect (Result (List U8) U8)
