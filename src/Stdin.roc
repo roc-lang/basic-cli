@@ -17,9 +17,11 @@ line =
     |> Effect.map Ok
     |> InternalTask.fromEffect
 
-## Read a single byte from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
+## Read bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
 ##
-## > This task will block the program from continuing until `stdin` receives a byte.
+## > This is typically used in combintation with [Tty.enableRawMode], 
+## which disables defaults terminal bevahiour and allows reading input
+## without buffering until Enter key is pressed.
 bytes : Task (List U8) *
 bytes =
     Effect.stdinBytes
