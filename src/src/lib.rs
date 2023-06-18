@@ -752,3 +752,19 @@ fn to_tcp_stream_err(err: std::io::Error) -> tcp_glue::StreamErr {
         ),
     }
 }
+
+#[no_mangle]
+pub extern "C" fn roc_fx_commandStatus(program: &RocStr) -> RocResult<(), i32> {
+    let status = std::process::Command::new(program.as_str())
+        .status()
+        .expect("failed to execute command");
+
+    if status.success() {
+        RocResult::ok(())
+    } else {
+        match status.code() {
+            Some(code) => RocResult::err(code),
+            None => RocResult::err(-1),
+        }
+    }
+}
