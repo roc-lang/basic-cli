@@ -17,6 +17,7 @@ platform "cli"
         Url,
         Utc,
         Sleep,
+        Tty,
     ]
     packages {}
     imports [Task.{ Task }]

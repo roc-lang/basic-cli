@@ -306,13 +306,14 @@ pub extern "C" fn roc_fx_stdinLine() -> RocStr {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdinByte() -> u8 {
+pub extern "C" fn roc_fx_stdinBytes() -> RocList<u8> {
     let stdin = std::io::stdin();
-    let mut byte: [u8; 1] = [0];
+    let mut buffer: [u8; 256] = [0; 256];
 
-    stdin.lock().read_exact(&mut byte).unwrap();
-
-    byte[0]
+    match stdin.lock().read(&mut buffer) {
+        Ok(bytes_read) => {RocList::from(&buffer[0..bytes_read])}
+        Err(_) => {RocList::from((&[]).as_slice())}
+    }
 }
 
 #[no_mangle]
@@ -339,6 +340,16 @@ pub extern "C" fn roc_fx_stderrWrite(text: &RocStr) {
     let string = text.as_str();
     eprint!("{}", string);
     std::io::stderr().flush().unwrap();
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_ttyModeCanonical() {
+    crossterm::terminal::disable_raw_mode().expect("failed to disable raw mode");
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_ttyModeRaw() {
+    crossterm::terminal::enable_raw_mode().expect("failed to enable raw mode");
 }
 
 // #[no_mangle]
