@@ -1,5 +1,5 @@
 platform "cli"
-    requires {} { main : Task {} [] }
+    requires {} { main : Task {} U32 }
     exposes [
         Path,
         Arg,
@@ -23,5 +23,5 @@ platform "cli"
     imports [Task.{ Task }]
     provides [mainForHost]
 
-mainForHost : Task {} [] as Fx
+mainForHost : Task {} U32 as Fx
 mainForHost = main
