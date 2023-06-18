@@ -38,7 +38,8 @@ new = \program ->
 # TODO output : Command -> Task (List U8) I32
 
 ## Execute command and return status code if the command returns non-zero code
-status : Command -> Task {} I32
+status : Command -> Task U8 *
 status = \@Command { program } ->
     Effect.commandStatus program
+    |> Effect.map Ok
     |> InternalTask.fromEffect

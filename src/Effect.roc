@@ -75,4 +75,4 @@ tcpWrite : List U8, InternalTcp.Stream -> Effect InternalTcp.WriteResult
 posixTime : Effect U128
 sleepMillis : U64 -> Effect {}
 
-commandStatus : Str -> Effect (Result {} I32)
+commandStatus : Str -> Effect U8

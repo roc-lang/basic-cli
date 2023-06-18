@@ -9,14 +9,9 @@ app "args"
 
 main =
 
-    # Run a command and return the status code
-    maybeStatus <-
-        Command.new "ls"
-        |> Command.status
-        |> Task.attempt
+    # Run a command in a child process
+    code <- Command.new "ls" |> Command.status |> Task.await
 
-    when maybeStatus is
-        Ok {} -> Stdout.line "Success"
-        Err code ->
-            codeStr = Num.toStr code
-            Stdout.line "Command failed with status code \(codeStr)"
+    codeStr = Num.toStr code
+
+    Stdout.line "Child process returned with status \(codeStr)"
