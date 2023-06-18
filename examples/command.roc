@@ -17,7 +17,7 @@ main =
     # second
     
 # Run a command in a child process, return status code
-first : Task {} []
+first : Task {} U32
 first = 
     
     code <- Command.new "ls" |> Command.status |> Task.await
@@ -29,7 +29,7 @@ first =
         Stdout.line "Failed with \(codeStr) status code"
 
 # Run a command in a child process, return output
-second : Task {} []
+second : Task {} U32
 second = 
     result <- 
         Command.new "ls" 
