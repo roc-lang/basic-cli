@@ -9,7 +9,7 @@ app "record-builder"
     provides [main] to pf
 
 main =
-    myrecord : Task { apples : List Str, oranges : List Str } []
+    myrecord : Task { apples : List Str, oranges : List Str } U32
     myrecord = Task.succeed {
         apples: <- getFruit Apples |> Task.batch,
         oranges: <- getFruit Oranges |> Task.batch,
@@ -23,6 +23,7 @@ main =
     |> Str.concat "Oranges: "
     |> Str.concat (Str.joinWith oranges ", ")
     |> Stdout.line
+    |> Task.mapFail \_ -> 1
 
 getFruit : [Apples, Oranges] -> Task (List Str) *
 getFruit = \request ->

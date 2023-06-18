@@ -3,14 +3,16 @@ app "echo"
     imports [pf.Stdin, pf.Stdout, pf.Task.{ Task }]
     provides [main] to pf
 
-main : Task {} []
+main : Task {} U32
 main =
     _ <- Task.await (Stdout.line "🗣  Shout into this cave and hear the echo! 👂👂👂")
-    Task.loop {} \_ -> Task.map tick Step
+    Task.loop {} \_ ->
+        Task.map tick Step
 
-tick : Task.Task {} []
+tick : Task.Task {} U32
 tick =
     shout <- Task.await Stdin.line
+
     Stdout.line (echo shout)
 
 echo : Str -> Str
