@@ -758,9 +758,14 @@ fn to_tcp_stream_err(err: std::io::Error) -> tcp_glue::StreamErr {
 pub extern "C" fn roc_fx_commandStatus(cmd: &command_glue::Command) -> RocResult<(), command_glue::CommandErr> {
 
     // TODO remove
+    // dbg!("roc_fx_commandStatus");
     // dbg!(cmd);
 
-    match std::process::Command::new(cmd.program.as_str()).status() {
+    let args = cmd.args.into_iter().map(|arg| arg.as_str()).collect::<Vec<_>>();
+
+    match std::process::Command::new(cmd.program.as_str())
+        .args(args)
+        .status() {
         Ok(status) => {
             if status.success() {
                 RocResult::ok(())
@@ -782,9 +787,14 @@ pub extern "C" fn roc_fx_commandStatus(cmd: &command_glue::Command) -> RocResult
 pub extern "C" fn roc_fx_commandOutput(cmd: &command_glue::Command) -> RocResult<command_glue::Output, command_glue::CommandErr> {
 
     // TODO remove
+    // dbg!("roc_fx_commandOutput");
     // dbg!(cmd);
 
-    match std::process::Command::new(cmd.program.as_str()).output() {
+    let args = cmd.args.into_iter().map(|arg| arg.as_str()).collect::<Vec<_>>();
+
+    match std::process::Command::new(cmd.program.as_str())
+        .args(args)
+        .output() {
         Ok(output) => {
             let rocOutput = command_glue::Output{
                 stdout : RocList::from(&output.stdout[..]),

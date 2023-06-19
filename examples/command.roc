@@ -22,6 +22,7 @@ first =
     
     {} <- 
         Command.new "ls" 
+        |> Command.arg "-l"
         |> Command.status
         |> Task.onFail \_ -> crash "first failed"
         |> Task.await
@@ -32,7 +33,8 @@ first =
 second : Task {} U32
 second = 
     output <- 
-        Command.new "ls" 
+        Command.new "ls"
+        |> Command.args ["-l", "-a"]
         |> Command.output 
         |> Task.onFail \_ -> crash "second failed"
         |> Task.await
