@@ -762,9 +762,21 @@ pub extern "C" fn roc_fx_commandStatus(cmd: &command_glue::Command) -> RocResult
     // dbg!(cmd);
 
     let args = cmd.args.into_iter().map(|arg| arg.as_str()).collect::<Vec<_>>();
+    let flat_envs = cmd.envs.into_iter().map(|env| env.as_str()).collect::<Vec<_>>();
+
+    // Environment vairables must be passed in key=value pairs 
+    assert_eq!(flat_envs.len() % 2, 0);
+
+    let mut envs = Vec::with_capacity(flat_envs.capacity()/2);
+    for chunk in flat_envs.chunks(2) {
+        let key = chunk[0];
+        let value = chunk[1];
+        envs.push((key,value));
+    }
 
     match std::process::Command::new(cmd.program.as_str())
         .args(args)
+        .envs(envs)
         .status() {
         Ok(status) => {
             if status.success() {
@@ -791,9 +803,21 @@ pub extern "C" fn roc_fx_commandOutput(cmd: &command_glue::Command) -> RocResult
     // dbg!(cmd);
 
     let args = cmd.args.into_iter().map(|arg| arg.as_str()).collect::<Vec<_>>();
+    let flat_envs = cmd.envs.into_iter().map(|env| env.as_str()).collect::<Vec<_>>();
+
+    // Environment vairables must be passed in key=value pairs 
+    assert_eq!(flat_envs.len() % 2, 0);
+
+    let mut envs = Vec::with_capacity(flat_envs.capacity()/2);
+    for chunk in flat_envs.chunks(2) {
+        let key = chunk[0];
+        let value = chunk[1];
+        envs.push((key,value));
+    }
 
     match std::process::Command::new(cmd.program.as_str())
         .args(args)
+        .envs(envs)
         .output() {
         Ok(output) => {
             let rocOutput = command_glue::Output{

@@ -21,8 +21,9 @@ first : Task {} U32
 first = 
     
     {} <- 
-        Command.new "ls" 
-        |> Command.arg "-l"
+        Command.new "env" 
+        |> Command.arg "-v"
+        |> Command.env "FOO" "BAR"
         |> Command.status
         |> Task.onFail \_ -> crash "first failed"
         |> Task.await
@@ -35,6 +36,7 @@ second =
     output <- 
         Command.new "ls"
         |> Command.args ["-l", "-a"]
+        |> Command.envs [("FOO", "BAR"), ("BAZ", "DUCK")]
         |> Command.output 
         |> Task.onFail \_ -> crash "second failed"
         |> Task.await

@@ -5,6 +5,8 @@ interface Command
         new,
         arg,
         args,
+        env,
+        envs,
         status,
         output,
     ]
@@ -55,11 +57,20 @@ args = \@Command cmd, values ->
         args: List.concat cmd.args values,
     }
 
-# TODO env : Command, {key: Str, value: Str} -> Command
+## Add a single environment variable to the command
+##
+env : Command, Str, Str -> Command
+env = \@Command cmd, key, value ->
+    @Command { cmd &
+        envs: List.concat cmd.envs [key, value],
+    }
 
-# TODO envClear : Command -> Command
-
-# TODO envs : Command, Dict Str Str -> Command
+envs : Command, List (Str, Str) -> Command
+envs = \@Command cmd, keyValues ->
+    values = keyValues |> List.joinMap \(key, value) -> [key, value]
+    @Command { cmd &
+        envs: List.concat cmd.envs values,
+    }
 
 ## Execute command and capture stdout and stderr
 ##
