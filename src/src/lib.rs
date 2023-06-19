@@ -3,6 +3,7 @@
 mod file_glue;
 mod glue;
 mod tcp_glue;
+mod command_glue;
 
 use core::alloc::Layout;
 use core::ffi::c_void;
@@ -754,30 +755,38 @@ fn to_tcp_stream_err(err: std::io::Error) -> tcp_glue::StreamErr {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_commandStatus(program: &RocStr) -> u8 {
-    let status = std::process::Command::new(program.as_str())
-        .status()
-        .expect("failed to execute command");
+pub extern "C" fn roc_fx_commandStatus(cmd: &command_glue::Command) -> u8 {
 
-    match status.code() {
-        Some(0) => 0,
-        Some(code) => code.try_into().unwrap_or_default(),
-        None => 1,
-    }
+    dbg!(cmd);
+
+    // let status = std::process::Command::new(cmd.program.as_str())
+    //     .status()
+    //     .expect("failed to execute command");
+
+    // match status.code() {
+    //     Some(0) => 0,
+    //     Some(code) => code.try_into().unwrap_or_default(),
+    //     None => 1,
+    // }
+
+    1
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_commandOutput(program: &RocStr) -> RocResult<RocList<u8>, u8> {
-    let status = std::process::Command::new(program.as_str())
-        .status()
-        .expect("failed to execute command");
+pub extern "C" fn roc_fx_commandOutput(cmd: &command_glue::Command) -> RocResult<command_glue::Output, u8> {
 
-    // TODO get actual output to return
-    let output: RocList<u8> = RocList::empty();
+    dbg!(cmd);
 
-    match status.code() {
-        Some(0) => RocResult::ok(output),
-        Some(code) => RocResult::err(code.try_into().unwrap_or_default()),
-        None => RocResult::err(1),
+    match std::process::Command::new(cmd.program.as_str()).output() {
+        Ok(output) => {
+            let rocOutput = command_glue::Output{
+                status : output.status.code().unwrap_or_default(),
+                stdout : RocList::from(&output.stdout[..]),
+                stderr : RocList::from(&output.stderr[..]),
+            };
+            
+            RocResult::ok(rocOutput)
+        },
+        Err(_) => RocResult::err(1),
     }
 }

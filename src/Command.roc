@@ -1,6 +1,7 @@
 interface Command
     exposes [
         Command,
+        Output,
         new,
         status,
         output,
@@ -8,23 +9,21 @@ interface Command
     imports [
         Task.{ Task },
         InternalTask,
+        InternalCommand,
         Effect,
     ]
 
-Command := {
-    program : Str,
-    args : List Str,
-    envs : Dict Str Str,
-}
+Command := InternalCommand.Command
+
+Output : InternalCommand.Output
 
 new : Str -> Command
 new = \program ->
-    {
+    @Command {
         program,
         args: [],
-        envs: Dict.empty {},
+        envs: [],
     }
-    |> @Command
 
 # TODO arg : Command, Str -> Command
 
@@ -36,15 +35,15 @@ new = \program ->
 
 # TODO envs : Command, Dict Str Str -> Command
 
-# TODO output : Command -> Task (List U8) I32
-output : Command -> Task (List U8) U8
-output = \@Command { program } ->
-    Effect.commandOutput program
+output : Command -> Task Output U8
+output = \@Command cmd ->
+    Effect.commandOutput cmd
     |> InternalTask.fromEffect
 
 ## Execute command and return status code if the command returns non-zero code
+## panic if the command fails to execute
 status : Command -> Task U8 *
-status = \@Command { program } ->
-    Effect.commandStatus program
+status = \@Command cmd ->
+    Effect.commandStatus cmd
     |> Effect.map Ok
     |> InternalTask.fromEffect

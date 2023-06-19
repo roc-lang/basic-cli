@@ -20,7 +20,10 @@ main =
 first : Task {} U32
 first = 
     
-    code <- Command.new "ls" |> Command.status |> Task.await
+    code <- 
+        Command.new "ls" 
+        |> Command.status 
+        |> Task.await
 
     if code == 0 then
         Stdout.line "Success, returned 0 status code"
@@ -31,15 +34,14 @@ first =
 # Run a command in a child process, return output
 second : Task {} U32
 second = 
-    result <- 
+    output <- 
         Command.new "ls" 
         |> Command.output 
-        |> Task.attempt
+        |> Task.mapFail \_ -> 1 
+        |> Task.await
 
-    when result is 
-        Ok bytes -> 
-            bytesStr = Str.fromUtf8 bytes |> Result.withDefault "Failed to decode output"
-            Stdout.line "Succes, output is: \(bytesStr)"
-        Err code ->
-            codeStr = Num.toStr code
-            Stdout.line "Failed with \(codeStr) status code"
+    status = Num.toStr output.status
+    stdout = Str.fromUtf8 output.stdout |> Result.withDefault "Failed to decode stdout"
+    stderr = Str.fromUtf8 output.stderr |> Result.withDefault "Failed to decode stderr"
+
+    Stdout.write "STATUS \(status)\nSTDOUT\n \(stdout)STDERR \(stderr)\n"

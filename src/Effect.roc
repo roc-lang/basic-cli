@@ -36,7 +36,13 @@ hosted Effect
         commandStatus,
         commandOutput,
     ]
-    imports [InternalHttp.{ Request, Response }, InternalFile, InternalDir, InternalTcp]
+    imports [
+        InternalHttp.{ Request, Response }, 
+        InternalFile, 
+        InternalDir, 
+        InternalTcp,
+        InternalCommand,
+    ]
     generates Effect with [after, map, always, forever, loop]
 
 stdoutLine : Str -> Effect {}
@@ -76,5 +82,5 @@ tcpWrite : List U8, InternalTcp.Stream -> Effect InternalTcp.WriteResult
 posixTime : Effect U128
 sleepMillis : U64 -> Effect {}
 
-commandStatus : Str -> Effect U8
-commandOutput : Str -> Effect (Result (List U8) U8)
+commandStatus : InternalCommand.Command -> Effect U8
+commandOutput : InternalCommand.Command -> Effect (Result InternalCommand.Output U8)
