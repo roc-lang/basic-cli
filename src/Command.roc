@@ -37,13 +37,13 @@ new = \program ->
 
 output : Command -> Task Output U8
 output = \@Command cmd ->
-    Effect.commandOutput cmd
+    Effect.commandOutput (Box.box cmd)
     |> InternalTask.fromEffect
 
 ## Execute command and return status code if the command returns non-zero code
 ## panic if the command fails to execute
 status : Command -> Task U8 *
 status = \@Command cmd ->
-    Effect.commandStatus cmd
+    Effect.commandStatus (Box.box cmd)
     |> Effect.map Ok
     |> InternalTask.fromEffect
