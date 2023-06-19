@@ -14,7 +14,7 @@ interface Command
     ]
 
 Command := InternalCommand.Command
-
+Error : InternalCommand.CommandErr
 Output : InternalCommand.Output
 
 new : Str -> Command
@@ -35,15 +35,19 @@ new = \program ->
 
 # TODO envs : Command, Dict Str Str -> Command
 
-output : Command -> Task Output U8
+## Execute command and capture stdout and stderr
+##
+## Stdin is not inherited from the parent and any attempt by the child process 
+## to read from the stdin stream will result in the stream immediately closing.
+##
+output : Command -> Task Output Error
 output = \@Command cmd ->
     Effect.commandOutput (Box.box cmd)
     |> InternalTask.fromEffect
 
-## Execute command and return status code if the command returns non-zero code
-## panic if the command fails to execute
-status : Command -> Task U8 *
+## Execute command and inheriting stdin, stdout and stderr from parent
+##
+status : Command -> Task {} Error
 status = \@Command cmd ->
     Effect.commandStatus (Box.box cmd)
-    |> Effect.map Ok
     |> InternalTask.fromEffect

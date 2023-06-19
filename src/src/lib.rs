@@ -755,38 +755,48 @@ fn to_tcp_stream_err(err: std::io::Error) -> tcp_glue::StreamErr {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_commandStatus(cmd: &command_glue::Command) -> u8 {
+pub extern "C" fn roc_fx_commandStatus(cmd: &command_glue::Command) -> RocResult<(), command_glue::CommandErr> {
 
-    dbg!(cmd);
+    // TODO remove
+    // dbg!(cmd);
 
-    // let status = std::process::Command::new(cmd.program.as_str())
-    //     .status()
-    //     .expect("failed to execute command");
-
-    // match status.code() {
-    //     Some(0) => 0,
-    //     Some(code) => code.try_into().unwrap_or_default(),
-    //     None => 1,
-    // }
-
-    1
+    match std::process::Command::new(cmd.program.as_str()).status() {
+        Ok(status) => {
+            if status.success() {
+                RocResult::ok(())
+            } else {
+                let status_code = status.code().unwrap_or_default();
+                let error = command_glue::CommandErr::ExitStatus(status_code);
+                RocResult::err(error)
+            }
+        },
+        Err(err) => {
+            let str = RocStr::from(err.to_string().borrow());
+            let error = command_glue::CommandErr::IOError(str);
+            RocResult::err(error)
+        }
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_commandOutput(cmd: &command_glue::Command) -> RocResult<command_glue::Output, u8> {
+pub extern "C" fn roc_fx_commandOutput(cmd: &command_glue::Command) -> RocResult<command_glue::Output, command_glue::CommandErr> {
 
-    dbg!(cmd);
+    // TODO remove
+    // dbg!(cmd);
 
     match std::process::Command::new(cmd.program.as_str()).output() {
         Ok(output) => {
             let rocOutput = command_glue::Output{
-                status : output.status.code().unwrap_or_default(),
                 stdout : RocList::from(&output.stdout[..]),
                 stderr : RocList::from(&output.stderr[..]),
             };
             
             RocResult::ok(rocOutput)
         },
-        Err(_) => RocResult::err(1),
+        Err(err) => {
+            let str = RocStr::from(err.to_string().borrow());
+            let error = command_glue::CommandErr::IOError(str);
+            RocResult::err(error)
+        },
     }
 }

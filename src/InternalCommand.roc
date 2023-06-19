@@ -2,8 +2,14 @@ interface InternalCommand
     exposes [
         Command,
         Output,
+        CommandErr,
     ]
     imports []
+
+CommandErr : [
+    ExitStatus I32,
+    IOError Str,
+]
 
 Command : {
     program : Str,
@@ -12,7 +18,6 @@ Command : {
 }
 
 Output : {
-    status : I32,
     stdout : List U8,
     stderr : List U8,
 }
