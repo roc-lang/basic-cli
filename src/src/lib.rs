@@ -769,16 +769,17 @@ fn to_tcp_stream_err(err: std::io::Error) -> tcp_glue::StreamErr {
 pub extern "C" fn roc_fx_commandStatus(
     roc_cmd: &command_glue::Command,
 ) -> RocResult<(), command_glue::CommandErr> {
-    let args: Vec<_> = roc_cmd.args.into_iter().map(|arg| arg.as_str()).collect();
-    let flat_envs: Vec<_> = roc_cmd.envs.into_iter().map(|env| env.as_str()).collect();
+    let args = roc_cmd.args.into_iter().map(|arg| arg.as_str());
+    let num_envs = roc_cmd.envs.len() / 2;
+    let flat_envs = &roc_cmd.envs;
 
     // Environment vairables must be passed in key=value pairs
     assert_eq!(flat_envs.len() % 2, 0);
 
-    let mut envs = Vec::with_capacity(flat_envs.capacity() / 2);
+    let mut envs = Vec::with_capacity(num_envs);
     for chunk in flat_envs.chunks(2) {
-        let key = chunk[0];
-        let value = chunk[1];
+        let key = chunk[0].as_str();
+        let value = chunk[1].as_str();
         envs.push((key, value));
     }
 
@@ -825,16 +826,17 @@ pub extern "C" fn roc_fx_commandStatus(
 
 #[no_mangle]
 pub extern "C" fn roc_fx_commandOutput(roc_cmd: &command_glue::Command) -> command_glue::Output {
-    let args: Vec<_> = roc_cmd.args.into_iter().map(|arg| arg.as_str()).collect();
-    let flat_envs: Vec<_> = roc_cmd.envs.into_iter().map(|env| env.as_str()).collect();
+    let args = roc_cmd.args.into_iter().map(|arg| arg.as_str());
+    let num_envs = roc_cmd.envs.len() / 2;
+    let flat_envs = &roc_cmd.envs;
 
     // Environment vairables must be passed in key=value pairs
     assert_eq!(flat_envs.len() % 2, 0);
 
-    let mut envs = Vec::with_capacity(flat_envs.capacity() / 2);
+    let mut envs = Vec::with_capacity(num_envs);
     for chunk in flat_envs.chunks(2) {
-        let key = chunk[0];
-        let value = chunk[1];
+        let key = chunk[0].as_str();
+        let value = chunk[1].as_str();
         envs.push((key, value));
     }
 
