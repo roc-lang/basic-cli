@@ -1,4 +1,4 @@
-app "args"
+app "command"
     packages { pf: "../src/main.roc" }
     imports [
         pf.Stdout,
