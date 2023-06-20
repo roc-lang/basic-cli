@@ -7,7 +7,8 @@ interface InternalCommand
     imports []
 
 CommandErr : [
-    ExitStatus I32,
+    ExitCode I32,
+    KilledBySignal,
     IOError Str,
 ]
 
@@ -19,6 +20,7 @@ Command : {
 }
 
 Output : {
+    status : Result {} CommandErr,
     stdout : List U8,
     stderr : List U8,
 }

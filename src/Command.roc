@@ -117,9 +117,10 @@ clearEnvs = \@Command cmd ->
 ## > Stdin is not inherited from the parent and any attempt by the child process
 ## > to read from the stdin stream will result in the stream immediately closing.
 ##
-output : Command -> Task Output Error
+output : Command -> Task Output *
 output = \@Command cmd ->
     Effect.commandOutput (Box.box cmd)
+    |> Effect.map Ok
     |> InternalTask.fromEffect
 
 ## Execute command and inheriting stdin, stdout and stderr from parent

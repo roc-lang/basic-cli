@@ -87,4 +87,4 @@ posixTime : Effect U128
 sleepMillis : U64 -> Effect {}
 
 commandStatus : Box InternalCommand.Command -> Effect (Result {} InternalCommand.CommandErr)
-commandOutput : Box InternalCommand.Command -> Effect (Result InternalCommand.Output InternalCommand.CommandErr)
+commandOutput : Box InternalCommand.Command -> Effect InternalCommand.Output

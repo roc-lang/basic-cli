@@ -1,11 +1,16 @@
-#[derive(Clone, Default, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
+//  OUTPUT
+
+#[derive(Clone, Debug, PartialEq)]
 #[repr(C)]
 pub struct Output {
+    pub status: roc_std::RocResult<(), CommandErr>,
     pub stderr: roc_std::RocList<u8>,
     pub stdout: roc_std::RocList<u8>,
 }
 
-#[derive(Clone, Default, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
+// COMMAND
+
+#[derive(Clone, Default, Debug, PartialEq, Eq)]
 #[repr(C)]
 pub struct Command {
     pub args: roc_std::RocList<roc_std::RocStr>,
@@ -14,26 +19,31 @@ pub struct Command {
     pub clearEnvs: bool,
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
+// COMMAND ERROR
+
+#[derive(Clone, Copy, PartialEq)]
 #[repr(u8)]
 pub enum discriminant_CommandErr {
-    ExitStatus = 0,
+    ExitCode = 0,
     IOError = 1,
+    KilledBySignal = 2,
 }
 
 impl core::fmt::Debug for discriminant_CommandErr {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Self::ExitStatus => f.write_str("discriminant_CommandErr::ExitStatus"),
+            Self::ExitCode => f.write_str("discriminant_CommandErr::ExitCode"),
             Self::IOError => f.write_str("discriminant_CommandErr::IOError"),
+            Self::KilledBySignal => f.write_str("discriminant_CommandErr::KilledBySignal"),
         }
     }
 }
 
 #[repr(C, align(8))]
 pub union union_CommandErr {
-    ExitStatus: i32,
+    ExitCode: i32,
     IOError: core::mem::ManuallyDrop<roc_std::RocStr>,
+    KilledBySignal: (),
 }
 
 const _SIZE_CHECK_union_CommandErr: () = assert!(core::mem::size_of::<union_CommandErr>() == 24);
@@ -74,11 +84,14 @@ impl Clone for CommandErr {
 
         let payload = unsafe {
             match self.discriminant {
-                ExitStatus => union_CommandErr {
-                    ExitStatus: self.payload.ExitStatus.clone(),
+                ExitCode => union_CommandErr {
+                    ExitCode: self.payload.ExitCode.clone(),
                 },
                 IOError => union_CommandErr {
                     IOError: self.payload.IOError.clone(),
+                },
+                KilledBySignal => union_CommandErr {
+                    KilledBySignal: self.payload.KilledBySignal.clone(),
                 },
             }
         };
@@ -96,15 +109,19 @@ impl core::fmt::Debug for CommandErr {
 
         unsafe {
             match self.discriminant {
-                ExitStatus => {
-                    let field: &i32 = &self.payload.ExitStatus;
-                    f.debug_tuple("CommandErr::ExitStatus")
-                        .field(field)
-                        .finish()
+                ExitCode => {
+                    let field: &i32 = &self.payload.ExitCode;
+                    f.debug_tuple("CommandErr::ExitCode").field(field).finish()
                 }
                 IOError => {
                     let field: &roc_std::RocStr = &self.payload.IOError;
                     f.debug_tuple("CommandErr::IOError").field(field).finish()
+                }
+                KilledBySignal => {
+                    let field: &() = &self.payload.KilledBySignal;
+                    f.debug_tuple("CommandErr::KilledBySignal")
+                        .field(field)
+                        .finish()
                 }
             }
         }
@@ -123,37 +140,10 @@ impl PartialEq for CommandErr {
 
         unsafe {
             match self.discriminant {
-                ExitStatus => self.payload.ExitStatus == other.payload.ExitStatus,
+                ExitCode => self.payload.ExitCode == other.payload.ExitCode,
                 IOError => self.payload.IOError == other.payload.IOError,
+                KilledBySignal => self.payload.KilledBySignal == other.payload.KilledBySignal,
             }
-        }
-    }
-}
-
-impl Ord for CommandErr {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.partial_cmp(other).unwrap()
-    }
-}
-
-impl PartialOrd for CommandErr {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        use discriminant_CommandErr::*;
-
-        use std::cmp::Ordering::*;
-
-        match self.discriminant.cmp(&other.discriminant) {
-            Less => Option::Some(Less),
-            Greater => Option::Some(Greater),
-            Equal => unsafe {
-                match self.discriminant {
-                    ExitStatus => self
-                        .payload
-                        .ExitStatus
-                        .partial_cmp(&other.payload.ExitStatus),
-                    IOError => self.payload.IOError.partial_cmp(&other.payload.IOError),
-                }
-            },
         }
     }
 }
@@ -164,21 +154,22 @@ impl core::hash::Hash for CommandErr {
 
         unsafe {
             match self.discriminant {
-                ExitStatus => self.payload.ExitStatus.hash(state),
+                ExitCode => self.payload.ExitCode.hash(state),
                 IOError => self.payload.IOError.hash(state),
+                KilledBySignal => self.payload.KilledBySignal.hash(state),
             }
         }
     }
 }
 
 impl CommandErr {
-    pub fn unwrap_ExitStatus(mut self) -> i32 {
-        debug_assert_eq!(self.discriminant, discriminant_CommandErr::ExitStatus);
-        unsafe { self.payload.ExitStatus }
+    pub fn unwrap_ExitCode(mut self) -> i32 {
+        debug_assert_eq!(self.discriminant, discriminant_CommandErr::ExitCode);
+        unsafe { self.payload.ExitCode }
     }
 
-    pub fn is_ExitStatus(&self) -> bool {
-        matches!(self.discriminant, discriminant_CommandErr::ExitStatus)
+    pub fn is_ExitCode(&self) -> bool {
+        matches!(self.discriminant, discriminant_CommandErr::ExitCode)
     }
 
     pub fn unwrap_IOError(mut self) -> roc_std::RocStr {
@@ -189,15 +180,17 @@ impl CommandErr {
     pub fn is_IOError(&self) -> bool {
         matches!(self.discriminant, discriminant_CommandErr::IOError)
     }
+
+    pub fn is_KilledBySignal(&self) -> bool {
+        matches!(self.discriminant, discriminant_CommandErr::KilledBySignal)
+    }
 }
 
 impl CommandErr {
-    pub fn ExitStatus(payload: i32) -> Self {
+    pub fn ExitCode(payload: i32) -> Self {
         Self {
-            discriminant: discriminant_CommandErr::ExitStatus,
-            payload: union_CommandErr {
-                ExitStatus: payload,
-            },
+            discriminant: discriminant_CommandErr::ExitCode,
+            payload: union_CommandErr { ExitCode: payload },
         }
     }
 
@@ -209,16 +202,24 @@ impl CommandErr {
             },
         }
     }
+
+    pub fn KilledBySignal() -> Self {
+        Self {
+            discriminant: discriminant_CommandErr::KilledBySignal,
+            payload: union_CommandErr { KilledBySignal: () },
+        }
+    }
 }
 
 impl Drop for CommandErr {
     fn drop(&mut self) {
         // Drop the payloads
         match self.discriminant() {
-            discriminant_CommandErr::ExitStatus => {}
+            discriminant_CommandErr::ExitCode => {}
             discriminant_CommandErr::IOError => unsafe {
                 core::mem::ManuallyDrop::drop(&mut self.payload.IOError)
             },
+            discriminant_CommandErr::KilledBySignal => {}
         }
     }
 }

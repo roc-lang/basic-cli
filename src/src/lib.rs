@@ -312,8 +312,8 @@ pub extern "C" fn roc_fx_stdinBytes() -> RocList<u8> {
     let mut buffer: [u8; 256] = [0; 256];
 
     match stdin.lock().read(&mut buffer) {
-        Ok(bytes_read) => {RocList::from(&buffer[0..bytes_read])}
-        Err(_) => {RocList::from((&[]).as_slice())}
+        Ok(bytes_read) => RocList::from(&buffer[0..bytes_read]),
+        Err(_) => RocList::from((&[]).as_slice()),
     }
 }
 
@@ -809,9 +809,17 @@ pub extern "C" fn roc_fx_commandStatus(
             if status.success() {
                 RocResult::ok(())
             } else {
-                let status_code = status.code().unwrap_or_default();
-                let error = command_glue::CommandErr::ExitStatus(status_code);
-                RocResult::err(error)
+                match status.code() {
+                    Some(code) => {
+                        let error = command_glue::CommandErr::ExitCode(code);
+                        RocResult::err(error)
+                    }
+                    None => {
+                        // If no exit code is returned, the process was terminated by a signal.
+                        let error = command_glue::CommandErr::KilledBySignal();
+                        RocResult::err(error)
+                    }
+                }
             }
         }
         Err(err) => {
@@ -823,9 +831,7 @@ pub extern "C" fn roc_fx_commandStatus(
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_commandOutput(
-    cmd: &command_glue::Command,
-) -> RocResult<command_glue::Output, command_glue::CommandErr> {
+pub extern "C" fn roc_fx_commandOutput(cmd: &command_glue::Command) -> command_glue::Output {
     let args = cmd
         .args
         .into_iter()
@@ -863,17 +869,35 @@ pub extern "C" fn roc_fx_commandOutput(
 
     match result {
         Ok(output) => {
-            let rocOutput = command_glue::Output {
-                stdout: RocList::from(&output.stdout[..]),
-                stderr: RocList::from(&output.stderr[..]),
+            // Status of the child process, successful/exit code/killed by signal
+            let status = if output.status.success() {
+                RocResult::ok(())
+            } else {
+                match output.status.code() {
+                    Some(code) => {
+                        let error = command_glue::CommandErr::ExitCode(code);
+                        RocResult::err(error)
+                    }
+                    None => {
+                        // If no exit code is returned, the process was terminated by a signal.
+                        let error = command_glue::CommandErr::KilledBySignal();
+                        RocResult::err(error)
+                    }
+                }
             };
 
-            RocResult::ok(rocOutput)
+            command_glue::Output {
+                status: status,
+                stdout: RocList::from(&output.stdout[..]),
+                stderr: RocList::from(&output.stderr[..]),
+            }
         }
-        Err(err) => {
-            let str = RocStr::from(err.to_string().borrow());
-            let error = command_glue::CommandErr::IOError(str);
-            RocResult::err(error)
-        }
+        Err(err) => command_glue::Output {
+            status: RocResult::err(command_glue::CommandErr::IOError(RocStr::from(
+                err.to_string().borrow(),
+            ))),
+            stdout: RocList::empty(),
+            stderr: RocList::empty(),
+        },
     }
 }

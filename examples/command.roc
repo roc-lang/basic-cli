@@ -19,16 +19,21 @@ main =
 first : Task {} U32
 first =
 
-    {} <-
+    result <-
         Command.new "env"
         |> Command.arg "-v"
         |> Command.clearEnvs
         |> Command.envs [("FOO", "BAR"), ("BAZ", "DUCK")]
         |> Command.status
-        |> Task.onFail \_ -> crash "first failed"
-        |> Task.await
-
-    Stdout.line "Success"
+        |> Task.attempt
+    
+    when result is 
+        Ok {} -> Stdout.line "Success"
+        Err (ExitCode code) -> 
+            codeStr = Num.toStr code
+            Stdout.line "Child exited with non-zero code: \(codeStr)"
+        Err (KilledBySignal) -> Stdout.line "Child was killed by signal"
+        Err (IOError err) -> Stdout.line "IOError executing: \(err)"
 
 # Run "ls" with environment variable "FOO" and two arguments, "-l" and "-a".
 # Capture stdout and stderr and print them.
@@ -39,7 +44,6 @@ second =
         |> Command.env "FOO" "BAR"
         |> Command.args ["-l", "-a"]
         |> Command.output
-        |> Task.onFail \_ -> crash "second failed"
         |> Task.await
 
     stdout = Str.fromUtf8 output.stdout |> Result.withDefault "Failed to decode stdout"
