@@ -767,18 +767,10 @@ fn to_tcp_stream_err(err: std::io::Error) -> tcp_glue::StreamErr {
 
 #[no_mangle]
 pub extern "C" fn roc_fx_commandStatus(
-    cmd: &command_glue::Command,
+    roc_cmd: &command_glue::Command,
 ) -> RocResult<(), command_glue::CommandErr> {
-    let args = cmd
-        .args
-        .into_iter()
-        .map(|arg| arg.as_str())
-        .collect::<Vec<_>>();
-    let flat_envs = cmd
-        .envs
-        .into_iter()
-        .map(|env| env.as_str())
-        .collect::<Vec<_>>();
+    let args: Vec<_> = roc_cmd.args.into_iter().map(|arg| arg.as_str()).collect();
+    let flat_envs: Vec<_> = roc_cmd.envs.into_iter().map(|env| env.as_str()).collect();
 
     // Environment vairables must be passed in key=value pairs
     assert_eq!(flat_envs.len() % 2, 0);
@@ -790,21 +782,22 @@ pub extern "C" fn roc_fx_commandStatus(
         envs.push((key, value));
     }
 
-    let result = match cmd.clearEnvs {
-        // Clear environment variables if cmd.clearEnvs set
-        true => std::process::Command::new(cmd.program.as_str())
-            .args(args)
-            .env_clear()
-            .envs(envs)
-            .status(),
-        // Inherit environment variables if cmd.clearEnvs is not set
-        false => std::process::Command::new(cmd.program.as_str())
-            .args(args)
-            .envs(envs)
-            .status(),
+    // Create command
+    let mut cmd = std::process::Command::new(roc_cmd.program.as_str());
+
+    // Set arguments
+    cmd.args(args);
+
+    // Clear environment variables if cmd.clearEnvs set
+    // otherwise inherit environment variables if cmd.clearEnvs is not set
+    if roc_cmd.clearEnvs {
+        cmd.env_clear();
     };
 
-    match result {
+    // Set environment variables
+    cmd.envs(envs);
+
+    match cmd.status() {
         Ok(status) => {
             if status.success() {
                 RocResult::ok(())
@@ -831,17 +824,9 @@ pub extern "C" fn roc_fx_commandStatus(
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_commandOutput(cmd: &command_glue::Command) -> command_glue::Output {
-    let args = cmd
-        .args
-        .into_iter()
-        .map(|arg| arg.as_str())
-        .collect::<Vec<_>>();
-    let flat_envs = cmd
-        .envs
-        .into_iter()
-        .map(|env| env.as_str())
-        .collect::<Vec<_>>();
+pub extern "C" fn roc_fx_commandOutput(roc_cmd: &command_glue::Command) -> command_glue::Output {
+    let args: Vec<_> = roc_cmd.args.into_iter().map(|arg| arg.as_str()).collect();
+    let flat_envs: Vec<_> = roc_cmd.envs.into_iter().map(|env| env.as_str()).collect();
 
     // Environment vairables must be passed in key=value pairs
     assert_eq!(flat_envs.len() % 2, 0);
@@ -853,21 +838,22 @@ pub extern "C" fn roc_fx_commandOutput(cmd: &command_glue::Command) -> command_g
         envs.push((key, value));
     }
 
-    let result = match cmd.clearEnvs {
-        // Clear environment variables if cmd.clearEnvs set
-        true => std::process::Command::new(cmd.program.as_str())
-            .args(args)
-            .env_clear()
-            .envs(envs)
-            .output(),
-        // Inherit environment variables if cmd.clearEnvs is not set
-        false => std::process::Command::new(cmd.program.as_str())
-            .args(args)
-            .envs(envs)
-            .output(),
+    // Create command
+    let mut cmd = std::process::Command::new(roc_cmd.program.as_str());
+
+    // Set arguments
+    cmd.args(args);
+
+    // Clear environment variables if cmd.clearEnvs set
+    // otherwise inherit environment variables if cmd.clearEnvs is not set
+    if roc_cmd.clearEnvs {
+        cmd.env_clear();
     };
 
-    match result {
+    // Set environment variables
+    cmd.envs(envs);
+
+    match cmd.output() {
         Ok(output) => {
             // Status of the child process, successful/exit code/killed by signal
             let status = if output.status.success() {
