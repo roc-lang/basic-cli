@@ -4,7 +4,7 @@ app "args"
         pf.Stdout,
         pf.Command,
         pf.Process,
-        pf.Task.{Task},
+        pf.Task.{ Task },
     ]
     provides [main] to pf
 
@@ -14,30 +14,31 @@ main =
 
     Process.exit 0
 
-    # second
-    
+# second
+
 # Run a command in a child process, return status code
 first : Task {} U32
-first = 
-    
-    {} <- 
-        Command.new "env" 
+first =
+
+    {} <-
+        Command.new "env"
         |> Command.arg "-v"
-        |> Command.env "FOO" "BAR"
+        |> Command.clearEnvs
+        |> Command.envs [("FOO", "BAR"), ("BAZ", "DUCK")]
         |> Command.status
         |> Task.onFail \_ -> crash "first failed"
         |> Task.await
 
-    Stdout.line "Successfully executed"
+    Stdout.line "Success"
 
 # Run a command in a child process, return output
 second : Task {} U32
-second = 
-    output <- 
+second =
+    output <-
         Command.new "ls"
+        |> Command.env "FOO" "BAR"
         |> Command.args ["-l", "-a"]
-        |> Command.envs [("FOO", "BAR"), ("BAZ", "DUCK")]
-        |> Command.output 
+        |> Command.output
         |> Task.onFail \_ -> crash "second failed"
         |> Task.await
 
