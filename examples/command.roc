@@ -14,9 +14,8 @@ main =
 
     Process.exit 0
 
-# second
-
-# Run a command in a child process, return status code
+# Run "env" with verbose option, clear all environment variables, and pass in
+# "FOO" and "BAZ".
 first : Task {} U32
 first =
 
@@ -31,7 +30,8 @@ first =
 
     Stdout.line "Success"
 
-# Run a command in a child process, return output
+# Run "ls" with environment variable "FOO" and two arguments, "-l" and "-a".
+# Capture stdout and stderr and print them.
 second : Task {} U32
 second =
     output <-
