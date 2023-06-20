@@ -26,13 +26,14 @@ first =
         |> Command.envs [("FOO", "BAR"), ("BAZ", "DUCK")]
         |> Command.status
         |> Task.attempt
-    
-    when result is 
+
+    when result is
         Ok {} -> Stdout.line "Success"
-        Err (ExitCode code) -> 
+        Err (ExitCode code) ->
             codeStr = Num.toStr code
             Stdout.line "Child exited with non-zero code: \(codeStr)"
-        Err (KilledBySignal) -> Stdout.line "Child was killed by signal"
+
+        Err KilledBySignal -> Stdout.line "Child was killed by signal"
         Err (IOError err) -> Stdout.line "IOError executing: \(err)"
 
 # Run "ls" with environment variable "FOO" and two arguments, "-l" and "-a".
@@ -46,7 +47,17 @@ second =
         |> Command.output
         |> Task.await
 
+    status =
+        when output.status is
+            Ok {} -> "Success"
+            Err (ExitCode code) ->
+                codeStr = Num.toStr code
+                "Child exited with non-zero code: \(codeStr)"
+
+            Err KilledBySignal -> "Child was killed by signal"
+            Err (IOError err) -> "IOError executing: \(err)"
+
     stdout = Str.fromUtf8 output.stdout |> Result.withDefault "Failed to decode stdout"
     stderr = Str.fromUtf8 output.stderr |> Result.withDefault "Failed to decode stderr"
 
-    Stdout.write "STDOUT\n \(stdout)STDERR \(stderr)\n"
+    Stdout.write "STATUS \(status)\nSTDOUT \(stdout)\nSTDERR \(stderr)\n"
