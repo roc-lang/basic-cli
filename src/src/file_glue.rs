@@ -47,7 +47,9 @@ impl core::fmt::Debug for discriminant_ReadErr {
             Self::NotFound => f.write_str("discriminant_ReadErr::NotFound"),
             Self::OutOfMemory => f.write_str("discriminant_ReadErr::OutOfMemory"),
             Self::PermissionDenied => f.write_str("discriminant_ReadErr::PermissionDenied"),
-            Self::StaleNetworkFileHandle => f.write_str("discriminant_ReadErr::StaleNetworkFileHandle"),
+            Self::StaleNetworkFileHandle => {
+                f.write_str("discriminant_ReadErr::StaleNetworkFileHandle")
+            }
             Self::TimedOut => f.write_str("discriminant_ReadErr::TimedOut"),
             Self::TooManyHardlinks => f.write_str("discriminant_ReadErr::TooManyHardlinks"),
             Self::TooManySymlinks => f.write_str("discriminant_ReadErr::TooManySymlinks"),
@@ -57,22 +59,14 @@ impl core::fmt::Debug for discriminant_ReadErr {
     }
 }
 
-#[cfg(any(
-    target_arch = "arm",
-    target_arch = "wasm32",
-    target_arch = "x86"
-))]
+#[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
 #[repr(C)]
 pub union ReadErr {
     Unrecognized: core::mem::ManuallyDrop<ReadErr_Unrecognized>,
     _sizer: [u8; 20],
 }
 
-#[cfg(any(
-    target_arch = "arm",
-    target_arch = "wasm32",
-    target_arch = "x86"
-))]
+#[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
 #[derive(Clone, Debug, Default, Eq, Ord, Hash, PartialEq, PartialOrd)]
 #[repr(C)]
 struct ReadErr_Unrecognized {
@@ -118,7 +112,9 @@ impl core::fmt::Debug for discriminant_WriteErr {
             Self::AlreadyExists => f.write_str("discriminant_WriteErr::AlreadyExists"),
             Self::ExecutableFileBusy => f.write_str("discriminant_WriteErr::ExecutableFileBusy"),
             Self::FileTooLarge => f.write_str("discriminant_WriteErr::FileTooLarge"),
-            Self::FilesystemQuotaExceeded => f.write_str("discriminant_WriteErr::FilesystemQuotaExceeded"),
+            Self::FilesystemQuotaExceeded => {
+                f.write_str("discriminant_WriteErr::FilesystemQuotaExceeded")
+            }
             Self::Interrupted => f.write_str("discriminant_WriteErr::Interrupted"),
             Self::InvalidFilename => f.write_str("discriminant_WriteErr::InvalidFilename"),
             Self::NotFound => f.write_str("discriminant_WriteErr::NotFound"),
@@ -126,7 +122,9 @@ impl core::fmt::Debug for discriminant_WriteErr {
             Self::PermissionDenied => f.write_str("discriminant_WriteErr::PermissionDenied"),
             Self::ReadOnlyFilesystem => f.write_str("discriminant_WriteErr::ReadOnlyFilesystem"),
             Self::ResourceBusy => f.write_str("discriminant_WriteErr::ResourceBusy"),
-            Self::StaleNetworkFileHandle => f.write_str("discriminant_WriteErr::StaleNetworkFileHandle"),
+            Self::StaleNetworkFileHandle => {
+                f.write_str("discriminant_WriteErr::StaleNetworkFileHandle")
+            }
             Self::StorageFull => f.write_str("discriminant_WriteErr::StorageFull"),
             Self::TimedOut => f.write_str("discriminant_WriteErr::TimedOut"),
             Self::TooManyHardlinks => f.write_str("discriminant_WriteErr::TooManyHardlinks"),
@@ -139,22 +137,14 @@ impl core::fmt::Debug for discriminant_WriteErr {
     }
 }
 
-#[cfg(any(
-    target_arch = "arm",
-    target_arch = "wasm32",
-    target_arch = "x86"
-))]
+#[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
 #[repr(C)]
 pub union WriteErr {
     Unrecognized: core::mem::ManuallyDrop<WriteErr_Unrecognized>,
     _sizer: [u8; 20],
 }
 
-#[cfg(any(
-    target_arch = "arm",
-    target_arch = "wasm32",
-    target_arch = "x86"
-))]
+#[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
 #[derive(Clone, Debug, Default, Eq, Ord, Hash, PartialEq, PartialOrd)]
 #[repr(C)]
 struct WriteErr_Unrecognized {
@@ -162,20 +152,14 @@ struct WriteErr_Unrecognized {
     pub f1: roc_std::RocStr,
 }
 
-#[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "x86_64"
-))]
+#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
 #[repr(C)]
 pub union ReadErr {
     Unrecognized: core::mem::ManuallyDrop<ReadErr_Unrecognized>,
     _sizer: [u8; 40],
 }
 
-#[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "x86_64"
-))]
+#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
 #[derive(Clone, Debug, Default, Eq, Ord, Hash, PartialEq, PartialOrd)]
 #[repr(C)]
 struct ReadErr_Unrecognized {
@@ -183,20 +167,14 @@ struct ReadErr_Unrecognized {
     pub f0: i32,
 }
 
-#[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "x86_64"
-))]
+#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
 #[repr(C)]
 pub union WriteErr {
     Unrecognized: core::mem::ManuallyDrop<WriteErr_Unrecognized>,
     _sizer: [u8; 40],
 }
 
-#[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "x86_64"
-))]
+#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
 #[derive(Clone, Debug, Default, Eq, Ord, Hash, PartialEq, PartialOrd)]
 #[repr(C)]
 struct WriteErr_Unrecognized {
@@ -205,11 +183,7 @@ struct WriteErr_Unrecognized {
 }
 
 impl ReadErr {
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// Returns which variant this tag union holds. Note that this never includes a payload!
     pub fn discriminant(&self) -> discriminant_ReadErr {
         unsafe {
@@ -219,11 +193,7 @@ impl ReadErr {
         }
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// Internal helper
     fn set_discriminant(&mut self, discriminant: discriminant_ReadErr) {
         let discriminant_ptr: *mut discriminant_ReadErr = (self as *mut ReadErr).cast();
@@ -233,11 +203,7 @@ impl ReadErr {
         }
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named Interrupted, which has no payload.
     pub const Interrupted: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<ReadErr>()];
@@ -273,11 +239,7 @@ impl ReadErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named InvalidFilename, which has no payload.
     pub const InvalidFilename: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<ReadErr>()];
@@ -313,11 +275,7 @@ impl ReadErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named NotFound, which has no payload.
     pub const NotFound: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<ReadErr>()];
@@ -353,11 +311,7 @@ impl ReadErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named OutOfMemory, which has no payload.
     pub const OutOfMemory: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<ReadErr>()];
@@ -393,11 +347,7 @@ impl ReadErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named PermissionDenied, which has no payload.
     pub const PermissionDenied: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<ReadErr>()];
@@ -433,11 +383,7 @@ impl ReadErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named StaleNetworkFileHandle, which has no payload.
     pub const StaleNetworkFileHandle: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<ReadErr>()];
@@ -473,11 +419,7 @@ impl ReadErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named TimedOut, which has no payload.
     pub const TimedOut: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<ReadErr>()];
@@ -513,11 +455,7 @@ impl ReadErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named TooManyHardlinks, which has no payload.
     pub const TooManyHardlinks: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<ReadErr>()];
@@ -553,11 +491,7 @@ impl ReadErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named TooManySymlinks, which has no payload.
     pub const TooManySymlinks: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<ReadErr>()];
@@ -602,16 +536,13 @@ impl ReadErr {
     ))]
     /// Construct a tag named `Unrecognized`, with the appropriate payload
     pub fn Unrecognized(arg0: i32, arg1: roc_std::RocStr) -> Self {
-            let mut answer = Self {
-                Unrecognized: core::mem::ManuallyDrop::new(ReadErr_Unrecognized {
-                    f0: arg0,
-                    f1: arg1,
-                })
-            };
+        let mut answer = Self {
+            Unrecognized: core::mem::ManuallyDrop::new(ReadErr_Unrecognized { f0: arg0, f1: arg1 }),
+        };
 
-            answer.set_discriminant(discriminant_ReadErr::Unrecognized);
+        answer.set_discriminant(discriminant_ReadErr::Unrecognized);
 
-            answer
+        answer
     }
 
     #[cfg(any(
@@ -622,10 +553,10 @@ impl ReadErr {
         target_arch = "x86_64"
     ))]
     /// Unsafely assume the given `ReadErr` has a `.discriminant()` of `Unrecognized` and convert it to `Unrecognized`'s payload.
-            /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
-            /// Panics in debug builds if the `.discriminant()` doesn't return `Unrecognized`.
-            pub unsafe fn into_Unrecognized(mut self) -> (i32, roc_std::RocStr) {
-                debug_assert_eq!(self.discriminant(), discriminant_ReadErr::Unrecognized);
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Unrecognized`.
+    pub unsafe fn into_Unrecognized(mut self) -> (i32, roc_std::RocStr) {
+        debug_assert_eq!(self.discriminant(), discriminant_ReadErr::Unrecognized);
         let payload = {
             let mut uninitialized = core::mem::MaybeUninit::uninit();
             let swapped = unsafe {
@@ -640,10 +571,7 @@ impl ReadErr {
             core::mem::ManuallyDrop::into_inner(swapped)
         };
 
-        (
-            payload.f0, 
-            payload.f1
-        )
+        (payload.f0, payload.f1)
     }
 
     #[cfg(any(
@@ -654,23 +582,16 @@ impl ReadErr {
         target_arch = "x86_64"
     ))]
     /// Unsafely assume the given `ReadErr` has a `.discriminant()` of `Unrecognized` and return its payload.
-            /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
-            /// Panics in debug builds if the `.discriminant()` doesn't return `Unrecognized`.
-            pub unsafe fn as_Unrecognized(&self) -> (&i32, &roc_std::RocStr) {
-                debug_assert_eq!(self.discriminant(), discriminant_ReadErr::Unrecognized);
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Unrecognized`.
+    pub unsafe fn as_Unrecognized(&self) -> (&i32, &roc_std::RocStr) {
+        debug_assert_eq!(self.discriminant(), discriminant_ReadErr::Unrecognized);
         let payload = &self.Unrecognized;
 
-        (
-            &payload.f0, 
-            &payload.f1
-        )
+        (&payload.f0, &payload.f1)
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named Unsupported, which has no payload.
     pub const Unsupported: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<ReadErr>()];
@@ -706,10 +627,7 @@ impl ReadErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// Returns which variant this tag union holds. Note that this never includes a payload!
     pub fn discriminant(&self) -> discriminant_ReadErr {
         unsafe {
@@ -719,10 +637,7 @@ impl ReadErr {
         }
     }
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// Internal helper
     fn set_discriminant(&mut self, discriminant: discriminant_ReadErr) {
         let discriminant_ptr: *mut discriminant_ReadErr = (self as *mut ReadErr).cast();
@@ -732,10 +647,7 @@ impl ReadErr {
         }
     }
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named Interrupted, which has no payload.
     pub const Interrupted: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<ReadErr>()];
@@ -745,10 +657,7 @@ impl ReadErr {
         core::mem::transmute::<[u8; core::mem::size_of::<ReadErr>()], ReadErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named InvalidFilename, which has no payload.
     pub const InvalidFilename: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<ReadErr>()];
@@ -758,10 +667,7 @@ impl ReadErr {
         core::mem::transmute::<[u8; core::mem::size_of::<ReadErr>()], ReadErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named NotFound, which has no payload.
     pub const NotFound: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<ReadErr>()];
@@ -771,10 +677,7 @@ impl ReadErr {
         core::mem::transmute::<[u8; core::mem::size_of::<ReadErr>()], ReadErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named OutOfMemory, which has no payload.
     pub const OutOfMemory: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<ReadErr>()];
@@ -784,10 +687,7 @@ impl ReadErr {
         core::mem::transmute::<[u8; core::mem::size_of::<ReadErr>()], ReadErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named PermissionDenied, which has no payload.
     pub const PermissionDenied: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<ReadErr>()];
@@ -797,10 +697,7 @@ impl ReadErr {
         core::mem::transmute::<[u8; core::mem::size_of::<ReadErr>()], ReadErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named StaleNetworkFileHandle, which has no payload.
     pub const StaleNetworkFileHandle: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<ReadErr>()];
@@ -810,10 +707,7 @@ impl ReadErr {
         core::mem::transmute::<[u8; core::mem::size_of::<ReadErr>()], ReadErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named TimedOut, which has no payload.
     pub const TimedOut: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<ReadErr>()];
@@ -823,10 +717,7 @@ impl ReadErr {
         core::mem::transmute::<[u8; core::mem::size_of::<ReadErr>()], ReadErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named TooManyHardlinks, which has no payload.
     pub const TooManyHardlinks: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<ReadErr>()];
@@ -836,10 +727,7 @@ impl ReadErr {
         core::mem::transmute::<[u8; core::mem::size_of::<ReadErr>()], ReadErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named TooManySymlinks, which has no payload.
     pub const TooManySymlinks: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<ReadErr>()];
@@ -849,10 +737,7 @@ impl ReadErr {
         core::mem::transmute::<[u8; core::mem::size_of::<ReadErr>()], ReadErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named Unsupported, which has no payload.
     pub const Unsupported: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<ReadErr>()];
@@ -873,20 +758,21 @@ impl Drop for ReadErr {
     ))]
     fn drop(&mut self) {
         // Drop the payloads
-                    match self.discriminant() {
-                discriminant_ReadErr::Interrupted => {}
-                discriminant_ReadErr::InvalidFilename => {}
-                discriminant_ReadErr::NotFound => {}
-                discriminant_ReadErr::OutOfMemory => {}
-                discriminant_ReadErr::PermissionDenied => {}
-                discriminant_ReadErr::StaleNetworkFileHandle => {}
-                discriminant_ReadErr::TimedOut => {}
-                discriminant_ReadErr::TooManyHardlinks => {}
-                discriminant_ReadErr::TooManySymlinks => {}
-                discriminant_ReadErr::Unrecognized => unsafe { core::mem::ManuallyDrop::drop(&mut self.Unrecognized) },
-                discriminant_ReadErr::Unsupported => {}
-            }
-
+        match self.discriminant() {
+            discriminant_ReadErr::Interrupted => {}
+            discriminant_ReadErr::InvalidFilename => {}
+            discriminant_ReadErr::NotFound => {}
+            discriminant_ReadErr::OutOfMemory => {}
+            discriminant_ReadErr::PermissionDenied => {}
+            discriminant_ReadErr::StaleNetworkFileHandle => {}
+            discriminant_ReadErr::TimedOut => {}
+            discriminant_ReadErr::TooManyHardlinks => {}
+            discriminant_ReadErr::TooManySymlinks => {}
+            discriminant_ReadErr::Unrecognized => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.Unrecognized)
+            },
+            discriminant_ReadErr::Unsupported => {}
+        }
     }
 }
 
@@ -901,11 +787,11 @@ impl PartialEq for ReadErr {
         target_arch = "x86_64"
     ))]
     fn eq(&self, other: &Self) -> bool {
-            if self.discriminant() != other.discriminant() {
-                return false;
-            }
+        if self.discriminant() != other.discriminant() {
+            return false;
+        }
 
-            unsafe {
+        unsafe {
             match self.discriminant() {
                 discriminant_ReadErr::Interrupted => true,
                 discriminant_ReadErr::InvalidFilename => true,
@@ -948,7 +834,9 @@ impl PartialOrd for ReadErr {
                 discriminant_ReadErr::TimedOut => Some(core::cmp::Ordering::Equal),
                 discriminant_ReadErr::TooManyHardlinks => Some(core::cmp::Ordering::Equal),
                 discriminant_ReadErr::TooManySymlinks => Some(core::cmp::Ordering::Equal),
-                discriminant_ReadErr::Unrecognized => self.Unrecognized.partial_cmp(&other.Unrecognized),
+                discriminant_ReadErr::Unrecognized => {
+                    self.Unrecognized.partial_cmp(&other.Unrecognized)
+                }
                 discriminant_ReadErr::Unsupported => Some(core::cmp::Ordering::Equal),
             }
         }
@@ -964,12 +852,12 @@ impl Ord for ReadErr {
         target_arch = "x86_64"
     ))]
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-            match self.discriminant().cmp(&other.discriminant()) {
-                core::cmp::Ordering::Equal => {}
-                not_eq => return not_eq,
-            }
+        match self.discriminant().cmp(&other.discriminant()) {
+            core::cmp::Ordering::Equal => {}
+            not_eq => return not_eq,
+        }
 
-            unsafe {
+        unsafe {
             match self.discriminant() {
                 discriminant_ReadErr::Interrupted => core::cmp::Ordering::Equal,
                 discriminant_ReadErr::InvalidFilename => core::cmp::Ordering::Equal,
@@ -998,51 +886,60 @@ impl Clone for ReadErr {
     fn clone(&self) -> Self {
         let mut answer = unsafe {
             match self.discriminant() {
-                discriminant_ReadErr::Interrupted => core::mem::transmute::<
-                    core::mem::MaybeUninit<ReadErr>,
-                    ReadErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_ReadErr::InvalidFilename => core::mem::transmute::<
-                    core::mem::MaybeUninit<ReadErr>,
-                    ReadErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_ReadErr::NotFound => core::mem::transmute::<
-                    core::mem::MaybeUninit<ReadErr>,
-                    ReadErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_ReadErr::OutOfMemory => core::mem::transmute::<
-                    core::mem::MaybeUninit<ReadErr>,
-                    ReadErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_ReadErr::PermissionDenied => core::mem::transmute::<
-                    core::mem::MaybeUninit<ReadErr>,
-                    ReadErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_ReadErr::StaleNetworkFileHandle => core::mem::transmute::<
-                    core::mem::MaybeUninit<ReadErr>,
-                    ReadErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_ReadErr::TimedOut => core::mem::transmute::<
-                    core::mem::MaybeUninit<ReadErr>,
-                    ReadErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_ReadErr::TooManyHardlinks => core::mem::transmute::<
-                    core::mem::MaybeUninit<ReadErr>,
-                    ReadErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_ReadErr::TooManySymlinks => core::mem::transmute::<
-                    core::mem::MaybeUninit<ReadErr>,
-                    ReadErr,
-                >(core::mem::MaybeUninit::uninit()),
+                discriminant_ReadErr::Interrupted => {
+                    core::mem::transmute::<core::mem::MaybeUninit<ReadErr>, ReadErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_ReadErr::InvalidFilename => {
+                    core::mem::transmute::<core::mem::MaybeUninit<ReadErr>, ReadErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_ReadErr::NotFound => {
+                    core::mem::transmute::<core::mem::MaybeUninit<ReadErr>, ReadErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_ReadErr::OutOfMemory => {
+                    core::mem::transmute::<core::mem::MaybeUninit<ReadErr>, ReadErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_ReadErr::PermissionDenied => {
+                    core::mem::transmute::<core::mem::MaybeUninit<ReadErr>, ReadErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_ReadErr::StaleNetworkFileHandle => {
+                    core::mem::transmute::<core::mem::MaybeUninit<ReadErr>, ReadErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_ReadErr::TimedOut => {
+                    core::mem::transmute::<core::mem::MaybeUninit<ReadErr>, ReadErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_ReadErr::TooManyHardlinks => {
+                    core::mem::transmute::<core::mem::MaybeUninit<ReadErr>, ReadErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_ReadErr::TooManySymlinks => {
+                    core::mem::transmute::<core::mem::MaybeUninit<ReadErr>, ReadErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
                 discriminant_ReadErr::Unrecognized => Self {
                     Unrecognized: self.Unrecognized.clone(),
                 },
-                discriminant_ReadErr::Unsupported => core::mem::transmute::<
-                    core::mem::MaybeUninit<ReadErr>,
-                    ReadErr,
-                >(core::mem::MaybeUninit::uninit()),
+                discriminant_ReadErr::Unsupported => {
+                    core::mem::transmute::<core::mem::MaybeUninit<ReadErr>, ReadErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
             }
-
         };
 
         answer.set_discriminant(self.discriminant());
@@ -1059,31 +956,38 @@ impl core::hash::Hash for ReadErr {
         target_arch = "x86",
         target_arch = "x86_64"
     ))]
-    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {        match self.discriminant() {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        match self.discriminant() {
             discriminant_ReadErr::Interrupted => discriminant_ReadErr::Interrupted.hash(state),
-            discriminant_ReadErr::InvalidFilename => discriminant_ReadErr::InvalidFilename.hash(state),
+            discriminant_ReadErr::InvalidFilename => {
+                discriminant_ReadErr::InvalidFilename.hash(state)
+            }
             discriminant_ReadErr::NotFound => discriminant_ReadErr::NotFound.hash(state),
             discriminant_ReadErr::OutOfMemory => discriminant_ReadErr::OutOfMemory.hash(state),
-            discriminant_ReadErr::PermissionDenied => discriminant_ReadErr::PermissionDenied.hash(state),
-            discriminant_ReadErr::StaleNetworkFileHandle => discriminant_ReadErr::StaleNetworkFileHandle.hash(state),
+            discriminant_ReadErr::PermissionDenied => {
+                discriminant_ReadErr::PermissionDenied.hash(state)
+            }
+            discriminant_ReadErr::StaleNetworkFileHandle => {
+                discriminant_ReadErr::StaleNetworkFileHandle.hash(state)
+            }
             discriminant_ReadErr::TimedOut => discriminant_ReadErr::TimedOut.hash(state),
-            discriminant_ReadErr::TooManyHardlinks => discriminant_ReadErr::TooManyHardlinks.hash(state),
-            discriminant_ReadErr::TooManySymlinks => discriminant_ReadErr::TooManySymlinks.hash(state),
+            discriminant_ReadErr::TooManyHardlinks => {
+                discriminant_ReadErr::TooManyHardlinks.hash(state)
+            }
+            discriminant_ReadErr::TooManySymlinks => {
+                discriminant_ReadErr::TooManySymlinks.hash(state)
+            }
             discriminant_ReadErr::Unrecognized => unsafe {
-                    discriminant_ReadErr::Unrecognized.hash(state);
-                    self.Unrecognized.hash(state);
-                },
+                discriminant_ReadErr::Unrecognized.hash(state);
+                self.Unrecognized.hash(state);
+            },
             discriminant_ReadErr::Unsupported => discriminant_ReadErr::Unsupported.hash(state),
         }
     }
 }
 
 impl core::fmt::Debug for ReadErr {
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str("ReadErr::")?;
 
@@ -1094,23 +998,23 @@ impl core::fmt::Debug for ReadErr {
                 discriminant_ReadErr::NotFound => f.write_str("NotFound"),
                 discriminant_ReadErr::OutOfMemory => f.write_str("OutOfMemory"),
                 discriminant_ReadErr::PermissionDenied => f.write_str("PermissionDenied"),
-                discriminant_ReadErr::StaleNetworkFileHandle => f.write_str("StaleNetworkFileHandle"),
+                discriminant_ReadErr::StaleNetworkFileHandle => {
+                    f.write_str("StaleNetworkFileHandle")
+                }
                 discriminant_ReadErr::TimedOut => f.write_str("TimedOut"),
                 discriminant_ReadErr::TooManyHardlinks => f.write_str("TooManyHardlinks"),
                 discriminant_ReadErr::TooManySymlinks => f.write_str("TooManySymlinks"),
-                discriminant_ReadErr::Unrecognized => f.debug_tuple("Unrecognized")
-        .field(&(&*self.Unrecognized).f0)
-.field(&(&*self.Unrecognized).f1)
-        .finish(),
+                discriminant_ReadErr::Unrecognized => f
+                    .debug_tuple("Unrecognized")
+                    .field(&(&*self.Unrecognized).f0)
+                    .field(&(&*self.Unrecognized).f1)
+                    .finish(),
                 discriminant_ReadErr::Unsupported => f.write_str("Unsupported"),
             }
         }
     }
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str("ReadErr::")?;
 
@@ -1121,14 +1025,17 @@ impl core::fmt::Debug for ReadErr {
                 discriminant_ReadErr::NotFound => f.write_str("NotFound"),
                 discriminant_ReadErr::OutOfMemory => f.write_str("OutOfMemory"),
                 discriminant_ReadErr::PermissionDenied => f.write_str("PermissionDenied"),
-                discriminant_ReadErr::StaleNetworkFileHandle => f.write_str("StaleNetworkFileHandle"),
+                discriminant_ReadErr::StaleNetworkFileHandle => {
+                    f.write_str("StaleNetworkFileHandle")
+                }
                 discriminant_ReadErr::TimedOut => f.write_str("TimedOut"),
                 discriminant_ReadErr::TooManyHardlinks => f.write_str("TooManyHardlinks"),
                 discriminant_ReadErr::TooManySymlinks => f.write_str("TooManySymlinks"),
-                discriminant_ReadErr::Unrecognized => f.debug_tuple("Unrecognized")
-        .field(&(&*self.Unrecognized).f1)
-.field(&(&*self.Unrecognized).f0)
-        .finish(),
+                discriminant_ReadErr::Unrecognized => f
+                    .debug_tuple("Unrecognized")
+                    .field(&(&*self.Unrecognized).f1)
+                    .field(&(&*self.Unrecognized).f0)
+                    .finish(),
                 discriminant_ReadErr::Unsupported => f.write_str("Unsupported"),
             }
         }
@@ -1136,11 +1043,7 @@ impl core::fmt::Debug for ReadErr {
 }
 
 impl WriteErr {
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// Returns which variant this tag union holds. Note that this never includes a payload!
     pub fn discriminant(&self) -> discriminant_WriteErr {
         unsafe {
@@ -1150,11 +1053,7 @@ impl WriteErr {
         }
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// Internal helper
     fn set_discriminant(&mut self, discriminant: discriminant_WriteErr) {
         let discriminant_ptr: *mut discriminant_WriteErr = (self as *mut WriteErr).cast();
@@ -1164,11 +1063,7 @@ impl WriteErr {
         }
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named AlreadyExists, which has no payload.
     pub const AlreadyExists: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -1204,11 +1099,7 @@ impl WriteErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named ExecutableFileBusy, which has no payload.
     pub const ExecutableFileBusy: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -1244,11 +1135,7 @@ impl WriteErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named FileTooLarge, which has no payload.
     pub const FileTooLarge: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -1284,11 +1171,7 @@ impl WriteErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named FilesystemQuotaExceeded, which has no payload.
     pub const FilesystemQuotaExceeded: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -1324,11 +1207,7 @@ impl WriteErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named Interrupted, which has no payload.
     pub const Interrupted: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -1364,11 +1243,7 @@ impl WriteErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named InvalidFilename, which has no payload.
     pub const InvalidFilename: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -1404,11 +1279,7 @@ impl WriteErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named NotFound, which has no payload.
     pub const NotFound: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -1444,11 +1315,7 @@ impl WriteErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named OutOfMemory, which has no payload.
     pub const OutOfMemory: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -1484,11 +1351,7 @@ impl WriteErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named PermissionDenied, which has no payload.
     pub const PermissionDenied: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -1524,11 +1387,7 @@ impl WriteErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named ReadOnlyFilesystem, which has no payload.
     pub const ReadOnlyFilesystem: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -1564,11 +1423,7 @@ impl WriteErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named ResourceBusy, which has no payload.
     pub const ResourceBusy: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -1604,11 +1459,7 @@ impl WriteErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named StaleNetworkFileHandle, which has no payload.
     pub const StaleNetworkFileHandle: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -1644,11 +1495,7 @@ impl WriteErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named StorageFull, which has no payload.
     pub const StorageFull: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -1684,11 +1531,7 @@ impl WriteErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named TimedOut, which has no payload.
     pub const TimedOut: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -1724,11 +1567,7 @@ impl WriteErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named TooManyHardlinks, which has no payload.
     pub const TooManyHardlinks: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -1764,11 +1603,7 @@ impl WriteErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named TooManySymlinks, which has no payload.
     pub const TooManySymlinks: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -1813,16 +1648,16 @@ impl WriteErr {
     ))]
     /// Construct a tag named `Unrecognized`, with the appropriate payload
     pub fn Unrecognized(arg0: i32, arg1: roc_std::RocStr) -> Self {
-            let mut answer = Self {
-                Unrecognized: core::mem::ManuallyDrop::new(WriteErr_Unrecognized {
-                    f0: arg0,
-                    f1: arg1,
-                })
-            };
+        let mut answer = Self {
+            Unrecognized: core::mem::ManuallyDrop::new(WriteErr_Unrecognized {
+                f0: arg0,
+                f1: arg1,
+            }),
+        };
 
-            answer.set_discriminant(discriminant_WriteErr::Unrecognized);
+        answer.set_discriminant(discriminant_WriteErr::Unrecognized);
 
-            answer
+        answer
     }
 
     #[cfg(any(
@@ -1833,10 +1668,10 @@ impl WriteErr {
         target_arch = "x86_64"
     ))]
     /// Unsafely assume the given `WriteErr` has a `.discriminant()` of `Unrecognized` and convert it to `Unrecognized`'s payload.
-            /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
-            /// Panics in debug builds if the `.discriminant()` doesn't return `Unrecognized`.
-            pub unsafe fn into_Unrecognized(mut self) -> (i32, roc_std::RocStr) {
-                debug_assert_eq!(self.discriminant(), discriminant_WriteErr::Unrecognized);
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Unrecognized`.
+    pub unsafe fn into_Unrecognized(mut self) -> (i32, roc_std::RocStr) {
+        debug_assert_eq!(self.discriminant(), discriminant_WriteErr::Unrecognized);
         let payload = {
             let mut uninitialized = core::mem::MaybeUninit::uninit();
             let swapped = unsafe {
@@ -1851,10 +1686,7 @@ impl WriteErr {
             core::mem::ManuallyDrop::into_inner(swapped)
         };
 
-        (
-            payload.f0, 
-            payload.f1
-        )
+        (payload.f0, payload.f1)
     }
 
     #[cfg(any(
@@ -1865,23 +1697,16 @@ impl WriteErr {
         target_arch = "x86_64"
     ))]
     /// Unsafely assume the given `WriteErr` has a `.discriminant()` of `Unrecognized` and return its payload.
-            /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
-            /// Panics in debug builds if the `.discriminant()` doesn't return `Unrecognized`.
-            pub unsafe fn as_Unrecognized(&self) -> (&i32, &roc_std::RocStr) {
-                debug_assert_eq!(self.discriminant(), discriminant_WriteErr::Unrecognized);
+    /// (Always examine `.discriminant()` first to make sure this is the correct variant!)
+    /// Panics in debug builds if the `.discriminant()` doesn't return `Unrecognized`.
+    pub unsafe fn as_Unrecognized(&self) -> (&i32, &roc_std::RocStr) {
+        debug_assert_eq!(self.discriminant(), discriminant_WriteErr::Unrecognized);
         let payload = &self.Unrecognized;
 
-        (
-            &payload.f0, 
-            &payload.f1
-        )
+        (&payload.f0, &payload.f1)
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named Unsupported, which has no payload.
     pub const Unsupported: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -1917,11 +1742,7 @@ impl WriteErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named WasADirectory, which has no payload.
     pub const WasADirectory: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -1957,11 +1778,7 @@ impl WriteErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     /// A tag named WriteZero, which has no payload.
     pub const WriteZero: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -1997,10 +1814,7 @@ impl WriteErr {
         ()
     }
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// Returns which variant this tag union holds. Note that this never includes a payload!
     pub fn discriminant(&self) -> discriminant_WriteErr {
         unsafe {
@@ -2010,10 +1824,7 @@ impl WriteErr {
         }
     }
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// Internal helper
     fn set_discriminant(&mut self, discriminant: discriminant_WriteErr) {
         let discriminant_ptr: *mut discriminant_WriteErr = (self as *mut WriteErr).cast();
@@ -2023,10 +1834,7 @@ impl WriteErr {
         }
     }
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named AlreadyExists, which has no payload.
     pub const AlreadyExists: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -2036,10 +1844,7 @@ impl WriteErr {
         core::mem::transmute::<[u8; core::mem::size_of::<WriteErr>()], WriteErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named ExecutableFileBusy, which has no payload.
     pub const ExecutableFileBusy: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -2049,10 +1854,7 @@ impl WriteErr {
         core::mem::transmute::<[u8; core::mem::size_of::<WriteErr>()], WriteErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named FileTooLarge, which has no payload.
     pub const FileTooLarge: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -2062,10 +1864,7 @@ impl WriteErr {
         core::mem::transmute::<[u8; core::mem::size_of::<WriteErr>()], WriteErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named FilesystemQuotaExceeded, which has no payload.
     pub const FilesystemQuotaExceeded: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -2075,10 +1874,7 @@ impl WriteErr {
         core::mem::transmute::<[u8; core::mem::size_of::<WriteErr>()], WriteErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named Interrupted, which has no payload.
     pub const Interrupted: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -2088,10 +1884,7 @@ impl WriteErr {
         core::mem::transmute::<[u8; core::mem::size_of::<WriteErr>()], WriteErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named InvalidFilename, which has no payload.
     pub const InvalidFilename: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -2101,10 +1894,7 @@ impl WriteErr {
         core::mem::transmute::<[u8; core::mem::size_of::<WriteErr>()], WriteErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named NotFound, which has no payload.
     pub const NotFound: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -2114,10 +1904,7 @@ impl WriteErr {
         core::mem::transmute::<[u8; core::mem::size_of::<WriteErr>()], WriteErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named OutOfMemory, which has no payload.
     pub const OutOfMemory: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -2127,10 +1914,7 @@ impl WriteErr {
         core::mem::transmute::<[u8; core::mem::size_of::<WriteErr>()], WriteErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named PermissionDenied, which has no payload.
     pub const PermissionDenied: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -2140,10 +1924,7 @@ impl WriteErr {
         core::mem::transmute::<[u8; core::mem::size_of::<WriteErr>()], WriteErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named ReadOnlyFilesystem, which has no payload.
     pub const ReadOnlyFilesystem: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -2153,10 +1934,7 @@ impl WriteErr {
         core::mem::transmute::<[u8; core::mem::size_of::<WriteErr>()], WriteErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named ResourceBusy, which has no payload.
     pub const ResourceBusy: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -2166,10 +1944,7 @@ impl WriteErr {
         core::mem::transmute::<[u8; core::mem::size_of::<WriteErr>()], WriteErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named StaleNetworkFileHandle, which has no payload.
     pub const StaleNetworkFileHandle: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -2179,10 +1954,7 @@ impl WriteErr {
         core::mem::transmute::<[u8; core::mem::size_of::<WriteErr>()], WriteErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named StorageFull, which has no payload.
     pub const StorageFull: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -2192,10 +1964,7 @@ impl WriteErr {
         core::mem::transmute::<[u8; core::mem::size_of::<WriteErr>()], WriteErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named TimedOut, which has no payload.
     pub const TimedOut: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -2205,10 +1974,7 @@ impl WriteErr {
         core::mem::transmute::<[u8; core::mem::size_of::<WriteErr>()], WriteErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named TooManyHardlinks, which has no payload.
     pub const TooManyHardlinks: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -2218,10 +1984,7 @@ impl WriteErr {
         core::mem::transmute::<[u8; core::mem::size_of::<WriteErr>()], WriteErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named TooManySymlinks, which has no payload.
     pub const TooManySymlinks: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -2231,10 +1994,7 @@ impl WriteErr {
         core::mem::transmute::<[u8; core::mem::size_of::<WriteErr>()], WriteErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named Unsupported, which has no payload.
     pub const Unsupported: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -2244,10 +2004,7 @@ impl WriteErr {
         core::mem::transmute::<[u8; core::mem::size_of::<WriteErr>()], WriteErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named WasADirectory, which has no payload.
     pub const WasADirectory: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -2257,10 +2014,7 @@ impl WriteErr {
         core::mem::transmute::<[u8; core::mem::size_of::<WriteErr>()], WriteErr>(bytes)
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     /// A tag named WriteZero, which has no payload.
     pub const WriteZero: Self = unsafe {
         let mut bytes = [0; core::mem::size_of::<WriteErr>()];
@@ -2281,29 +2035,30 @@ impl Drop for WriteErr {
     ))]
     fn drop(&mut self) {
         // Drop the payloads
-                    match self.discriminant() {
-                discriminant_WriteErr::AlreadyExists => {}
-                discriminant_WriteErr::ExecutableFileBusy => {}
-                discriminant_WriteErr::FileTooLarge => {}
-                discriminant_WriteErr::FilesystemQuotaExceeded => {}
-                discriminant_WriteErr::Interrupted => {}
-                discriminant_WriteErr::InvalidFilename => {}
-                discriminant_WriteErr::NotFound => {}
-                discriminant_WriteErr::OutOfMemory => {}
-                discriminant_WriteErr::PermissionDenied => {}
-                discriminant_WriteErr::ReadOnlyFilesystem => {}
-                discriminant_WriteErr::ResourceBusy => {}
-                discriminant_WriteErr::StaleNetworkFileHandle => {}
-                discriminant_WriteErr::StorageFull => {}
-                discriminant_WriteErr::TimedOut => {}
-                discriminant_WriteErr::TooManyHardlinks => {}
-                discriminant_WriteErr::TooManySymlinks => {}
-                discriminant_WriteErr::Unrecognized => unsafe { core::mem::ManuallyDrop::drop(&mut self.Unrecognized) },
-                discriminant_WriteErr::Unsupported => {}
-                discriminant_WriteErr::WasADirectory => {}
-                discriminant_WriteErr::WriteZero => {}
-            }
-
+        match self.discriminant() {
+            discriminant_WriteErr::AlreadyExists => {}
+            discriminant_WriteErr::ExecutableFileBusy => {}
+            discriminant_WriteErr::FileTooLarge => {}
+            discriminant_WriteErr::FilesystemQuotaExceeded => {}
+            discriminant_WriteErr::Interrupted => {}
+            discriminant_WriteErr::InvalidFilename => {}
+            discriminant_WriteErr::NotFound => {}
+            discriminant_WriteErr::OutOfMemory => {}
+            discriminant_WriteErr::PermissionDenied => {}
+            discriminant_WriteErr::ReadOnlyFilesystem => {}
+            discriminant_WriteErr::ResourceBusy => {}
+            discriminant_WriteErr::StaleNetworkFileHandle => {}
+            discriminant_WriteErr::StorageFull => {}
+            discriminant_WriteErr::TimedOut => {}
+            discriminant_WriteErr::TooManyHardlinks => {}
+            discriminant_WriteErr::TooManySymlinks => {}
+            discriminant_WriteErr::Unrecognized => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.Unrecognized)
+            },
+            discriminant_WriteErr::Unsupported => {}
+            discriminant_WriteErr::WasADirectory => {}
+            discriminant_WriteErr::WriteZero => {}
+        }
     }
 }
 
@@ -2318,11 +2073,11 @@ impl PartialEq for WriteErr {
         target_arch = "x86_64"
     ))]
     fn eq(&self, other: &Self) -> bool {
-            if self.discriminant() != other.discriminant() {
-                return false;
-            }
+        if self.discriminant() != other.discriminant() {
+            return false;
+        }
 
-            unsafe {
+        unsafe {
             match self.discriminant() {
                 discriminant_WriteErr::AlreadyExists => true,
                 discriminant_WriteErr::ExecutableFileBusy => true,
@@ -2381,7 +2136,9 @@ impl PartialOrd for WriteErr {
                 discriminant_WriteErr::TimedOut => Some(core::cmp::Ordering::Equal),
                 discriminant_WriteErr::TooManyHardlinks => Some(core::cmp::Ordering::Equal),
                 discriminant_WriteErr::TooManySymlinks => Some(core::cmp::Ordering::Equal),
-                discriminant_WriteErr::Unrecognized => self.Unrecognized.partial_cmp(&other.Unrecognized),
+                discriminant_WriteErr::Unrecognized => {
+                    self.Unrecognized.partial_cmp(&other.Unrecognized)
+                }
                 discriminant_WriteErr::Unsupported => Some(core::cmp::Ordering::Equal),
                 discriminant_WriteErr::WasADirectory => Some(core::cmp::Ordering::Equal),
                 discriminant_WriteErr::WriteZero => Some(core::cmp::Ordering::Equal),
@@ -2399,12 +2156,12 @@ impl Ord for WriteErr {
         target_arch = "x86_64"
     ))]
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-            match self.discriminant().cmp(&other.discriminant()) {
-                core::cmp::Ordering::Equal => {}
-                not_eq => return not_eq,
-            }
+        match self.discriminant().cmp(&other.discriminant()) {
+            core::cmp::Ordering::Equal => {}
+            not_eq => return not_eq,
+        }
 
-            unsafe {
+        unsafe {
             match self.discriminant() {
                 discriminant_WriteErr::AlreadyExists => core::cmp::Ordering::Equal,
                 discriminant_WriteErr::ExecutableFileBusy => core::cmp::Ordering::Equal,
@@ -2442,87 +2199,105 @@ impl Clone for WriteErr {
     fn clone(&self) -> Self {
         let mut answer = unsafe {
             match self.discriminant() {
-                discriminant_WriteErr::AlreadyExists => core::mem::transmute::<
-                    core::mem::MaybeUninit<WriteErr>,
-                    WriteErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_WriteErr::ExecutableFileBusy => core::mem::transmute::<
-                    core::mem::MaybeUninit<WriteErr>,
-                    WriteErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_WriteErr::FileTooLarge => core::mem::transmute::<
-                    core::mem::MaybeUninit<WriteErr>,
-                    WriteErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_WriteErr::FilesystemQuotaExceeded => core::mem::transmute::<
-                    core::mem::MaybeUninit<WriteErr>,
-                    WriteErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_WriteErr::Interrupted => core::mem::transmute::<
-                    core::mem::MaybeUninit<WriteErr>,
-                    WriteErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_WriteErr::InvalidFilename => core::mem::transmute::<
-                    core::mem::MaybeUninit<WriteErr>,
-                    WriteErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_WriteErr::NotFound => core::mem::transmute::<
-                    core::mem::MaybeUninit<WriteErr>,
-                    WriteErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_WriteErr::OutOfMemory => core::mem::transmute::<
-                    core::mem::MaybeUninit<WriteErr>,
-                    WriteErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_WriteErr::PermissionDenied => core::mem::transmute::<
-                    core::mem::MaybeUninit<WriteErr>,
-                    WriteErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_WriteErr::ReadOnlyFilesystem => core::mem::transmute::<
-                    core::mem::MaybeUninit<WriteErr>,
-                    WriteErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_WriteErr::ResourceBusy => core::mem::transmute::<
-                    core::mem::MaybeUninit<WriteErr>,
-                    WriteErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_WriteErr::StaleNetworkFileHandle => core::mem::transmute::<
-                    core::mem::MaybeUninit<WriteErr>,
-                    WriteErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_WriteErr::StorageFull => core::mem::transmute::<
-                    core::mem::MaybeUninit<WriteErr>,
-                    WriteErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_WriteErr::TimedOut => core::mem::transmute::<
-                    core::mem::MaybeUninit<WriteErr>,
-                    WriteErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_WriteErr::TooManyHardlinks => core::mem::transmute::<
-                    core::mem::MaybeUninit<WriteErr>,
-                    WriteErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_WriteErr::TooManySymlinks => core::mem::transmute::<
-                    core::mem::MaybeUninit<WriteErr>,
-                    WriteErr,
-                >(core::mem::MaybeUninit::uninit()),
+                discriminant_WriteErr::AlreadyExists => {
+                    core::mem::transmute::<core::mem::MaybeUninit<WriteErr>, WriteErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_WriteErr::ExecutableFileBusy => {
+                    core::mem::transmute::<core::mem::MaybeUninit<WriteErr>, WriteErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_WriteErr::FileTooLarge => {
+                    core::mem::transmute::<core::mem::MaybeUninit<WriteErr>, WriteErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_WriteErr::FilesystemQuotaExceeded => {
+                    core::mem::transmute::<core::mem::MaybeUninit<WriteErr>, WriteErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_WriteErr::Interrupted => {
+                    core::mem::transmute::<core::mem::MaybeUninit<WriteErr>, WriteErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_WriteErr::InvalidFilename => {
+                    core::mem::transmute::<core::mem::MaybeUninit<WriteErr>, WriteErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_WriteErr::NotFound => {
+                    core::mem::transmute::<core::mem::MaybeUninit<WriteErr>, WriteErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_WriteErr::OutOfMemory => {
+                    core::mem::transmute::<core::mem::MaybeUninit<WriteErr>, WriteErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_WriteErr::PermissionDenied => {
+                    core::mem::transmute::<core::mem::MaybeUninit<WriteErr>, WriteErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_WriteErr::ReadOnlyFilesystem => {
+                    core::mem::transmute::<core::mem::MaybeUninit<WriteErr>, WriteErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_WriteErr::ResourceBusy => {
+                    core::mem::transmute::<core::mem::MaybeUninit<WriteErr>, WriteErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_WriteErr::StaleNetworkFileHandle => {
+                    core::mem::transmute::<core::mem::MaybeUninit<WriteErr>, WriteErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_WriteErr::StorageFull => {
+                    core::mem::transmute::<core::mem::MaybeUninit<WriteErr>, WriteErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_WriteErr::TimedOut => {
+                    core::mem::transmute::<core::mem::MaybeUninit<WriteErr>, WriteErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_WriteErr::TooManyHardlinks => {
+                    core::mem::transmute::<core::mem::MaybeUninit<WriteErr>, WriteErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_WriteErr::TooManySymlinks => {
+                    core::mem::transmute::<core::mem::MaybeUninit<WriteErr>, WriteErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
                 discriminant_WriteErr::Unrecognized => Self {
                     Unrecognized: self.Unrecognized.clone(),
                 },
-                discriminant_WriteErr::Unsupported => core::mem::transmute::<
-                    core::mem::MaybeUninit<WriteErr>,
-                    WriteErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_WriteErr::WasADirectory => core::mem::transmute::<
-                    core::mem::MaybeUninit<WriteErr>,
-                    WriteErr,
-                >(core::mem::MaybeUninit::uninit()),
-                discriminant_WriteErr::WriteZero => core::mem::transmute::<
-                    core::mem::MaybeUninit<WriteErr>,
-                    WriteErr,
-                >(core::mem::MaybeUninit::uninit()),
+                discriminant_WriteErr::Unsupported => {
+                    core::mem::transmute::<core::mem::MaybeUninit<WriteErr>, WriteErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_WriteErr::WasADirectory => {
+                    core::mem::transmute::<core::mem::MaybeUninit<WriteErr>, WriteErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
+                discriminant_WriteErr::WriteZero => {
+                    core::mem::transmute::<core::mem::MaybeUninit<WriteErr>, WriteErr>(
+                        core::mem::MaybeUninit::uninit(),
+                    )
+                }
             }
-
         };
 
         answer.set_discriminant(self.discriminant());
@@ -2539,40 +2314,57 @@ impl core::hash::Hash for WriteErr {
         target_arch = "x86",
         target_arch = "x86_64"
     ))]
-    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {        match self.discriminant() {
-            discriminant_WriteErr::AlreadyExists => discriminant_WriteErr::AlreadyExists.hash(state),
-            discriminant_WriteErr::ExecutableFileBusy => discriminant_WriteErr::ExecutableFileBusy.hash(state),
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        match self.discriminant() {
+            discriminant_WriteErr::AlreadyExists => {
+                discriminant_WriteErr::AlreadyExists.hash(state)
+            }
+            discriminant_WriteErr::ExecutableFileBusy => {
+                discriminant_WriteErr::ExecutableFileBusy.hash(state)
+            }
             discriminant_WriteErr::FileTooLarge => discriminant_WriteErr::FileTooLarge.hash(state),
-            discriminant_WriteErr::FilesystemQuotaExceeded => discriminant_WriteErr::FilesystemQuotaExceeded.hash(state),
+            discriminant_WriteErr::FilesystemQuotaExceeded => {
+                discriminant_WriteErr::FilesystemQuotaExceeded.hash(state)
+            }
             discriminant_WriteErr::Interrupted => discriminant_WriteErr::Interrupted.hash(state),
-            discriminant_WriteErr::InvalidFilename => discriminant_WriteErr::InvalidFilename.hash(state),
+            discriminant_WriteErr::InvalidFilename => {
+                discriminant_WriteErr::InvalidFilename.hash(state)
+            }
             discriminant_WriteErr::NotFound => discriminant_WriteErr::NotFound.hash(state),
             discriminant_WriteErr::OutOfMemory => discriminant_WriteErr::OutOfMemory.hash(state),
-            discriminant_WriteErr::PermissionDenied => discriminant_WriteErr::PermissionDenied.hash(state),
-            discriminant_WriteErr::ReadOnlyFilesystem => discriminant_WriteErr::ReadOnlyFilesystem.hash(state),
+            discriminant_WriteErr::PermissionDenied => {
+                discriminant_WriteErr::PermissionDenied.hash(state)
+            }
+            discriminant_WriteErr::ReadOnlyFilesystem => {
+                discriminant_WriteErr::ReadOnlyFilesystem.hash(state)
+            }
             discriminant_WriteErr::ResourceBusy => discriminant_WriteErr::ResourceBusy.hash(state),
-            discriminant_WriteErr::StaleNetworkFileHandle => discriminant_WriteErr::StaleNetworkFileHandle.hash(state),
+            discriminant_WriteErr::StaleNetworkFileHandle => {
+                discriminant_WriteErr::StaleNetworkFileHandle.hash(state)
+            }
             discriminant_WriteErr::StorageFull => discriminant_WriteErr::StorageFull.hash(state),
             discriminant_WriteErr::TimedOut => discriminant_WriteErr::TimedOut.hash(state),
-            discriminant_WriteErr::TooManyHardlinks => discriminant_WriteErr::TooManyHardlinks.hash(state),
-            discriminant_WriteErr::TooManySymlinks => discriminant_WriteErr::TooManySymlinks.hash(state),
+            discriminant_WriteErr::TooManyHardlinks => {
+                discriminant_WriteErr::TooManyHardlinks.hash(state)
+            }
+            discriminant_WriteErr::TooManySymlinks => {
+                discriminant_WriteErr::TooManySymlinks.hash(state)
+            }
             discriminant_WriteErr::Unrecognized => unsafe {
-                    discriminant_WriteErr::Unrecognized.hash(state);
-                    self.Unrecognized.hash(state);
-                },
+                discriminant_WriteErr::Unrecognized.hash(state);
+                self.Unrecognized.hash(state);
+            },
             discriminant_WriteErr::Unsupported => discriminant_WriteErr::Unsupported.hash(state),
-            discriminant_WriteErr::WasADirectory => discriminant_WriteErr::WasADirectory.hash(state),
+            discriminant_WriteErr::WasADirectory => {
+                discriminant_WriteErr::WasADirectory.hash(state)
+            }
             discriminant_WriteErr::WriteZero => discriminant_WriteErr::WriteZero.hash(state),
         }
     }
 }
 
 impl core::fmt::Debug for WriteErr {
-    #[cfg(any(
-        target_arch = "arm",
-        target_arch = "wasm32",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "arm", target_arch = "wasm32", target_arch = "x86"))]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str("WriteErr::")?;
 
@@ -2581,7 +2373,9 @@ impl core::fmt::Debug for WriteErr {
                 discriminant_WriteErr::AlreadyExists => f.write_str("AlreadyExists"),
                 discriminant_WriteErr::ExecutableFileBusy => f.write_str("ExecutableFileBusy"),
                 discriminant_WriteErr::FileTooLarge => f.write_str("FileTooLarge"),
-                discriminant_WriteErr::FilesystemQuotaExceeded => f.write_str("FilesystemQuotaExceeded"),
+                discriminant_WriteErr::FilesystemQuotaExceeded => {
+                    f.write_str("FilesystemQuotaExceeded")
+                }
                 discriminant_WriteErr::Interrupted => f.write_str("Interrupted"),
                 discriminant_WriteErr::InvalidFilename => f.write_str("InvalidFilename"),
                 discriminant_WriteErr::NotFound => f.write_str("NotFound"),
@@ -2589,15 +2383,18 @@ impl core::fmt::Debug for WriteErr {
                 discriminant_WriteErr::PermissionDenied => f.write_str("PermissionDenied"),
                 discriminant_WriteErr::ReadOnlyFilesystem => f.write_str("ReadOnlyFilesystem"),
                 discriminant_WriteErr::ResourceBusy => f.write_str("ResourceBusy"),
-                discriminant_WriteErr::StaleNetworkFileHandle => f.write_str("StaleNetworkFileHandle"),
+                discriminant_WriteErr::StaleNetworkFileHandle => {
+                    f.write_str("StaleNetworkFileHandle")
+                }
                 discriminant_WriteErr::StorageFull => f.write_str("StorageFull"),
                 discriminant_WriteErr::TimedOut => f.write_str("TimedOut"),
                 discriminant_WriteErr::TooManyHardlinks => f.write_str("TooManyHardlinks"),
                 discriminant_WriteErr::TooManySymlinks => f.write_str("TooManySymlinks"),
-                discriminant_WriteErr::Unrecognized => f.debug_tuple("Unrecognized")
-        .field(&(&*self.Unrecognized).f0)
-.field(&(&*self.Unrecognized).f1)
-        .finish(),
+                discriminant_WriteErr::Unrecognized => f
+                    .debug_tuple("Unrecognized")
+                    .field(&(&*self.Unrecognized).f0)
+                    .field(&(&*self.Unrecognized).f1)
+                    .finish(),
                 discriminant_WriteErr::Unsupported => f.write_str("Unsupported"),
                 discriminant_WriteErr::WasADirectory => f.write_str("WasADirectory"),
                 discriminant_WriteErr::WriteZero => f.write_str("WriteZero"),
@@ -2605,10 +2402,7 @@ impl core::fmt::Debug for WriteErr {
         }
     }
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "x86_64"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str("WriteErr::")?;
 
@@ -2617,7 +2411,9 @@ impl core::fmt::Debug for WriteErr {
                 discriminant_WriteErr::AlreadyExists => f.write_str("AlreadyExists"),
                 discriminant_WriteErr::ExecutableFileBusy => f.write_str("ExecutableFileBusy"),
                 discriminant_WriteErr::FileTooLarge => f.write_str("FileTooLarge"),
-                discriminant_WriteErr::FilesystemQuotaExceeded => f.write_str("FilesystemQuotaExceeded"),
+                discriminant_WriteErr::FilesystemQuotaExceeded => {
+                    f.write_str("FilesystemQuotaExceeded")
+                }
                 discriminant_WriteErr::Interrupted => f.write_str("Interrupted"),
                 discriminant_WriteErr::InvalidFilename => f.write_str("InvalidFilename"),
                 discriminant_WriteErr::NotFound => f.write_str("NotFound"),
@@ -2625,15 +2421,18 @@ impl core::fmt::Debug for WriteErr {
                 discriminant_WriteErr::PermissionDenied => f.write_str("PermissionDenied"),
                 discriminant_WriteErr::ReadOnlyFilesystem => f.write_str("ReadOnlyFilesystem"),
                 discriminant_WriteErr::ResourceBusy => f.write_str("ResourceBusy"),
-                discriminant_WriteErr::StaleNetworkFileHandle => f.write_str("StaleNetworkFileHandle"),
+                discriminant_WriteErr::StaleNetworkFileHandle => {
+                    f.write_str("StaleNetworkFileHandle")
+                }
                 discriminant_WriteErr::StorageFull => f.write_str("StorageFull"),
                 discriminant_WriteErr::TimedOut => f.write_str("TimedOut"),
                 discriminant_WriteErr::TooManyHardlinks => f.write_str("TooManyHardlinks"),
                 discriminant_WriteErr::TooManySymlinks => f.write_str("TooManySymlinks"),
-                discriminant_WriteErr::Unrecognized => f.debug_tuple("Unrecognized")
-        .field(&(&*self.Unrecognized).f1)
-.field(&(&*self.Unrecognized).f0)
-        .finish(),
+                discriminant_WriteErr::Unrecognized => f
+                    .debug_tuple("Unrecognized")
+                    .field(&(&*self.Unrecognized).f1)
+                    .field(&(&*self.Unrecognized).f0)
+                    .finish(),
                 discriminant_WriteErr::Unsupported => f.write_str("Unsupported"),
                 discriminant_WriteErr::WasADirectory => f.write_str("WasADirectory"),
                 discriminant_WriteErr::WriteZero => f.write_str("WriteZero"),

@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 
+mod command_glue;
 mod file_glue;
 mod glue;
 mod tcp_glue;
@@ -311,8 +312,8 @@ pub extern "C" fn roc_fx_stdinBytes() -> RocList<u8> {
     let mut buffer: [u8; 256] = [0; 256];
 
     match stdin.lock().read(&mut buffer) {
-        Ok(bytes_read) => {RocList::from(&buffer[0..bytes_read])}
-        Err(_) => {RocList::from((&[]).as_slice())}
+        Ok(bytes_read) => RocList::from(&buffer[0..bytes_read]),
+        Err(_) => RocList::from((&[]).as_slice()),
     }
 }
 
@@ -761,5 +762,130 @@ fn to_tcp_stream_err(err: std::io::Error) -> tcp_glue::StreamErr {
             RocStr::from(kind.to_string().borrow()),
             err.raw_os_error().unwrap_or_default(),
         ),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_commandStatus(
+    roc_cmd: &command_glue::Command,
+) -> RocResult<(), command_glue::CommandErr> {
+    let args = roc_cmd.args.into_iter().map(|arg| arg.as_str());
+    let num_envs = roc_cmd.envs.len() / 2;
+    let flat_envs = &roc_cmd.envs;
+
+    // Environment vairables must be passed in key=value pairs
+    assert_eq!(flat_envs.len() % 2, 0);
+
+    let mut envs = Vec::with_capacity(num_envs);
+    for chunk in flat_envs.chunks(2) {
+        let key = chunk[0].as_str();
+        let value = chunk[1].as_str();
+        envs.push((key, value));
+    }
+
+    // Create command
+    let mut cmd = std::process::Command::new(roc_cmd.program.as_str());
+
+    // Set arguments
+    cmd.args(args);
+
+    // Clear environment variables if cmd.clearEnvs set
+    // otherwise inherit environment variables if cmd.clearEnvs is not set
+    if roc_cmd.clearEnvs {
+        cmd.env_clear();
+    };
+
+    // Set environment variables
+    cmd.envs(envs);
+
+    match cmd.status() {
+        Ok(status) => {
+            if status.success() {
+                RocResult::ok(())
+            } else {
+                match status.code() {
+                    Some(code) => {
+                        let error = command_glue::CommandErr::ExitCode(code);
+                        RocResult::err(error)
+                    }
+                    None => {
+                        // If no exit code is returned, the process was terminated by a signal.
+                        let error = command_glue::CommandErr::KilledBySignal();
+                        RocResult::err(error)
+                    }
+                }
+            }
+        }
+        Err(err) => {
+            let str = RocStr::from(err.to_string().borrow());
+            let error = command_glue::CommandErr::IOError(str);
+            RocResult::err(error)
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_commandOutput(roc_cmd: &command_glue::Command) -> command_glue::Output {
+    let args = roc_cmd.args.into_iter().map(|arg| arg.as_str());
+    let num_envs = roc_cmd.envs.len() / 2;
+    let flat_envs = &roc_cmd.envs;
+
+    // Environment vairables must be passed in key=value pairs
+    assert_eq!(flat_envs.len() % 2, 0);
+
+    let mut envs = Vec::with_capacity(num_envs);
+    for chunk in flat_envs.chunks(2) {
+        let key = chunk[0].as_str();
+        let value = chunk[1].as_str();
+        envs.push((key, value));
+    }
+
+    // Create command
+    let mut cmd = std::process::Command::new(roc_cmd.program.as_str());
+
+    // Set arguments
+    cmd.args(args);
+
+    // Clear environment variables if cmd.clearEnvs set
+    // otherwise inherit environment variables if cmd.clearEnvs is not set
+    if roc_cmd.clearEnvs {
+        cmd.env_clear();
+    };
+
+    // Set environment variables
+    cmd.envs(envs);
+
+    match cmd.output() {
+        Ok(output) => {
+            // Status of the child process, successful/exit code/killed by signal
+            let status = if output.status.success() {
+                RocResult::ok(())
+            } else {
+                match output.status.code() {
+                    Some(code) => {
+                        let error = command_glue::CommandErr::ExitCode(code);
+                        RocResult::err(error)
+                    }
+                    None => {
+                        // If no exit code is returned, the process was terminated by a signal.
+                        let error = command_glue::CommandErr::KilledBySignal();
+                        RocResult::err(error)
+                    }
+                }
+            };
+
+            command_glue::Output {
+                status: status,
+                stdout: RocList::from(&output.stdout[..]),
+                stderr: RocList::from(&output.stderr[..]),
+            }
+        }
+        Err(err) => command_glue::Output {
+            status: RocResult::err(command_glue::CommandErr::IOError(RocStr::from(
+                err.to_string().borrow(),
+            ))),
+            stdout: RocList::empty(),
+            stderr: RocList::empty(),
+        },
     }
 }
