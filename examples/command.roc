@@ -36,14 +36,18 @@ first =
         Err KilledBySignal -> Stdout.line "Child was killed by signal"
         Err (IOError err) -> Stdout.line "IOError executing: \(err)"
 
-# Run "ls" with environment variable "FOO" and two arguments, "-l" and "-a".
+# Run "stat" with environment variable "FOO" set to "BAR" and three arguments: "--format", "'%A'", and "LICENSE".
 # Capture stdout and stderr and print them.
 second : Task {} U32
 second =
     output <-
-        Command.new "ls"
+        Command.new "stat"
         |> Command.env "FOO" "BAR"
-        |> Command.args ["-l", "-a"]
+        |> Command.args [
+            "--format",
+            "'%A'", # print permission bits in human readable form
+            "LICENSE" # filename
+        ]
         |> Command.output
         |> Task.await
 
