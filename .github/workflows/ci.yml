@@ -54,6 +54,8 @@ jobs:
       - run: ./roc_nightly/roc build ./examples/form.roc
 
       - run: ./roc_nightly/roc build ./examples/http-get.roc
+
+      - run: ./roc_nightly/roc build ./examples/command.roc
       # END BUILD TESTS -->
 
       - run: sudo apt install -y expect ncat
@@ -77,6 +79,8 @@ jobs:
       - run: expect ci/expect_scripts/http-get.exp
 
       - run: expect ci/expect_scripts/tcp-client.exp
+
+      - run: expect ci/expect_scripts/command.exp
 
       # <-- END RUN TESTS
 
