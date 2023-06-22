@@ -35,6 +35,8 @@ jobs:
       - name: simplify nightly folder name
         run: mv roc_nightly* roc_nightly
 
+      - run: ./roc_nightly/roc version
+
       # <-- START BUILD TESTS
       - run: ./roc_nightly/roc build ./file-testBROKEN.roc
 
