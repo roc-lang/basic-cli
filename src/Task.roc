@@ -124,7 +124,7 @@ await = \task, transform ->
         \result ->
             when result is
                 Ok a -> transform a |> InternalTask.toEffect
-                Err err -> Task.fail err |> InternalTask.toEffect
+                Err err -> fail err |> InternalTask.toEffect
 
     InternalTask.fromEffect effect
 
@@ -141,7 +141,7 @@ onFail = \task, transform ->
         (InternalTask.toEffect task)
         \result ->
             when result is
-                Ok a -> Task.succeed a |> InternalTask.toEffect
+                Ok a -> succeed a |> InternalTask.toEffect
                 Err err -> transform err |> InternalTask.toEffect
 
     InternalTask.fromEffect effect
@@ -159,8 +159,8 @@ map = \task, transform ->
         (InternalTask.toEffect task)
         \result ->
             when result is
-                Ok ok -> Task.succeed (transform ok) |> InternalTask.toEffect
-                Err err -> Task.fail err |> InternalTask.toEffect
+                Ok ok -> succeed (transform ok) |> InternalTask.toEffect
+                Err err -> fail err |> InternalTask.toEffect
 
     InternalTask.fromEffect effect
 
@@ -177,8 +177,8 @@ mapFail = \task, transform ->
         (InternalTask.toEffect task)
         \result ->
             when result is
-                Ok ok -> Task.succeed ok |> InternalTask.toEffect
-                Err err -> Task.fail (transform err) |> InternalTask.toEffect
+                Ok ok -> succeed ok |> InternalTask.toEffect
+                Err err -> fail (transform err) |> InternalTask.toEffect
 
     InternalTask.fromEffect effect
 
