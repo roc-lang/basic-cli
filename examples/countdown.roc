@@ -1,6 +1,6 @@
 app "countdown"
     packages { pf: "../src/main.roc" }
-    imports [pf.Stdin, pf.Stdout, pf.Task.{ await, loop, succeed }]
+    imports [pf.Stdin, pf.Stdout, pf.Task.{ await, loop }]
     provides [main] to pf
 
 main =
@@ -11,8 +11,8 @@ main =
 tick = \n ->
     if n == 0 then
         _ <- await (Stdout.line "🎉 SURPRISE! Happy Birthday! 🎂")
-        succeed (Done {})
+        Task.ok (Done {})
     else
         _ <- await (n |> Num.toStr |> \s -> "\(s)..." |> Stdout.line)
         _ <- await Stdin.line
-        succeed (Step (n - 1))
+        Task.ok (Step (n - 1))

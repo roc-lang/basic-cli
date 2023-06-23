@@ -42,15 +42,15 @@ StreamErr : InternalTcp.StreamErr
 withConnect : Str, U16, (Stream -> Task {} err) -> Task {} [TcpConnectErr ConnectErr, TcpPerformErr err]
 withConnect = \hostname, port, callback ->
     stream <- connect hostname port
-        |> Task.mapFail TcpConnectErr
+        |> Task.mapErr TcpConnectErr
         |> Task.await
 
     {} <- callback stream
-        |> Task.mapFail TcpPerformErr
-        |> Task.onFail
+        |> Task.mapErr TcpPerformErr
+        |> Task.onErr
             (\err ->
                 _ <- close stream |> Task.await
-                Task.fail err
+                Task.err err
             )
         |> Task.await
 
@@ -82,7 +82,7 @@ readUpTo = \bytesToRead, stream ->
     Effect.tcpReadUpTo bytesToRead stream
     |> Effect.map InternalTcp.fromReadResult
     |> InternalTask.fromEffect
-    |> Task.mapFail TcpReadErr
+    |> Task.mapErr TcpReadErr
 
 ## Read an exact number of bytes or fail. 
 ##
@@ -125,7 +125,7 @@ readUntil = \byte, stream ->
     Effect.tcpReadUntil byte stream
     |> Effect.map InternalTcp.fromReadResult
     |> InternalTask.fromEffect
-    |> Task.mapFail TcpReadErr
+    |> Task.mapErr TcpReadErr
 
 ## Read until a newline or EOF is reached. 
 ##
@@ -158,7 +158,7 @@ write = \bytes, stream ->
     Effect.tcpWrite bytes stream
     |> Effect.map InternalTcp.fromWriteResult
     |> InternalTask.fromEffect
-    |> Task.mapFail TcpWriteErr
+    |> Task.mapErr TcpWriteErr
 
 ## Writes a [Str] to a TCP stream, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##

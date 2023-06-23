@@ -34,4 +34,4 @@ takeNumberBytes =
             else
                 bytes
 
-    Task.succeed numberBytes
+    Task.ok numberBytes

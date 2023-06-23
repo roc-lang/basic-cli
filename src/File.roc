@@ -146,14 +146,14 @@ toWriteTask = \path, toEffect ->
     InternalPath.toBytes path
     |> toEffect
     |> InternalTask.fromEffect
-    |> Task.mapFail \err -> FileWriteErr path err
+    |> Task.mapErr \err -> FileWriteErr path err
 
 toReadTask : Path, (List U8 -> Effect (Result ok err)) -> Task ok [FileReadErr Path err]
 toReadTask = \path, toEffect ->
     InternalPath.toBytes path
     |> toEffect
     |> InternalTask.fromEffect
-    |> Task.mapFail \err -> FileReadErr path err
+    |> Task.mapErr \err -> FileReadErr path err
 
 ## Converts a [WriteErr] to a [Str].
 writeErrToStr : WriteErr -> Str
