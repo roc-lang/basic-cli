@@ -18,7 +18,7 @@ main =
     }
 
     output <- Http.send request
-        |> Task.onFail (\err -> err |> Http.errorToString |> Task.ok)
+        |> Task.onErr (\err -> err |> Http.errorToString |> Task.ok)
         |> Task.await
 
     Stdout.line output

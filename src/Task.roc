@@ -5,8 +5,8 @@ interface Task
         err,
         await,
         map,
-        mapFail,
-        onFail,
+        mapErr,
+        onErr,
         attempt,
         forever,
         loop,
@@ -61,7 +61,7 @@ loop = \state, step ->
 ok : a -> Task a *
 ok = \a -> InternalTask.ok a
 
-## Create a task that always failes with the error provided.
+## Create a task that always fails with the error provided.
 ##
 ## ```
 ## # Always fails with the tag `CustomError Str`
@@ -133,10 +133,10 @@ await = \task, transform ->
 ## ```
 ## # Prints "Something went wrong!" to standard error if `canFail` fails.
 ## canFail
-## |> Task.onFail \_ -> Stderr.line "Something went wrong!"
+## |> Task.onErr \_ -> Stderr.line "Something went wrong!"
 ## ```
-onFail : Task a b, (b -> Task a c) -> Task a c
-onFail = \task, transform ->
+onErr : Task a b, (b -> Task a c) -> Task a c
+onErr = \task, transform ->
     effect = Effect.after
         (InternalTask.toEffect task)
         \result ->
@@ -169,10 +169,10 @@ map = \task, transform ->
 ## ```
 ## # Ignore the fail value, and map it to the tag `CustomError`
 ## canFail
-## |> Task.mapFail \_ -> CustomError
+## |> Task.mapErr \_ -> CustomError
 ## ```
-mapFail : Task c a, (a -> b) -> Task c b
-mapFail = \task, transform ->
+mapErr : Task c a, (a -> b) -> Task c b
+mapErr = \task, transform ->
     effect = Effect.after
         (InternalTask.toEffect task)
         \result ->

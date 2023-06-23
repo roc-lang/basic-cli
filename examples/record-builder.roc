@@ -23,7 +23,7 @@ main =
     |> Str.concat "Oranges: "
     |> Str.concat (Str.joinWith oranges ", ")
     |> Stdout.line
-    |> Task.mapFail \_ -> 1
+    |> Task.mapErr \_ -> 1
 
 getFruit : [Apples, Oranges] -> Task (List Str) *
 getFruit = \request ->
