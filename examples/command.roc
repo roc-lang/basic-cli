@@ -16,7 +16,7 @@ main =
 
 # Run "env" with verbose option, clear all environment variables, and pass in
 # "FOO" and "BAZ".
-first : Task {} U32
+first : Task {} I32
 first =
 
     result <-
@@ -38,7 +38,7 @@ first =
 
 # Run "stat" with environment variable "FOO" set to "BAR" and three arguments: "--format", "'%A'", and "LICENSE".
 # Capture stdout and stderr and print them.
-second : Task {} U32
+second : Task {} I32
 second =
     output <-
         Command.new "stat"

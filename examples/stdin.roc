@@ -1,4 +1,4 @@
-app "time"
+app "example-stdin"
     packages { pf: "../src/main.roc" }
     imports [
         pf.Stdout,
@@ -9,6 +9,7 @@ app "time"
     provides [main] to pf
 
 main =
+    {} <- Stdout.line "Enter a series of number characters (0-9):" |> Task.await
     numberBytes <- takeNumberBytes |> Task.await
 
     if List.isEmpty numberBytes then

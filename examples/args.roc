@@ -3,7 +3,7 @@ app "args"
     imports [pf.Stdout, pf.Arg, pf.Task.{ Task }, pf.Process]
     provides [main] to pf
 
-main : Task {} U32
+main : Task {} I32
 main =
     args <- Arg.list |> Task.await
     parser =
