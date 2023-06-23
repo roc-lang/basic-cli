@@ -286,8 +286,8 @@ pub extern "C" fn roc_fx_setCwd(roc_path: &RocList<u8>) -> RocResult<(), ()> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_processExit(exit_code: u8) {
-    std::process::exit(exit_code as i32);
+pub extern "C" fn roc_fx_processExit(exit_code: i32) {
+    std::process::exit(exit_code);
 }
 
 #[no_mangle]
