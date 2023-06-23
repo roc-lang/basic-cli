@@ -16,7 +16,7 @@ app "file-test"
 # Pass: expected PermissionDenied
 # Tests complete
 # ```
-main : Task {} U32
+main : Task {} I32
 main =
     {} <- attemptWriteTaskShouldError (File.writeUtf8 (Path.fromStr "/asdf/asdf/asdf/asdf.txt") "str") "NotFound" |> Task.await
     {} <- attemptWriteTaskShouldError (File.writeUtf8 (Path.fromStr "/System/asdf") "str") "PermissionDenied" |> Task.await

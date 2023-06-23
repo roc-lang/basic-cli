@@ -3,7 +3,7 @@ app "form"
     imports [pf.Stdin, pf.Stdout, pf.Task.{ await, Task }]
     provides [main] to pf
 
-main : Task {} U32
+main : Task {} I32
 main =
     _ <- await (Stdout.line "What's your first name?")
     firstName <- await Stdin.line

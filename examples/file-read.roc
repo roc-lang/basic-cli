@@ -10,7 +10,7 @@ app "file-read"
     ]
     provides [main] to pf
 
-main : Task {} U32
+main : Task {} I32
 main =
     fileName = "README.md"
     path = Path.fromStr fileName
