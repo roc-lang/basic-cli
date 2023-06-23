@@ -3,7 +3,7 @@ app "tcp-client"
     imports [pf.Tcp, pf.Task.{ Task, await }, pf.Stdout, pf.Stdin, pf.Stderr, pf.Process]
     provides [main] to pf
 
-main : Task {} U32
+main : Task {} I32
 main =
     task =
         stream <- Tcp.withConnect "127.0.0.1" 8085
