@@ -50,7 +50,7 @@ withConnect = \hostname, port, callback ->
         |> Task.onFail
             (\err ->
                 _ <- close stream |> Task.await
-                Task.fail err
+                Task.err err
             )
         |> Task.await
 

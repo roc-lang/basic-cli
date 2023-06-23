@@ -10,7 +10,7 @@ app "record-builder"
 
 main =
     myrecord : Task { apples : List Str, oranges : List Str } U32
-    myrecord = Task.succeed {
+    myrecord = Task.ok {
         apples: <- getFruit Apples |> Task.batch,
         oranges: <- getFruit Oranges |> Task.batch,
     }
@@ -28,5 +28,5 @@ main =
 getFruit : [Apples, Oranges] -> Task (List Str) *
 getFruit = \request ->
     when request is
-        Apples -> Task.succeed ["Granny Smith", "Pink Lady", "Golden Delicious"]
-        Oranges -> Task.succeed ["Navel", "Blood Orange", "Clementine"]
+        Apples -> Task.ok ["Granny Smith", "Pink Lady", "Golden Delicious"]
+        Oranges -> Task.ok ["Navel", "Blood Orange", "Clementine"]

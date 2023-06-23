@@ -1,14 +1,14 @@
 interface InternalTask
-    exposes [Task, fromEffect, toEffect, succeed, fail]
+    exposes [Task, fromEffect, toEffect, ok, err]
     imports [Effect.{ Effect }]
 
 Task ok err := Effect (Result ok err)
 
-succeed : ok -> Task ok *
-succeed = \ok -> @Task (Effect.always (Ok ok))
+ok : a -> Task a *
+ok = \a -> @Task (Effect.always (Ok a))
 
-fail : err -> Task * err
-fail = \err -> @Task (Effect.always (Err err))
+err : a -> Task * a
+err = \a -> @Task (Effect.always (Err a))
 
 fromEffect : Effect (Result ok err) -> Task ok err
 fromEffect = \effect -> @Task effect

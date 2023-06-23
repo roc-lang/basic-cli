@@ -1,8 +1,8 @@
 interface Task
     exposes [
         Task,
-        succeed,
-        fail,
+        ok,
+        err,
         await,
         map,
         mapFail,
@@ -20,7 +20,7 @@ interface Task
 Task ok err : InternalTask.Task ok err
 
 ## Run a task that never ends. Note that this task does not return a value.
-forever : Task val err -> Task * err
+forever : Task a err -> Task * err
 forever = \task ->
     looper = \{} ->
         task
@@ -55,22 +55,22 @@ loop = \state, step ->
 ## ```
 ## # Always succeeds with "Louis"
 ## getName : Task.Task Str *
-## getName = Task.succeed "Louis"
+## getName = Task.ok "Louis"
 ## ```
 ##
-succeed : ok -> Task ok *
-succeed = \ok -> InternalTask.succeed ok
+ok : a -> Task a *
+ok = \a -> InternalTask.ok a
 
 ## Create a task that always failes with the error provided.
 ##
 ## ```
 ## # Always fails with the tag `CustomError Str`
 ## customError : Str -> Task.Task {} [CustomError Str]
-## customError = \err -> Task.fail (CustomError err)
+## customError = \err -> Task.err (CustomError err)
 ## ```
 ##
-fail : err -> Task * err
-fail = \err -> InternalTask.fail err
+err : a -> Task * a
+err = \a -> InternalTask.err a
 
 ## Transform a given Task with a function that handles the success or error case
 ## and returns another task based on that. This is useful for chaining tasks
@@ -101,8 +101,8 @@ attempt = \task, transform ->
         (InternalTask.toEffect task)
         \result ->
             when result is
-                Ok ok -> transform (Ok ok) |> InternalTask.toEffect
-                Err err -> transform (Err err) |> InternalTask.toEffect
+                Ok a -> transform (Ok a) |> InternalTask.toEffect
+                Err b -> transform (Err b) |> InternalTask.toEffect
 
     InternalTask.fromEffect effect
 
@@ -115,16 +115,16 @@ attempt = \task, transform ->
 ## {} <- Stdout.write "Hello "|> Task.await
 ## {} <- Stdout.srite "World!\n"|> Task.await
 ##
-## Task.succeed {}
+## Task.ok {}
 ## ```
-await : Task a err, (a -> Task b err) -> Task b err
+await : Task a b, (a -> Task c b) -> Task c b
 await = \task, transform ->
     effect = Effect.after
         (InternalTask.toEffect task)
         \result ->
             when result is
                 Ok a -> transform a |> InternalTask.toEffect
-                Err err -> fail err |> InternalTask.toEffect
+                Err b -> Task.err b |> InternalTask.toEffect
 
     InternalTask.fromEffect effect
 
@@ -135,14 +135,14 @@ await = \task, transform ->
 ## canFail
 ## |> Task.onFail \_ -> Stderr.line "Something went wrong!"
 ## ```
-onFail : Task ok a, (a -> Task ok b) -> Task ok b
+onFail : Task a b, (b -> Task a c) -> Task a c
 onFail = \task, transform ->
     effect = Effect.after
         (InternalTask.toEffect task)
         \result ->
             when result is
-                Ok a -> succeed a |> InternalTask.toEffect
-                Err err -> transform err |> InternalTask.toEffect
+                Ok a -> Task.ok a |> InternalTask.toEffect
+                Err b -> transform b |> InternalTask.toEffect
 
     InternalTask.fromEffect effect
 
@@ -150,17 +150,17 @@ onFail = \task, transform ->
 ##
 ## ```
 ## # Succeeds with a value of "Bonjour Louis!"
-## Task.succeed "Louis"
+## Task.ok "Louis"
 ## |> Task.map (\name -> "Bonjour \(name)!")
 ## ```
-map : Task a err, (a -> b) -> Task b err
+map : Task a c, (a -> b) -> Task b c
 map = \task, transform ->
     effect = Effect.after
         (InternalTask.toEffect task)
         \result ->
             when result is
-                Ok ok -> succeed (transform ok) |> InternalTask.toEffect
-                Err err -> fail err |> InternalTask.toEffect
+                Ok a -> Task.ok (transform a) |> InternalTask.toEffect
+                Err b -> Task.err b |> InternalTask.toEffect
 
     InternalTask.fromEffect effect
 
@@ -171,23 +171,23 @@ map = \task, transform ->
 ## canFail
 ## |> Task.mapFail \_ -> CustomError
 ## ```
-mapFail : Task ok a, (a -> b) -> Task ok b
+mapFail : Task c a, (a -> b) -> Task c b
 mapFail = \task, transform ->
     effect = Effect.after
         (InternalTask.toEffect task)
         \result ->
             when result is
-                Ok ok -> succeed ok |> InternalTask.toEffect
-                Err err -> fail (transform err) |> InternalTask.toEffect
+                Ok c -> Task.ok c |> InternalTask.toEffect
+                Err a -> Task.err (transform a) |> InternalTask.toEffect
 
     InternalTask.fromEffect effect
 
 ## Use a Result among other Tasks by converting it into a [Task].
-fromResult : Result ok err -> Task ok err
+fromResult : Result a b -> Task a b
 fromResult = \result ->
     when result is
-        Ok ok -> succeed ok
-        Err err -> fail err
+        Ok a -> Task.ok a
+        Err b -> Task.err b
 
 ## Apply a task to another task applicatively. This can be used with
 ## [succeed] to build a [Task] that returns a record.
@@ -198,12 +198,12 @@ fromResult = \result ->
 ##
 ## ```
 ## getFruitBasket : Task { apples : List Str, oranges : List Str } [NoFruitAvailable]
-## getFruitBasket = Task.succeed {
+## getFruitBasket = Task.ok {
 ##     apples: <- getFruit Apples |> Task.batch,
 ##     oranges: <- getFruit Oranges |> Task.batch,
 ## }
 ## ```
-batch : Task a err -> (Task (a -> b) err -> Task b err)
+batch : Task a c -> (Task (a -> b) c -> Task b c)
 batch = \current -> \next ->
         f <- next |> await
 
