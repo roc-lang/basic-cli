@@ -38,7 +38,7 @@ jobs:
       - run: ./roc_nightly/roc version
 
       # Run roc check on all examples 
-      - run: ./ci_scripts/all_tests.sh
+      - run: ./ci/all_tests.sh
 
       # <-- START BUILD TESTS
       - run: ./roc_nightly/roc build ./file-testBROKEN.roc
