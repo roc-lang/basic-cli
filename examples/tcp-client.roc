@@ -1,6 +1,6 @@
 app "tcp-client"
     packages { pf: "../src/main.roc" }
-    imports [pf.Tcp, pf.Task.{ Task, await }, pf.Stdout, pf.Stdin, pf.Stderr, pf.Process]
+    imports [pf.Tcp, pf.Task.{ Task, await }, pf.Stdout, pf.Stdin, pf.Stderr]
     provides [main] to pf
 
 main : Task {} I32
@@ -14,7 +14,7 @@ main =
     Task.attempt task \result ->
         when result is
             Ok _ ->
-                Process.exit 0
+                Task.ok {}
 
             Err (TcpConnectErr err) ->
                 errStr = Tcp.connectErrToStr err

@@ -1,6 +1,6 @@
 app "args"
     packages { pf: "../src/main.roc" }
-    imports [pf.Stdout, pf.Arg, pf.Task.{ Task }, pf.Process]
+    imports [pf.Stdout, pf.Arg, pf.Task.{ Task }]
     provides [main] to pf
 
 main : Task {} I32
@@ -57,7 +57,8 @@ main =
 
         Err helpMenu ->
             {} <- Stdout.line helpMenu |> Task.await
-            Process.exit 1
+            
+            Task.err 1
 
 runCmd = \cmd ->
     when cmd is

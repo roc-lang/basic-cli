@@ -3,7 +3,6 @@ app "file-read"
     imports [
         pf.Stdout,
         pf.Stderr,
-        pf.Process,
         pf.Task.{ Task, await },
         pf.File,
         pf.Path,
@@ -22,7 +21,7 @@ main =
 
     Task.attempt task \result ->
         when result is
-            Ok {} -> Process.exit 0
+            Ok {} -> Task.ok {}
             Err err ->
                 msg =
                     when err is
@@ -33,4 +32,5 @@ main =
                         _ -> "Uh oh, there was an error!"
 
                 {} <- Stderr.line msg |> await
-                Process.exit 1
+                
+                Task.err 1
