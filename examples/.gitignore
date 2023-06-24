@@ -11,3 +11,4 @@ tcp-client
 time
 record-builder
 command
+example-stdin

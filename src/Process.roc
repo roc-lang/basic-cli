@@ -10,7 +10,7 @@ interface Process
 ## {} <- Stderr.line "Exiting right now!" |> Task.await
 ## Process.exit 1
 ## ```
-exit : U8 -> Task {} *
+exit : I32 -> Task {} *
 exit = \code ->
     Effect.processExit code
     |> Effect.map \_ -> Ok {}
