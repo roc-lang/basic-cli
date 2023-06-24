@@ -48,3 +48,4 @@ bench-folder*
 
 # Tests
 file-test
+out.txt
