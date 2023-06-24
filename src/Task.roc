@@ -190,7 +190,7 @@ fromResult = \result ->
         Err b -> Task.err b
 
 ## Apply a task to another task applicatively. This can be used with
-## [succeed] to build a [Task] that returns a record.
+## [ok] to build a [Task] that returns a record.
 ##
 ## The following example returns a Record with two fields, `apples` and
 ## `oranges`, each of which is a `List Str`. If it fails it returns the tag
