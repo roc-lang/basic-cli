@@ -3,16 +3,16 @@ app "command"
     imports [
         pf.Stdout,
         pf.Command,
-        pf.Process,
         pf.Task.{ Task },
     ]
     provides [main] to pf
 
+main : Task {} I32
 main =
     {} <- first |> Task.await
     {} <- second |> Task.await
 
-    Process.exit 0
+    Task.ok {}
 
 # Run "env" with verbose option, clear all environment variables, and pass in
 # "FOO" and "BAZ".

@@ -48,3 +48,8 @@ bench-folder*
 
 # Tests
 file-test
+example-stdin
+out.txt
+
+# local roc folder for testing
+roc_nightly

@@ -1,7 +1,6 @@
 app "file-mixed"
     packages { pf: "../src/main.roc" }
     imports [
-        pf.Process,
         pf.Stdout,
         pf.Stderr,
         pf.Task.{ Task },
@@ -42,4 +41,5 @@ main =
                         _ -> "Uh oh, there was an error!"
 
                 {} <- Stderr.line msg |> Task.await
-                Process.exit 1
+                
+                Task.err 1 # 1 is an exit code to indicate failure
