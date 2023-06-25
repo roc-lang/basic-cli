@@ -58,7 +58,7 @@ main =
         Err helpMenu ->
             {} <- Stdout.line helpMenu |> Task.await
             
-            Task.err 1
+            Task.err 1 # 1 is an exit code to indicate failure
 
 runCmd = \cmd ->
     when cmd is

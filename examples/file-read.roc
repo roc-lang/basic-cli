@@ -33,4 +33,4 @@ main =
 
                 {} <- Stderr.line msg |> await
                 
-                Task.err 1
+                Task.err 1 # 1 is an exit code to indicate failure

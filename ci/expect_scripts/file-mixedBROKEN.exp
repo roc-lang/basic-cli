@@ -1,0 +1,4 @@
+#!/usr/bin/expect
+
+# empty script because every example needs a test file and this example is broken 
+exit 0

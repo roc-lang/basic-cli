@@ -37,57 +37,14 @@ jobs:
 
       - run: ./roc_nightly/roc version
 
-      # Run roc check on all examples 
-      - run: ./ci/all_tests.sh
-
-      # <-- START BUILD TESTS
-      - run: ./roc_nightly/roc build ./file-testBROKEN.roc
-
-      # linker=legacy because 3609
-      - run: ./roc_nightly/roc build ./examples/args.roc --linker=legacy
-
-      - run: ./roc_nightly/roc build ./examples/countdown.roc
-
-      - run: ./roc_nightly/roc build ./examples/echo.roc
-
-      - run: ./roc_nightly/roc build ./examples/env.roc
-
-      - run: ./roc_nightly/roc build ./examples/file-read.roc
-
-      - run: ./roc_nightly/roc build ./examples/file-mixedBROKEN.roc
-
-      - run: ./roc_nightly/roc build ./examples/form.roc
-
-      - run: ./roc_nightly/roc build ./examples/http-get.roc
-
-      - run: ./roc_nightly/roc build ./examples/command.roc
-      # END BUILD TESTS -->
-
       - run: sudo apt install -y expect ncat
-      # expect for testsing
+      # expect for testing
       # ncat for tcp-client example
-      # <-- START RUN TESTS
+
       - run: expect -v
 
-      - run: expect ci/expect_scripts/args.exp
-
-      - run: expect ci/expect_scripts/countdown.exp
-
-      - run: expect ci/expect_scripts/echo.exp
-
-      - run: expect ci/expect_scripts/env.exp
-
-      - run: expect ci/expect_scripts/form.exp
-
-      - run: expect ci/expect_scripts/file-read.exp
-
-      - run: expect ci/expect_scripts/http-get.exp
-
-      - run: expect ci/expect_scripts/tcp-client.exp
-
-      - run: expect ci/expect_scripts/command.exp
-
-      # <-- END RUN TESTS
+      # Run all tests 
+      - run: ./ci/all_tests.sh
 
 # TODO clippy, rustfmt, roc fmt check
 

@@ -1,0 +1,21 @@
+#!/usr/bin/expect
+
+# uncomment line below for debugging
+# exp_internal 1
+
+set timeout 7
+
+spawn ./roc_nightly/roc run ./examples/stdin.roc --prebuilt-platform
+
+
+expect -exact "Enter a series of number characters (0-9):\r\n"
+
+send -- "523\r"
+
+expect -exact "Got number 523\r\n" {
+    expect eof
+    exit 0
+}
+
+puts stderr "\nError: output was different from expected value."
+exit 1
