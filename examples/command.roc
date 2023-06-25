@@ -44,7 +44,7 @@ second =
         Command.new "stat"
         |> Command.env "FOO" "BAR"
         |> Command.args [
-            "-f",
+            "--format",
             "'%A'", # print permission bits in human readable form
             "LICENSE" # filename
         ]
