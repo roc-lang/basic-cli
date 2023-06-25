@@ -16,6 +16,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
 use std::net::TcpStream;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use file_glue::ReadErr;
@@ -61,6 +62,9 @@ pub unsafe extern "C" fn roc_dealloc(c_ptr: *mut c_void, _alignment: u32) {
 
 #[no_mangle]
 pub unsafe extern "C" fn roc_panic(msg: &RocStr, tag_id: u32) {
+    if TERMINAL_MODE_IS_ENABLED.load(Ordering::SeqCst) {
+        crossterm::terminal::disable_raw_mode().expect("failed to disable raw mode");
+    }
     match tag_id {
         0 => {
             eprintln!("Roc crashed with:\n\n\t{}\n", msg.as_str());
@@ -338,14 +342,18 @@ pub extern "C" fn roc_fx_stderrWrite(text: &RocStr) {
     std::io::stderr().flush().unwrap();
 }
 
+static TERMINAL_MODE_IS_ENABLED: AtomicBool = AtomicBool::new(false);
+
 #[no_mangle]
 pub extern "C" fn roc_fx_ttyModeCanonical() {
     crossterm::terminal::disable_raw_mode().expect("failed to disable raw mode");
+    TERMINAL_MODE_IS_ENABLED.store(false, Ordering::SeqCst);
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_ttyModeRaw() {
     crossterm::terminal::enable_raw_mode().expect("failed to enable raw mode");
+    TERMINAL_MODE_IS_ENABLED.store(true, Ordering::SeqCst);
 }
 
 // #[no_mangle]
