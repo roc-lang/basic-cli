@@ -62,7 +62,7 @@ pub unsafe extern "C" fn roc_dealloc(c_ptr: *mut c_void, _alignment: u32) {
 
 #[no_mangle]
 pub unsafe extern "C" fn roc_panic(msg: &RocStr, tag_id: u32) {
-    crossterm::terminal::disable_raw_mode().expect("failed to disable raw mode");
+    _ = crossterm::terminal::disable_raw_mode();
     match tag_id {
         0 => {
             eprintln!("Roc crashed with:\n\n\t{}\n", msg.as_str());
