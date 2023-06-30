@@ -124,7 +124,7 @@ await = \task, transform ->
         \result ->
             when result is
                 Ok a -> transform a |> InternalTask.toEffect
-                Err b -> Task.err b |> InternalTask.toEffect
+                Err b -> err b |> InternalTask.toEffect
 
     InternalTask.fromEffect effect
 
@@ -141,7 +141,7 @@ onErr = \task, transform ->
         (InternalTask.toEffect task)
         \result ->
             when result is
-                Ok a -> Task.ok a |> InternalTask.toEffect
+                Ok a -> ok a |> InternalTask.toEffect
                 Err b -> transform b |> InternalTask.toEffect
 
     InternalTask.fromEffect effect
@@ -159,8 +159,8 @@ map = \task, transform ->
         (InternalTask.toEffect task)
         \result ->
             when result is
-                Ok a -> Task.ok (transform a) |> InternalTask.toEffect
-                Err b -> Task.err b |> InternalTask.toEffect
+                Ok a -> ok (transform a) |> InternalTask.toEffect
+                Err b -> err b |> InternalTask.toEffect
 
     InternalTask.fromEffect effect
 
@@ -177,8 +177,8 @@ mapErr = \task, transform ->
         (InternalTask.toEffect task)
         \result ->
             when result is
-                Ok c -> Task.ok c |> InternalTask.toEffect
-                Err a -> Task.err (transform a) |> InternalTask.toEffect
+                Ok c -> ok c |> InternalTask.toEffect
+                Err a -> err (transform a) |> InternalTask.toEffect
 
     InternalTask.fromEffect effect
 
@@ -186,8 +186,8 @@ mapErr = \task, transform ->
 fromResult : Result a b -> Task a b
 fromResult = \result ->
     when result is
-        Ok a -> Task.ok a
-        Err b -> Task.err b
+        Ok a -> ok a
+        Err b -> err b
 
 ## Apply a task to another task applicatively. This can be used with
 ## [ok] to build a [Task] that returns a record.

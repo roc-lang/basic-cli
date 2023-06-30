@@ -41,6 +41,7 @@
           llvmPkgs.clang
           expect
           nmap
+          simple-http-server
         ]);
       in {
 
