@@ -466,7 +466,6 @@ pub extern "C" fn roc_fx_dirList(
     // because glue doesn't have Dir.WriteErr yet.
     roc_path: &RocList<u8>,
 ) -> RocResult<RocList<RocList<u8>>, WriteErr> {
-    println!("Dir.list...");
     match std::fs::read_dir(path_from_roc_path(roc_path)) {
         Ok(dir_entries) => RocResult::ok(
             dir_entries
