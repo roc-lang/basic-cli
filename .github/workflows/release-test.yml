@@ -13,11 +13,23 @@ jobs:
     runs-on: [ubuntu-20.04]
     steps:
       - uses: actions/checkout@v3
-        
+
+      - name: Install jq
+        run: |
+            sudo apt-get update
+            sudo apt-get install -y jq
+
+      - name: Get latest release file link
+        id: get-latest-link
+        run: |
+              FILE_URL=$(curl -s https://api.github.com/repos/roc-lang/roc/releases |
+                          jq -r '.[0].assets | .[] | select(.name | test("\\.(tar\\.br|tar\\.gz)$")) | .browser_download_url')
+              echo "::set-output name=file_url::$FILE_URL"
+    
       - name: Replace file contents
         run: |
           # Replace ../src/main.roc with link to latest platform release
-          sed -i 's|../src/main.roc|https://github.com/roc-lang/roc/blob/main/examples/cli/cli-platform/main.roc|g' examples/**/*.roc
+          sed -i 's|../src/main.roc|${{ steps.get-latest-link.outputs.file_url }}|g' ./examples/**/*.roc
 
       - name: Run all tests
         run: ./ci/all_tests.sh
