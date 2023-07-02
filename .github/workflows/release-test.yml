@@ -1,0 +1,23 @@
+on:
+  pull_request:
+  workflow_dispatch:
+
+# this cancels workflows currently in progress if you start a new one
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  build-and-test:
+    runs-on: [ubuntu-20.04]
+    steps:
+      - uses: actions/checkout@v3
+        
+      - name: Replace file contents
+        run: |
+          # Replace ../src/main.roc with link to latest platform release
+          sed -i 's|../src/main.roc|https://github.com/roc-lang/roc/blob/main/examples/cli/cli-platform/main.roc|g' examples/**/*.roc
+
+      - name: Run all tests
+        run: ./ci/all_tests.sh
