@@ -29,7 +29,7 @@ jobs:
       - name: Replace file contents
         run: |
           # Replace ../src/main.roc with link to latest platform release
-          sed -i 's|../src/main.roc|${{ steps.get-latest-link.outputs.file_url }}|g' ./examples/**/*.roc
+          sed -i 's|../src/main.roc|${{ steps.get-latest-link.outputs.file_url }}|g' ../examples/**/*.roc
 
       - name: Run all tests
         run: ./ci/all_tests.sh
