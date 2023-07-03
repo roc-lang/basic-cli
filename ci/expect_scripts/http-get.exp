@@ -5,7 +5,7 @@
 
 set timeout 7
 
-spawn ./roc_nightly/roc run ./examples/http-get.roc --prebuilt-platform
+spawn ./examples/http-get
 
 
 expect -exact "Enter a URL to fetch. It must contain a scheme like \"http://\" or \"https://\".\r\n"

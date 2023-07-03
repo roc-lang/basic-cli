@@ -5,7 +5,7 @@
 
 set timeout 7
 
-spawn ./roc_nightly/roc run ./examples/helloWorld.roc --prebuilt-platform
+spawn ./examples/hello-world
 
 expect "Hello, World!\r\n" {
   expect eof

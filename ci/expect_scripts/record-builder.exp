@@ -5,7 +5,7 @@
 
 set timeout 7
 
-spawn ./roc_nightly/roc run ./examples/record-builder.roc --prebuilt-platform
+spawn ./examples/record-builder
 
 expect "Apples: Granny Smith, Pink Lady, Golden Delicious\r\nOranges: Navel, Blood Orange, Clementine\r\n" {
   expect eof
