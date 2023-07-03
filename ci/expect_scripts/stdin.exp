@@ -5,7 +5,7 @@
 
 set timeout 7
 
-spawn ./roc_nightly/roc run ./examples/stdin.roc --prebuilt-platform
+spawn ./examples/stdin
 
 
 expect -exact "Enter a series of number characters (0-9):\r\n"

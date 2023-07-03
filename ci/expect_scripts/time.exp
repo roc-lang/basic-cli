@@ -5,7 +5,7 @@
 
 set timeout 7
 
-spawn ./roc_nightly/roc run ./examples/time.roc --prebuilt-platform
+spawn ./examples/time
 
 
 expect -re "Completed in \[0-9]+ns\r\n" {

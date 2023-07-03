@@ -1,4 +1,4 @@
-app "example-stdin"
+app "stdin"
     packages { pf: "../src/main.roc" }
     imports [
         pf.Stdout,
