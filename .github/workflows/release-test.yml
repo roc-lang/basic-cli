@@ -14,22 +14,36 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install jq
-        run: |
-            sudo apt-get update
-            sudo apt-get install -y jq
+      - run: sudo apt install -y jq
 
-      - name: Get latest release file link
-        id: get-latest-link
+      - name: get latest roc nightly
         run: |
-            FILE_URL=$(curl -s https://api.github.com/repos/roc-lang/roc/releases |
-                          jq -r '.[0].assets | .[] | select(.name | test("\\.(tar\\.br|tar\\.gz)$")) | .browser_download_url')
-            echo "::set-output name=file_url::$FILE_URL"
+          curl -fOL https://github.com/roc-lang/roc/releases/download/nightly/roc_nightly-linux_x86_64-latest.tar.gz
+
+      - name: rename nightly tar
+        run: mv $(ls | grep "roc_nightly.*tar\.gz") roc_nightly.tar.gz
+
+      - name: decompress the tar
+        run: tar -xzf roc_nightly.tar.gz
+
+      - run: rm roc_nightly.tar.gz
+
+      - name: simplify nightly folder name
+        run: mv roc_nightly* roc_nightly
+
+      - run: ./roc_nightly/roc version
+
+      - name: get latest basic-cli release file URL
+        run: |
+            CLI_RELEASES_JSON=$(curl -s https://api.github.com/repos/roc-lang/basic-cli/releases)
+            CLI_RELEASE_URL=$(echo $CLI_RELEASES_JSON | jq -r '.[0].assets | .[] | select(.name | test("\\.(tar\\.br|tar\\.gz)$")) | .browser_download_url')
+            echo "CLI_RELEASE_URL=$CLI_RELEASE_URL" >> $GITHUB_ENV
     
-      - name: Replace file contents
+      - name: use latest basic-cli release as platform for every example
+        env:
+            CLI_RELEASE_URL: ${{ env.CLI_RELEASE_URL }}
         run: |
-          # Replace ../src/main.roc with link to latest platform release
-          sed -i 's|../src/main.roc|${{ steps.get-latest-link.outputs.file_url }}|g' ./examples/*.roc
+          sed -i 's|../src/main.roc|$CLI_RELEASE_URL|g' ./examples/*.roc
 
       - name: Run all tests
         run: ./ci/all_tests.sh
