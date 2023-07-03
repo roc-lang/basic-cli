@@ -43,7 +43,7 @@ jobs:
         env:
             CLI_RELEASE_URL: ${{ env.CLI_RELEASE_URL }}
         run: |
-          sed -i 's|../src/main.roc|$CLI_RELEASE_URL|g' ./examples/*.roc
+          sed -i "s|../src/main.roc|$CLI_RELEASE_URL|g" ./examples/*.roc
 
       - name: Run all tests
         run: ./ci/all_tests.sh
