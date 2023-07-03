@@ -5,7 +5,7 @@
 
 set timeout 7
 
-spawn ./roc_nightly/roc run ./examples/command.roc --prebuilt-platform
+spawn ./examples/command
 
 
 expect -exact "BAZ=DUCK\r\nFOO=BAR\r\nSuccess\r\nSTATUS Success\r\nSTDOUT '-rw-r--r--'\r\n\r\nSTDERR \r\n" {
