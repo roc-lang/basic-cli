@@ -45,5 +45,9 @@ jobs:
         run: |
           sed -i "s|../src/main.roc|$CLI_RELEASE_URL|g" ./examples/*.roc
 
+      - run: sudo apt install -y expect ncat
+      # expect for testing
+      # ncat for tcp-client exampl
+      
       - name: Run all tests
         run: ./ci/all_tests.sh
