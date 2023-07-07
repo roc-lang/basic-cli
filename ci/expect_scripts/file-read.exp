@@ -5,7 +5,7 @@
 
 set timeout 7
 
-spawn ./roc_nightly/roc run ./examples/file-read.roc --prebuilt-platform
+spawn ./examples/file-read
 
 expect "First line of README.md: # basic-cli\r\n" {
   expect eof
