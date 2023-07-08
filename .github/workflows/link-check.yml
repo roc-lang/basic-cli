@@ -15,8 +15,6 @@ jobs:
         steps:
           - uses: actions/checkout@v3
     
-          - run: sudo apt install -y jq
-    
           - name: get latest roc nightly
             run: |
               curl -fOL https://github.com/roc-lang/roc/releases/download/nightly/roc_nightly-linux_x86_64-latest.tar.gz
@@ -36,6 +34,6 @@ jobs:
           - run: sudo apt install -y expect ncat
                 # expect for testing
                 # ncat for tcp-client example
-                
+
           - name: Run link check
             run: ./ci/link_check.sh
