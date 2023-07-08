@@ -1,0 +1,23 @@
+name: Link Check
+
+# this cancels workflows currently in progress if you start a new one
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+  
+on:
+  schedule:
+    - cron: "0 9 * * *"
+
+jobs:
+  link-check:
+    runs-on: [ubuntu-20.04]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run link check
+        run: ./ci/link_check.sh
