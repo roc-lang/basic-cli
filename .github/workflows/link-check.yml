@@ -10,14 +10,32 @@ on:
     - cron: "0 9 * * *"
 
 jobs:
-  link-check:
-    runs-on: [ubuntu-20.04]
+    build-and-test:
+        runs-on: [ubuntu-20.04]
+        steps:
+          - uses: actions/checkout@v3
+    
+          - run: sudo apt install -y jq
+    
+          - name: get latest roc nightly
+            run: |
+              curl -fOL https://github.com/roc-lang/roc/releases/download/nightly/roc_nightly-linux_x86_64-latest.tar.gz
+          - name: rename nightly tar
+            run: mv $(ls | grep "roc_nightly.*tar\.gz") roc_nightly.tar.gz
+    
+          - name: decompress the tar
+            run: tar -xzf roc_nightly.tar.gz
+    
+          - run: rm roc_nightly.tar.gz
+    
+          - name: simplify nightly folder name
+            run: mv roc_nightly* roc_nightly
+    
+          - run: ./roc_nightly/roc version
 
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Run link check
-        run: ./ci/link_check.sh
+          - run: sudo apt install -y expect ncat
+                # expect for testing
+                # ncat for tcp-client example
+                
+          - name: Run link check
+            run: ./ci/link_check.sh
