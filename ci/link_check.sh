@@ -3,7 +3,7 @@
 # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 set -euxo pipefail
 
-base_url="https://www.roc-lang.org/packages/basic-cli/"
+base_url="https://www.roc-lang.org/packages/basic-cli"
 
 timeout=15 #timeout in seconds 
 
