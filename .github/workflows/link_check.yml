@@ -3,15 +3,13 @@ on:
   schedule:
     - cron: "0 9 * * *"
 
-name: Check roc-lang.org/packages/basic-cli/ for broken links
-
 # this cancels workflows in progress if you start a new one
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
     cancel-in-progress: true
 
 jobs:
-    build-and-test:
+    check-basic-cli-docs-broken-links:
         runs-on: [ubuntu-20.04]
         steps:
           - uses: actions/checkout@v3
