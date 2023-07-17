@@ -1,5 +1,5 @@
 platform "cli"
-    requires {} { main : Task {} I32 }
+    requires {} { main : Str -> Task Str I32 }
     exposes [
         Path,
         Arg,
@@ -23,5 +23,5 @@ platform "cli"
     imports [Task.{ Task }]
     provides [mainForHost]
 
-mainForHost : Task {} I32 as Fx
-mainForHost = main
+mainForHost : Str -> (Task Str I32 as Fx)
+mainForHost = \arg -> main arg
