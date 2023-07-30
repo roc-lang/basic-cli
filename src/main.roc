@@ -16,7 +16,7 @@ platform "cli"
         Url,
         Utc,
         Sleep,
-        Command,
+        Cmd,
         Tty,
     ]
     packages {}

@@ -2,7 +2,7 @@ app "command"
     packages { pf: "../src/main.roc" }
     imports [
         pf.Stdout,
-        pf.Command,
+        pf.Cmd,
         pf.Task.{ Task },
     ]
     provides [main] to pf
@@ -20,11 +20,11 @@ first : Task {} I32
 first =
 
     result <-
-        Command.new "env"
-        |> Command.arg "-v"
-        |> Command.clearEnvs
-        |> Command.envs [("FOO", "BAR"), ("BAZ", "DUCK")]
-        |> Command.status
+        Cmd.new "env"
+        |> Cmd.arg "-v"
+        |> Cmd.clearEnvs
+        |> Cmd.envs [("FOO", "BAR"), ("BAZ", "DUCK")]
+        |> Cmd.status
         |> Task.attempt
 
     when result is
@@ -41,14 +41,14 @@ first =
 second : Task {} I32
 second =
     output <-
-        Command.new "stat"
-        |> Command.env "FOO" "BAR"
-        |> Command.args [
+        Cmd.new "stat"
+        |> Cmd.env "FOO" "BAR"
+        |> Cmd.args [
             "--format",
             "'%A'", # print permission bits in human readable form
             "LICENSE" # filename
         ]
-        |> Command.output
+        |> Cmd.output
         |> Task.await
 
     status =
