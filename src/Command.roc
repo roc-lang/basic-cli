@@ -2,6 +2,7 @@ interface Command
     exposes [
         Command,
         Output,
+        Error,
         new,
         arg,
         args,
