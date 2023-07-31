@@ -2,6 +2,7 @@ interface Cmd
     exposes [
         Cmd,
         Output,
+        Error,
         new,
         arg,
         args,
@@ -25,7 +26,10 @@ Cmd := InternalCommand.Command
 Error : InternalCommand.CommandErr
 
 ## Represents the output of a command.
-Output : InternalCommand.Output
+Output : {
+    stdout : List U8,
+    stderr : List U8,
+}
 
 ## Create a new command to execute the given program in a child process.
 new : Str -> Cmd
@@ -117,10 +121,20 @@ clearEnvs = \@Cmd cmd ->
 ## > Stdin is not inherited from the parent and any attempt by the child process
 ## > to read from the stdin stream will result in the stream immediately closing.
 ##
-output : Cmd -> Task Output *
+output : Cmd -> Task Output (Output, Error)
 output = \@Cmd cmd ->
     Effect.commandOutput (Box.box cmd)
-    |> Effect.map Ok
+    |> Effect.map \internalOutput ->
+        out = 
+            {
+                stdout: internalOutput.stdout,
+                stderr: internalOutput.stderr,
+            }
+
+        when internalOutput.status is
+            Ok {} -> Ok (out)
+            Err err -> Err (out, err)
+        
     |> InternalTask.fromEffect
 
 ## Execute command and inheriting stdin, stdout and stderr from parent

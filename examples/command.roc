@@ -40,28 +40,24 @@ first =
 # Capture stdout and stderr and print them.
 second : Task {} I32
 second =
-    output <-
+    (status, stdout, stderr) <-
         Cmd.new "stat"
         |> Cmd.env "FOO" "BAR"
         |> Cmd.args [
             "--format",
             "'%A'", # print permission bits in human readable form
-            "LICENSE" # filename
+            "LICENSE", # filename
         ]
         |> Cmd.output
+        |> Task.map \output -> ("Success", output.stdout, output.stderr)
+        |> Task.onErr \(output, err) ->
+            when err is
+                ExitCode code -> Task.ok ("Child exited with non-zero code: \(Num.toStr code)", output.stdout, output.stderr)
+                KilledBySignal -> Task.ok ("Child was killed by signal", output.stdout, output.stderr)
+                IOError ioErr -> Task.ok ("IOError executing: \(ioErr)", output.stdout, output.stderr)
         |> Task.await
 
-    status =
-        when output.status is
-            Ok {} -> "Success"
-            Err (ExitCode code) ->
-                codeStr = Num.toStr code
-                "Child exited with non-zero code: \(codeStr)"
+    stdoutStr = Str.fromUtf8 stdout |> Result.withDefault "Failed to decode stdout"
+    stderrStr = Str.fromUtf8 stderr |> Result.withDefault "Failed to decode stderr"
 
-            Err KilledBySignal -> "Child was killed by signal"
-            Err (IOError err) -> "IOError executing: \(err)"
-
-    stdout = Str.fromUtf8 output.stdout |> Result.withDefault "Failed to decode stdout"
-    stderr = Str.fromUtf8 output.stderr |> Result.withDefault "Failed to decode stderr"
-
-    Stdout.write "STATUS \(status)\nSTDOUT \(stdout)\nSTDERR \(stderr)\n"
+    Stdout.write "STATUS \(status)\nSTDOUT \(stdoutStr)\nSTDERR \(stderrStr)\n"
