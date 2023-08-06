@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
 mod command_glue;
+mod dir_glue;
 mod file_glue;
 mod glue;
 mod tcp_glue;
@@ -20,6 +21,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use file_glue::ReadErr;
 use file_glue::WriteErr;
+
+use dir_glue::IOError;
 
 extern "C" {
     #[link_name = "roc__mainForHost_1_exposed_generic"]
@@ -878,5 +881,83 @@ pub extern "C" fn roc_fx_commandOutput(roc_cmd: &command_glue::Command) -> comma
             stdout: RocList::empty(),
             stderr: RocList::empty(),
         },
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_dirMake(roc_path: &RocList<u8>) -> RocResult<(), IOError> {
+    match std::fs::create_dir(path_from_roc_path(roc_path)) {
+        Ok(_) => RocResult::ok(()),
+        Err(err) => RocResult::err(toRocIOError(err)),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_dirMakeAll(roc_path: &RocList<u8>) -> RocResult<(), IOError> {
+    match std::fs::create_dir_all(path_from_roc_path(roc_path)) {
+        Ok(_) => RocResult::ok(()),
+        Err(err) => RocResult::err(toRocIOError(err)),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_dirDeleteEmpty(roc_path: &RocList<u8>) -> RocResult<(), IOError> {
+    match std::fs::remove_dir(path_from_roc_path(roc_path)) {
+        Ok(_) => RocResult::ok(()),
+        Err(err) => RocResult::err(toRocIOError(err)),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_dirDeleteRecursive(roc_path: &RocList<u8>) -> RocResult<(), IOError> {
+    match std::fs::remove_dir_all(path_from_roc_path(roc_path)) {
+        Ok(_) => RocResult::ok(()),
+        Err(err) => RocResult::err(toRocIOError(err)),
+    }
+}
+
+// Note commented out error kinds are not available in stable Rust
+fn toRocIOError(err: std::io::Error) -> IOError {
+    match err.kind() {
+        ErrorKind::NotFound => IOError::NotFound(),
+        ErrorKind::PermissionDenied => IOError::PermissionDenied(),
+        ErrorKind::ConnectionRefused => IOError::ConnectionRefused(),
+        ErrorKind::ConnectionReset => IOError::ConnectionReset(),
+        // ErrorKind::HostUnreachable => IOError::HostUnreachable(),
+        // ErrorKind::NetworkUnreachable => IOError::NetworkUnreachable(),
+        ErrorKind::ConnectionAborted => IOError::ConnectionAborted(),
+        ErrorKind::NotConnected => IOError::NotConnected(),
+        ErrorKind::AddrInUse => IOError::AddrInUse(),
+        ErrorKind::AddrNotAvailable => IOError::AddrNotAvailable(),
+        // ErrorKind::NetworkDown => IOError::NetworkDown(),
+        ErrorKind::BrokenPipe => IOError::BrokenPipe(),
+        ErrorKind::AlreadyExists => IOError::AlreadyExists(),
+        ErrorKind::WouldBlock => IOError::WouldBlock(),
+        // ErrorKind::NotADirectory => IOError::NotADirectory(),
+        // ErrorKind::IsADirectory => IOError::IsADirectory(),
+        // ErrorKind::DirectoryNotEmpty => IOError::DirectoryNotEmpty(),
+        // ErrorKind::ReadOnlyFilesystem => IOError::ReadOnlyFilesystem(),
+        // ErrorKind::FilesystemLoop => IOError::FilesystemLoop(),
+        // ErrorKind::StaleNetworkFileHandle => IOError::StaleNetworkFileHandle(),
+        ErrorKind::InvalidInput => IOError::InvalidInput(),
+        ErrorKind::InvalidData => IOError::InvalidData(),
+        ErrorKind::TimedOut => IOError::TimedOut(),
+        ErrorKind::WriteZero => IOError::WriteZero(),
+        // ErrorKind::StorageFull => IOError::StorageFull(),
+        // ErrorKind::NotSeekable => IOError::NotSeekable(),
+        // ErrorKind::FilesystemQuotaExceeded => IOError::FilesystemQuotaExceeded(),
+        // ErrorKind::FileTooLarge => IOError::FileTooLarge(),
+        // ErrorKind::ResourceBusy => IOError::ResourceBusy(),
+        // ErrorKind::ExecutableFileBusy => IOError::ExecutableFileBusy(),
+        // ErrorKind::Deadlock => IOError::Deadlock(),
+        // ErrorKind::CrossesDevices => IOError::CrossesDevices(),
+        // ErrorKind::TooManyLinks => IOError::TooManyLinks(),
+        // ErrorKind::InvalidFilename => IOError::InvalidFilename(),
+        // ErrorKind::ArgumentListTooLong => IOError::ArgumentListTooLong(),
+        ErrorKind::Interrupted => IOError::Interrupted(),
+        ErrorKind::UnexpectedEof => IOError::UnexpectedEof(),
+        ErrorKind::OutOfMemory => IOError::OutOfMemory(),
+        ErrorKind::Other => IOError::Other(),
+        _ => IOError::Unsupported(),
     }
 }

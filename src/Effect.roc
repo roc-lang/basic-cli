@@ -8,6 +8,10 @@ hosted Effect
         forever,
         loop,
         dirList,
+        dirMake,
+        dirMakeAll,
+        dirDeleteEmpty,
+        dirDeleteRecursive,
         envDict,
         envVar,
         cwd,
@@ -59,7 +63,7 @@ fileWriteBytes : List U8, List U8 -> Effect (Result {} InternalFile.WriteErr)
 fileWriteUtf8 : List U8, Str -> Effect (Result {} InternalFile.WriteErr)
 fileDelete : List U8 -> Effect (Result {} InternalFile.WriteErr)
 fileReadBytes : List U8 -> Effect (Result (List U8) InternalFile.ReadErr)
-dirList : List U8 -> Effect (Result (List (List U8)) InternalDir.ReadErr)
+
 envDict : Effect (Dict Str Str)
 envVar : Str -> Effect (Result Str {})
 exePath : Effect (Result (List U8) {})
@@ -86,3 +90,9 @@ sleepMillis : U64 -> Effect {}
 
 commandStatus : Box InternalCommand.Command -> Effect (Result {} InternalCommand.CommandErr)
 commandOutput : Box InternalCommand.Command -> Effect InternalCommand.Output
+
+dirList : List U8 -> Effect (Result (List (List U8)) InternalDir.IOError)
+dirMake : List U8 -> Effect (Result {} InternalDir.IOError)
+dirMakeAll : List U8 -> Effect (Result {} InternalDir.IOError)
+dirDeleteEmpty : List U8 -> Effect (Result {} InternalDir.IOError)
+dirDeleteRecursive : List U8 -> Effect (Result {} InternalDir.IOError)
