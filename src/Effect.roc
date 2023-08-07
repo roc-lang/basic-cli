@@ -42,9 +42,9 @@ hosted Effect
         commandOutput,
     ]
     imports [
-        InternalHttp.{ Request, Response }, 
-        InternalFile, 
-        InternalDir, 
+        InternalHttp.{ Request, Response },
+        InternalFile,
+        InternalDir,
         InternalTcp,
         InternalCommand,
     ]
@@ -68,7 +68,6 @@ envDict : Effect (Dict Str Str)
 envVar : Str -> Effect (Result Str {})
 exePath : Effect (Result (List U8) {})
 setCwd : List U8 -> Effect (Result {} {})
-
 
 # If we encounter a Unicode error in any of the args, it will be replaced with
 # the Unicode replacement char where necessary.

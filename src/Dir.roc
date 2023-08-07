@@ -1,19 +1,19 @@
 interface Dir
     exposes [
-        IOError, 
-        DirEntry, 
+        IOError,
+        DirEntry,
         list,
         create,
         createRecursive,
-        deleteEmptyDir, 
+        deleteEmptyDir,
         deleteAll,
     ]
     imports [
-        Effect, 
-        Task.{ Task }, 
-        InternalTask, 
-        Path.{ Path }, 
-        InternalPath, 
+        Effect,
+        Task.{ Task },
+        InternalTask,
+        Path.{ Path },
+        InternalPath,
         InternalDir,
     ]
 
@@ -36,8 +36,8 @@ list = \path ->
 
 ## Deletes a directory if it's empty
 ##
-## This may fail if the path doesn't exist or is not a directory, the directory 
-## is not empty, the user lacks permission to remove a directory. 
+## This may fail if the path doesn't exist or is not a directory, the directory
+## is not empty, the user lacks permission to remove a directory.
 deleteEmptyDir : Path -> Task {} IOError
 deleteEmptyDir = \path ->
     InternalPath.toBytes path
@@ -48,11 +48,11 @@ deleteEmptyDir = \path ->
             Err AddrInUse -> Ok {} # TODO investigate why we need this here
             Err err -> Err err
     |> InternalTask.fromEffect
- 
-## Recursively deletes the directory as well as all files and directories 
+
+## Recursively deletes the directory as well as all files and directories
 ## inside it.
 ##
-## This may fail if the path doesn't exist or is not a directory, the directory 
+## This may fail if the path doesn't exist or is not a directory, the directory
 ## is not empty, the user lacks permission to remove a directory.
 deleteAll : Path -> Task {} IOError
 deleteAll = \path ->
@@ -82,7 +82,7 @@ create = \path ->
 
 ## Creates a directory recursively adding any missing parent directories.
 ##
-## This may fail if user lacks permission to create a directory, or the 
+## This may fail if user lacks permission to create a directory, or the
 ## path already exists.
 createRecursive : Path -> Task {} IOError
 createRecursive = \path ->
