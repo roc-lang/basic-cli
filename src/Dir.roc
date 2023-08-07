@@ -6,7 +6,7 @@ interface Dir
         make,
         makeRecursive,
         deleteEmptyDir, 
-        deleteRecursive,
+        deleteAll,
     ]
     imports [
         Effect, 
@@ -54,10 +54,10 @@ deleteEmptyDir = \path ->
 ##
 ## This may fail if the path doesn't exist or is not a directory, the directory 
 ## is not empty, the user lacks permission to remove a directory.
-deleteRecursive : Path -> Task {} IOError
-deleteRecursive = \path ->
+deleteAll : Path -> Task {} IOError
+deleteAll = \path ->
     InternalPath.toBytes path
-    |> Effect.dirDeleteRecursive
+    |> Effect.dirDeleteAll
     |> Effect.map \result ->
         when result is
             Ok {} -> Ok {}

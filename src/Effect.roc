@@ -11,7 +11,7 @@ hosted Effect
         dirMake,
         dirMakeAll,
         dirDeleteEmpty,
-        dirDeleteRecursive,
+        dirDeleteAll,
         envDict,
         envVar,
         cwd,
@@ -95,4 +95,4 @@ dirList : List U8 -> Effect (Result (List (List U8)) InternalDir.IOError)
 dirMake : List U8 -> Effect (Result {} InternalDir.IOError)
 dirMakeAll : List U8 -> Effect (Result {} InternalDir.IOError)
 dirDeleteEmpty : List U8 -> Effect (Result {} InternalDir.IOError)
-dirDeleteRecursive : List U8 -> Effect (Result {} InternalDir.IOError)
+dirDeleteAll : List U8 -> Effect (Result {} InternalDir.IOError)

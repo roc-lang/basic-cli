@@ -911,7 +911,7 @@ pub extern "C" fn roc_fx_dirDeleteEmpty(roc_path: &RocList<u8>) -> RocResult<(),
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirDeleteRecursive(roc_path: &RocList<u8>) -> RocResult<(), IOError> {
+pub extern "C" fn roc_fx_dirDeleteAll(roc_path: &RocList<u8>) -> RocResult<(), IOError> {
     match std::fs::remove_dir_all(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
         Err(err) => RocResult::err(toRocIOError(err)),

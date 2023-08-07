@@ -46,7 +46,7 @@ main =
 
     # Delete all directories recursively
     _ <-
-        Task.attempt (Dir.deleteRecursive (Path.fromStr "a")) \removeChild ->
+        Task.attempt (Dir.deleteAll (Path.fromStr "a")) \removeChild ->
             when removeChild is
                 Ok _ -> Task.ok {}
                 Err err ->
