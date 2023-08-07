@@ -459,24 +459,23 @@ pub extern "C" fn roc_fx_sleepMillis(milliseconds: u64) {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirList(
-    // TODO: this RocResult should use Dir.WriteErr - but right now it's File.WriteErr
-    // because glue doesn't have Dir.WriteErr yet.
-    roc_path: &RocList<u8>,
-) -> RocResult<RocList<RocList<u8>>, WriteErr> {
-    println!("Dir.list...");
-    match std::fs::read_dir(path_from_roc_path(roc_path)) {
-        Ok(dir_entries) => RocResult::ok(
-            dir_entries
-                .map(|opt_dir_entry| match opt_dir_entry {
-                    Ok(entry) => os_str_to_roc_path(entry.path().into_os_string().as_os_str()),
-                    Err(_) => {
-                        todo!("handle dir_entry path didn't resolve")
-                    }
+pub extern "C" fn roc_fx_dirList(roc_path: &RocList<u8>) -> RocResult<RocList<RocList<u8>>, IOError> {
+    match std::fs::read_dir(path_from_roc_path(roc_path)) {    
+        Ok(dir_entries) => {
+            
+            let entries = dir_entries
+                .filter_map(|opt_dir_entry| match opt_dir_entry {
+                    Ok(entry) => Some(os_str_to_roc_path(entry.path().into_os_string().as_os_str())),
+                    Err(_) => None
                 })
-                .collect::<RocList<RocList<u8>>>(),
-        ),
-        Err(err) => RocResult::err(toRocWriteError(err)),
+                .collect::<RocList<RocList<u8>>>();
+
+            dbg!(&entries);
+
+            RocResult::ok(entries)
+
+        },
+        Err(err) => RocResult::err(toRocIOError(err)),
     }
 }
 

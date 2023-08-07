@@ -25,13 +25,14 @@ DirEntry : InternalDir.DirEntry
 
 ## Lists the files and directories inside the directory.
 list : Path -> Task (List Path) IOError
-# list = \path ->
-#     effect = Effect.map (Effect.dirList (InternalPath.toBytes path)) \result ->
-#         when result is
-#             Ok entries -> Ok (List.map entries InternalPath.fromOsBytes)
-#             Err err -> Err (DirReadErr path err)
-
-#     InternalTask.fromEffect effect
+list = \path ->
+    InternalPath.toBytes path
+    |> Effect.dirList
+    |> Effect.map \result ->
+        when result is
+            Ok entries -> Ok (List.map entries InternalPath.fromOsBytes)
+            Err err -> Err err
+    |> InternalTask.fromEffect
 
 ## Deletes a directory if it's empty
 ##
