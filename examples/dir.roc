@@ -18,7 +18,7 @@ main =
         makeShouldSucceed == Ok {}
 
     # Create a directory and its parents
-    makeRecursiveShouldSucceed <- Task.attempt (Dir.createRecursive (Path.fromStr "a/b/c/child"))
+    makeRecursiveShouldSucceed <- Task.attempt (Dir.createAll (Path.fromStr "a/b/c/child"))
     expect
         makeRecursiveShouldSucceed == Ok {}
 
@@ -34,7 +34,7 @@ main =
 
     # Delete an empty directory
     _ <-
-        Task.attempt (Dir.deleteEmptyDir (Path.fromStr "e")) \removeChild ->
+        Task.attempt (Dir.deleteEmpty (Path.fromStr "e")) \removeChild ->
             when removeChild is
                 Ok _ -> Task.ok {}
                 Err err ->

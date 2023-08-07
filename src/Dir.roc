@@ -4,8 +4,8 @@ interface Dir
         DirEntry,
         list,
         create,
-        createRecursive,
-        deleteEmptyDir,
+        createAll,
+        deleteEmpty,
         deleteAll,
     ]
     imports [
@@ -38,8 +38,8 @@ list = \path ->
 ##
 ## This may fail if the path doesn't exist or is not a directory, the directory
 ## is not empty, the user lacks permission to remove a directory.
-deleteEmptyDir : Path -> Task {} IOError
-deleteEmptyDir = \path ->
+deleteEmpty : Path -> Task {} IOError
+deleteEmpty = \path ->
     InternalPath.toBytes path
     |> Effect.dirDeleteEmpty
     |> Effect.map \result ->
@@ -84,8 +84,8 @@ create = \path ->
 ##
 ## This may fail if user lacks permission to create a directory, or the
 ## path already exists.
-createRecursive : Path -> Task {} IOError
-createRecursive = \path ->
+createAll : Path -> Task {} IOError
+createAll = \path ->
     InternalPath.toBytes path
     |> Effect.dirCreateAll
     |> Effect.map \result ->
