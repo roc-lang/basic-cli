@@ -13,22 +13,22 @@ main : Task {} I32
 main =
 
     # Create a directory
-    makeShouldSucceed <- Task.attempt (Dir.make (Path.fromStr "e"))
+    makeShouldSucceed <- Task.attempt (Dir.create (Path.fromStr "e"))
     expect
         makeShouldSucceed == Ok {}
 
     # Create a directory and its parents
-    makeRecursiveShouldSucceed <- Task.attempt (Dir.makeRecursive (Path.fromStr "a/b/c/child"))
+    makeRecursiveShouldSucceed <- Task.attempt (Dir.createRecursive (Path.fromStr "a/b/c/child"))
     expect
         makeRecursiveShouldSucceed == Ok {}
 
     # Create a child directory
-    makeChildShouldSucceed <- Task.attempt (Dir.make (Path.fromStr "a/child"))
+    makeChildShouldSucceed <- Task.attempt (Dir.create (Path.fromStr "a/child"))
     expect
         makeChildShouldSucceed == Ok {}
 
     # Try to create a directory without a parent
-    makeWithoutParentShouldFail <- Task.attempt (Dir.make (Path.fromStr "d/child"))
+    makeWithoutParentShouldFail <- Task.attempt (Dir.create (Path.fromStr "d/child"))
     expect
         makeWithoutParentShouldFail == Err NotFound
 

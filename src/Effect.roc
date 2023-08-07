@@ -8,8 +8,8 @@ hosted Effect
         forever,
         loop,
         dirList,
-        dirMake,
-        dirMakeAll,
+        dirCreate,
+        dirCreateAll,
         dirDeleteEmpty,
         dirDeleteAll,
         envDict,
@@ -92,7 +92,7 @@ commandStatus : Box InternalCommand.Command -> Effect (Result {} InternalCommand
 commandOutput : Box InternalCommand.Command -> Effect InternalCommand.Output
 
 dirList : List U8 -> Effect (Result (List (List U8)) InternalDir.IOError)
-dirMake : List U8 -> Effect (Result {} InternalDir.IOError)
-dirMakeAll : List U8 -> Effect (Result {} InternalDir.IOError)
+dirCreate : List U8 -> Effect (Result {} InternalDir.IOError)
+dirCreateAll : List U8 -> Effect (Result {} InternalDir.IOError)
 dirDeleteEmpty : List U8 -> Effect (Result {} InternalDir.IOError)
 dirDeleteAll : List U8 -> Effect (Result {} InternalDir.IOError)

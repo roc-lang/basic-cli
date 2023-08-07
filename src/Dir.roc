@@ -3,8 +3,8 @@ interface Dir
         IOError, 
         DirEntry, 
         list,
-        make,
-        makeRecursive,
+        create,
+        createRecursive,
         deleteEmptyDir, 
         deleteAll,
     ]
@@ -69,10 +69,10 @@ deleteAll = \path ->
 ##
 ## This may fail if a parent directory does not exist, or user lacks permission
 ## to create a directory, or the path already exists.
-make : Path -> Task {} IOError
-make = \path ->
+create : Path -> Task {} IOError
+create = \path ->
     InternalPath.toBytes path
-    |> Effect.dirMake
+    |> Effect.dirCreate
     |> Effect.map \result ->
         when result is
             Ok {} -> Ok {}
@@ -84,10 +84,10 @@ make = \path ->
 ##
 ## This may fail if user lacks permission to create a directory, or the 
 ## path already exists.
-makeRecursive : Path -> Task {} IOError
-makeRecursive = \path ->
+createRecursive : Path -> Task {} IOError
+createRecursive = \path ->
     InternalPath.toBytes path
-    |> Effect.dirMakeAll
+    |> Effect.dirCreateAll
     |> Effect.map \result ->
         when result is
             Ok {} -> Ok {}

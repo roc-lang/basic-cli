@@ -887,7 +887,7 @@ pub extern "C" fn roc_fx_commandOutput(roc_cmd: &command_glue::Command) -> comma
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirMake(roc_path: &RocList<u8>) -> RocResult<(), IOError> {
+pub extern "C" fn roc_fx_dirCreate(roc_path: &RocList<u8>) -> RocResult<(), IOError> {
     match std::fs::create_dir(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
         Err(err) => RocResult::err(toRocIOError(err)),
@@ -895,7 +895,7 @@ pub extern "C" fn roc_fx_dirMake(roc_path: &RocList<u8>) -> RocResult<(), IOErro
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirMakeAll(roc_path: &RocList<u8>) -> RocResult<(), IOError> {
+pub extern "C" fn roc_fx_dirCreateAll(roc_path: &RocList<u8>) -> RocResult<(), IOError> {
     match std::fs::create_dir_all(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
         Err(err) => RocResult::err(toRocIOError(err)),
