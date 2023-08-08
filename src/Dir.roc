@@ -36,8 +36,11 @@ list = \path ->
 
 ## Deletes a directory if it's empty
 ##
-## This may fail if the path doesn't exist or is not a directory, the directory
-## is not empty, the user lacks permission to remove a directory.
+## This may fail if:
+##   - the path doesn't exist
+##   - the path is not a directory
+##   - the directory is not empty
+##   - the user lacks permission to remove the directory.
 deleteEmpty : Path -> Task {} IOError
 deleteEmpty = \path ->
     InternalPath.toBytes path
@@ -52,8 +55,11 @@ deleteEmpty = \path ->
 ## Recursively deletes the directory as well as all files and directories
 ## inside it.
 ##
-## This may fail if the path doesn't exist or is not a directory, the directory
-## is not empty, the user lacks permission to remove a directory.
+## This may fail if:
+##   - the path doesn't exist
+##   - the path is not a directory
+##   - the directory is not empty
+##   - the user lacks permission to remove the directory.
 deleteAll : Path -> Task {} IOError
 deleteAll = \path ->
     InternalPath.toBytes path
@@ -67,8 +73,10 @@ deleteAll = \path ->
 
 ## Creates a directory
 ##
-## This may fail if a parent directory does not exist, or user lacks permission
-## to create a directory, or the path already exists.
+## This may fail if:
+##   - a parent directory does not exist
+##   - the user lacks permission to create a directory there
+##   - the path already exists.
 create : Path -> Task {} IOError
 create = \path ->
     InternalPath.toBytes path
@@ -82,8 +90,9 @@ create = \path ->
 
 ## Creates a directory recursively adding any missing parent directories.
 ##
-## This may fail if user lacks permission to create a directory, or the
-## path already exists.
+## This may fail if:
+##   - the user lacks permission to create a directory there
+##   - the path already exists
 createAll : Path -> Task {} IOError
 createAll = \path ->
     InternalPath.toBytes path
