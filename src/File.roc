@@ -8,7 +8,7 @@ ReadErr : InternalFile.ReadErr
 ## Tag union of possible errors when writing a file or directory.
 WriteErr : InternalFile.WriteErr
 
-## Write data to a file. 
+## Write data to a file.
 ##
 ## First encode a `val` using a given `fmt` which implements the ability [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
 ##
@@ -29,7 +29,7 @@ WriteErr : InternalFile.WriteErr
 ## If writing to the file fails, for example because of a file permissions issue, the task fails with [WriteErr].
 ##
 ## > To write unformatted bytes to a file, you can use [File.writeBytes] instead.
-write : Path, val, fmt -> Task {} [FileWriteErr Path WriteErr] | val has Encode.Encoding, fmt has Encode.EncoderFormatting
+write : Path, val, fmt -> Task {} [FileWriteErr Path WriteErr] where val implements Encoding, fmt implements EncoderFormatting
 write = \path, val, fmt ->
     bytes = Encode.toBytes val fmt
 
@@ -64,7 +64,7 @@ writeUtf8 : Path, Str -> Task {} [FileWriteErr Path WriteErr]
 writeUtf8 = \path, str ->
     toWriteTask path \bytes -> Effect.fileWriteUtf8 bytes str
 
-## Deletes a file from the filesystem. 
+## Deletes a file from the filesystem.
 ##
 ## Performs a [`DeleteFile`](https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-deletefile)
 ## on Windows and [`unlink`](https://en.wikipedia.org/wiki/Unlink_(Unix)) on
@@ -131,7 +131,7 @@ readUtf8 = \path ->
 #         Str
 #         [FileReadErr Path ReadErr, FileReadDecodeErr Path [Leftover (List U8)]Decode.DecodeError ]
 #         [Read [File]]
-#     | val has Decode.Decoding, fmt has Decode.DecoderFormatting
+#     where val implements Decoding, fmt implements DecoderFormatting
 # read = \path, fmt ->
 #     effect = Effect.map (Effect.fileReadBytes (InternalPath.toBytes path)) \result ->
 #         when result is

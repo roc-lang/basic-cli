@@ -11,7 +11,7 @@ You can generate the documentation locally and then start a web server to host y
 ```bash
 roc docs src/main.roc
 cd generated-docs
-simple-http-server --nocache # You can install it with `cargo install simple-http-server`.
+simple-http-server --nocache --index # comes pre-installed if you use `nix develop`, otherwise use `cargo install simple-http-server`.
 ```
 
 Open http://0.0.0.0:8000 in your browser

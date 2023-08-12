@@ -1,7 +1,8 @@
-interface Command
+interface Cmd
     exposes [
-        Command,
+        Cmd,
         Output,
+        Error,
         new,
         arg,
         args,
@@ -19,18 +20,21 @@ interface Command
     ]
 
 ## Represents a command to be executed in a child process.
-Command := InternalCommand.Command
+Cmd := InternalCommand.Command
 
 ## Errors from executing a command.
 Error : InternalCommand.CommandErr
 
 ## Represents the output of a command.
-Output : InternalCommand.Output
+Output : {
+    stdout : List U8,
+    stderr : List U8,
+}
 
 ## Create a new command to execute the given program in a child process.
-new : Str -> Command
+new : Str -> Cmd
 new = \program ->
-    @Command {
+    @Cmd {
         program,
         args: [],
         envs: [],
@@ -41,13 +45,13 @@ new = \program ->
 ##
 ## ```
 ## # Represent the command "ls -l"
-## Command.new "ls"
-## |> Command.arg "-l"
+## Cmd.new "ls"
+## |> Cmd.arg "-l"
 ## ```
 ##
-arg : Command, Str -> Command
-arg = \@Command cmd, value ->
-    @Command
+arg : Cmd, Str -> Cmd
+arg = \@Cmd cmd, value ->
+    @Cmd
         { cmd &
             args: List.append cmd.args value,
         }
@@ -56,13 +60,13 @@ arg = \@Command cmd, value ->
 ##
 ## ```
 ## # Represent the command "ls -l -a"
-## Command.new "ls"
-## |> Command.args ["-l", "-a"]
+## Cmd.new "ls"
+## |> Cmd.args ["-l", "-a"]
 ## ```
 ##
-args : Command, List Str -> Command
-args = \@Command cmd, values ->
-    @Command
+args : Cmd, List Str -> Cmd
+args = \@Cmd cmd, values ->
+    @Cmd
         { cmd &
             args: List.concat cmd.args values,
         }
@@ -71,13 +75,13 @@ args = \@Command cmd, values ->
 ##
 ## ```
 ## # Run "env" and add the environment variable "FOO" with value "BAR"
-## Command.new "env"
-## |> Command.env "FOO" "BAR"
+## Cmd.new "env"
+## |> Cmd.env "FOO" "BAR"
 ## ```
 ##
-env : Command, Str, Str -> Command
-env = \@Command cmd, key, value ->
-    @Command
+env : Cmd, Str, Str -> Cmd
+env = \@Cmd cmd, key, value ->
+    @Cmd
         { cmd &
             envs: List.concat cmd.envs [key, value],
         }
@@ -86,14 +90,14 @@ env = \@Command cmd, key, value ->
 ##
 ## ```
 ## # Run "env" and add the variables "FOO" and "BAZ"
-## Command.new "env"
-## |> Command.envs [("FOO", "BAR"), ("BAZ", "DUCK")]
+## Cmd.new "env"
+## |> Cmd.envs [("FOO", "BAR"), ("BAZ", "DUCK")]
 ## ```
 ##
-envs : Command, List (Str, Str) -> Command
-envs = \@Command cmd, keyValues ->
+envs : Cmd, List (Str, Str) -> Cmd
+envs = \@Cmd cmd, keyValues ->
     values = keyValues |> List.joinMap \(key, value) -> [key, value]
-    @Command
+    @Cmd
         { cmd &
             envs: List.concat cmd.envs values,
         }
@@ -103,29 +107,39 @@ envs = \@Command cmd, keyValues ->
 ##
 ## ```
 ## # Represents "env" with only "FOO" environment variable set
-## Command.new "env"
-## |> Command.clearEnvs
-## |> Command.env "FOO" "BAR"
+## Cmd.new "env"
+## |> Cmd.clearEnvs
+## |> Cmd.env "FOO" "BAR"
 ## ```
 ##
-clearEnvs : Command -> Command
-clearEnvs = \@Command cmd ->
-    @Command { cmd & clearEnvs: Bool.true }
+clearEnvs : Cmd -> Cmd
+clearEnvs = \@Cmd cmd ->
+    @Cmd { cmd & clearEnvs: Bool.true }
 
 ## Execute command and capture stdout and stderr
 ##
 ## > Stdin is not inherited from the parent and any attempt by the child process
 ## > to read from the stdin stream will result in the stream immediately closing.
 ##
-output : Command -> Task Output *
-output = \@Command cmd ->
+output : Cmd -> Task Output (Output, Error)
+output = \@Cmd cmd ->
     Effect.commandOutput (Box.box cmd)
-    |> Effect.map Ok
+    |> Effect.map \internalOutput ->
+        out = 
+            {
+                stdout: internalOutput.stdout,
+                stderr: internalOutput.stderr,
+            }
+
+        when internalOutput.status is
+            Ok {} -> Ok (out)
+            Err err -> Err (out, err)
+        
     |> InternalTask.fromEffect
 
 ## Execute command and inheriting stdin, stdout and stderr from parent
 ##
-status : Command -> Task {} Error
-status = \@Command cmd ->
+status : Cmd -> Task {} Error
+status = \@Cmd cmd ->
     Effect.commandStatus (Box.box cmd)
     |> InternalTask.fromEffect
