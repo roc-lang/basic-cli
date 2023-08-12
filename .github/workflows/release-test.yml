@@ -9,7 +9,7 @@ concurrency:
 
 jobs:
 
-  build-and-test:
+  test-latest-release:
     runs-on: [ubuntu-20.04]
     steps:
       - uses: actions/checkout@v3
