@@ -37,6 +37,7 @@
           ]);
 
         sharedInputs = (with pkgs; [
+          jq
           rust
           llvmPkgs.clang
           expect
