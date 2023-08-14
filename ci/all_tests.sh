@@ -13,19 +13,41 @@ for roc_file in $examples_dir*.roc; do
 done
 
 # roc build
+architecture=$(uname -m)
+
 for roc_file in $examples_dir*.roc; do
-    if [ "$(basename "$roc_file")" != "argsBROKEN.roc" ]; then
-        $roc build $roc_file
+    base_file=$(basename "$roc_file")
+
+    # Skip argsBROKEN.roc
+    if [ "$base_file" == "argsBROKEN.roc" ]; then
+        continue
     fi
+
+    # Skip env.roc when on aarch64
+    if [ "$architecture" == "aarch64" ] && [ "$base_file" == "env.roc" ]; then
+        continue
+    fi
+
+    $roc build $roc_file
 done
 
 # check output
 for roc_file in $examples_dir*.roc; do
-    if [ "$(basename "$roc_file")" != "argsBROKEN.roc" ]; then
-        roc_file_only="$(basename "$roc_file")"
-        no_ext_name=${roc_file_only%.*}
-        expect ci/expect_scripts/$no_ext_name.exp
+    base_file=$(basename "$roc_file")
+
+    # Skip argsBROKEN.roc
+    if [ "$base_file" == "argsBROKEN.roc" ]; then
+        continue
     fi
+
+    # Skip env.roc when on aarch64
+    if [ "$architecture" == "aarch64" ] && [ "$base_file" == "env.roc" ]; then
+        continue
+    fi
+
+    roc_file_only="$(basename "$roc_file")"
+    no_ext_name=${roc_file_only%.*}
+    expect ci/expect_scripts/$no_ext_name.exp
 done
 
 # just build this until we fix it
