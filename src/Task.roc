@@ -113,7 +113,7 @@ attempt = \task, transform ->
 ## ```
 ## # Prints "Hello World!\n" to standard output.
 ## {} <- Stdout.write "Hello "|> Task.await
-## {} <- Stdout.srite "World!\n"|> Task.await
+## {} <- Stdout.write "World!\n"|> Task.await
 ##
 ## Task.ok {}
 ## ```
