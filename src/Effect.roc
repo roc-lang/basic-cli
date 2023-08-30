@@ -8,6 +8,10 @@ hosted Effect
         forever,
         loop,
         dirList,
+        dirCreate,
+        dirCreateAll,
+        dirDeleteEmpty,
+        dirDeleteAll,
         envDict,
         envVar,
         cwd,
@@ -38,9 +42,9 @@ hosted Effect
         commandOutput,
     ]
     imports [
-        InternalHttp.{ Request, Response }, 
-        InternalFile, 
-        InternalDir, 
+        InternalHttp.{ Request, Response },
+        InternalFile,
+        InternalDir,
         InternalTcp,
         InternalCommand,
     ]
@@ -59,12 +63,11 @@ fileWriteBytes : List U8, List U8 -> Effect (Result {} InternalFile.WriteErr)
 fileWriteUtf8 : List U8, Str -> Effect (Result {} InternalFile.WriteErr)
 fileDelete : List U8 -> Effect (Result {} InternalFile.WriteErr)
 fileReadBytes : List U8 -> Effect (Result (List U8) InternalFile.ReadErr)
-dirList : List U8 -> Effect (Result (List (List U8)) InternalDir.ReadErr)
+
 envDict : Effect (Dict Str Str)
 envVar : Str -> Effect (Result Str {})
 exePath : Effect (Result (List U8) {})
 setCwd : List U8 -> Effect (Result {} {})
-
 
 # If we encounter a Unicode error in any of the args, it will be replaced with
 # the Unicode replacement char where necessary.
@@ -86,3 +89,9 @@ sleepMillis : U64 -> Effect {}
 
 commandStatus : Box InternalCommand.Command -> Effect (Result {} InternalCommand.CommandErr)
 commandOutput : Box InternalCommand.Command -> Effect InternalCommand.Output
+
+dirList : List U8 -> Effect (Result (List (List U8)) InternalDir.IOError)
+dirCreate : List U8 -> Effect (Result {} InternalDir.IOError)
+dirCreateAll : List U8 -> Effect (Result {} InternalDir.IOError)
+dirDeleteEmpty : List U8 -> Effect (Result {} InternalDir.IOError)
+dirDeleteAll : List U8 -> Effect (Result {} InternalDir.IOError)

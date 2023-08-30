@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
 mod command_glue;
+mod dir_glue;
 mod file_glue;
 mod glue;
 mod tcp_glue;
@@ -20,6 +21,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use file_glue::ReadErr;
 use file_glue::WriteErr;
+
+use dir_glue::IOError;
 
 extern "C" {
     #[link_name = "roc__mainForHost_1_exposed_generic"]
@@ -456,25 +459,27 @@ pub extern "C" fn roc_fx_sleepMillis(milliseconds: u64) {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirList(
-    // TODO: this RocResult should use Dir.WriteErr - but right now it's File.WriteErr
-    // because glue doesn't have Dir.WriteErr yet.
-    roc_path: &RocList<u8>,
-) -> RocResult<RocList<RocList<u8>>, WriteErr> {
-    println!("Dir.list...");
-    match std::fs::read_dir(path_from_roc_path(roc_path)) {
-        Ok(dir_entries) => RocResult::ok(
-            dir_entries
-                .map(|opt_dir_entry| match opt_dir_entry {
-                    Ok(entry) => os_str_to_roc_path(entry.path().into_os_string().as_os_str()),
-                    Err(_) => {
-                        todo!("handle dir_entry path didn't resolve")
-                    }
-                })
-                .collect::<RocList<RocList<u8>>>(),
-        ),
-        Err(err) => RocResult::err(toRocWriteError(err)),
-    }
+pub extern "C" fn roc_fx_dirList(_roc_path: &RocList<u8>) -> RocResult<RocList<RocList<u8>>, IOError> {
+    // match std::fs::read_dir(path_from_roc_path(roc_path)) {    
+    //     Ok(dir_entries) => {
+            
+    //         let entries = dir_entries
+    //             .filter_map(|opt_dir_entry| match opt_dir_entry {
+    //                 Ok(entry) => Some(os_str_to_roc_path(entry.path().into_os_string().as_os_str())),
+    //                 Err(_) => None
+    //             })
+    //             .collect::<RocList<RocList<u8>>>();
+
+    //         dbg!(&entries);
+
+    //         RocResult::ok(entries)
+
+    //     },
+    //     Err(err) => RocResult::err(toRocIOError(err)),
+    // }
+
+    // TODO implement this function
+    RocResult::err(IOError::Other())
 }
 
 #[cfg(target_family = "unix")]
@@ -878,5 +883,83 @@ pub extern "C" fn roc_fx_commandOutput(roc_cmd: &command_glue::Command) -> comma
             stdout: RocList::empty(),
             stderr: RocList::empty(),
         },
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_dirCreate(roc_path: &RocList<u8>) -> RocResult<(), IOError> {
+    match std::fs::create_dir(path_from_roc_path(roc_path)) {
+        Ok(_) => RocResult::ok(()),
+        Err(err) => RocResult::err(toRocIOError(err)),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_dirCreateAll(roc_path: &RocList<u8>) -> RocResult<(), IOError> {
+    match std::fs::create_dir_all(path_from_roc_path(roc_path)) {
+        Ok(_) => RocResult::ok(()),
+        Err(err) => RocResult::err(toRocIOError(err)),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_dirDeleteEmpty(roc_path: &RocList<u8>) -> RocResult<(), IOError> {
+    match std::fs::remove_dir(path_from_roc_path(roc_path)) {
+        Ok(_) => RocResult::ok(()),
+        Err(err) => RocResult::err(toRocIOError(err)),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_dirDeleteAll(roc_path: &RocList<u8>) -> RocResult<(), IOError> {
+    match std::fs::remove_dir_all(path_from_roc_path(roc_path)) {
+        Ok(_) => RocResult::ok(()),
+        Err(err) => RocResult::err(toRocIOError(err)),
+    }
+}
+
+// Note commented out error kinds are not available in stable Rust
+fn toRocIOError(err: std::io::Error) -> IOError {
+    match err.kind() {
+        ErrorKind::NotFound => IOError::NotFound(),
+        ErrorKind::PermissionDenied => IOError::PermissionDenied(),
+        ErrorKind::ConnectionRefused => IOError::ConnectionRefused(),
+        ErrorKind::ConnectionReset => IOError::ConnectionReset(),
+        // ErrorKind::HostUnreachable => IOError::HostUnreachable(),
+        // ErrorKind::NetworkUnreachable => IOError::NetworkUnreachable(),
+        ErrorKind::ConnectionAborted => IOError::ConnectionAborted(),
+        ErrorKind::NotConnected => IOError::NotConnected(),
+        ErrorKind::AddrInUse => IOError::AddrInUse(),
+        ErrorKind::AddrNotAvailable => IOError::AddrNotAvailable(),
+        // ErrorKind::NetworkDown => IOError::NetworkDown(),
+        ErrorKind::BrokenPipe => IOError::BrokenPipe(),
+        ErrorKind::AlreadyExists => IOError::AlreadyExists(),
+        ErrorKind::WouldBlock => IOError::WouldBlock(),
+        // ErrorKind::NotADirectory => IOError::NotADirectory(),
+        // ErrorKind::IsADirectory => IOError::IsADirectory(),
+        // ErrorKind::DirectoryNotEmpty => IOError::DirectoryNotEmpty(),
+        // ErrorKind::ReadOnlyFilesystem => IOError::ReadOnlyFilesystem(),
+        // ErrorKind::FilesystemLoop => IOError::FilesystemLoop(),
+        // ErrorKind::StaleNetworkFileHandle => IOError::StaleNetworkFileHandle(),
+        ErrorKind::InvalidInput => IOError::InvalidInput(),
+        ErrorKind::InvalidData => IOError::InvalidData(),
+        ErrorKind::TimedOut => IOError::TimedOut(),
+        ErrorKind::WriteZero => IOError::WriteZero(),
+        // ErrorKind::StorageFull => IOError::StorageFull(),
+        // ErrorKind::NotSeekable => IOError::NotSeekable(),
+        // ErrorKind::FilesystemQuotaExceeded => IOError::FilesystemQuotaExceeded(),
+        // ErrorKind::FileTooLarge => IOError::FileTooLarge(),
+        // ErrorKind::ResourceBusy => IOError::ResourceBusy(),
+        // ErrorKind::ExecutableFileBusy => IOError::ExecutableFileBusy(),
+        // ErrorKind::Deadlock => IOError::Deadlock(),
+        // ErrorKind::CrossesDevices => IOError::CrossesDevices(),
+        // ErrorKind::TooManyLinks => IOError::TooManyLinks(),
+        // ErrorKind::InvalidFilename => IOError::InvalidFilename(),
+        // ErrorKind::ArgumentListTooLong => IOError::ArgumentListTooLong(),
+        ErrorKind::Interrupted => IOError::Interrupted(),
+        ErrorKind::UnexpectedEof => IOError::UnexpectedEof(),
+        ErrorKind::OutOfMemory => IOError::OutOfMemory(),
+        ErrorKind::Other => IOError::Other(),
+        _ => IOError::Unsupported(),
     }
 }

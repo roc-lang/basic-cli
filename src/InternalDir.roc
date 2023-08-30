@@ -1,5 +1,8 @@
 interface InternalDir
-    exposes [ReadErr, DeleteErr, DirEntry]
+    exposes [
+        IOError,
+        DirEntry,
+    ]
     imports [FileMetadata.{ FileMetadata }, Path.{ Path }]
 
 DirEntry : {
@@ -8,34 +11,45 @@ DirEntry : {
     metadata : FileMetadata,
 }
 
-ReadErr : [
+IOError : [
     NotFound,
-    Interrupted,
-    InvalidFilename,
     PermissionDenied,
-    TooManySymlinks, # aka FilesystemLoop
-    TooManyHardlinks,
-    TimedOut,
-    StaleNetworkFileHandle,
+    ConnectionRefused,
+    ConnectionReset,
+    HostUnreachable,
+    NetworkUnreachable,
+    ConnectionAborted,
+    NotConnected,
+    AddrInUse,
+    AddrNotAvailable,
+    NetworkDown,
+    BrokenPipe,
+    AlreadyExists,
+    WouldBlock,
     NotADirectory,
-    OutOfMemory,
-    Unsupported,
-    Unrecognized I32 Str,
-]
-
-DeleteErr : [
-    NotFound,
-    Interrupted,
-    InvalidFilename,
-    PermissionDenied,
-    TooManySymlinks, # aka FilesystemLoop
-    TooManyHardlinks,
-    TimedOut,
-    StaleNetworkFileHandle,
-    NotADirectory,
-    ReadOnlyFilesystem,
+    IsADirectory,
     DirectoryNotEmpty,
-    OutOfMemory,
+    ReadOnlyFilesystem,
+    FilesystemLoop,
+    StaleNetworkFileHandle,
+    InvalidInput,
+    InvalidData,
+    TimedOut,
+    WriteZero,
+    StorageFull,
+    NotSeekable,
+    FilesystemQuotaExceeded,
+    FileTooLarge,
+    ResourceBusy,
+    ExecutableFileBusy,
+    Deadlock,
+    CrossesDevices,
+    TooManyLinks,
+    InvalidFilename,
+    ArgumentListTooLong,
+    Interrupted,
     Unsupported,
-    Unrecognized I32 Str,
+    UnexpectedEof,
+    OutOfMemory,
+    Other,
 ]

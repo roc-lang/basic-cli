@@ -61,8 +61,8 @@ defaultRequest = {
     timeout: NoTimeout,
 }
 
-## An HTTP header for configuring requests. 
-## 
+## An HTTP header for configuring requests.
+##
 ## See common headers [here](https://en.wikipedia.org/wiki/List_of_HTTP_header_fields).
 ##
 header : Str, Str -> Header
@@ -97,7 +97,7 @@ stringBody : [MimeType Str], Str -> Body
 stringBody = \mimeType, str ->
     Body mimeType (Str.toUtf8 str)
 
-# jsonBody : a -> Body | a has Encoding
+# jsonBody : a -> Body where a implements Encoding
 # jsonBody = \val ->
 #     Body (MimeType "application/json") (Encode.toBytes val Json.format)
 #
