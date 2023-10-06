@@ -5,6 +5,6 @@
 #     - Find the latest nightly release that matches RUST_VERSION here: https://github.com/oxalica/rust-overlay/tree/master/manifests/nightly/2022
 #     - update `channel = "nightly-OLD_DATE"` below
 
-channel = "1.64.0" # check ^^^ when changing this
+channel = "1.71.1" # check ^^^ when changing this
 # 
-# channel = "nightly-2022-08-06" # 1.64 nightly to be able to use unstable features
+# channel = "nightly-2023-05-28" # 1.71.0 nightly to be able to use unstable features
