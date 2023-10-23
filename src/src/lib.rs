@@ -211,8 +211,65 @@ pub unsafe extern "C" fn roc_memset(dst: *mut c_void, c: i32, n: usize) -> *mut 
     libc::memset(dst, c, n)
 }
 
+// Protect our functions from the vicious GC.
+// This is specifically a problem with static compilation and musl.
+// TODO: remove all of this when we switch to effect interpreter.
+pub fn init() {
+    let funcs: &[*const extern "C" fn()] = &[
+        roc_alloc as _,
+        roc_realloc as _,
+        roc_dealloc as _,
+        roc_panic as _,
+        roc_memset as _,
+        roc_fx_envDict as _,
+        roc_fx_args as _,
+        roc_fx_envVar as _,
+        roc_fx_setCwd as _,
+        roc_fx_exePath as _,
+        roc_fx_stdinLine as _,
+        roc_fx_stdinBytes as _,
+        roc_fx_stdoutLine as _,
+        roc_fx_stdoutWrite as _,
+        roc_fx_stderrLine as _,
+        roc_fx_stderrWrite as _,
+        roc_fx_ttyModeCanonical as _,
+        roc_fx_ttyModeRaw as _,
+        roc_fx_fileWriteUtf8 as _,
+        roc_fx_fileWriteBytes as _,
+        roc_fx_fileReadBytes as _,
+        roc_fx_fileDelete as _,
+        roc_fx_cwd as _,
+        roc_fx_posixTime as _,
+        roc_fx_sleepMillis as _,
+        roc_fx_dirList as _,
+        roc_fx_sendRequest as _,
+        roc_fx_tcpConnect as _,
+        roc_fx_tcpClose as _,
+        roc_fx_tcpReadUpTo as _,
+        roc_fx_tcpReadExactly as _,
+        roc_fx_tcpReadUntil as _,
+        roc_fx_tcpWrite as _,
+        roc_fx_commandStatus as _,
+        roc_fx_commandOutput as _,
+        roc_fx_dirCreate as _,
+        roc_fx_dirCreateAll as _,
+        roc_fx_dirDeleteEmpty as _,
+        roc_fx_dirDeleteAll as _,
+    ];
+    std::mem::forget(std::hint::black_box(funcs));
+    if cfg!(unix) {
+        let unix_funcs: &[*const extern "C" fn()] = &[
+            roc_getppid as _,
+            roc_mmap as _,
+            roc_shm_open as _,
+        ];
+        std::mem::forget(std::hint::black_box(unix_funcs));
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn rust_main() {
+    init();
     let size = unsafe { roc_main_size() } as usize;
     let layout = Layout::array::<u8>(size).unwrap();
 
