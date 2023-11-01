@@ -7,18 +7,23 @@ main : Task {} I32
 main =
     _ <- Task.await (Stdout.line "Enter a URL to fetch. It must contain a scheme like \"http://\" or \"https://\".")
 
-    url <- Task.await Stdin.line
+    input <- Task.await Stdin.line
 
-    request = {
-        method: Get,
-        headers: [],
-        url,
-        body: Http.emptyBody,
-        timeout: NoTimeout,
-    }
+    when input is
+        End -> Stdout.line "I didn't receive a URL"
+        Input url -> 
+            request = {
+                method: Get,
+                headers: [],
+                url,
+                body: Http.emptyBody,
+                timeout: NoTimeout,
+            }
 
-    output <- Http.send request
-        |> Task.onErr (\err -> err |> Http.errorToString |> Task.ok)
-        |> Task.await
+            output <- Http.send request
+                |> Task.onErr \err -> err 
+                    |> Http.errorToString 
+                    |> Task.ok
+                |> Task.await
 
-    Stdout.line output
+            Stdout.line output

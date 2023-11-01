@@ -9,4 +9,10 @@ main =
     firstName <- await Stdin.line
     _ <- await (Stdout.line "What's your last name?")
     lastName <- await Stdin.line
-    Stdout.line "Hi, \(firstName) \(lastName)! 👋"
+    Stdout.line "Hi, \(unwrap firstName) \(unwrap lastName)! 👋"
+
+unwrap : [Input Str, End] -> Str
+unwrap = \x ->
+    when x is
+        Input line -> line
+        End -> "EOF"
