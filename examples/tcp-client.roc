@@ -43,7 +43,12 @@ tick : Tcp.Stream -> Task.Task {} _
 tick = \stream ->
     _ <- Stdout.write "> " |> await
 
-    outMsg <- Stdin.line |> await
+    input <- Stdin.line |> await
+
+    outMsg = when input is
+        End -> "Received end of input (EOF)."
+        Input msg -> msg
+
     _ <- Tcp.writeUtf8 "\(outMsg)\n" stream |> await
 
     inMsg <- Tcp.readLine stream |> await

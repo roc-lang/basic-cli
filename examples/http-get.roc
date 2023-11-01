@@ -7,18 +7,25 @@ main : Task {} I32
 main =
     _ <- Task.await (Stdout.line "Enter a URL to fetch. It must contain a scheme like \"http://\" or \"https://\".")
 
-    url <- Task.await Stdin.line
+    input <- Task.await Stdin.line
 
-    request = {
-        method: Get,
-        headers: [],
-        url,
-        body: Http.emptyBody,
-        timeout: NoTimeout,
-    }
+    when input is
+        End ->
+            Stdout.line "I received end-of-input (EOF) instead of a URL."
 
-    output <- Http.send request
-        |> Task.onErr (\err -> err |> Http.errorToString |> Task.ok)
-        |> Task.await
+        Input url -> 
+            request = {
+                method: Get,
+                headers: [],
+                url,
+                body: Http.emptyBody,
+                timeout: NoTimeout,
+            }
 
-    Stdout.line output
+            output <- Http.send request
+                |> Task.onErr \err -> err 
+                    |> Http.errorToString 
+                    |> Task.ok
+                |> Task.await
+
+            Stdout.line output

@@ -258,11 +258,8 @@ pub fn init() {
     ];
     std::mem::forget(std::hint::black_box(funcs));
     if cfg!(unix) {
-        let unix_funcs: &[*const extern "C" fn()] = &[
-            roc_getppid as _,
-            roc_mmap as _,
-            roc_shm_open as _,
-        ];
+        let unix_funcs: &[*const extern "C" fn()] =
+            &[roc_getppid as _, roc_mmap as _, roc_shm_open as _];
         std::mem::forget(std::hint::black_box(unix_funcs));
     }
 }
@@ -350,11 +347,14 @@ pub extern "C" fn roc_fx_exePath(_roc_str: &RocStr) -> RocResult<RocList<u8>, ()
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdinLine() -> RocStr {
+pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, ()> { // () is used for EOF
     let stdin = std::io::stdin();
-    let line1 = stdin.lock().lines().next().unwrap().unwrap();
 
-    RocStr::from(line1.as_str())
+    match stdin.lock().lines().next() {
+        None => RocResult::err(()),
+        Some(Ok(str)) => RocResult::ok(RocStr::from(str.as_str())),
+        Some(Err(err)) => panic!("Failed to get next line from stdin:\n\t{:?}", err),
+    }
 }
 
 #[no_mangle]
@@ -516,10 +516,12 @@ pub extern "C" fn roc_fx_sleepMillis(milliseconds: u64) {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirList(_roc_path: &RocList<u8>) -> RocResult<RocList<RocList<u8>>, IOError> {
-    // match std::fs::read_dir(path_from_roc_path(roc_path)) {    
+pub extern "C" fn roc_fx_dirList(
+    _roc_path: &RocList<u8>,
+) -> RocResult<RocList<RocList<u8>>, IOError> {
+    // match std::fs::read_dir(path_from_roc_path(roc_path)) {
     //     Ok(dir_entries) => {
-            
+
     //         let entries = dir_entries
     //             .filter_map(|opt_dir_entry| match opt_dir_entry {
     //                 Ok(entry) => Some(os_str_to_roc_path(entry.path().into_os_string().as_os_str())),
