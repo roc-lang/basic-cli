@@ -1,0 +1,21 @@
+#!/usr/bin/expect
+
+# uncomment line below for debugging
+# exp_internal 1
+
+set timeout 7
+
+source ./ci/expect_scripts/shared-code.exp
+
+# Spawn the command to pipe in the data to the script B
+spawn bash -c "echo -e \"test\n123\" | ./examples/piping"
+
+# Expect the output
+expect -exact "I read 2 lines from stdin.\r\n" {
+    expect eof {
+        check_exit_and_segfault
+    }
+}
+
+puts stderr "\nError: output was different from expected value."
+exit 1

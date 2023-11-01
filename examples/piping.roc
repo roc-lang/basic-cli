@@ -7,7 +7,7 @@ app "piping"
     ]
     provides [main] to pf
 
-# Try piping in some text like this: `cat piping.roc | roc piping.roc`
+# Try piping in some text like this: `echo -e "test\n123" | roc piping.roc`
 main =
     lines <- Task.loop 0 count |> Task.await
     Stdout.line "I read \(Num.toStr lines) lines from stdin."
