@@ -7,10 +7,13 @@ set timeout 7
 
 spawn ./examples/args log -b 3 --num 81
 
+source ./ci/expect_scripts/shared-code.exp
+
 
 expect "4.000000000000001\r\n" {
-  expect eof
-  exit 0
+    expect eof {
+        check_exit_and_segfault
+    }
 }
 
 puts stderr "\nError: output was different from expected value."

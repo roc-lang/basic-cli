@@ -5,6 +5,8 @@
 
 set timeout 7
 
+source ./ci/expect_scripts/shared-code.exp
+
 spawn ./examples/stdin
 
 
@@ -13,8 +15,9 @@ expect -exact "Enter a series of number characters (0-9):\r\n"
 send -- "523\r"
 
 expect -exact "Got number 523\r\n" {
-    expect eof
-    exit 0
+    expect eof {
+        check_exit_and_segfault
+    }
 }
 
 puts stderr "\nError: output was different from expected value."

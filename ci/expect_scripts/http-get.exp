@@ -5,16 +5,18 @@
 
 set timeout 7
 
-spawn ./examples/http-get
+source ./ci/expect_scripts/shared-code.exp
 
+spawn ./examples/http-get
 
 expect -exact "Enter a URL to fetch. It must contain a scheme like \"http://\" or \"https://\".\r\n"
 
 send -- "http://www.example.com\r"
 
 expect "</html>\r\n" {
-  expect eof
-  exit 0
+    expect eof {
+        check_exit_and_segfault
+    }
 }
 
 puts stderr "\nError: output was different from expected value."
