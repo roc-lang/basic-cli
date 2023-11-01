@@ -5,11 +5,14 @@
 
 set timeout 7
 
+source ./ci/expect_scripts/shared-code.exp
+
 spawn ./examples/file-read
 
 expect "First line of README.md: # basic-cli\r\n" {
-  expect eof
-  exit 0
+    expect eof {
+        check_exit_and_segfault
+    }
 }
 
 puts stderr "\nError: output was different from expected value."

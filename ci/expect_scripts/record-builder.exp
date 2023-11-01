@@ -5,11 +5,14 @@
 
 set timeout 7
 
+source ./ci/expect_scripts/shared-code.exp
+
 spawn ./examples/record-builder
 
 expect "Apples: Granny Smith, Pink Lady, Golden Delicious\r\nOranges: Navel, Blood Orange, Clementine\r\n" {
-  expect eof
-  exit 0
+    expect eof {
+        check_exit_and_segfault
+    }
 }
 
 puts stderr "\nError: output was different from expected value."
