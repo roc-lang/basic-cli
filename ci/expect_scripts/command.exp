@@ -5,12 +5,15 @@
 
 set timeout 7
 
+source ./ci/expect_scripts/shared-code.exp
+
 spawn ./examples/command
 
 
 expect -exact "BAZ=DUCK\r\nFOO=BAR\r\nSuccess\r\nSTATUS Success\r\nSTDOUT '-rw-r--r--'\r\n\r\nSTDERR \r\n" {
-  expect eof
-  exit 0
+    expect eof {
+        check_exit_and_segfault
+    }
 }
 
 puts stderr "\nError: output was different from expected value."

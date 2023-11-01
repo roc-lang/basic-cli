@@ -5,12 +5,14 @@
 
 set timeout 7
 
+source ./ci/expect_scripts/shared-code.exp
+
 spawn ./examples/time
 
-
 expect -re "Completed in \[0-9]+ns\r\n" {
-    expect eof
-    exit 0
+    expect eof {
+        check_exit_and_segfault
+    }
 }
 
 puts stderr "\nError: output was different from expected value."
