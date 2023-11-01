@@ -7,12 +7,14 @@ main : Task {} I32
 main =
     _ <- await (Stdout.line "What's your first name?")
     firstName <- await Stdin.line
+    
     _ <- await (Stdout.line "What's your last name?")
     lastName <- await Stdin.line
+
     Stdout.line "Hi, \(unwrap firstName) \(unwrap lastName)! 👋"
 
 unwrap : [Input Str, End] -> Str
-unwrap = \x ->
-    when x is
+unwrap = \input ->
+    when input is
         Input line -> line
-        End -> "EOF"
+        End -> "Received end of input (EOF)."

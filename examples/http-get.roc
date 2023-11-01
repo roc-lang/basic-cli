@@ -10,7 +10,9 @@ main =
     input <- Task.await Stdin.line
 
     when input is
-        End -> Stdout.line "I didn't receive a URL"
+        End ->
+            Stdout.line "I received end-of-input (EOF) instead of a URL."
+
         Input url -> 
             request = {
                 method: Get,

@@ -347,13 +347,13 @@ pub extern "C" fn roc_fx_exePath(_roc_str: &RocStr) -> RocResult<RocList<u8>, ()
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, ()> {
+pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, ()> { // () is used for EOF
     let stdin = std::io::stdin();
 
     match stdin.lock().lines().next() {
         None => RocResult::err(()),
         Some(Ok(str)) => RocResult::ok(RocStr::from(str.as_str())),
-        Some(Err(_)) => panic!(),
+        Some(Err(err)) => panic!("Failed to get next line from stdin:\n\t{:?}", err),
     }
 }
 

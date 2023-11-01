@@ -15,7 +15,7 @@ tick = \{} ->
 
     when shout is
         Input s -> Stdout.line (echo s) |> Task.map Step
-        End -> Stdout.line (echo "eofffffffff") |> Task.map Done
+        End -> Stdout.line (echo "Received end of input (EOF).") |> Task.map Done
 
 echo : Str -> Str
 echo = \shout ->
