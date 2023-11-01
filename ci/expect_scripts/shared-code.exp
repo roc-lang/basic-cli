@@ -1,0 +1,16 @@
+proc check_exit_and_segfault {} {
+    set status [wait]
+    set exit_code [lindex $status 2]
+
+    if {$exit_code != 0} {
+        puts stderr "\nError: The roc executable exited with a non-zero exit code: $exit_code."
+        exit 1
+    } else {
+        if {[string first "SIGSEGV" $status] != -1} {
+            puts stderr "\nError: The roc executable experienced a segmentation fault."
+            exit 1
+        } else {
+            exit 0
+        }
+    }
+}
