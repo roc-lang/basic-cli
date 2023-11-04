@@ -3,6 +3,11 @@
 # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 set -euxo pipefail
 
+if [ -z "${EXAMPLES_DIR}" ]; then
+  echo "ERROR: The EXAMPLES_DIR environment variable is not set." >&2
+  exit 1
+fi
+
 # Install jq if it's not already available
 command -v jq &>/dev/null || sudo apt install -y jq
 
@@ -30,11 +35,8 @@ mv "$NIGHTLY_FOLDER" roc_nightly
 CLI_RELEASES_JSON=$(curl -s https://api.github.com/repos/roc-lang/basic-cli/releases)
 CLI_RELEASE_URL=$(echo $CLI_RELEASES_JSON | jq -r '.[0].assets | .[] | select(.name | test("\\.tar\\.br$")) | .browser_download_url')
 
-# Use EXAMPLES_DIR if set, otherwise use a default value
-examples_dir="${EXAMPLES_DIR:-./examples/}"
-
 # Use the latest basic-cli release as the platform for every example
-sed -i "s|../src/main.roc|$CLI_RELEASE_URL|g" $examples_dir/*.roc
+sed -i "s|../src/main.roc|$CLI_RELEASE_URL|g" $EXAMPLES_DIR/*.roc
 
 # Install required packages for tests if they're not already available
 command -v ncat &>/dev/null || sudo apt install -y ncat

@@ -7,7 +7,7 @@ set timeout 7
 
 source ./ci/expect_scripts/shared-code.exp
 
-spawn ./examples/http-get
+spawn $env(EXAMPLES_DIR)http-get
 
 expect -exact "Enter a URL to fetch. It must contain a scheme like \"http://\" or \"https://\".\r\n"
 

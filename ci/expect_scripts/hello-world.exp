@@ -7,7 +7,7 @@ set timeout 7
 
 source ./ci/expect_scripts/shared-code.exp
 
-spawn ./examples/hello-world
+spawn $env(EXAMPLES_DIR)hello-world
 
 expect "Hello, World!\r\n" {
     expect eof {

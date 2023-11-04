@@ -7,7 +7,7 @@ set timeout 7
 
 source ./ci/expect_scripts/shared-code.exp
 
-spawn ./examples/stdin
+spawn $env(EXAMPLES_DIR)stdin
 
 
 expect -exact "Enter a series of number characters (0-9):\r\n"

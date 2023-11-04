@@ -7,7 +7,7 @@ set timeout 7
 
 source ./ci/expect_scripts/shared-code.exp
 
-spawn ./examples/file-read
+spawn $env(EXAMPLES_DIR)file-read
 
 expect "First line of README.md: # basic-cli\r\n" {
     expect eof {

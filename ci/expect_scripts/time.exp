@@ -7,7 +7,7 @@ set timeout 7
 
 source ./ci/expect_scripts/shared-code.exp
 
-spawn ./examples/time
+spawn $env(EXAMPLES_DIR)time
 
 expect -re "Completed in \[0-9]+ns\r\n" {
     expect eof {

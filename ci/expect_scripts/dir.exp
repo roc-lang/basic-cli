@@ -7,7 +7,7 @@ set timeout 7
 
 source ./ci/expect_scripts/shared-code.exp
 
-spawn ./examples/dir
+spawn $env(EXAMPLES_DIR)dir
 
 expect "Success!\r\n" {
     expect eof {
