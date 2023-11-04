@@ -5,7 +5,8 @@ set -euxo pipefail
 
 roc='./roc_nightly/roc'
 
-examples_dir='./examples/'
+# Use EXAMPLES_DIR if set, otherwise use a default value
+examples_dir="${EXAMPLES_DIR:-./examples/}"
 
 # roc check
 for roc_file in $examples_dir*.roc; do
