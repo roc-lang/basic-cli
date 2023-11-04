@@ -7,7 +7,7 @@ set timeout 7
 
 source ./ci/expect_scripts/shared-code.exp
 
-spawn ./examples/command
+spawn $env(EXAMPLES_DIR)command
 
 
 expect -exact "BAZ=DUCK\r\nFOO=BAR\r\nSuccess\r\nSTATUS Success\r\nSTDOUT '-rw-r--r--'\r\n\r\nSTDERR \r\n" {

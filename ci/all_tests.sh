@@ -3,20 +3,22 @@
 # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 set -euxo pipefail
 
+if [ -z "${EXAMPLES_DIR}" ]; then
+  echo "ERROR: The EXAMPLES_DIR environment variable is not set." >&2
+  exit 1
+fi
+
 roc='./roc_nightly/roc'
 
-# Use EXAMPLES_DIR if set, otherwise use a default value
-examples_dir="${EXAMPLES_DIR:-./examples/}"
-
 # roc check
-for roc_file in $examples_dir*.roc; do
+for roc_file in $EXAMPLES_DIR*.roc; do
     $roc check $roc_file
 done
 
 # roc build
 architecture=$(uname -m)
 
-for roc_file in $examples_dir*.roc; do
+for roc_file in $EXAMPLES_DIR*.roc; do
     base_file=$(basename "$roc_file")
 
     # Skip argsBROKEN.roc
@@ -33,7 +35,7 @@ for roc_file in $examples_dir*.roc; do
 done
 
 # check output
-for roc_file in $examples_dir*.roc; do
+for roc_file in $EXAMPLES_DIR*.roc; do
     base_file=$(basename "$roc_file")
 
     # Skip argsBROKEN.roc

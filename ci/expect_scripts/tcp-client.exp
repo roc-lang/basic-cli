@@ -11,7 +11,7 @@ set cat_path [exec which cat]
 spawn ncat -e $cat_path -l 8085
 sleep 5
 
-spawn ./examples/tcp-client
+spawn $env(EXAMPLES_DIR)tcp-client
 
 
 expect "Connected!\r\n" {

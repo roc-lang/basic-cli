@@ -8,7 +8,7 @@ set timeout 7
 source ./ci/expect_scripts/shared-code.exp
 
 # Spawn the command to pipe in the data to the script B
-spawn bash -c "echo -e \"test\n123\" | ./examples/piping"
+spawn bash -c "echo -e \"test\n123\" | $env(EXAMPLES_DIR)/piping"
 
 # Expect the output
 expect -exact "I read 2 lines from stdin.\r\n" {

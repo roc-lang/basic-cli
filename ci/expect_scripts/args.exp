@@ -5,7 +5,7 @@
 
 set timeout 7
 
-spawn ./examples/args log -b 3 --num 81
+spawn $env(EXAMPLES_DIR)/args log -b 3 --num 81
 
 source ./ci/expect_scripts/shared-code.exp
 
