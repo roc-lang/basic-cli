@@ -22,15 +22,9 @@ jobs:
 
             - name: Build roc with nix
               run: nix build github:roc-lang/roc
-
-            - run: nix develop -c ./result/bin/roc version
-
-            - run: nix develop -c ROC=./result/bin/roc ./result/bin/roc version
-
-            - run: nix develop -c ROC=$(realpath ./result/bin/roc) ./result/bin/roc version
             
             #  the result folder is produced by the previous step
             - name: Run all tests 
-              run: nix develop -c ROC=$(realpath ./result/bin/roc) EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
+              run: nix develop -c 'export ROC=./result/bin/roc && export EXAMPLES_DIR=./examples/ && ./ci/all_tests.sh'
     
     
