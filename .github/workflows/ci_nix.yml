@@ -18,8 +18,16 @@ jobs:
               with:
                 nix_path: nixpkgs=channel:nixos-unstable
 
+            - uses: DeterminateSystems/magic-nix-cache-action@main
+
             - name: Build roc with nix
               run: nix build github:roc-lang/roc
+
+            - run: nix develop -c ./result/bin/roc version
+
+            - run: nix develop -c ROC=./result/bin/roc ./result/bin/roc version
+
+            - run: nix develop -c ROC=$(realpath ./result/bin/roc) ./result/bin/roc version
             
             #  the result folder is produced by the previous step
             - name: Run all tests 
