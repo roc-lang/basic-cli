@@ -1,0 +1,28 @@
+on: 
+    pull_request:
+    workflow_dispatch:
+
+# this cancels workflows currently in progress if you start a new one
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    build-and-test:
+        runs-on: [ubuntu-22.04]
+        steps:
+            - uses: actions/checkout@v3
+
+            # install nix
+            - uses: cachix/install-nix-action@v23
+              with:
+                nix_path: nixpkgs=channel:nixos-unstable
+
+            - name: Build roc with nix
+              run: nix build github:roc-lang/roc
+            
+            #  the result folder is produced by the previous step
+            - name: Run all tests 
+              run: nix develop -c ROC=$(realpath ./result/bin/roc) EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
+    
+    

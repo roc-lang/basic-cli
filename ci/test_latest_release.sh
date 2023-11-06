@@ -42,5 +42,5 @@ sed -i "s|../src/main.roc|$CLI_RELEASE_URL|g" $EXAMPLES_DIR/*.roc
 command -v ncat &>/dev/null || sudo apt install -y ncat
 command -v expect &>/dev/null || sudo apt install -y expect
 
-./ci/all_tests.sh
+ROC=./roc_nightly/roc ./ci/all_tests.sh
 
