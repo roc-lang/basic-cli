@@ -30,6 +30,7 @@
 
         linuxInputs = with pkgs;
           lib.optionals stdenv.isLinux [
+            valgrind
           ];
 
         darwinInputs = with pkgs;
@@ -41,6 +42,7 @@
           jq
           rust
           llvmPkgs.clang
+          llvmPkgs.lldb # for debugging
           expect
           nmap
           simple-http-server
