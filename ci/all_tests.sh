@@ -63,7 +63,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
 done
 
 # just build this until we fix it
-./roc_nightly/roc build ./ci/file-testBROKEN.roc
+$ROC build ./ci/file-testBROKEN.roc
 
 # test building website
 $ROC docs src/main.roc
