@@ -26,10 +26,10 @@ use dir_glue::IOError;
 
 extern "C" {
     #[link_name = "roc__mainForHost_1_exposed_generic"]
-    fn roc_main(output: *mut u8);
+    pub fn roc_main(output: *mut u8);
 
     #[link_name = "roc__mainForHost_1_exposed_size"]
-    fn roc_main_size() -> i64;
+    pub fn roc_main_size() -> i64;
 
     #[link_name = "roc__mainForHost_0_caller"]
     fn call_Fx(flags: *const u8, closure_data: *const u8, output: *mut u8);
@@ -271,7 +271,6 @@ pub extern "C" fn rust_main() {
     let layout = Layout::array::<u8>(size).unwrap();
 
     unsafe {
-        // TODO allocate on the stack if it's under a certain size
         let buffer = std::alloc::alloc(layout);
 
         roc_main(buffer);
@@ -282,7 +281,7 @@ pub extern "C" fn rust_main() {
     }
 }
 
-unsafe fn call_the_closure(closure_data_ptr: *const u8) -> u8 {
+pub unsafe fn call_the_closure(closure_data_ptr: *const u8) -> u8 {
     let size = size_Fx_result() as usize;
     let layout = Layout::array::<u8>(size).unwrap();
     let buffer = std::alloc::alloc(layout) as *mut u8;

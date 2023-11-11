@@ -1,3 +1,17 @@
+use core::alloc::Layout;
+
 fn main() {
-    host::rust_main();
+    host::init();
+    let size = unsafe { host::roc_main_size() } as usize;
+    let layout = Layout::array::<u8>(size).unwrap();
+
+    unsafe {
+        let buffer = std::alloc::alloc(layout);
+
+        host::roc_main(buffer);
+
+        host::call_the_closure(buffer);
+
+        std::alloc::dealloc(buffer, layout);
+    }
 }
