@@ -10,7 +10,10 @@ concurrency:
 jobs:
 
   build-and-test:
-    runs-on: [ubuntu-20.04]
+    runs-on: ${{ matrix.operating-system }}
+    strategy:
+      matrix:
+        operating-system: [ubuntu-20.04, ubuntu-22.04]
     steps:
       - uses: actions/checkout@v3
           
@@ -44,7 +47,7 @@ jobs:
       - run: expect -v
 
       # Run all tests 
-      - run: EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
+      - run: ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
 
 # TODO clippy, rustfmt, roc fmt check
 

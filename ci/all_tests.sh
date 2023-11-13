@@ -5,14 +5,23 @@ set -euxo pipefail
 
 if [ -z "${EXAMPLES_DIR}" ]; then
   echo "ERROR: The EXAMPLES_DIR environment variable is not set." >&2
+  
   exit 1
 fi
 
-roc='./roc_nightly/roc'
+if [ -z "${ROC}" ]; then
+  echo "ERROR: The ROC environment variable is not set.
+    Set it to something like:
+        /home/username/Downloads/roc_nightly-linux_x86_64-2023-10-30-cb00cfb/roc
+        or
+        /home/username/gitrepos/roc/target/build/release/roc" >&2
+
+  exit 1
+fi
 
 # roc check
 for roc_file in $EXAMPLES_DIR*.roc; do
-    $roc check $roc_file
+    $ROC check $roc_file
 done
 
 # roc build
@@ -31,7 +40,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         continue
     fi
 
-    $roc build $roc_file
+    $ROC build $roc_file
 done
 
 # check output
@@ -54,7 +63,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
 done
 
 # just build this until we fix it
-./roc_nightly/roc build ./ci/file-testBROKEN.roc
+$ROC build ./ci/file-testBROKEN.roc
 
 # test building website
-$roc docs src/main.roc
+$ROC docs src/main.roc

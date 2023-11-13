@@ -17,4 +17,4 @@ jobs:
         run: ./ci/get_latest_release_examples.sh
       
       - name: Run all tests with latest roc release + latest basic-cli release
-        run: EXAMPLES_DIR=./latest-release-examples/ ./ci/test_latest_release.sh
+        run: ROC=./roc_nightly/roc EXAMPLES_DIR=./latest-release-examples/ ./ci/test_latest_release.sh
