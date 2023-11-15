@@ -17,10 +17,10 @@ name = "host"
 path = "src/main.rs"
 
 [dependencies]
-roc_std = { git = "https://github.com/roc-lang/roc", rev = "e549c8b" }
-libc = "0.2"
-backtrace = "0.3"
-reqwest = { version="=0.11.20", default-features=false, features=["blocking", "rustls-tls"] }
-crossterm = "0.26.1"
+roc_std = { git = "https://github.com/roc-lang/roc", rev = "7b1f2d2ac1f6e0b7a283cfbe932318f37a0a6861" }
+libc = "=0.2.150"
+backtrace = "=0.3.69"
+reqwest = { version="=0.11.22", default-features=false, features=["blocking", "rustls-tls"] }
+crossterm = "=0.27.0"
 
 [workspace]
