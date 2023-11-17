@@ -564,7 +564,7 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &glue::Request) -> glue::Respo
     let https = HttpsConnectorBuilder::new()
         .with_native_roots()
         .https_or_http()
-        .enable_all_versions()
+        .enable_http1()
         .build();
 
     let client: Client<_, hyper::Body> = Client::builder().build(https);
