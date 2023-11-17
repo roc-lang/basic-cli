@@ -11,7 +11,7 @@ app "file-read"
 
 main : Task {} I32
 main =
-    fileName = "README.md"
+    fileName = "LICENSE"
     path = Path.fromStr fileName
     task =
         contents <- File.readUtf8 path |> await
