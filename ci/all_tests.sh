@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
-set -euxo pipefail
+set -exo pipefail
 
 if [ -z "${EXAMPLES_DIR}" ]; then
   echo "ERROR: The EXAMPLES_DIR environment variable is not set." >&2
