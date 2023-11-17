@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
-set -euxo pipefail
+set -exo pipefail
 
 if [ -z "${EXAMPLES_DIR}" ]; then
   echo "ERROR: The EXAMPLES_DIR environment variable is not set." >&2
@@ -40,7 +40,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         continue
     fi
 
-    $ROC build $roc_file
+    $ROC build $roc_file $ROC_BUILD_FLAGS
 done
 
 # check output
@@ -63,7 +63,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
 done
 
 # just build this until we fix it
-$ROC build ./ci/file-testBROKEN.roc
+$ROC build ./ci/file-testBROKEN.roc $ROC_BUILD_FLAGS
 
 # test building website
 $ROC docs src/main.roc
