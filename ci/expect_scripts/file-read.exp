@@ -9,7 +9,7 @@ source ./ci/expect_scripts/shared-code.exp
 
 spawn $env(EXAMPLES_DIR)file-read
 
-expect "First line of README.md: # basic-cli\r\n" {
+expect "First line of LICENSE: Copyright © 2022 Richard Feldman and subsequent basic-cli authors <github.com/roc-lang/basic-cli/graphs/contributors>\r\n" {
     expect eof {
         check_exit_and_segfault
     }
