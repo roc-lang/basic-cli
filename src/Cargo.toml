@@ -7,6 +7,11 @@ edition = "2021"
 
 links = "app"
 
+[profile.release]
+lto = true
+strip = "debuginfo"
+codegen-units = 1
+
 [lib]
 name = "host"
 path = "src/lib.rs"
@@ -20,7 +25,9 @@ path = "src/main.rs"
 roc_std = { git = "https://github.com/roc-lang/roc", rev = "7b1f2d2ac1f6e0b7a283cfbe932318f37a0a6861" }
 libc = "=0.2.150"
 backtrace = "=0.3.69"
-reqwest = { version="=0.11.20", default-features=false, features=["blocking", "rustls-tls"] }
+hyper = { version = "=0.14.27", default-features = false, features = ["http1", "client"] }
+hyper-rustls = { version = "=0.24.2", default-features = false, features = ["http1", "tls12", "native-tokio"]}
+tokio = { version = "=1.31.0", default-features = false}
 crossterm = "=0.27.0"
 
 [workspace]
