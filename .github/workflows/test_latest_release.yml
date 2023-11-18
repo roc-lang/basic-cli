@@ -13,8 +13,17 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Get the examples of the latest basic-cli release
-        run: ./ci/get_latest_release_examples.sh
+      - name: remove everything except ./ci/test_latest_release.sh
+        run: |
+          mkdir temp
+          mv ./ci/test_latest_release.sh temp
+          find . -mindepth 1 -maxdepth 1 ! -name 'temp' -exec rm -rf {} +
+
+      - name: Get all git files of the latest basic-cli release
+        run: ./ci/get_latest_release_git_files.sh
+
+      - name: Use ./ci/test_latest_release.sh of the latest git main
+        run: mv -f ./temp/test_latest_release.sh ./ci/
       
       - name: Run all tests with latest roc release + latest basic-cli release
-        run: ROC=./roc_nightly/roc EXAMPLES_DIR=./latest-release-examples/ ./ci/test_latest_release.sh
+        run: EXAMPLES_DIR=./examples/ ./ci/test_latest_release.sh
