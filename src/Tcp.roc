@@ -24,7 +24,7 @@ ConnectErr : InternalTcp.ConnectErr
 ## Represents errors that can occur when performing a [Task] with a [Stream].
 StreamErr : InternalTcp.StreamErr
 
-## Opens a TCP connection to a remote host and perform a [Task] with it. 
+## Opens a TCP connection to a remote host and perform a [Task] with it.
 ##
 ## ```
 ## # Connect to localhost:8080 and send "Hi from Roc!"
@@ -39,13 +39,13 @@ StreamErr : InternalTcp.StreamErr
 ##  - `localhost`
 ##  - `roc-lang.org`
 ##
-withConnect : Str, U16, (Stream -> Task {} err) -> Task {} [TcpConnectErr ConnectErr, TcpPerformErr err]
+withConnect : Str, U16, (Stream -> Task a err) -> Task a [TcpConnectErr ConnectErr, TcpPerformErr err]
 withConnect = \hostname, port, callback ->
     stream <- connect hostname port
         |> Task.mapErr TcpConnectErr
         |> Task.await
 
-    {} <- callback stream
+    result <- callback stream
         |> Task.mapErr TcpPerformErr
         |> Task.onErr
             (\err ->
@@ -55,6 +55,7 @@ withConnect = \hostname, port, callback ->
         |> Task.await
 
     close stream
+    |> Task.map \_ -> result
 
 connect : Str, U16 -> Task Stream ConnectErr
 connect = \host, port ->
@@ -65,7 +66,7 @@ connect = \host, port ->
 close : Stream -> Task {} *
 close = \stream ->
     Effect.tcpClose stream
-    |> Effect.map \{} -> Ok {}
+    |> Effect.map Ok
     |> InternalTask.fromEffect
 
 ## Read up to a number of bytes from the TCP stream.
@@ -84,7 +85,7 @@ readUpTo = \bytesToRead, stream ->
     |> InternalTask.fromEffect
     |> Task.mapErr TcpReadErr
 
-## Read an exact number of bytes or fail. 
+## Read an exact number of bytes or fail.
 ##
 ## ```
 ## File.readExactly 64 stream
@@ -109,7 +110,7 @@ readExactly = \bytesToRead, stream ->
         )
     |> InternalTask.fromEffect
 
-## Read until a delimiter or EOF is reached. 
+## Read until a delimiter or EOF is reached.
 ##
 ## ```
 ## # Read until null terminator
@@ -127,7 +128,7 @@ readUntil = \byte, stream ->
     |> InternalTask.fromEffect
     |> Task.mapErr TcpReadErr
 
-## Read until a newline or EOF is reached. 
+## Read until a newline or EOF is reached.
 ##
 ## ```
 ## # Read a line and then print it to `stdout`
@@ -219,4 +220,3 @@ streamErrToStr = \err ->
         Unrecognized code message ->
             codeStr = Num.toStr code
             "Unrecognized Error: \(codeStr) - \(message)"
-
