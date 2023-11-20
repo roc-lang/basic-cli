@@ -19,6 +19,6 @@ latestTag=$(git describe --tags $(git rev-list --tags --max-count=1))
 # Checkout the latest tag
 git checkout $latestTag
 
-mv ./examples ../../latest-release-examples
+mv * ../../
 
 cd ../..
