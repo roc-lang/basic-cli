@@ -21,7 +21,7 @@
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs { inherit system overlays; };
 
-        llvmPkgs = pkgs.llvmPackages_13;
+        llvmPkgs = pkgs.llvmPackages_16;
 
         # get current working directory
         cwd = builtins.toString ./.;
