@@ -516,28 +516,33 @@ pub extern "C" fn roc_fx_sleepMillis(milliseconds: u64) {
 
 #[no_mangle]
 pub extern "C" fn roc_fx_dirList(
-    _roc_path: &RocList<u8>,
+    roc_path: &RocList<u8>,
 ) -> RocResult<RocList<RocList<u8>>, IOError> {
-    // match std::fs::read_dir(path_from_roc_path(roc_path)) {
-    //     Ok(dir_entries) => {
+    let path = path_from_roc_path(roc_path);
 
-    //         let entries = dir_entries
-    //             .filter_map(|opt_dir_entry| match opt_dir_entry {
-    //                 Ok(entry) => Some(os_str_to_roc_path(entry.path().into_os_string().as_os_str())),
-    //                 Err(_) => None
-    //             })
-    //             .collect::<RocList<RocList<u8>>>();
+    if path.is_dir() {
+        let dir = match std::fs::read_dir(path) {
+            Ok(dir) => dir,
+            Err(err) => return RocResult::err(toRocIOError(err)),
+        };
 
-    //         dbg!(&entries);
+        let mut entries = Vec::new();
 
-    //         RocResult::ok(entries)
+        for entry in dir {
+            match entry {
+                Ok(entry) => {
+                    let path = entry.path();
+                    let str = path.as_os_str();
+                    entries.push(os_str_to_roc_path(str));
+                }
+                Err(_) => {} // TODO should we ignore errors reading directory??
+            }
+        }
 
-    //     },
-    //     Err(err) => RocResult::err(toRocIOError(err)),
-    // }
-
-    // TODO implement this function
-    RocResult::err(IOError::Other())
+        return roc_std::RocResult::ok(RocList::from_iter(entries));
+    } else {
+        return roc_std::RocResult::err(dir_glue::IOError::NotADirectory());
+    }
 }
 
 #[cfg(target_family = "unix")]

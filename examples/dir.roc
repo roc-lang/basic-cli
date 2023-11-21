@@ -27,6 +27,13 @@ main =
     expect
         createChildShouldSucceed == Ok {}
 
+    # List the contents of a directory
+    _ <- 
+        Path.fromStr "a"
+        |> Dir.list 
+        |> Task.onErr \_ -> crash "Failed to list directory"
+        |> Task.await
+
     # Try to create a directory without a parent
     createWithoutParentShouldFail <- Task.attempt (Dir.create (Path.fromStr "d/child"))
     expect
