@@ -2,7 +2,6 @@ app "dir"
     packages { pf: "../src/main.roc" }
     imports [
         pf.Stdout,
-        pf.Stderr,
         pf.Dir.{ MakeErr },
         pf.Path,
         pf.Task.{ Task },
@@ -13,47 +12,55 @@ main : Task {} I32
 main =
 
     # Create a directory
-    createShouldSucceed <- Task.attempt (Dir.create (Path.fromStr "e"))
-    expect
-        createShouldSucceed == Ok {}
+    {} <-
+        Path.fromStr "e"
+        |> Dir.create
+        |> Task.onErr \_ -> crash "Failed to create directory"
+        |> Task.await
 
     # Create a directory and its parents
-    createAllShouldSucceed <- Task.attempt (Dir.createAll (Path.fromStr "a/b/c/child"))
-    expect
-        createAllShouldSucceed == Ok {}
+    {} <-
+        Path.fromStr "a/b/c/child"
+        |> Dir.createAll
+        |> Task.onErr \_ -> crash "Failed to create directory and its parents"
+        |> Task.await
 
     # Create a child directory
-    createChildShouldSucceed <- Task.attempt (Dir.create (Path.fromStr "a/child"))
-    expect
-        createChildShouldSucceed == Ok {}
+    {} <-
+        Path.fromStr "a/child"
+        |> Dir.create
+        |> Task.onErr \_ -> crash "Failed to create child directory a/child"
+        |> Task.await
+
+    # List the contents of a directory
+    _ <-
+        Path.fromStr "a"
+        |> Dir.list
+        |> Task.onErr \_ -> crash "Failed to list directory"
+        |> Task.await
 
     # Try to create a directory without a parent
-    createWithoutParentShouldFail <- Task.attempt (Dir.create (Path.fromStr "d/child"))
-    expect
-        createWithoutParentShouldFail == Err NotFound
+    {} <-
+        Path.fromStr "d/child"
+        |> Dir.create
+        |> Task.attempt \result ->
+            when result is
+                Ok {} -> crash "Should return error creating directory without a parent"
+                Err _ -> Task.ok {}
+        |> Task.await
 
     # Delete an empty directory
     _ <-
-        Task.attempt (Dir.deleteEmpty (Path.fromStr "e")) \removeChild ->
-            when removeChild is
-                Ok _ -> Task.ok {}
-                Err err ->
-                    dbg
-                        err
-
-                    Stderr.line "Failed to delete an empty directory"
+        Path.fromStr "e"
+        |> Dir.deleteEmpty
+        |> Task.onErr \_ -> crash "Failed to delete an empty directory"
         |> Task.await
 
     # Delete all directories recursively
     _ <-
-        Task.attempt (Dir.deleteAll (Path.fromStr "a")) \removeChild ->
-            when removeChild is
-                Ok _ -> Task.ok {}
-                Err err ->
-                    dbg
-                        err
-
-                    Stderr.line "Failed to delete directory recursively"
+        Path.fromStr "a"
+        |> Dir.deleteAll
+        |> Task.onErr \_ -> crash "Failed to delete directory recursively"
         |> Task.await
 
     Stdout.line "Success!"

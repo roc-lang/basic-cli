@@ -1,10 +1,7 @@
 #![allow(non_snake_case)]
 
-mod command_glue;
 mod dir_glue;
-mod file_glue;
 mod glue;
-mod tcp_glue;
 
 use core::alloc::Layout;
 use core::ffi::c_void;
@@ -18,9 +15,6 @@ use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
 use std::net::TcpStream;
 use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-
-use file_glue::ReadErr;
-use file_glue::WriteErr;
 
 use dir_glue::IOError;
 
@@ -407,7 +401,7 @@ pub extern "C" fn roc_fx_ttyModeRaw() {
 // pub extern "C" fn roc_fx_fileWriteUtf8(
 //     roc_path: &RocList<u8>,
 //     roc_string: &RocStr,
-//     // ) -> RocResult<(), WriteErr> {
+//     // ) -> RocResult<(), roc_app::WriteErr> {
 // ) -> (u8, u8) {
 //     let _ = write_slice(roc_path, roc_string.as_str().as_bytes());
 
@@ -422,7 +416,7 @@ pub extern "C" fn roc_fx_ttyModeRaw() {
 pub extern "C" fn roc_fx_fileWriteUtf8(
     roc_path: &RocList<u8>,
     roc_str: &RocStr,
-) -> RocResult<(), WriteErr> {
+) -> RocResult<(), roc_app::WriteErr> {
     write_slice(roc_path, roc_str.as_str().as_bytes())
 }
 
@@ -430,11 +424,11 @@ pub extern "C" fn roc_fx_fileWriteUtf8(
 pub extern "C" fn roc_fx_fileWriteBytes(
     roc_path: &RocList<u8>,
     roc_bytes: &RocList<u8>,
-) -> RocResult<(), WriteErr> {
+) -> RocResult<(), roc_app::WriteErr> {
     write_slice(roc_path, roc_bytes.as_slice())
 }
 
-fn write_slice(roc_path: &RocList<u8>, bytes: &[u8]) -> RocResult<(), WriteErr> {
+fn write_slice(roc_path: &RocList<u8>, bytes: &[u8]) -> RocResult<(), roc_app::WriteErr> {
     match File::create(path_from_roc_path(roc_path)) {
         Ok(mut file) => match file.write_all(bytes) {
             Ok(()) => RocResult::ok(()),
@@ -466,7 +460,7 @@ fn path_from_roc_path(bytes: &RocList<u8>) -> Cow<'_, Path> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocList<u8>, ReadErr> {
+pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocList<u8>, roc_app::ReadErr> {
     let mut bytes = Vec::new();
 
     match File::open(path_from_roc_path(roc_path)) {
@@ -479,7 +473,7 @@ pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocL
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_fileDelete(roc_path: &RocList<u8>) -> RocResult<(), ReadErr> {
+pub extern "C" fn roc_fx_fileDelete(roc_path: &RocList<u8>) -> RocResult<(), roc_app::ReadErr> {
     match std::fs::remove_file(path_from_roc_path(roc_path)) {
         Ok(()) => RocResult::ok(()),
         Err(err) => RocResult::err(toRocReadError(err)),
@@ -516,28 +510,33 @@ pub extern "C" fn roc_fx_sleepMillis(milliseconds: u64) {
 
 #[no_mangle]
 pub extern "C" fn roc_fx_dirList(
-    _roc_path: &RocList<u8>,
+    roc_path: &RocList<u8>,
 ) -> RocResult<RocList<RocList<u8>>, IOError> {
-    // match std::fs::read_dir(path_from_roc_path(roc_path)) {
-    //     Ok(dir_entries) => {
+    let path = path_from_roc_path(roc_path);
 
-    //         let entries = dir_entries
-    //             .filter_map(|opt_dir_entry| match opt_dir_entry {
-    //                 Ok(entry) => Some(os_str_to_roc_path(entry.path().into_os_string().as_os_str())),
-    //                 Err(_) => None
-    //             })
-    //             .collect::<RocList<RocList<u8>>>();
+    if path.is_dir() {
+        let dir = match std::fs::read_dir(path) {
+            Ok(dir) => dir,
+            Err(err) => return RocResult::err(toRocIOError(err)),
+        };
 
-    //         dbg!(&entries);
+        let mut entries = Vec::new();
 
-    //         RocResult::ok(entries)
+        for entry in dir {
+            match entry {
+                Ok(entry) => {
+                    let path = entry.path();
+                    let str = path.as_os_str();
+                    entries.push(os_str_to_roc_path(str));
+                }
+                Err(_) => {} // TODO should we ignore errors reading directory??
+            }
+        }
 
-    //     },
-    //     Err(err) => RocResult::err(toRocIOError(err)),
-    // }
-
-    // TODO implement this function
-    RocResult::err(IOError::Other())
+        return roc_std::RocResult::ok(RocList::from_iter(entries));
+    } else {
+        return roc_std::RocResult::err(dir_glue::IOError::NotADirectory());
+    }
 }
 
 #[cfg(target_family = "unix")]
@@ -672,17 +671,17 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &glue::Request) -> glue::Respo
     }
 }
 
-fn toRocWriteError(err: std::io::Error) -> file_glue::WriteErr {
+fn toRocWriteError(err: std::io::Error) -> roc_app::WriteErr {
     match err.kind() {
-        ErrorKind::NotFound => file_glue::WriteErr::NotFound,
-        ErrorKind::AlreadyExists => file_glue::WriteErr::AlreadyExists,
-        ErrorKind::Interrupted => file_glue::WriteErr::Interrupted,
-        ErrorKind::OutOfMemory => file_glue::WriteErr::OutOfMemory,
-        ErrorKind::PermissionDenied => file_glue::WriteErr::PermissionDenied,
-        ErrorKind::TimedOut => file_glue::WriteErr::TimedOut,
+        ErrorKind::NotFound => roc_app::WriteErr::NotFound(),
+        ErrorKind::AlreadyExists => roc_app::WriteErr::AlreadyExists(),
+        ErrorKind::Interrupted => roc_app::WriteErr::Interrupted(),
+        ErrorKind::OutOfMemory => roc_app::WriteErr::OutOfMemory(),
+        ErrorKind::PermissionDenied => roc_app::WriteErr::PermissionDenied(),
+        ErrorKind::TimedOut => roc_app::WriteErr::TimedOut(),
         // TODO investigate support the following IO errors may need to update API
-        ErrorKind::WriteZero => file_glue::WriteErr::WriteZero,
-        _ => file_glue::WriteErr::Unsupported,
+        ErrorKind::WriteZero => roc_app::WriteErr::WriteZero(),
+        _ => roc_app::WriteErr::Unsupported(),
         // TODO investigate support the following IO errors
         // std::io::ErrorKind::FileTooLarge <- unstable language feature
         // std::io::ErrorKind::ExecutableFileBusy <- unstable language feature
@@ -696,33 +695,33 @@ fn toRocWriteError(err: std::io::Error) -> file_glue::WriteErr {
     }
 }
 
-fn toRocReadError(err: std::io::Error) -> file_glue::ReadErr {
+fn toRocReadError(err: std::io::Error) -> roc_app::ReadErr {
     match err.kind() {
-        ErrorKind::Interrupted => file_glue::ReadErr::Interrupted,
-        ErrorKind::NotFound => file_glue::ReadErr::NotFound,
-        ErrorKind::OutOfMemory => file_glue::ReadErr::OutOfMemory,
-        ErrorKind::PermissionDenied => file_glue::ReadErr::PermissionDenied,
-        ErrorKind::TimedOut => file_glue::ReadErr::TimedOut,
+        ErrorKind::Interrupted => roc_app::ReadErr::Interrupted(),
+        ErrorKind::NotFound => roc_app::ReadErr::NotFound(),
+        ErrorKind::OutOfMemory => roc_app::ReadErr::OutOfMemory(),
+        ErrorKind::PermissionDenied => roc_app::ReadErr::PermissionDenied(),
+        ErrorKind::TimedOut => roc_app::ReadErr::TimedOut(),
         // TODO investigate support the following IO errors may need to update API
-        // std::io::ErrorKind:: => file_glue::ReadErr::TooManyHardlinks,
-        // std::io::ErrorKind:: => file_glue::ReadErr::TooManySymlinks,
-        // std::io::ErrorKind:: => file_glue::ReadErr::Unrecognized,
+        // std::io::ErrorKind:: => roc_app::ReadErr::TooManyHardlinks,
+        // std::io::ErrorKind:: => roc_app::ReadErr::TooManySymlinks,
+        // std::io::ErrorKind:: => roc_app::ReadErr::Unrecognized,
         // std::io::ErrorKind::StaleNetworkFileHandle <- unstable language feature
         // std::io::ErrorKind::InvalidFilename <- unstable language feature
-        _ => file_glue::ReadErr::Unsupported,
+        _ => roc_app::ReadErr::Unsupported(),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpConnect(host: &RocStr, port: u16) -> tcp_glue::ConnectResult {
+pub extern "C" fn roc_fx_tcpConnect(host: &RocStr, port: u16) -> roc_app::ConnectResult {
     match TcpStream::connect((host.as_str(), port)) {
         Ok(stream) => {
             let reader = BufReader::new(stream);
             let ptr = Box::into_raw(Box::new(reader)) as u64;
 
-            tcp_glue::ConnectResult::Connected(ptr)
+            roc_app::ConnectResult::Connected(ptr)
         }
-        Err(err) => tcp_glue::ConnectResult::Error(to_tcp_connect_err(err)),
+        Err(err) => roc_app::ConnectResult::Error(to_tcp_connect_err(err)),
     }
 }
 
@@ -737,7 +736,7 @@ pub extern "C" fn roc_fx_tcpClose(stream_ptr: *mut BufReader<TcpStream>) {
 pub extern "C" fn roc_fx_tcpReadUpTo(
     bytes_to_read: usize,
     stream_ptr: *mut BufReader<TcpStream>,
-) -> tcp_glue::ReadResult {
+) -> roc_app::ReadResult {
     let reader = unsafe { &mut *stream_ptr };
 
     let mut chunk = reader.take(bytes_to_read as u64);
@@ -748,10 +747,10 @@ pub extern "C" fn roc_fx_tcpReadUpTo(
             reader.consume(received.len());
 
             let rocList = RocList::from(&received[..]);
-            tcp_glue::ReadResult::Read(rocList)
+            roc_app::ReadResult::Read(rocList)
         }
 
-        Err(err) => tcp_glue::ReadResult::Error(to_tcp_stream_err(err)),
+        Err(err) => roc_app::ReadResult::Error(to_tcp_stream_err(err)),
     }
 }
 
@@ -759,7 +758,7 @@ pub extern "C" fn roc_fx_tcpReadUpTo(
 pub extern "C" fn roc_fx_tcpReadExactly(
     bytes_to_read: usize,
     stream_ptr: *mut BufReader<TcpStream>,
-) -> tcp_glue::ReadExactlyResult {
+) -> roc_app::ReadExactlyResult {
     let reader = unsafe { &mut *stream_ptr };
 
     let mut buffer = Vec::with_capacity(bytes_to_read);
@@ -768,14 +767,14 @@ pub extern "C" fn roc_fx_tcpReadExactly(
     match chunk.read_to_end(&mut buffer) {
         Ok(read) => {
             if read < bytes_to_read {
-                tcp_glue::ReadExactlyResult::UnexpectedEOF
+                roc_app::ReadExactlyResult::UnexpectedEOF()
             } else {
                 let rocList = RocList::from(&buffer[..]);
-                tcp_glue::ReadExactlyResult::Read(rocList)
+                roc_app::ReadExactlyResult::Read(rocList)
             }
         }
 
-        Err(err) => tcp_glue::ReadExactlyResult::Error(to_tcp_stream_err(err)),
+        Err(err) => roc_app::ReadExactlyResult::Error(to_tcp_stream_err(err)),
     }
 }
 
@@ -783,7 +782,7 @@ pub extern "C" fn roc_fx_tcpReadExactly(
 pub extern "C" fn roc_fx_tcpReadUntil(
     byte: u8,
     stream_ptr: *mut BufReader<TcpStream>,
-) -> tcp_glue::ReadResult {
+) -> roc_app::ReadResult {
     let reader = unsafe { &mut *stream_ptr };
 
     let mut buffer = vec![];
@@ -791,10 +790,10 @@ pub extern "C" fn roc_fx_tcpReadUntil(
     match reader.read_until(byte, &mut buffer) {
         Ok(_) => {
             let rocList = RocList::from(&buffer[..]);
-            tcp_glue::ReadResult::Read(rocList)
+            roc_app::ReadResult::Read(rocList)
         }
 
-        Err(err) => tcp_glue::ReadResult::Error(to_tcp_stream_err(err)),
+        Err(err) => roc_app::ReadResult::Error(to_tcp_stream_err(err)),
     }
 }
 
@@ -802,53 +801,53 @@ pub extern "C" fn roc_fx_tcpReadUntil(
 pub extern "C" fn roc_fx_tcpWrite(
     msg: &RocList<u8>,
     stream_ptr: *mut BufReader<TcpStream>,
-) -> tcp_glue::WriteResult {
+) -> roc_app::WriteResult {
     let reader = unsafe { &mut *stream_ptr };
     let mut stream = reader.get_ref();
 
     match stream.write_all(msg.as_slice()) {
-        Ok(_) => tcp_glue::WriteResult::Wrote,
-        Err(err) => tcp_glue::WriteResult::Error(to_tcp_stream_err(err)),
+        Ok(_) => roc_app::WriteResult::Wrote(),
+        Err(err) => roc_app::WriteResult::Error(to_tcp_stream_err(err)),
     }
 }
 
-fn to_tcp_connect_err(err: std::io::Error) -> tcp_glue::ConnectErr {
+fn to_tcp_connect_err(err: std::io::Error) -> roc_app::ConnectErr {
     let kind = err.kind();
     match kind {
-        ErrorKind::PermissionDenied => tcp_glue::ConnectErr::PermissionDenied,
-        ErrorKind::AddrInUse => tcp_glue::ConnectErr::AddrInUse,
-        ErrorKind::AddrNotAvailable => tcp_glue::ConnectErr::AddrNotAvailable,
-        ErrorKind::ConnectionRefused => tcp_glue::ConnectErr::ConnectionRefused,
-        ErrorKind::Interrupted => tcp_glue::ConnectErr::Interrupted,
-        ErrorKind::TimedOut => tcp_glue::ConnectErr::TimedOut,
-        ErrorKind::Unsupported => tcp_glue::ConnectErr::Unsupported,
-        _ => tcp_glue::ConnectErr::Unrecognized(
-            RocStr::from(kind.to_string().borrow()),
-            err.raw_os_error().unwrap_or_default(),
-        ),
+        ErrorKind::PermissionDenied => roc_app::ConnectErr::PermissionDenied(),
+        ErrorKind::AddrInUse => roc_app::ConnectErr::AddrInUse(),
+        ErrorKind::AddrNotAvailable => roc_app::ConnectErr::AddrNotAvailable(),
+        ErrorKind::ConnectionRefused => roc_app::ConnectErr::ConnectionRefused(),
+        ErrorKind::Interrupted => roc_app::ConnectErr::Interrupted(),
+        ErrorKind::TimedOut => roc_app::ConnectErr::TimedOut(),
+        ErrorKind::Unsupported => roc_app::ConnectErr::Unsupported(),
+        _ => roc_app::ConnectErr::Unrecognized(roc_app::ReadErr_Unrecognized {
+            f1: RocStr::from(kind.to_string().borrow()),
+            f0: err.raw_os_error().unwrap_or_default(),
+        }),
     }
 }
 
-fn to_tcp_stream_err(err: std::io::Error) -> tcp_glue::StreamErr {
+fn to_tcp_stream_err(err: std::io::Error) -> roc_app::StreamErr {
     let kind = err.kind();
     match kind {
-        ErrorKind::PermissionDenied => tcp_glue::StreamErr::PermissionDenied,
-        ErrorKind::ConnectionRefused => tcp_glue::StreamErr::ConnectionRefused,
-        ErrorKind::ConnectionReset => tcp_glue::StreamErr::ConnectionReset,
-        ErrorKind::Interrupted => tcp_glue::StreamErr::Interrupted,
-        ErrorKind::OutOfMemory => tcp_glue::StreamErr::OutOfMemory,
-        ErrorKind::BrokenPipe => tcp_glue::StreamErr::BrokenPipe,
-        _ => tcp_glue::StreamErr::Unrecognized(
-            RocStr::from(kind.to_string().borrow()),
-            err.raw_os_error().unwrap_or_default(),
-        ),
+        ErrorKind::PermissionDenied => roc_app::StreamErr::PermissionDenied(),
+        ErrorKind::ConnectionRefused => roc_app::StreamErr::ConnectionRefused(),
+        ErrorKind::ConnectionReset => roc_app::StreamErr::ConnectionReset(),
+        ErrorKind::Interrupted => roc_app::StreamErr::Interrupted(),
+        ErrorKind::OutOfMemory => roc_app::StreamErr::OutOfMemory(),
+        ErrorKind::BrokenPipe => roc_app::StreamErr::BrokenPipe(),
+        _ => roc_app::StreamErr::Unrecognized(roc_app::ReadErr_Unrecognized {
+            f1: RocStr::from(kind.to_string().borrow()),
+            f0: err.raw_os_error().unwrap_or_default(),
+        }),
     }
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_commandStatus(
-    roc_cmd: &command_glue::Command,
-) -> RocResult<(), command_glue::CommandErr> {
+    roc_cmd: &roc_app::Command,
+) -> RocResult<(), roc_app::CommandErr> {
     let args = roc_cmd.args.into_iter().map(|arg| arg.as_str());
     let num_envs = roc_cmd.envs.len() / 2;
     let flat_envs = &roc_cmd.envs;
@@ -885,12 +884,12 @@ pub extern "C" fn roc_fx_commandStatus(
             } else {
                 match status.code() {
                     Some(code) => {
-                        let error = command_glue::CommandErr::ExitCode(code);
+                        let error = roc_app::CommandErr::ExitCode(code);
                         RocResult::err(error)
                     }
                     None => {
                         // If no exit code is returned, the process was terminated by a signal.
-                        let error = command_glue::CommandErr::KilledBySignal();
+                        let error = roc_app::CommandErr::KilledBySignal();
                         RocResult::err(error)
                     }
                 }
@@ -898,14 +897,14 @@ pub extern "C" fn roc_fx_commandStatus(
         }
         Err(err) => {
             let str = RocStr::from(err.to_string().borrow());
-            let error = command_glue::CommandErr::IOError(str);
+            let error = roc_app::CommandErr::IOError(str);
             RocResult::err(error)
         }
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_commandOutput(roc_cmd: &command_glue::Command) -> command_glue::Output {
+pub extern "C" fn roc_fx_commandOutput(roc_cmd: &roc_app::Command) -> roc_app::Output {
     let args = roc_cmd.args.into_iter().map(|arg| arg.as_str());
     let num_envs = roc_cmd.envs.len() / 2;
     let flat_envs = &roc_cmd.envs;
@@ -943,25 +942,25 @@ pub extern "C" fn roc_fx_commandOutput(roc_cmd: &command_glue::Command) -> comma
             } else {
                 match output.status.code() {
                     Some(code) => {
-                        let error = command_glue::CommandErr::ExitCode(code);
+                        let error = roc_app::CommandErr::ExitCode(code);
                         RocResult::err(error)
                     }
                     None => {
                         // If no exit code is returned, the process was terminated by a signal.
-                        let error = command_glue::CommandErr::KilledBySignal();
+                        let error = roc_app::CommandErr::KilledBySignal();
                         RocResult::err(error)
                     }
                 }
             };
 
-            command_glue::Output {
+            roc_app::Output {
                 status: status,
                 stdout: RocList::from(&output.stdout[..]),
                 stderr: RocList::from(&output.stderr[..]),
             }
         }
-        Err(err) => command_glue::Output {
-            status: RocResult::err(command_glue::CommandErr::IOError(RocStr::from(
+        Err(err) => roc_app::Output {
+            status: RocResult::err(roc_app::CommandErr::IOError(RocStr::from(
                 err.to_string().borrow(),
             ))),
             stdout: RocList::empty(),
