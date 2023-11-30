@@ -82,6 +82,11 @@ pub unsafe extern "C" fn roc_panic(msg: &RocStr, tag_id: u32) {
     }
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn roc_dbg(loc: &RocStr, msg: &RocStr) {
+    eprintln!("[{}] {}", loc, msg);
+}
+
 #[cfg(unix)]
 #[no_mangle]
 pub unsafe extern "C" fn roc_getppid() -> libc::pid_t {
@@ -220,6 +225,7 @@ pub fn init() {
         roc_realloc as _,
         roc_dealloc as _,
         roc_panic as _,
+        roc_dbg as _,
         roc_memset as _,
         roc_fx_envDict as _,
         roc_fx_args as _,
