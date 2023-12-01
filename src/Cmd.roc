@@ -20,7 +20,7 @@ interface Cmd
     ]
 
 ## Represents a command to be executed in a child process.
-Cmd := InternalCommand.Command
+Cmd := InternalCommand.Command implements [Inspect]
 
 ## Errors from executing a command.
 Error : InternalCommand.CommandErr
@@ -125,16 +125,14 @@ output : Cmd -> Task Output (Output, Error)
 output = \@Cmd cmd ->
     Effect.commandOutput (Box.box cmd)
     |> Effect.map \internalOutput ->
-        out = 
-            {
-                stdout: internalOutput.stdout,
-                stderr: internalOutput.stderr,
-            }
+        out = {
+            stdout: internalOutput.stdout,
+            stderr: internalOutput.stderr,
+        }
 
         when internalOutput.status is
             Ok {} -> Ok (out)
             Err err -> Err (out, err)
-        
     |> InternalTask.fromEffect
 
 ## Execute command and inheriting stdin, stdout and stderr from parent
