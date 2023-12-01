@@ -1,7 +1,7 @@
 interface Stdin
     exposes [
-        line, 
-        bytes, 
+        line,
+        bytes,
     ]
     imports [Effect, Task.{ Task }, InternalTask]
 
@@ -14,7 +14,7 @@ interface Stdin
 line : Task [Input Str, End] *
 line =
     Effect.stdinLine
-    |> Effect.map \r -> 
+    |> Effect.map \r ->
         when r is
             Ok str -> Ok (Input str)
             Err _ -> Ok End
@@ -22,7 +22,7 @@ line =
 
 ## Read bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
 ##
-## > This is typically used in combintation with [Tty.enableRawMode], 
+## > This is typically used in combintation with [Tty.enableRawMode],
 ## which disables defaults terminal bevahiour and allows reading input
 ## without buffering until Enter key is pressed.
 bytes : Task (List U8) *

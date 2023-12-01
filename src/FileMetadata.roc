@@ -12,6 +12,7 @@ FileMetadata := {
     isReadonly : Bool,
     mode : [Unix U32, NonUnix],
 }
+    implements [Inspect]
 
 ## Returns the number of bytes in the associated file.
 bytes : FileMetadata -> U64

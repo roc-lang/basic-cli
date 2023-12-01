@@ -19,7 +19,7 @@ interface Url
 ##
 ## It could be an absolute address, such as `https://roc-lang.org/authors` or
 ## a relative address, such as `/authors`. You can create one using [Url.fromStr].
-Url := Str
+Url := Str implements [Inspect]
 
 ## Reserve the given number of bytes as extra capacity. This can avoid reallocation
 ## when calling multiple functions that increase the length of the URL.
@@ -77,7 +77,7 @@ toStr = \@Url str -> str
 
 ## [Percent-encodes](https://en.wikipedia.org/wiki/Percent-encoding) a
 ## [path component](https://en.wikipedia.org/wiki/Uniform_Resource_Identifier#Syntax)
-## and appends to the end of the URL's path. 
+## and appends to the end of the URL's path.
 ##
 ## This will be appended before any queries and fragments. If the given path string begins with `/` and the URL already ends with `/`, one
 ## will be ignored. This avoids turning a single slash into a double slash. If either the given URL or the given string is empty, no `/` will be added.
@@ -228,7 +228,7 @@ percentEncode = \input ->
 
                     Str.concat output suffix
 
-## Adds a [Str] query parameter to the end of the [Url]. 
+## Adds a [Str] query parameter to the end of the [Url].
 ##
 ## The key and value both get [percent-encoded](https://en.wikipedia.org/wiki/Percent-encoding).
 ##
@@ -280,10 +280,10 @@ appendParam = \@Url urlStr, key, value ->
     |> @Url
 
 ## Replaces the URL's [query](https://en.wikipedia.org/wiki/URL#Syntax)—the part
-## after the `?`, if it has one, but before any `#` it might have. 
+## after the `?`, if it has one, but before any `#` it might have.
 ##
 ## Passing `""` removes the `?` (if there was one).
-## 
+##
 ## ```
 ## # Gives https://example.com?newQuery=thisRightHere#stuff
 ## Url.fromStr "https://example.com?key1=val1&key2=val2#stuff"
@@ -327,7 +327,7 @@ withQuery = \@Url urlStr, queryStr ->
         |> @Url
 
 ## Returns the URL's [query](https://en.wikipedia.org/wiki/URL#Syntax)—the part after
-## the `?`, if it has one, but before any `#` it might have. 
+## the `?`, if it has one, but before any `#` it might have.
 ##
 ## Returns `""` if the URL has no query.
 ##
@@ -372,7 +372,7 @@ hasQuery = \@Url urlStr ->
     |> List.contains (Num.toU8 '?')
 
 ## Returns the URL's [fragment](https://en.wikipedia.org/wiki/URL#Syntax)—the part after
-## the `#`, if it has one. 
+## the `#`, if it has one.
 ##
 ## Returns `""` if the URL has no fragment.
 ##
@@ -392,7 +392,7 @@ fragment = \@Url urlStr ->
         Ok { after } -> after
         Err NotFound -> ""
 
-## Replaces the URL's [fragment](https://en.wikipedia.org/wiki/URL#Syntax). 
+## Replaces the URL's [fragment](https://en.wikipedia.org/wiki/URL#Syntax).
 ##
 ## If the URL didn't have a fragment, adds one. Passing `""` removes the fragment.
 ##
