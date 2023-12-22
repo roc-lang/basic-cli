@@ -1,6 +1,6 @@
 app "record-builder"
     packages {
-        pf: "../src/main.roc",
+        pf: "../platform/main.roc",
     }
     imports [
         pf.Stdout,

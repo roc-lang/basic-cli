@@ -1,5 +1,5 @@
 app "dir"
-    packages { pf: "../src/main.roc" }
+    packages { pf: "../platform/main.roc" }
     imports [
         pf.Stdout,
         pf.Stderr,
