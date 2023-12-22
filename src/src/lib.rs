@@ -83,8 +83,8 @@ pub unsafe extern "C" fn roc_panic(msg: &RocStr, tag_id: u32) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn roc_dbg(loc: &RocStr, msg: &RocStr) {
-    eprintln!("[{}] {}", loc, msg);
+pub unsafe extern "C" fn roc_dbg(loc: &RocStr, msg: &RocStr, src: &RocStr) {
+    eprintln!("[{}] {} = {}", loc, src, msg);
 }
 
 #[cfg(unix)]
