@@ -1,5 +1,5 @@
 app "env"
-    packages { pf: "../src/main.roc" }
+    packages { pf: "../platform/main.roc" }
     imports [pf.Stdout, pf.Stderr, pf.Env, pf.Task.{ Task }]
     provides [main] to pf
 

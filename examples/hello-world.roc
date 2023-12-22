@@ -1,5 +1,5 @@
 app "hello-world"
-    packages { pf: "../src/main.roc" }
+    packages { pf: "../platform/main.roc" }
     imports [pf.Stdout, pf.Task.{ Task }]
     provides [main] to pf
 

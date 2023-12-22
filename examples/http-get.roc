@@ -1,5 +1,5 @@
 app "http-get"
-    packages { pf: "../src/main.roc" }
+    packages { pf: "../platform/main.roc" }
     imports [pf.Http, pf.Task.{ Task }, pf.Stdin, pf.Stdout]
     provides [main] to pf
 
