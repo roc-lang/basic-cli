@@ -675,7 +675,7 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &glue::Request) -> glue::Respo
         }
     };
     match time_limit {
-        Some(limit) => match rt.block_on(tokio::time::timeout(limit, http_fn)) {
+        Some(limit) => match rt.block_on(async { tokio::time::timeout(limit, http_fn).await}) {
             Ok(res) => res,
             Err(_) => glue::Response::Timeout,
         },

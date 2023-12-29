@@ -10,7 +10,7 @@ main =
         headers: [],
         url: "http://www.example.com",
         body: Http.emptyBody,
-        timeout: NoTimeout,
+        timeout: TimeoutMilliseconds 5000,
     }
 
     output <- Http.send request
