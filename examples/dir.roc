@@ -1,5 +1,5 @@
 app "dir"
-    packages { pf: "../src/main.roc" }
+    packages { pf: "../platform/main.roc" }
     imports [
         pf.Stdout,
         pf.Dir.{ MakeErr },
@@ -38,6 +38,17 @@ main =
         |> Dir.list
         |> Task.onErr \_ -> crash "Failed to list directory"
         |> Task.await
+
+    # List the contents of a directory
+    paths <-
+        Path.fromStr "a"
+        |> Dir.list
+        |> Task.onErr \_ -> crash "Failed to list directory"
+        |> Task.await
+
+    # Check the contents of the directory
+    expect
+        (List.map paths Path.display) == ["b", "child"]
 
     # Try to create a directory without a parent
     {} <-

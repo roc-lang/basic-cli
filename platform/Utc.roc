@@ -12,7 +12,7 @@ interface Utc
     imports [Effect, InternalTask, Task.{ Task }]
 
 ## Stores a timestamp as nanoseconds since UNIX EPOCH
-Utc := U128
+Utc := U128 implements [Inspect]
 
 ## Duration since UNIX EPOCH
 now : Task Utc *

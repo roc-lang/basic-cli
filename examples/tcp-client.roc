@@ -1,5 +1,5 @@
 app "tcp-client"
-    packages { pf: "../src/main.roc" }
+    packages { pf: "../platform/main.roc" }
     imports [pf.Tcp, pf.Task.{ Task, await }, pf.Stdout, pf.Stdin, pf.Stderr]
     provides [main] to pf
 

@@ -10,7 +10,7 @@ interface InternalPath
     ]
     imports []
 
-InternalPath := UnwrappedPath
+InternalPath := UnwrappedPath implements [Inspect]
 
 UnwrappedPath : [
     # We store these separately for two reasons:

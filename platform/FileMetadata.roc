@@ -13,6 +13,7 @@ FileMetadata := {
     # TODO restore this mode, currently breaks glue gen
     # mode : [Unix U32, NonUnix],
 }
+    implements [Inspect]
 
 FileType : [File, Dir, Symlink]
 

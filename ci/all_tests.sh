@@ -66,4 +66,4 @@ done
 $ROC build ./ci/file-testBROKEN.roc $ROC_BUILD_FLAGS
 
 # test building website
-$ROC docs src/main.roc
+$ROC docs platform/main.roc

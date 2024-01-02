@@ -36,7 +36,7 @@ CLI_RELEASES_JSON=$(curl -s https://api.github.com/repos/roc-lang/basic-cli/rele
 CLI_RELEASE_URL=$(echo $CLI_RELEASES_JSON | jq -r '.[0].assets | .[] | select(.name | test("\\.tar\\.br$")) | .browser_download_url')
 
 # Use the latest basic-cli release as the platform for every example
-sed -i "s|../src/main.roc|$CLI_RELEASE_URL|g" $EXAMPLES_DIR/*.roc
+sed -i "s|../platform/main.roc|$CLI_RELEASE_URL|g" $EXAMPLES_DIR/*.roc
 
 # Install required packages for tests if they're not already available
 command -v ncat &>/dev/null || sudo apt install -y ncat
