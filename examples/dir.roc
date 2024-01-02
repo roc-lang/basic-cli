@@ -47,8 +47,11 @@ main =
         |> Task.await
 
     # Check the contents of the directory
-    expect
-        (List.map paths Path.display) == ["b", "child"]
+    expect 
+        paths 
+        |> List.map Path.display 
+        |> Set.fromList 
+        == Set.fromList ["a/b", "a/child"]
 
     # Try to create a directory without a parent
     {} <-
