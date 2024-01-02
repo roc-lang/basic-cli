@@ -1,15 +1,8 @@
 interface InternalDir
     exposes [
         IOError,
-        DirEntry,
     ]
-    imports [FileMetadata.{ FileMetadata }, Path.{ Path }]
-
-DirEntry : {
-    path : Path,
-    type : [File, Dir, Symlink],
-    metadata : FileMetadata,
-}
+    imports []
 
 IOError : [
     NotFound,
