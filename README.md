@@ -14,6 +14,6 @@ A Roc [platform](https://github.com/roc-lang/roc/wiki/Roc-concepts-explained#pla
   - [0.5.0](https://www.roc-lang.org/packages/basic-cli/0.5.0)
   - [latest main branch](https://www.roc-lang.org/packages/basic-cli)
 
-### Steps to (Re)generate glue
+## Contributing
 
-Run `roc glue ../roc/crates/glue/src/RustGlue.roc src/src/glue src/main-glue.roc` from the repository root directory.
+*Glue** To generate glue run `bash platform/glue.sh`.
