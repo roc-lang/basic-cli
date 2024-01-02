@@ -30,6 +30,7 @@ hosted Effect
         fileDelete,
         fileWriteUtf8,
         fileWriteBytes,
+        pathType,
         posixTime,
         tcpConnect,
         tcpClose,
@@ -47,6 +48,7 @@ hosted Effect
         InternalDir,
         InternalTcp,
         InternalCommand,
+        InternalPath,
     ]
     generates Effect with [after, map, always, forever, loop]
 
@@ -83,6 +85,8 @@ tcpReadUpTo : Nat, InternalTcp.Stream -> Effect InternalTcp.ReadResult
 tcpReadExactly : Nat, InternalTcp.Stream -> Effect InternalTcp.ReadExactlyResult
 tcpReadUntil : U8, InternalTcp.Stream -> Effect InternalTcp.ReadResult
 tcpWrite : List U8, InternalTcp.Stream -> Effect InternalTcp.WriteResult
+
+pathType: List U8 -> Effect (Result InternalPath.InternalPathType InternalPath.GetMetadataErr)
 
 posixTime : Effect U128
 sleepMillis : U64 -> Effect {}
