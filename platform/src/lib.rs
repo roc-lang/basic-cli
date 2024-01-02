@@ -457,7 +457,7 @@ pub extern "C" fn roc_fx_pathType(
     roc_path: &RocList<u8>,
 ) -> RocResult<path_glue::InternalPathType, path_glue::GetMetadataErr> {
     let path = path_from_roc_path(roc_path);
-    match path.metadata() {
+    match path.symlink_metadata() {
         Ok(m) => { RocResult::ok(path_glue::InternalPathType { isDir: m.is_dir(), isFile: m.is_file(), isSymLink: m.is_symlink() }) }
         Err(err) => RocResult::err(toRocGetMetadataError(err)),
     }
