@@ -20,9 +20,9 @@ main =
                 errStr = Tcp.connectErrToStr err
                 Stderr.line
                     """
-                    Failed to connect: \(errStr)
+                    Failed to connect: $(errStr)
 
-                    If you don't have anything listening on port 8085, run: 
+                    If you don't have anything listening on port 8085, run:
                     $ nc -l 8085
                     If you want an echo server you can run:
                     $ ncat -e \$(which cat) -l 8085
@@ -33,11 +33,11 @@ main =
 
             Err (TcpPerformErr (TcpReadErr err)) ->
                 errStr = Tcp.streamErrToStr err
-                Stderr.line "Error while reading: \(errStr)"
+                Stderr.line "Error while reading: $(errStr)"
 
             Err (TcpPerformErr (TcpWriteErr err)) ->
                 errStr = Tcp.streamErrToStr err
-                Stderr.line "Error while writing: \(errStr)"
+                Stderr.line "Error while writing: $(errStr)"
 
 tick : Tcp.Stream -> Task.Task {} _
 tick = \stream ->
@@ -45,11 +45,12 @@ tick = \stream ->
 
     input <- Stdin.line |> await
 
-    outMsg = when input is
-        End -> "Received end of input (EOF)."
-        Input msg -> msg
+    outMsg =
+        when input is
+            End -> "Received end of input (EOF)."
+            Input msg -> msg
 
-    _ <- Tcp.writeUtf8 "\(outMsg)\n" stream |> await
+    _ <- Tcp.writeUtf8 "$(outMsg)\n" stream |> await
 
     inMsg <- Tcp.readLine stream |> await
-    Stdout.line "< \(inMsg)"
+    Stdout.line "< $(inMsg)"
