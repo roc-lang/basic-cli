@@ -12,6 +12,8 @@ interface Task
         loop,
         fromResult,
         batch,
+        list,
+        forEach,
     ]
     imports [Effect, InternalTask]
 
@@ -208,3 +210,36 @@ batch = \current -> \next ->
         f <- next |> await
 
         map current f
+
+## Apply a task repeatedly to a list of items, and return a list of the resulting values
+##
+## ```
+## authors : List ID
+## getAuthor : ID -> Task Author [DbError]
+##
+## getAuthors : Task (List Author) [DbError]
+## getAuthors = Task.list authors getAuthor
+## ```
+##
+list : List a, (a -> Task c d) -> Task (List c) d
+list = \items, fn ->
+    List.walk items (Task.ok []) \state, item ->
+        value <- fn item |> Task.await
+
+        state |> Task.map \values -> List.append values value
+
+## Apply a task repeatedly for each item in a list
+##
+## ```
+## authors : List Author
+## saveAuthor : Author -> Task {} [DbError]
+##
+## saveAuthors : Task (List Author) [DbError]
+## saveAuthors = Task.forEach authors saveAuthor
+## ```
+##
+forEach : List a, (a -> Task {} b) -> Task {} b
+forEach = \items, fn ->
+    List.walk items (Task.ok {}) \state, item ->
+        state |> Task.await \_ -> fn item
+        

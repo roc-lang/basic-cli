@@ -23,9 +23,9 @@ main =
                     Failed to connect: \(errStr)
 
                     If you don't have anything listening on port 8085, run: 
-                    $ nc -l 8085
+                    \$ nc -l 8085
                     If you want an echo server you can run:
-                    $ ncat -e $(which cat) -l 8085
+                    \$ ncat -e \$(which cat) -l 8085
                     """
 
             Err (TcpPerformErr (TcpReadBadUtf8 _)) ->
