@@ -35,6 +35,7 @@ forever = \task ->
     |> InternalTask.fromEffect
 
 ## Run a task repeatedly, until it fails with `err` or completes with `done`.
+## Check out [this example](https://www.roc-lang.org/examples/TaskLoop/README.html).
 loop : state, (state -> Task [Step state, Done done] err) -> Task done err
 loop = \state, step ->
     looper = \current ->
