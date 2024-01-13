@@ -53,3 +53,5 @@ out.txt
 
 # local roc folder for testing
 roc_nightly
+
+platform/glue

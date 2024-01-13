@@ -46,6 +46,8 @@ jobs:
 
       - run: expect -v
 
+      - run: bash ./platform/glue.sh
+
       # Run all tests 
       - run: ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
 

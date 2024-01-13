@@ -17,3 +17,8 @@ record-builder
 stdin
 tcp-client
 time
+record-builder
+command
+example-stdin
+dir
+hello-world
