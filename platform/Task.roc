@@ -12,7 +12,7 @@ interface Task
         loop,
         fromResult,
         batch,
-        list,
+        seq,
         forEach,
     ]
     imports [Effect, InternalTask]
@@ -221,10 +221,10 @@ batch = \current -> \next ->
 ## getAuthors = Task.list authors getAuthor
 ## ```
 ##
-list : List a, (a -> Task c d) -> Task (List c) d
-list = \items, fn ->
-    List.walk items (Task.ok []) \state, item ->
-        value <- fn item |> Task.await
+seq : List (Task ok err) -> Task (List ok) err
+seq = \tasks ->
+    List.walk tasks (Task.ok []) \state, task ->
+        value <- task |> Task.await
 
         state |> Task.map \values -> List.append values value
 
@@ -242,4 +242,3 @@ forEach : List a, (a -> Task {} b) -> Task {} b
 forEach = \items, fn ->
     List.walk items (Task.ok {}) \state, item ->
         state |> Task.await \_ -> fn item
-        
