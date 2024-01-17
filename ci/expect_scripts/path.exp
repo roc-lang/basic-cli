@@ -7,7 +7,8 @@ set timeout 7
 
 source ./ci/expect_scripts/shared-code.exp
 
-spawn $env(EXAMPLES_DIR)path
+cd $env(EXAMPLES_DIR)
+spawn ./path
 
 expect "isFile: (Ok Bool.true) isDir: (Ok Bool.false) isSymLink: (Ok Bool.false) type: (Ok IsFile)\r\n" {
     expect eof {
