@@ -10,8 +10,10 @@ fn main() {
 
         host::roc_main(buffer);
 
-        host::call_the_closure(buffer);
+        let out = host::call_the_closure(buffer);
 
         std::alloc::dealloc(buffer, layout);
+
+        std::process::exit(out);
     }
 }
