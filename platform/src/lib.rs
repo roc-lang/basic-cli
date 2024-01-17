@@ -32,7 +32,7 @@ extern "C" {
     pub fn roc_main_size() -> i64;
 
     #[link_name = "roc__mainForHost_0_caller"]
-    fn call_Fx(flags: *const u8, closure_data: *const u8, output: *mut u8);
+    fn call_Fx(flags: *const u8, closure_data: *const u8, output: *mut RocResult<(), i32>);
 
     #[allow(dead_code)]
     #[link_name = "roc__mainForHost_0_size"]
@@ -271,7 +271,7 @@ pub fn init() {
 }
 
 #[no_mangle]
-pub extern "C" fn rust_main() {
+pub extern "C" fn rust_main() -> i32 {
     init();
     let size = unsafe { roc_main_size() } as usize;
     let layout = Layout::array::<u8>(size).unwrap();
@@ -281,28 +281,29 @@ pub extern "C" fn rust_main() {
 
         roc_main(buffer);
 
-        call_the_closure(buffer);
+        let out = call_the_closure(buffer);
 
         std::alloc::dealloc(buffer, layout);
+
+        return out;
     }
 }
 
-pub unsafe fn call_the_closure(closure_data_ptr: *const u8) -> u8 {
-    let size = size_Fx_result() as usize;
-    let layout = Layout::array::<u8>(size).unwrap();
-    let buffer = std::alloc::alloc(layout) as *mut u8;
+pub unsafe fn call_the_closure(closure_data_ptr: *const u8) -> i32 {
+    // Main always returns an i32. just allocate for that.
+    let mut out: RocResult<(), i32> = RocResult::ok(());
 
     call_Fx(
         // This flags pointer will never get dereferenced
         MaybeUninit::uninit().as_ptr(),
         closure_data_ptr as *const u8,
-        buffer as *mut u8,
+        &mut out,
     );
 
-    std::alloc::dealloc(buffer, layout);
-
-    // TODO return the u8 exit code returned by the Fx closure
-    0
+    match out.into() {
+        Ok(()) => 0,
+        Err(exit_code) => exit_code,
+    }
 }
 
 #[no_mangle]
