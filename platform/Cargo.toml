@@ -15,7 +15,7 @@ codegen-units = 1
 [lib]
 name = "host"
 path = "src/lib.rs"
-crate-type = ["staticlib", "rlib"]
+crate-type = ["staticlib", "lib"]
 
 [[bin]]
 name = "host"
