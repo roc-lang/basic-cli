@@ -2,6 +2,8 @@ interface InternalPath
     exposes [
         UnwrappedPath,
         InternalPath,
+        GetMetadataErr,
+        InternalPathType,
         wrap,
         unwrap,
         toBytes,
@@ -46,6 +48,14 @@ UnwrappedPath : [
     # and https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/setmbcp?view=msvc-170
     # for more details on the UTF-8 Code Page in Windows.
     FromStr Str,
+]
+
+InternalPathType : { isFile: Bool, isSymLink: Bool, isDir: Bool }
+
+GetMetadataErr : [
+    PermissionDenied,
+    PathDoesNotExist,
+    Unrecognized I32 Str,
 ]
 
 wrap : UnwrappedPath -> InternalPath

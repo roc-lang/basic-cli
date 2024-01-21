@@ -12,6 +12,7 @@ form
 hello-world
 http-get
 out.txt
+path
 piping
 record-builder
 stdin

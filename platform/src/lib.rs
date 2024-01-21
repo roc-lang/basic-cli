@@ -3,6 +3,7 @@
 mod command_glue;
 mod dir_glue;
 mod file_glue;
+mod path_glue;
 mod glue;
 mod tcp_glue;
 
@@ -261,6 +262,7 @@ pub fn init() {
         roc_fx_dirCreateAll as _,
         roc_fx_dirDeleteEmpty as _,
         roc_fx_dirDeleteAll as _,
+        roc_fx_pathType as _,
     ];
     std::mem::forget(std::hint::black_box(funcs));
     if cfg!(unix) {
@@ -448,6 +450,17 @@ fn write_slice(roc_path: &RocList<u8>, bytes: &[u8]) -> RocResult<(), WriteErr> 
             Err(err) => RocResult::err(toRocWriteError(err)),
         },
         Err(err) => RocResult::err(toRocWriteError(err)),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_pathType(
+    roc_path: &RocList<u8>,
+) -> RocResult<path_glue::InternalPathType, path_glue::GetMetadataErr> {
+    let path = path_from_roc_path(roc_path);
+    match path.symlink_metadata() {
+        Ok(m) => { RocResult::ok(path_glue::InternalPathType { isDir: m.is_dir(), isFile: m.is_file(), isSymLink: m.is_symlink() }) }
+        Err(err) => RocResult::err(toRocGetMetadataError(err)),
     }
 }
 
@@ -722,6 +735,18 @@ fn toRocReadError(err: std::io::Error) -> file_glue::ReadErr {
         // std::io::ErrorKind::StaleNetworkFileHandle <- unstable language feature
         // std::io::ErrorKind::InvalidFilename <- unstable language feature
         _ => file_glue::ReadErr::Unsupported,
+    }
+}
+
+fn toRocGetMetadataError(err: std::io::Error) -> path_glue::GetMetadataErr {
+    let kind = err.kind();
+    match kind {
+        ErrorKind::NotFound => path_glue::GetMetadataErr::PathDoesNotExist(),
+        ErrorKind::PermissionDenied => path_glue::GetMetadataErr::PermissionDenied(),
+        _ => path_glue::GetMetadataErr::Unrecognized(path_glue::GetMetadataErr_Unrecognized {
+            f1: RocStr::from(kind.to_string().borrow()),
+            f0: err.raw_os_error().unwrap_or_default(),
+        }),
     }
 }
 
