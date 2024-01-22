@@ -3,8 +3,8 @@
 mod command_glue;
 mod dir_glue;
 mod file_glue;
-mod path_glue;
 mod glue;
+mod path_glue;
 mod tcp_glue;
 
 use core::alloc::Layout;
@@ -355,7 +355,8 @@ pub extern "C" fn roc_fx_exePath(_roc_str: &RocStr) -> RocResult<RocList<u8>, ()
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, ()> { // () is used for EOF
+pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, ()> {
+    // () is used for EOF
     let stdin = std::io::stdin();
 
     match stdin.lock().lines().next() {
@@ -459,7 +460,11 @@ pub extern "C" fn roc_fx_pathType(
 ) -> RocResult<path_glue::InternalPathType, path_glue::GetMetadataErr> {
     let path = path_from_roc_path(roc_path);
     match path.symlink_metadata() {
-        Ok(m) => { RocResult::ok(path_glue::InternalPathType { isDir: m.is_dir(), isFile: m.is_file(), isSymLink: m.is_symlink() }) }
+        Ok(m) => RocResult::ok(path_glue::InternalPathType {
+            isDir: m.is_dir(),
+            isFile: m.is_file(),
+            isSymLink: m.is_symlink(),
+        }),
         Err(err) => RocResult::err(toRocGetMetadataError(err)),
     }
 }
