@@ -772,12 +772,12 @@ pub extern "C" fn roc_fx_tcpClose(stream_ptr: *mut BufReader<TcpStream>) {
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpReadUpTo(
-    bytes_to_read: usize,
+    bytes_to_read: u64,
     stream_ptr: *mut BufReader<TcpStream>,
 ) -> tcp_glue::ReadResult {
     let reader = unsafe { &mut *stream_ptr };
 
-    let mut chunk = reader.take(bytes_to_read as u64);
+    let mut chunk = reader.take(bytes_to_read);
 
     match chunk.fill_buf() {
         Ok(received) => {
@@ -794,17 +794,16 @@ pub extern "C" fn roc_fx_tcpReadUpTo(
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpReadExactly(
-    bytes_to_read: usize,
+    bytes_to_read: u64,
     stream_ptr: *mut BufReader<TcpStream>,
 ) -> tcp_glue::ReadExactlyResult {
     let reader = unsafe { &mut *stream_ptr };
-
-    let mut buffer = Vec::with_capacity(bytes_to_read);
+    let mut buffer = Vec::with_capacity(bytes_to_read as usize);
     let mut chunk = reader.take(bytes_to_read as u64);
 
     match chunk.read_to_end(&mut buffer) {
         Ok(read) => {
-            if read < bytes_to_read {
+            if (read as u64) < bytes_to_read {
                 tcp_glue::ReadExactlyResult::UnexpectedEOF
             } else {
                 let rocList = RocList::from(&buffer[..]);
