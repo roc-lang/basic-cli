@@ -3,8 +3,8 @@
 mod command_glue;
 mod dir_glue;
 mod file_glue;
-mod path_glue;
 mod glue;
+mod path_glue;
 mod tcp_glue;
 
 use core::alloc::Layout;
@@ -355,7 +355,8 @@ pub extern "C" fn roc_fx_exePath(_roc_str: &RocStr) -> RocResult<RocList<u8>, ()
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, ()> { // () is used for EOF
+pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, ()> {
+    // () is used for EOF
     let stdin = std::io::stdin();
 
     match stdin.lock().lines().next() {
@@ -459,7 +460,11 @@ pub extern "C" fn roc_fx_pathType(
 ) -> RocResult<path_glue::InternalPathType, path_glue::GetMetadataErr> {
     let path = path_from_roc_path(roc_path);
     match path.symlink_metadata() {
-        Ok(m) => { RocResult::ok(path_glue::InternalPathType { isDir: m.is_dir(), isFile: m.is_file(), isSymLink: m.is_symlink() }) }
+        Ok(m) => RocResult::ok(path_glue::InternalPathType {
+            isDir: m.is_dir(),
+            isFile: m.is_file(),
+            isSymLink: m.is_symlink(),
+        }),
         Err(err) => RocResult::err(toRocGetMetadataError(err)),
     }
 }
@@ -772,12 +777,12 @@ pub extern "C" fn roc_fx_tcpClose(stream_ptr: *mut BufReader<TcpStream>) {
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpReadUpTo(
-    bytes_to_read: usize,
+    bytes_to_read: u64,
     stream_ptr: *mut BufReader<TcpStream>,
 ) -> tcp_glue::ReadResult {
     let reader = unsafe { &mut *stream_ptr };
 
-    let mut chunk = reader.take(bytes_to_read as u64);
+    let mut chunk = reader.take(bytes_to_read);
 
     match chunk.fill_buf() {
         Ok(received) => {
@@ -794,17 +799,16 @@ pub extern "C" fn roc_fx_tcpReadUpTo(
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpReadExactly(
-    bytes_to_read: usize,
+    bytes_to_read: u64,
     stream_ptr: *mut BufReader<TcpStream>,
 ) -> tcp_glue::ReadExactlyResult {
     let reader = unsafe { &mut *stream_ptr };
-
-    let mut buffer = Vec::with_capacity(bytes_to_read);
+    let mut buffer = Vec::with_capacity(bytes_to_read as usize);
     let mut chunk = reader.take(bytes_to_read as u64);
 
     match chunk.read_to_end(&mut buffer) {
         Ok(read) => {
-            if read < bytes_to_read {
+            if (read as u64) < bytes_to_read {
                 tcp_glue::ReadExactlyResult::UnexpectedEOF
             } else {
                 let rocList = RocList::from(&buffer[..]);

@@ -360,7 +360,7 @@ withExtension = \path, extension ->
                     Err NotFound -> bytes
 
             beforeDot
-            |> List.reserve (1 + (Str.countUtf8Bytes extension |> Num.toNat))
+            |> List.reserve (Str.countUtf8Bytes extension |> Num.intCast |> Num.addSaturated 1)
             |> List.append (Num.toU8 '.')
             |> List.concat (Str.toUtf8 extension)
             |> ArbitraryBytes
@@ -373,7 +373,7 @@ withExtension = \path, extension ->
                     Err NotFound -> str
 
             beforeDot
-            |> Str.reserve (1 + (Str.countUtf8Bytes extension |> Num.toNat))
+            |> Str.reserve (Str.countUtf8Bytes extension |> Num.addSaturated 1)
             |> Str.concat "."
             |> Str.concat extension
             |> FromStr

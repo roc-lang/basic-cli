@@ -78,7 +78,7 @@ close = \stream ->
 ## ```
 ##
 ## > To read an exact number of bytes or fail, you can use [Tcp.readExactly] instead.
-readUpTo : Nat, Stream -> Task (List U8) [TcpReadErr StreamErr]
+readUpTo : U64, Stream -> Task (List U8) [TcpReadErr StreamErr]
 readUpTo = \bytesToRead, stream ->
     Effect.tcpReadUpTo bytesToRead stream
     |> Effect.map InternalTcp.fromReadResult
@@ -93,7 +93,7 @@ readUpTo = \bytesToRead, stream ->
 ##
 ## `TcpUnexpectedEOF` is returned if the stream ends before the specfied number of bytes is reached.
 ##
-readExactly : Nat, Stream -> Task (List U8) [TcpReadErr StreamErr, TcpUnexpectedEOF]
+readExactly : U64, Stream -> Task (List U8) [TcpReadErr StreamErr, TcpUnexpectedEOF]
 readExactly = \bytesToRead, stream ->
     Effect.tcpReadExactly bytesToRead stream
     |> Effect.map
