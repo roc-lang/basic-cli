@@ -4,6 +4,7 @@ mod command_glue;
 mod dir_glue;
 mod file_glue;
 mod glue;
+mod path_glue;
 mod tcp_glue;
 
 use core::alloc::Layout;
@@ -32,7 +33,7 @@ extern "C" {
     pub fn roc_main_size() -> i64;
 
     #[link_name = "roc__mainForHost_0_caller"]
-    fn call_Fx(flags: *const u8, closure_data: *const u8, output: *mut u8);
+    fn call_Fx(flags: *const u8, closure_data: *const u8, output: *mut RocResult<(), i32>);
 
     #[allow(dead_code)]
     #[link_name = "roc__mainForHost_0_size"]
@@ -261,6 +262,7 @@ pub fn init() {
         roc_fx_dirCreateAll as _,
         roc_fx_dirDeleteEmpty as _,
         roc_fx_dirDeleteAll as _,
+        roc_fx_pathType as _,
     ];
     std::mem::forget(std::hint::black_box(funcs));
     if cfg!(unix) {
@@ -271,7 +273,7 @@ pub fn init() {
 }
 
 #[no_mangle]
-pub extern "C" fn rust_main() {
+pub extern "C" fn rust_main() -> i32 {
     init();
     let size = unsafe { roc_main_size() } as usize;
     let layout = Layout::array::<u8>(size).unwrap();
@@ -281,28 +283,29 @@ pub extern "C" fn rust_main() {
 
         roc_main(buffer);
 
-        call_the_closure(buffer);
+        let out = call_the_closure(buffer);
 
         std::alloc::dealloc(buffer, layout);
+
+        return out;
     }
 }
 
-pub unsafe fn call_the_closure(closure_data_ptr: *const u8) -> u8 {
-    let size = size_Fx_result() as usize;
-    let layout = Layout::array::<u8>(size).unwrap();
-    let buffer = std::alloc::alloc(layout) as *mut u8;
+pub unsafe fn call_the_closure(closure_data_ptr: *const u8) -> i32 {
+    // Main always returns an i32. just allocate for that.
+    let mut out: RocResult<(), i32> = RocResult::ok(());
 
     call_Fx(
         // This flags pointer will never get dereferenced
         MaybeUninit::uninit().as_ptr(),
         closure_data_ptr as *const u8,
-        buffer as *mut u8,
+        &mut out,
     );
 
-    std::alloc::dealloc(buffer, layout);
-
-    // TODO return the u8 exit code returned by the Fx closure
-    0
+    match out.into() {
+        Ok(()) => 0,
+        Err(exit_code) => exit_code,
+    }
 }
 
 #[no_mangle]
@@ -352,7 +355,8 @@ pub extern "C" fn roc_fx_exePath(_roc_str: &RocStr) -> RocResult<RocList<u8>, ()
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, ()> { // () is used for EOF
+pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, ()> {
+    // () is used for EOF
     let stdin = std::io::stdin();
 
     match stdin.lock().lines().next() {
@@ -447,6 +451,21 @@ fn write_slice(roc_path: &RocList<u8>, bytes: &[u8]) -> RocResult<(), WriteErr> 
             Err(err) => RocResult::err(toRocWriteError(err)),
         },
         Err(err) => RocResult::err(toRocWriteError(err)),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_pathType(
+    roc_path: &RocList<u8>,
+) -> RocResult<path_glue::InternalPathType, path_glue::GetMetadataErr> {
+    let path = path_from_roc_path(roc_path);
+    match path.symlink_metadata() {
+        Ok(m) => RocResult::ok(path_glue::InternalPathType {
+            isDir: m.is_dir(),
+            isFile: m.is_file(),
+            isSymLink: m.is_symlink(),
+        }),
+        Err(err) => RocResult::err(toRocGetMetadataError(err)),
     }
 }
 
@@ -724,6 +743,18 @@ fn toRocReadError(err: std::io::Error) -> file_glue::ReadErr {
     }
 }
 
+fn toRocGetMetadataError(err: std::io::Error) -> path_glue::GetMetadataErr {
+    let kind = err.kind();
+    match kind {
+        ErrorKind::NotFound => path_glue::GetMetadataErr::PathDoesNotExist(),
+        ErrorKind::PermissionDenied => path_glue::GetMetadataErr::PermissionDenied(),
+        _ => path_glue::GetMetadataErr::Unrecognized(path_glue::GetMetadataErr_Unrecognized {
+            f1: RocStr::from(kind.to_string().borrow()),
+            f0: err.raw_os_error().unwrap_or_default(),
+        }),
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpConnect(host: &RocStr, port: u16) -> tcp_glue::ConnectResult {
     match TcpStream::connect((host.as_str(), port)) {
@@ -746,12 +777,12 @@ pub extern "C" fn roc_fx_tcpClose(stream_ptr: *mut BufReader<TcpStream>) {
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpReadUpTo(
-    bytes_to_read: usize,
+    bytes_to_read: u64,
     stream_ptr: *mut BufReader<TcpStream>,
 ) -> tcp_glue::ReadResult {
     let reader = unsafe { &mut *stream_ptr };
 
-    let mut chunk = reader.take(bytes_to_read as u64);
+    let mut chunk = reader.take(bytes_to_read);
 
     match chunk.fill_buf() {
         Ok(received) => {
@@ -768,17 +799,16 @@ pub extern "C" fn roc_fx_tcpReadUpTo(
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpReadExactly(
-    bytes_to_read: usize,
+    bytes_to_read: u64,
     stream_ptr: *mut BufReader<TcpStream>,
 ) -> tcp_glue::ReadExactlyResult {
     let reader = unsafe { &mut *stream_ptr };
-
-    let mut buffer = Vec::with_capacity(bytes_to_read);
+    let mut buffer = Vec::with_capacity(bytes_to_read as usize);
     let mut chunk = reader.take(bytes_to_read as u64);
 
     match chunk.read_to_end(&mut buffer) {
         Ok(read) => {
-            if read < bytes_to_read {
+            if (read as u64) < bytes_to_read {
                 tcp_glue::ReadExactlyResult::UnexpectedEOF
             } else {
                 let rocList = RocList::from(&buffer[..]);

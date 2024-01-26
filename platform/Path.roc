@@ -10,8 +10,12 @@ interface Path
         fromStr,
         fromBytes,
         withExtension,
+        isDir,
+        isFile,
+        isSymLink,
+        type,
     ]
-    imports [InternalPath.{ InternalPath }]
+    imports [InternalPath.{ InternalPath }, InternalPath.{ GetMetadataErr }, Effect.{ Effect }, InternalTask, Task.{ Task }]
 
 # You can canonicalize a [Path] using `Path.canonicalize`.
 #
@@ -290,6 +294,53 @@ WindowsRoot : []
 # TODO idea: what if it's File.openRead and File.openWrite? And then e.g. File.metadata,
 # File.isDir, etc.
 
+## Returns true if the path exists on disk and is pointing at a directory.
+## Any error will return false.
+## This uses [rust's std::path::is_dir](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_dir).
+##
+isDir : Path -> Task Bool GetMetadataErr
+isDir = \path ->
+    res <- type path |> Task.await
+    Task.ok (res == IsDir)
+
+## Returns true if the path exists on disk and is pointing at a regular file.
+## Any error will return false.
+## This uses [rust's std::path::is_file](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_file).
+##
+isFile : Path -> Task Bool GetMetadataErr
+isFile = \path ->
+    res <- type path |> Task.await
+    Task.ok (res == IsFile)
+
+## Returns true if the path exists on disk and is pointing at a symbolic link.
+## Any error will return false.
+## This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
+##
+isSymLink : Path -> Task Bool GetMetadataErr
+isSymLink = \path ->
+    res <- type path |> Task.await
+    Task.ok (res == IsSymLink)
+
+## Return the type of the path if the path exists on disk.
+## This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
+##
+type : Path -> Task [IsFile, IsDir, IsSymLink] GetMetadataErr
+type = \path ->
+    InternalPath.toBytes path
+    |> Effect.pathType
+    |> Effect.map \result ->
+        when result is
+            Ok pathType ->
+                if pathType.isSymLink then
+                    Ok IsSymLink
+                else if pathType.isDir then
+                    Ok IsDir
+                else
+                    Ok IsFile
+
+            Err e -> Err e
+    |> InternalTask.fromEffect
+
 ## If the last component of this path has no `.`, appends `.` followed by the given string.
 ## Otherwise, replaces everything after the last `.` with the given string.
 ##
@@ -309,7 +360,7 @@ withExtension = \path, extension ->
                     Err NotFound -> bytes
 
             beforeDot
-            |> List.reserve (1 + Str.countUtf8Bytes extension)
+            |> List.reserve (Str.countUtf8Bytes extension |> Num.intCast |> Num.addSaturated 1)
             |> List.append (Num.toU8 '.')
             |> List.concat (Str.toUtf8 extension)
             |> ArbitraryBytes
@@ -322,7 +373,7 @@ withExtension = \path, extension ->
                     Err NotFound -> str
 
             beforeDot
-            |> Str.reserve (1 + Str.countUtf8Bytes extension)
+            |> Str.reserve (Str.countUtf8Bytes extension |> Num.addSaturated 1)
             |> Str.concat "."
             |> Str.concat extension
             |> FromStr

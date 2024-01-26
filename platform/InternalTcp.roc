@@ -13,7 +13,7 @@ interface InternalTcp
     ]
     imports []
 
-Stream := Nat
+Stream := U64
 
 ConnectErr : [
     PermissionDenied,

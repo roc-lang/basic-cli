@@ -15,13 +15,18 @@ interface Dir
         Path.{ Path },
         InternalPath,
         InternalDir,
+        FileMetadata.{ FileMetadata },
     ]
 
 ## Tag union of possible errors
 IOError : InternalDir.IOError
 
 ## Record which represents a directory
-DirEntry : InternalDir.DirEntry
+DirEntry : {
+    path : Path,
+    type : [File, Dir, Symlink],
+    metadata : FileMetadata,
+}
 
 ## Lists the files and directories inside the directory.
 list : Path -> Task (List Path) IOError

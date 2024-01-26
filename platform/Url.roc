@@ -37,9 +37,9 @@ Url := Str implements [Inspect]
 ## There is no `Url.withCapacity` because it's better to reserve extra capacity
 ## on a [Str] first, and then pass that string to [Url.fromStr]. This function will make use
 ## of the extra capacity.
-reserve : Url, Nat -> Url
+reserve : Url, U64 -> Url
 reserve = \@Url str, cap ->
-    @Url (Str.reserve str cap)
+    @Url (Str.reserve str (Num.intCast cap))
 
 ## Create a [Url] without validating or [percent-encoding](https://en.wikipedia.org/wiki/Percent-encoding)
 ## anything.
@@ -194,39 +194,38 @@ percentEncode : Str -> Str
 percentEncode = \input ->
     # Optimistically assume we won't need any percent encoding, and can have
     # the same capacity as the input string. If we're wrong, it will get doubled.
-    initialOutput = strWithCapacity (Str.countUtf8Bytes input)
+    initialOutput = List.withCapacity (Str.countUtf8Bytes input |> Num.intCast)
 
-    # TODO use Str.walkUtf8 once it exists
-    Str.walkUtf8WithIndex input initialOutput \output, byte, _index ->
-        # Spec for percent-encoding: https://www.ietf.org/rfc/rfc3986.txt
-        if
-            (byte >= 97 && byte <= 122) # lowercase ASCII
-            || (byte >= 65 && byte <= 90) # uppercase ASCII
-            || (byte >= 48 && byte <= 57) # digit
-        then
-            # This is the most common case: an unreserved character,
-            # which needs no encoding in a path
-            Str.appendScalar output (Num.toU32 byte)
-            |> Result.withDefault "" # this will never fail
-        else
-            when byte is
-                46 # '.'
-                | 95 # '_'
-                | 126 # '~'
-                | 150 -> # '-'
-                    # These special characters can all be unescaped in paths
-                    Str.appendScalar output (Num.toU32 byte)
-                    |> Result.withDefault "" # this will never fail
+    answer =
+        List.walk (Str.toUtf8 input) initialOutput \output, byte ->
+            # Spec for percent-encoding: https://www.ietf.org/rfc/rfc3986.txt
+            if
+                (byte >= 97 && byte <= 122) # lowercase ASCII
+                || (byte >= 65 && byte <= 90) # uppercase ASCII
+                || (byte >= 48 && byte <= 57) # digit
+            then
+                # This is the most common case: an unreserved character,
+                # which needs no encoding in a path
+                List.append output byte
+            else
+                when byte is
+                    46 # '.'
+                    | 95 # '_'
+                    | 126 # '~'
+                    | 150 -> # '-'
+                        # These special characters can all be unescaped in paths
+                        List.append output byte
 
-                _ ->
-                    # This needs encoding in a path
-                    suffix =
-                        Str.toUtf8 percentEncoded
-                        |> List.sublist { len: 3, start: 3 * Num.toNat byte }
-                        |> Str.fromUtf8
-                        |> Result.withDefault "" # This will never fail
+                    _ ->
+                        # This needs encoding in a path
+                        suffix =
+                            Str.toUtf8 percentEncoded
+                            |> List.sublist { len: 3, start: 3 * Num.intCast byte }
 
-                    Str.concat output suffix
+                        List.concat output suffix
+
+    Str.fromUtf8 answer
+    |> Result.withDefault "" # This should never fail
 
 ## Adds a [Str] query parameter to the end of the [Url].
 ##
@@ -447,10 +446,6 @@ hasFragment = \@Url urlStr ->
     # with SIMD iteration if the string is small enough to fit in a SIMD register.
     Str.toUtf8 urlStr
     |> List.contains (Num.toU8 '#')
-
-strWithCapacity : Nat -> Str
-strWithCapacity = \cap ->
-    Str.reserve "" cap
 
 # Adapted from the percent-encoding crate, © The rust-url developers, Apache2-licensed
 #
