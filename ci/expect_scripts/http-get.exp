@@ -9,10 +9,6 @@ source ./ci/expect_scripts/shared-code.exp
 
 spawn $env(EXAMPLES_DIR)http-get
 
-expect -exact "Enter a URL to fetch. It must contain a scheme like \"http://\" or \"https://\".\r\n"
-
-send -- "http://www.example.com\r"
-
 expect "</html>\r\n" {
     expect eof {
         check_exit_and_segfault
