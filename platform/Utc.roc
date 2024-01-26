@@ -28,7 +28,7 @@ nanosPerMilli = 1_000_000
 ## Convert Utc timestamp to milliseconds
 toMillisSinceEpoch : Utc -> U128
 toMillisSinceEpoch = \@Utc nanos ->
-    nanos * nanosPerMilli
+    nanos // nanosPerMilli
 
 ## Convert milliseconds to Utc timestamp
 fromMillisSinceEpoch : U128 -> Utc

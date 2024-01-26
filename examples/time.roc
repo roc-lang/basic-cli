@@ -17,4 +17,4 @@ main =
 
     duration = Utc.deltaAsNanos start finish |> Num.toStr
 
-    Stdout.line "Completed in \(duration)ns"
+    Stdout.line "Completed in $(duration)ns"

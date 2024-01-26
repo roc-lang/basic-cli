@@ -59,7 +59,7 @@ Parser a := [
 ]
 
 # Indices in an arguments list that have already been parsed.
-Taken : Set Nat
+Taken : Set U64
 
 # A representation of parsed and unparsed arguments in a constant list of
 # command-line arguments.
@@ -165,9 +165,9 @@ findOneArg = \long, short, { args, taken } ->
     argMatches = \{ index, found: _ }, arg ->
         if Set.contains taken index || Set.contains taken (index + 1) then
             Continue { index: index + 1, found: Bool.false }
-        else if arg == "--\(long)" then
+        else if arg == "--$(long)" then
             Break { index, found: Bool.true }
-        else if Bool.not (Str.isEmpty short) && arg == "-\(short)" then
+        else if Bool.not (Str.isEmpty short) && arg == "-$(short)" then
             Break { index, found: Bool.true }
         else
             Continue { index: index + 1, found: Bool.false }
@@ -179,7 +179,7 @@ findOneArg = \long, short, { args, taken } ->
         Err NotFound
     else
         # Return the next argument after the given one
-        List.get args (argIndex + 1)
+        List.get args (1 + argIndex |> Num.intCast)
         |> Result.mapErr (\_ -> NotFound)
         |> Result.map
             (\val ->
@@ -445,13 +445,13 @@ parseHelp = \@Parser parser, args ->
         WithConfig parser2 _config ->
             parseHelp parser2 args
 
-nextUnmarked : MarkedArgs -> Result { index : Nat, val : Str } [OutOfBounds]
+nextUnmarked : MarkedArgs -> Result { index : U64, val : Str } [OutOfBounds]
 nextUnmarked = \marked ->
     help = \index ->
         if Set.contains marked.taken index then
             help (index + 1)
         else
-            List.get marked.args index
+            List.get marked.args (Num.intCast index)
             |> Result.map \val -> { index, val }
 
     help 0
@@ -539,10 +539,10 @@ parseFormatted = \@NamedParser parser, args ->
         \e ->
             Str.concat (Str.concat (formatHelp (@NamedParser parser)) "\n\n") (formatError e)
 
-indent : Nat -> Str
-indent = \n -> Str.repeat " " n
+indent : U64 -> Str
+indent = \n -> Str.repeat " " (Num.intCast n)
 
-indentLevel : Nat
+indentLevel : U64
 indentLevel = 4
 
 mapNonEmptyStr = \s, f -> if Str.isEmpty s then s else f s
@@ -557,18 +557,18 @@ filterMap = \lst, transform ->
 # formatHelp : NamedParser a -> Str
 formatHelp = \@NamedParser { name, help, parser } ->
     fmtHelp =
-        mapNonEmptyStr help \helpStr -> "\n\(helpStr)"
+        mapNonEmptyStr help \helpStr -> "\n$(helpStr)"
 
     cmdHelp = toHelp parser
 
     fmtCmdHelp = formatHelpHelp 0 cmdHelp
 
     """
-    \(name)\(fmtHelp)
-    \(fmtCmdHelp)
+    $(name)$(fmtHelp)
+    $(fmtCmdHelp)
     """
 
-# formatHelpHelp : Nat, Help -> Str
+# formatHelpHelp : U64, Help -> Str
 formatHelpHelp = \n, cmdHelp ->
     indented = indent n
 
@@ -581,8 +581,8 @@ formatHelpHelp = \n, cmdHelp ->
 
             """
 
-            \(indented)COMMANDS:
-            \(fmtCmdHelp)
+            $(indented)COMMANDS:
+            $(fmtCmdHelp)
             """
 
         Config configs ->
@@ -613,8 +613,8 @@ formatHelpHelp = \n, cmdHelp ->
 
                     """
 
-                    \(indented)OPTIONS:
-                    \(helpStr)
+                    $(indented)OPTIONS:
+                    $(helpStr)
                     """
 
             fmtPositionalsHelp =
@@ -628,8 +628,8 @@ formatHelpHelp = \n, cmdHelp ->
 
                     """
 
-                    \(indented)ARGS:
-                    \(helpStr)
+                    $(indented)ARGS:
+                    $(helpStr)
                     """
 
             Str.concat fmtPositionalsHelp fmtOptionsHelp
@@ -639,30 +639,30 @@ formatSubCommand = \n, { name, help } ->
 
     fmtHelp = formatHelpHelp (n + indentLevel) help
 
-    "\(indented)\(name)\(fmtHelp)"
+    "$(indented)$(name)$(fmtHelp)"
 
-formatOptionConfig : Nat, OptionConfig -> Str
+formatOptionConfig : U64, OptionConfig -> Str
 formatOptionConfig = \n, { long, short, help, type } ->
     indented = indent n
 
     formattedShort =
-        mapNonEmptyStr short \s -> ", -\(s)"
+        mapNonEmptyStr short \s -> ", -$(s)"
 
     formattedType = formatOptionType type
 
     formattedHelp =
-        mapNonEmptyStr help \h -> "    \(h)"
+        mapNonEmptyStr help \h -> "    $(h)"
 
-    "\(indented)--\(long)\(formattedShort)\(formattedHelp)  (\(formattedType))"
+    "$(indented)--$(long)$(formattedShort)$(formattedHelp)  ($(formattedType))"
 
-formatPositionalConfig : Nat, PositionalConfig -> Str
+formatPositionalConfig : U64, PositionalConfig -> Str
 formatPositionalConfig = \n, { name, help } ->
     indented = indent n
 
     formattedHelp =
-        mapNonEmptyStr help \h -> "    \(h)"
+        mapNonEmptyStr help \h -> "    $(h)"
 
-    "\(indented)\(name)\(formattedHelp)"
+    "$(indented)$(name)$(formattedHelp)"
 
 formatOptionType : OptionType -> Str
 formatOptionType = \type ->
@@ -671,24 +671,24 @@ formatOptionType = \type ->
         Str -> "string"
         I64 -> "integer, 64-bit signed"
 
-quote = \s -> "\"\(s)\""
+quote = \s -> "\"$(s)\""
 
 formatError : ParseError -> Str
 formatError = \err ->
     when err is
         ProgramNameNotProvided programName ->
-            "The program name \"\(programName)\" was not provided as a first argument!"
+            "The program name \"$(programName)\" was not provided as a first argument!"
 
         MissingPositional arg ->
-            "The argument `\(arg)` is required but was not provided!"
+            "The argument `$(arg)` is required but was not provided!"
 
         MissingRequiredOption arg ->
-            "The option `--\(arg)` is required but was not provided!"
+            "The option `--$(arg)` is required but was not provided!"
 
         WrongOptionType { arg, expected } ->
             formattedType = formatOptionType expected
 
-            "The option `--\(arg)` expects a value of type \(formattedType)!"
+            "The option `--$(arg)` expects a value of type $(formattedType)!"
 
         SubCommandNotFound { choices } ->
             fmtChoices =
@@ -698,7 +698,7 @@ formatError = \err ->
             """
             A subcommand was expected, but not found!
             The available subcommands are:
-            \t\(fmtChoices)
+            \t$(fmtChoices)
             """
 
         IncorrectSubCommand { found, choices } ->
@@ -709,9 +709,9 @@ formatError = \err ->
                 |> Str.joinWith ", "
 
             """
-            The \(fmtFound) subcommand was found, but it's not expected in this context!
+            The $(fmtFound) subcommand was found, but it's not expected in this context!
             The available subcommands are:
-            \t\(fmtChoices)
+            \t$(fmtChoices)
             """
 
 ## Applies one parser over another, mapping parser.
@@ -839,7 +839,7 @@ expect
 # two string parsers complete cases
 expect
     parser =
-        succeed (\foo -> \bar -> "foo: \(foo) bar: \(bar)")
+        succeed (\foo -> \bar -> "foo: $(foo) bar: $(bar)")
         |> withParser (strOption { long: "foo" })
         |> withParser (strOption { long: "bar" })
 
@@ -854,7 +854,7 @@ expect
 # one argument is missing out of multiple
 expect
     parser =
-        succeed (\foo -> \bar -> "foo: \(foo) bar: \(bar)")
+        succeed (\foo -> \bar -> "foo: $(foo) bar: $(bar)")
         |> withParser (strOption { long: "foo" })
         |> withParser (strOption { long: "bar" })
 
@@ -868,7 +868,7 @@ expect
 # string and boolean parsers build help
 expect
     parser =
-        succeed (\foo -> \bar -> \_bool -> "foo: \(foo) bar: \(bar)")
+        succeed (\foo -> \bar -> \_bool -> "foo: $(foo) bar: $(bar)")
         |> withParser (strOption { long: "foo", help: "the foo option" })
         |> withParser (strOption { long: "bar", short: "B" })
         |> withParser (boolOption { long: "boolean" })
@@ -928,11 +928,11 @@ expect
 expect
     parser =
         choice [
-            succeed (\user -> \pw -> "\(user)\(pw)")
+            succeed (\user -> \pw -> "$(user)$(pw)")
             |> withParser (strOption { long: "user" })
             |> withParser (strOption { long: "pw" })
             |> subCommand "login",
-            succeed (\file -> \url -> "\(file)\(url)")
+            succeed (\file -> \url -> "$(file)$(url)")
             |> withParser (strOption { long: "file" })
             |> withParser (strOption { long: "url" })
             |> subCommand "publish",
@@ -976,11 +976,11 @@ expect
 expect
     parser =
         choice [
-            succeed (\user -> \pw -> "logging in \(user) with \(pw)")
+            succeed (\user -> \pw -> "logging in $(user) with $(pw)")
             |> withParser (strOption { long: "user" })
             |> withParser (strOption { long: "pw" })
             |> subCommand "login",
-            succeed (\file -> \url -> "\(file)\(url)")
+            succeed (\file -> \url -> "$(file)$(url)")
             |> withParser (strOption { long: "file" })
             |> withParser (strOption { long: "url" })
             |> subCommand "publish",
@@ -996,7 +996,7 @@ expect
     parser =
         choice [
             choice [
-                succeed (\user -> \pw -> "logging in \(user) with \(pw)")
+                succeed (\user -> \pw -> "logging in $(user) with $(pw)")
                 |> withParser (strOption { long: "user" })
                 |> withParser (strOption { long: "pw" })
                 |> subCommand "login",
@@ -1054,7 +1054,7 @@ expect
 # parse positional with option
 expect
     parser =
-        succeed (\foo -> \bar -> "foo: \(foo), bar: \(bar)")
+        succeed (\foo -> \bar -> "foo: $(foo), bar: $(bar)")
         |> withParser (strOption { long: "foo" })
         |> withParser (str { name: "bar" })
 

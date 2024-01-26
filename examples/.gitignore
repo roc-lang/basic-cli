@@ -12,8 +12,10 @@ form
 hello-world
 http-get
 out.txt
+path
 piping
 record-builder
 stdin
 tcp-client
 time
+task-list
