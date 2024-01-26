@@ -10,7 +10,7 @@ app "piping"
 # Try piping in some text like this: `echo -e "test\n123" | roc piping.roc`
 main =
     lines <- Task.loop 0 count |> Task.await
-    Stdout.line "I read \(Num.toStr lines) lines from stdin."
+    Stdout.line "I read $(Num.toStr lines) lines from stdin."
 
 count = \n ->
     result <- Stdin.line |> Task.await
@@ -19,4 +19,3 @@ count = \n ->
             Input _ -> Step (n + 1)
             End -> Done n
     Task.ok state
-

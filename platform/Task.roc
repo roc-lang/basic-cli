@@ -154,7 +154,7 @@ onErr = \task, transform ->
 ## ```
 ## # Succeeds with a value of "Bonjour Louis!"
 ## Task.ok "Louis"
-## |> Task.map (\name -> "Bonjour \(name)!")
+## |> Task.map (\name -> "Bonjour $(name)!")
 ## ```
 map : Task a c, (a -> b) -> Task b c
 map = \task, transform ->

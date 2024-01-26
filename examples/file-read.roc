@@ -17,7 +17,7 @@ main =
         contents <- File.readUtf8 path |> await
         lines = Str.split contents "\n"
 
-        Stdout.line (Str.concat "First line of \(fileName): " (List.first lines |> Result.withDefault "err"))
+        Stdout.line (Str.concat "First line of $(fileName): " (List.first lines |> Result.withDefault "err"))
 
     Task.attempt task \result ->
         when result is
@@ -32,5 +32,5 @@ main =
                         _ -> "Uh oh, there was an error!"
 
                 {} <- Stderr.line msg |> await
-                
+
                 Task.err 1 # 1 is an exit code to indicate failure

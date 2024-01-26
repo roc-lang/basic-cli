@@ -104,7 +104,7 @@ stringBody = \mimeType, str ->
 # multiPartBody : List Part -> Body
 # multiPartBody = \parts ->
 #     boundary = "7MA4YWxkTrZu0gW" # TODO: what's this exactly? a hash of all the part bodies?
-#     beforeName = Str.toUtf8 "-- \(boundary)\r\nContent-Disposition: form-data; name=\""
+#     beforeName = Str.toUtf8 "-- $(boundary)\r\nContent-Disposition: form-data; name=\""
 #     afterName = Str.toUtf8 "\"\r\n"
 #     appendPart = \buffer, Part name partBytes ->
 #         buffer
@@ -113,7 +113,7 @@ stringBody = \mimeType, str ->
 #         |> List.concat afterName
 #         |> List.concat partBytes
 #     bodyBytes = List.walk parts [] appendPart
-#     Body (MimeType "multipart/form-data;boundary=\"\(boundary)\"") bodyBytes
+#     Body (MimeType "multipart/form-data;boundary=\"$(boundary)\"") bodyBytes
 # bytesPart : Str, List U8 -> Part
 # bytesPart =
 #     Part
@@ -134,13 +134,13 @@ handleStringResponse = \response ->
                 \BadUtf8 _ pos ->
                     position = Num.toStr pos
 
-                    BadBody "Invalid UTF-8 at byte offset \(position)"
+                    BadBody "Invalid UTF-8 at byte offset $(position)"
 
 ## Convert an [Error] to a [Str].
 errorToString : Error -> Str
 errorToString = \err ->
     when err is
-        BadRequest e -> "Invalid Request: \(e)"
+        BadRequest e -> "Invalid Request: $(e)"
         Timeout -> "Request timed out"
         NetworkError -> "Network error"
         BadStatus code -> Str.concat "Request failed with status " (Num.toStr code)

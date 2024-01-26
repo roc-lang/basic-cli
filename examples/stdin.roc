@@ -17,7 +17,7 @@ main =
     else
         when Str.fromUtf8 numberBytes is
             Ok nStr ->
-                Stdout.line "Got number \(nStr)"
+                Stdout.line "Got number $(nStr)"
 
             Err _ ->
                 Stderr.line "Error, bad utf8"

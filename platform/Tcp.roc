@@ -193,7 +193,7 @@ connectErrToStr = \err ->
         Unsupported -> "Unsupported"
         Unrecognized code message ->
             codeStr = Num.toStr code
-            "Unrecognized Error: \(codeStr) - \(message)"
+            "Unrecognized Error: $(codeStr) - $(message)"
 
 ## Convert a [StreamErr] to a [Str] you can print.
 ##
@@ -201,11 +201,11 @@ connectErrToStr = \err ->
 ## when err is
 ##     TcpPerformErr (TcpReadErr err) ->
 ##         errStr = Tcp.streamErrToStr err
-##         Stderr.line "Error while reading: \(errStr)"
+##         Stderr.line "Error while reading: $(errStr)"
 ##
 ##     TcpPerformErr (TcpWriteErr err) ->
 ##         errStr = Tcp.streamErrToStr err
-##         Stderr.line "Error while writing: \(errStr)"
+##         Stderr.line "Error while writing: $(errStr)"
 ## ```
 ##
 streamErrToStr : StreamErr -> Str
@@ -219,4 +219,4 @@ streamErrToStr = \err ->
         BrokenPipe -> "BrokenPipe"
         Unrecognized code message ->
             codeStr = Num.toStr code
-            "Unrecognized Error: \(codeStr) - \(message)"
+            "Unrecognized Error: $(codeStr) - $(message)"
