@@ -50,7 +50,7 @@ second =
         ]
         |> Cmd.output
         |> Task.map \output -> ("Success", output.stdout, output.stderr)
-        |> Task.onErr $(output, err) ->
+        |> Task.onErr \(output, err) ->
             when err is
                 ExitCode code -> Task.ok ("Child exited with non-zero code: $(Num.toStr code)", output.stdout, output.stderr)
                 KilledBySignal -> Task.ok ("Child was killed by signal", output.stdout, output.stderr)

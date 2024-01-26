@@ -96,7 +96,7 @@ env = \@Cmd cmd, key, value ->
 ##
 envs : Cmd, List (Str, Str) -> Cmd
 envs = \@Cmd cmd, keyValues ->
-    values = keyValues |> List.joinMap $(key, value) -> [key, value]
+    values = keyValues |> List.joinMap \(key, value) -> [key, value]
     @Cmd
         { cmd &
             envs: List.concat cmd.envs values,
