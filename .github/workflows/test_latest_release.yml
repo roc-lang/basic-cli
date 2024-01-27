@@ -25,10 +25,6 @@ jobs:
 
       - name: Use ./ci/test_latest_release.sh of the latest git main
         run: mv -f ./temp/test_latest_release.sh ./ci/
-
-      # temp issue with new string interpolation syntax
-      # TODO remove this when 0.7.2 or 0.8.0 is released
-      - run: sed -i 's/\$//g' examples/tcp-client.roc
       
       - name: Run all tests with latest roc release + latest basic-cli release
         run: EXAMPLES_DIR=./examples/ ./ci/test_latest_release.sh
