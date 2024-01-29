@@ -524,13 +524,13 @@ pub extern "C" fn roc_fx_cwd() -> RocList<u8> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_posixTime() -> roc_std::U128 {
+pub extern "C" fn roc_fx_posixTime() -> roc_std::I128 {
     // TODO in future may be able to avoid this panic by using C APIs
     let since_epoch = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("time went backwards");
 
-    roc_std::U128::from(since_epoch.as_nanos())
+    roc_std::I128::from(since_epoch.as_nanos() as i128)
 }
 
 #[no_mangle]
