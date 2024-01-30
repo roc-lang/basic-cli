@@ -18,6 +18,7 @@ Utc := I128 implements [Inspect]
 now : Task Utc *
 now =
     Effect.posixTime
+    |> Effect.map Num.toI128
     |> Effect.map @Utc
     |> Effect.map Ok
     |> InternalTask.fromEffect
