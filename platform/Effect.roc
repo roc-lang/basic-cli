@@ -88,7 +88,7 @@ tcpWrite : List U8, InternalTcp.Stream -> Effect InternalTcp.WriteResult
 
 pathType : List U8 -> Effect (Result InternalPath.InternalPathType InternalPath.GetMetadataErr)
 
-posixTime : Effect I128
+posixTime : Effect U128
 sleepMillis : U64 -> Effect {}
 
 commandStatus : Box InternalCommand.Command -> Effect (Result {} InternalCommand.CommandErr)
