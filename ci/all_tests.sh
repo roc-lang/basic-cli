@@ -66,8 +66,16 @@ done
 find . -type f -name "*.roc" | while read file; do
     # Arg.roc hits github.com/roc-lang/roc/issues/5701
     if [[ $file != *"Arg.roc" ]]; then
+    
         if grep -qE '^\s*expect(\s+|$)' "$file"; then
-            $ROC test "$file"
+            test_output=$($ROC test "$file" 2>&1)
+            test_exit_code=$?
+
+            if [[ $test_exit_code -ne 0 ]]; then
+                if ! [[ $test_exit_code -eq 2 && "$test_output" == *"No expectations were found."* ]]; then
+                    exit $test_exit_code
+                fi
+            fi
         fi
     fi
 done
