@@ -65,7 +65,7 @@ done
 # `roc test` every roc file if it contains a test
 find . -type f -name "*.roc" | while read file; do
     # Arg.roc hits github.com/roc-lang/roc/issues/5701
-    if [[ ! "$file" =~ ^(Arg\.roc)$ ]]; then
+    if [[ $file != *"Arg.roc" ]]; then
         if grep -qE '^\s*expect(\s+|$)' "$file"; then
             $ROC test "$file"
         fi
