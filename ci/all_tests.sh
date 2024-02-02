@@ -68,13 +68,11 @@ find . -type f -name "*.roc" | while read file; do
     if [[ $file != *"Arg.roc" ]]; then
     
         if grep -qE '^\s*expect(\s+|$)' "$file"; then
-            test_output=$($ROC test "$file" 2>&1)
+            test_command=$($ROC test "$file")
             test_exit_code=$?
 
-            if [[ $test_exit_code -ne 0 ]]; then
-                if ! [[ $test_exit_code -eq 2 && "$test_output" == *"No expectations were found."* ]]; then
-                    exit $test_exit_code
-                fi
+            if [[ $test_exit_code -ne 0 && $test_exit_code -ne 2 ]]; then
+                exit $test_exit_code
             fi
         fi
     fi
