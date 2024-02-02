@@ -63,7 +63,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
 done
 
 # `roc test` every roc file if it contains a test
-find . -type f -name "*.py" | while read file; do
+find . -type f -name "*.roc" | while read file; do
     if grep -qE '^\s*expect(\s+|$)' "$file"; then
         $ROC test "$file"
     fi
