@@ -62,6 +62,8 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     expect ci/expect_scripts/$no_ext_name.exp
 done
 
+$ROC test platform/Utc.roc
+
 # just build this until we fix it
 $ROC build ./ci/file-testBROKEN.roc $ROC_BUILD_FLAGS
 
