@@ -62,6 +62,13 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     expect ci/expect_scripts/$no_ext_name.exp
 done
 
+# `roc test` every roc file if it contains a test
+find . -type f -name "*.py" | while read file; do
+    if grep -qE '^\s*expect(\s+|$)' "$file"; then
+        $ROC test "$file"
+    fi
+done
+
 # just build this until we fix it
 $ROC build ./ci/file-testBROKEN.roc $ROC_BUILD_FLAGS
 
