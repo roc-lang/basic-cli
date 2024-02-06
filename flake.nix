@@ -2,7 +2,8 @@
   description = "Basic cli devShell flake";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    roc.url = "github:roc-lang/roc";
+    nixpkgs.follows = "roc/nixpkgs";
 
     # rust from nixpkgs has some libc problems, this is patched in the rust-overlay
     rust-overlay = {
@@ -14,13 +15,14 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, rust-overlay, flake-utils }:
+  outputs = { self, nixpkgs, roc, rust-overlay, flake-utils }:
     let supportedSystems = [ "x86_64-linux" "x86_64-darwin" "aarch64-darwin" ];
     in flake-utils.lib.eachSystem supportedSystems (system:
       let
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs { inherit system overlays; };
 
+        rocPkgs = roc.packages.${system};
         llvmPkgs = pkgs.llvmPackages_16;
 
         # get current working directory
@@ -46,6 +48,7 @@
           expect
           nmap
           simple-http-server
+          rocPkgs.cli
         ]);
       in {
 
