@@ -47,17 +47,16 @@ fromNanosSinceEpoch = @Utc
 
 ## Calculate milliseconds between two Utc timestamps
 deltaAsMillis : Utc, Utc -> U128
-deltaAsMillis = \@Utc first, @Utc second ->
-    firstCast = Num.bitwiseXor (Num.toU128 first) (Num.shiftLeftBy 1 127)
-    secondCast = Num.bitwiseXor (Num.toU128 second) (Num.shiftLeftBy 1 127)
-    (Num.absDiff firstCast secondCast) // nanosPerMilli
+deltaAsMillis = utcA, utcB ->
+    (deltaAsNanons utcA utcB) // nanosPerMilli
 
 ## Calculate nanoseconds between two Utc timestamps
 deltaAsNanos : Utc, Utc -> U128
-deltaAsNanos = \@Utc first, @Utc second ->
-    firstCast = Num.bitwiseXor (Num.toU128 first) (Num.shiftLeftBy 1 127)
-    secondCast = Num.bitwiseXor (Num.toU128 second) (Num.shiftLeftBy 1 127)
-    Num.absDiff firstCast secondCast
+deltaAsNanos = \@Utc nanosA, @Utc nanosB ->
+    # bitwiseXor for best performance
+    nanosAShifted = Num.bitwiseXor (Num.toU128 nanosA) (Num.shiftLeftBy 1 127)
+    nanosBShifted = Num.bitwiseXor (Num.toU128 nanosB) (Num.shiftLeftBy 1 127)
+    Num.absDiff nanosAShifted nanosBShifted
 
 # TESTS
 expect deltaAsNanos (fromNanosSinceEpoch 0) (fromNanosSinceEpoch 0) == 0
