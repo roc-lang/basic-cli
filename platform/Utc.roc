@@ -48,7 +48,7 @@ fromNanosSinceEpoch = @Utc
 ## Calculate milliseconds between two Utc timestamps
 deltaAsMillis : Utc, Utc -> U128
 deltaAsMillis = \utcA, utcB ->
-    (deltaAsNanons utcA utcB) // nanosPerMilli
+    (deltaAsNanos utcA utcB) // nanosPerMilli
 
 ## Calculate nanoseconds between two Utc timestamps
 deltaAsNanos : Utc, Utc -> U128
