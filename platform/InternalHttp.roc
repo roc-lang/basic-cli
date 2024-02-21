@@ -26,7 +26,7 @@ Body : [
 
 Response : [
     BadRequest Str,
-    Timeout,
+    Timeout U64,
     NetworkError,
     BadStatus Metadata (List U8),
     GoodStatus Metadata (List U8),
@@ -41,7 +41,7 @@ Metadata : {
 
 Error : [
     BadRequest Str,
-    Timeout,
+    Timeout U64,
     NetworkError,
     BadStatus U16,
     BadBody Str,

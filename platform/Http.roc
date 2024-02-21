@@ -125,7 +125,7 @@ handleStringResponse : Response -> Result Str Error
 handleStringResponse = \response ->
     when response is
         BadRequest err -> Err (BadRequest err)
-        Timeout -> Err Timeout
+        Timeout ms -> Err (Timeout ms)
         NetworkError -> Err NetworkError
         BadStatus metadata _ -> Err (BadStatus metadata.statusCode)
         GoodStatus _ bodyBytes ->
@@ -141,7 +141,7 @@ errorToString : Error -> Str
 errorToString = \err ->
     when err is
         BadRequest e -> "Invalid Request: $(e)"
-        Timeout -> "Request timed out"
+        Timeout ms -> "Request timed out ($(Num.toStr ms)ms)"
         NetworkError -> "Network error"
         BadStatus code -> Str.concat "Request failed with status " (Num.toStr code)
         BadBody details -> Str.concat "Request failed. Invalid body. " details
