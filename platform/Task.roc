@@ -212,14 +212,14 @@ batch = \current -> \next ->
 
         map current f
 
-## Apply a task repeatedly to a list of items, and return a list of the resulting values
+## Apply each task in a list sequentially, and return a list of the resulting values.
+## Each task will be awaited before beginning the next task.
 ##
 ## ```
-## authors : List ID
-## getAuthor : ID -> Task Author [DbError]
+## fetchAuthorTasks List (Task Author [DbError])
 ##
 ## getAuthors : Task (List Author) [DbError]
-## getAuthors = Task.list authors getAuthor
+## getAuthors = Task.seq authorTasks 
 ## ```
 ##
 seq : List (Task ok err) -> Task (List ok) err
