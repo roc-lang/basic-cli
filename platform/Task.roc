@@ -216,10 +216,10 @@ batch = \current -> \next ->
 ## Each task will be awaited before beginning the next task.
 ##
 ## ```
-## fetchAuthorTasks List (Task Author [DbError])
+## fetchAuthorTasks : List (Task Author [DbError])
 ##
 ## getAuthors : Task (List Author) [DbError]
-## getAuthors = Task.seq authorTasks 
+## getAuthors = Task.seq fetchAuthorTasks 
 ## ```
 ##
 seq : List (Task ok err) -> Task (List ok) err
