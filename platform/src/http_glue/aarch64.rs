@@ -16,19 +16,16 @@
 #![allow(clippy::needless_borrow)]
 #![allow(clippy::clone_on_copy)]
 
-
-#[derive(Clone, Default, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Default, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(transparent)]
 pub struct U1 {
-     f0: roc_std::RocStr,
+    f0: roc_std::RocStr,
 }
 
 impl U1 {
     /// A tag named ``MimeType``, with the given payload.
     pub fn MimeType(f0: roc_std::RocStr) -> Self {
-        Self {
-            f0
-        }
+        Self { f0 }
     }
 
     /// Since `U1` only has one tag (namely, `MimeType`),
@@ -44,23 +41,20 @@ impl U1 {
     }
 }
 
-
 impl core::fmt::Debug for U1 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_tuple("U1::MimeType")
-                .field(&self.f0)
-                .finish()
+        f.debug_tuple("U1::MimeType").field(&self.f0).finish()
     }
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct Body_Body {
     pub f0: U1,
     pub f1: roc_std::RocList<u8>,
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum discriminant_Body {
     Body = 0,
@@ -145,11 +139,11 @@ impl core::fmt::Debug for Body {
                 Body => {
                     let field: &Body_Body = &self.payload.Body;
                     f.debug_tuple("Body::Body").field(field).finish()
-                },
+                }
                 EmptyBody => {
                     let field: &() = &self.payload.EmptyBody;
                     f.debug_tuple("Body::EmptyBody").field(field).finish()
-                },
+                }
             }
         }
     }
@@ -213,7 +207,6 @@ impl core::hash::Hash for Body {
 }
 
 impl Body {
-
     pub fn unwrap_Body(mut self) -> Body_Body {
         debug_assert_eq!(self.discriminant, discriminant_Body::Body);
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.Body) }
@@ -228,25 +221,20 @@ impl Body {
     }
 }
 
-
-
 impl Body {
-
     pub fn Body(payload: Body_Body) -> Self {
         Self {
             discriminant: discriminant_Body::Body,
             payload: union_Body {
                 Body: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
     pub fn EmptyBody() -> Self {
         Self {
             discriminant: discriminant_Body::EmptyBody,
-            payload: union_Body {
-                EmptyBody: (),
-            }
+            payload: union_Body { EmptyBody: () },
         }
     }
 }
@@ -255,26 +243,25 @@ impl Drop for Body {
     fn drop(&mut self) {
         // Drop the payloads
         match self.discriminant() {
-            discriminant_Body::Body => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.Body) },
+            discriminant_Body::Body => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.Body)
+            },
             discriminant_Body::EmptyBody => {}
         }
     }
 }
 
-#[derive(Clone, Default, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Default, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct Header {
-     f0: roc_std::RocStr,
-     f1: roc_std::RocStr,
+    f0: roc_std::RocStr,
+    f1: roc_std::RocStr,
 }
 
 impl Header {
     /// A tag named ``Header``, with the given payload.
     pub fn Header(f0: roc_std::RocStr, f1: roc_std::RocStr) -> Self {
-        Self {
-            f0,
-            f1
-        }
+        Self { f0, f1 }
     }
 
     /// Since `Header` only has one tag (namely, `Header`),
@@ -290,17 +277,16 @@ impl Header {
     }
 }
 
-
 impl core::fmt::Debug for Header {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_tuple("Header::Header")
-                .field(&self.f0)
-                .field(&self.f1)
-                .finish()
+            .field(&self.f0)
+            .field(&self.f1)
+            .finish()
     }
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum discriminant_TimeoutConfig {
     NoTimeout = 0,
@@ -311,7 +297,9 @@ impl core::fmt::Debug for discriminant_TimeoutConfig {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::NoTimeout => f.write_str("discriminant_TimeoutConfig::NoTimeout"),
-            Self::TimeoutMilliseconds => f.write_str("discriminant_TimeoutConfig::TimeoutMilliseconds"),
+            Self::TimeoutMilliseconds => {
+                f.write_str("discriminant_TimeoutConfig::TimeoutMilliseconds")
+            }
         }
     }
 }
@@ -322,8 +310,10 @@ pub union union_TimeoutConfig {
     TimeoutMilliseconds: u64,
 }
 
-const _SIZE_CHECK_union_TimeoutConfig: () = assert!(core::mem::size_of::<union_TimeoutConfig>() == 8);
-const _ALIGN_CHECK_union_TimeoutConfig: () = assert!(core::mem::align_of::<union_TimeoutConfig>() == 8);
+const _SIZE_CHECK_union_TimeoutConfig: () =
+    assert!(core::mem::size_of::<union_TimeoutConfig>() == 8);
+const _ALIGN_CHECK_union_TimeoutConfig: () =
+    assert!(core::mem::align_of::<union_TimeoutConfig>() == 8);
 
 const _SIZE_CHECK_TimeoutConfig: () = assert!(core::mem::size_of::<TimeoutConfig>() == 16);
 const _ALIGN_CHECK_TimeoutConfig: () = assert!(core::mem::align_of::<TimeoutConfig>() == 8);
@@ -384,12 +374,16 @@ impl core::fmt::Debug for TimeoutConfig {
             match self.discriminant {
                 NoTimeout => {
                     let field: &() = &self.payload.NoTimeout;
-                    f.debug_tuple("TimeoutConfig::NoTimeout").field(field).finish()
-                },
+                    f.debug_tuple("TimeoutConfig::NoTimeout")
+                        .field(field)
+                        .finish()
+                }
                 TimeoutMilliseconds => {
                     let field: &u64 = &self.payload.TimeoutMilliseconds;
-                    f.debug_tuple("TimeoutConfig::TimeoutMilliseconds").field(field).finish()
-                },
+                    f.debug_tuple("TimeoutConfig::TimeoutMilliseconds")
+                        .field(field)
+                        .finish()
+                }
             }
         }
     }
@@ -408,7 +402,9 @@ impl PartialEq for TimeoutConfig {
         unsafe {
             match self.discriminant {
                 NoTimeout => self.payload.NoTimeout == other.payload.NoTimeout,
-                TimeoutMilliseconds => self.payload.TimeoutMilliseconds == other.payload.TimeoutMilliseconds,
+                TimeoutMilliseconds => {
+                    self.payload.TimeoutMilliseconds == other.payload.TimeoutMilliseconds
+                }
             }
         }
     }
@@ -432,7 +428,10 @@ impl PartialOrd for TimeoutConfig {
             Equal => unsafe {
                 match self.discriminant {
                     NoTimeout => self.payload.NoTimeout.partial_cmp(&other.payload.NoTimeout),
-                    TimeoutMilliseconds => self.payload.TimeoutMilliseconds.partial_cmp(&other.payload.TimeoutMilliseconds),
+                    TimeoutMilliseconds => self
+                        .payload
+                        .TimeoutMilliseconds
+                        .partial_cmp(&other.payload.TimeoutMilliseconds),
                 }
             },
         }
@@ -453,31 +452,31 @@ impl core::hash::Hash for TimeoutConfig {
 }
 
 impl TimeoutConfig {
-
     pub fn is_NoTimeout(&self) -> bool {
         matches!(self.discriminant, discriminant_TimeoutConfig::NoTimeout)
     }
 
     pub fn unwrap_TimeoutMilliseconds(mut self) -> u64 {
-        debug_assert_eq!(self.discriminant, discriminant_TimeoutConfig::TimeoutMilliseconds);
+        debug_assert_eq!(
+            self.discriminant,
+            discriminant_TimeoutConfig::TimeoutMilliseconds
+        );
         unsafe { self.payload.TimeoutMilliseconds }
     }
 
     pub fn is_TimeoutMilliseconds(&self) -> bool {
-        matches!(self.discriminant, discriminant_TimeoutConfig::TimeoutMilliseconds)
+        matches!(
+            self.discriminant,
+            discriminant_TimeoutConfig::TimeoutMilliseconds
+        )
     }
 }
 
-
-
 impl TimeoutConfig {
-
     pub fn NoTimeout() -> Self {
         Self {
             discriminant: discriminant_TimeoutConfig::NoTimeout,
-            payload: union_TimeoutConfig {
-                NoTimeout: (),
-            }
+            payload: union_TimeoutConfig { NoTimeout: () },
         }
     }
 
@@ -486,12 +485,12 @@ impl TimeoutConfig {
             discriminant: discriminant_TimeoutConfig::TimeoutMilliseconds,
             payload: union_TimeoutConfig {
                 TimeoutMilliseconds: payload,
-            }
+            },
         }
     }
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum Method {
     Connect = 0,
@@ -521,7 +520,7 @@ impl core::fmt::Debug for Method {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct Request {
     pub body: Body,
@@ -531,20 +530,17 @@ pub struct Request {
     pub method: Method,
 }
 
-#[derive(Clone, Default, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Default, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct Part {
-     f0: roc_std::RocStr,
-     f1: roc_std::RocList<u8>,
+    f0: roc_std::RocStr,
+    f1: roc_std::RocList<u8>,
 }
 
 impl Part {
     /// A tag named ``Part``, with the given payload.
     pub fn Part(f0: roc_std::RocStr, f1: roc_std::RocList<u8>) -> Self {
-        Self {
-            f0,
-            f1
-        }
+        Self { f0, f1 }
     }
 
     /// Since `Part` only has one tag (namely, `Part`),
@@ -560,17 +556,16 @@ impl Part {
     }
 }
 
-
 impl core::fmt::Debug for Part {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_tuple("Part::Part")
-                .field(&self.f0)
-                .field(&self.f1)
-                .finish()
+            .field(&self.f0)
+            .field(&self.f1)
+            .finish()
     }
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct Metadata {
     pub headers: roc_std::RocList<Header>,
@@ -579,14 +574,14 @@ pub struct Metadata {
     pub statusCode: u16,
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct Response_BadStatus {
     pub f0: Metadata,
     pub f1: roc_std::RocList<u8>,
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum discriminant_Response {
     BadRequest = 0,
@@ -689,23 +684,25 @@ impl core::fmt::Debug for Response {
                 BadRequest => {
                     let field: &roc_std::RocStr = &self.payload.BadRequest;
                     f.debug_tuple("Response::BadRequest").field(field).finish()
-                },
+                }
                 BadStatus => {
                     let field: &Response_BadStatus = &self.payload.BadStatus;
                     f.debug_tuple("Response::BadStatus").field(field).finish()
-                },
+                }
                 GoodStatus => {
                     let field: &Response_BadStatus = &self.payload.GoodStatus;
                     f.debug_tuple("Response::GoodStatus").field(field).finish()
-                },
+                }
                 NetworkError => {
                     let field: &() = &self.payload.NetworkError;
-                    f.debug_tuple("Response::NetworkError").field(field).finish()
-                },
+                    f.debug_tuple("Response::NetworkError")
+                        .field(field)
+                        .finish()
+                }
                 Timeout => {
                     let field: &u64 = &self.payload.Timeout;
                     f.debug_tuple("Response::Timeout").field(field).finish()
-                },
+                }
             }
         }
     }
@@ -750,10 +747,19 @@ impl PartialOrd for Response {
             Greater => Option::Some(Greater),
             Equal => unsafe {
                 match self.discriminant {
-                    BadRequest => self.payload.BadRequest.partial_cmp(&other.payload.BadRequest),
+                    BadRequest => self
+                        .payload
+                        .BadRequest
+                        .partial_cmp(&other.payload.BadRequest),
                     BadStatus => self.payload.BadStatus.partial_cmp(&other.payload.BadStatus),
-                    GoodStatus => self.payload.GoodStatus.partial_cmp(&other.payload.GoodStatus),
-                    NetworkError => self.payload.NetworkError.partial_cmp(&other.payload.NetworkError),
+                    GoodStatus => self
+                        .payload
+                        .GoodStatus
+                        .partial_cmp(&other.payload.GoodStatus),
+                    NetworkError => self
+                        .payload
+                        .NetworkError
+                        .partial_cmp(&other.payload.NetworkError),
                     Timeout => self.payload.Timeout.partial_cmp(&other.payload.Timeout),
                 }
             },
@@ -778,7 +784,6 @@ impl core::hash::Hash for Response {
 }
 
 impl Response {
-
     pub fn unwrap_BadRequest(mut self) -> roc_std::RocStr {
         debug_assert_eq!(self.discriminant, discriminant_Response::BadRequest);
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.BadRequest) }
@@ -820,16 +825,13 @@ impl Response {
     }
 }
 
-
-
 impl Response {
-
     pub fn BadRequest(payload: roc_std::RocStr) -> Self {
         Self {
             discriminant: discriminant_Response::BadRequest,
             payload: union_Response {
                 BadRequest: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
@@ -838,7 +840,7 @@ impl Response {
             discriminant: discriminant_Response::BadStatus,
             payload: union_Response {
                 BadStatus: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
@@ -847,25 +849,21 @@ impl Response {
             discriminant: discriminant_Response::GoodStatus,
             payload: union_Response {
                 GoodStatus: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
     pub fn NetworkError() -> Self {
         Self {
             discriminant: discriminant_Response::NetworkError,
-            payload: union_Response {
-                NetworkError: (),
-            }
+            payload: union_Response { NetworkError: () },
         }
     }
 
     pub fn Timeout(payload: u64) -> Self {
         Self {
             discriminant: discriminant_Response::Timeout,
-            payload: union_Response {
-                Timeout: payload,
-            }
+            payload: union_Response { Timeout: payload },
         }
     }
 }
@@ -874,16 +872,22 @@ impl Drop for Response {
     fn drop(&mut self) {
         // Drop the payloads
         match self.discriminant() {
-            discriminant_Response::BadRequest => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.BadRequest) },
-            discriminant_Response::BadStatus => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.BadStatus) },
-            discriminant_Response::GoodStatus => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.GoodStatus) },
+            discriminant_Response::BadRequest => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.BadRequest)
+            },
+            discriminant_Response::BadStatus => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.BadStatus)
+            },
+            discriminant_Response::GoodStatus => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.GoodStatus)
+            },
             discriminant_Response::NetworkError => {}
             discriminant_Response::Timeout => {}
         }
     }
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum discriminant_Error {
     BadBody = 0,
@@ -986,23 +990,23 @@ impl core::fmt::Debug for Error {
                 BadBody => {
                     let field: &roc_std::RocStr = &self.payload.BadBody;
                     f.debug_tuple("Error::BadBody").field(field).finish()
-                },
+                }
                 BadRequest => {
                     let field: &roc_std::RocStr = &self.payload.BadRequest;
                     f.debug_tuple("Error::BadRequest").field(field).finish()
-                },
+                }
                 BadStatus => {
                     let field: &u16 = &self.payload.BadStatus;
                     f.debug_tuple("Error::BadStatus").field(field).finish()
-                },
+                }
                 NetworkError => {
                     let field: &() = &self.payload.NetworkError;
                     f.debug_tuple("Error::NetworkError").field(field).finish()
-                },
+                }
                 Timeout => {
                     let field: &u64 = &self.payload.Timeout;
                     f.debug_tuple("Error::Timeout").field(field).finish()
-                },
+                }
             }
         }
     }
@@ -1048,9 +1052,15 @@ impl PartialOrd for Error {
             Equal => unsafe {
                 match self.discriminant {
                     BadBody => self.payload.BadBody.partial_cmp(&other.payload.BadBody),
-                    BadRequest => self.payload.BadRequest.partial_cmp(&other.payload.BadRequest),
+                    BadRequest => self
+                        .payload
+                        .BadRequest
+                        .partial_cmp(&other.payload.BadRequest),
                     BadStatus => self.payload.BadStatus.partial_cmp(&other.payload.BadStatus),
-                    NetworkError => self.payload.NetworkError.partial_cmp(&other.payload.NetworkError),
+                    NetworkError => self
+                        .payload
+                        .NetworkError
+                        .partial_cmp(&other.payload.NetworkError),
                     Timeout => self.payload.Timeout.partial_cmp(&other.payload.Timeout),
                 }
             },
@@ -1075,7 +1085,6 @@ impl core::hash::Hash for Error {
 }
 
 impl Error {
-
     pub fn unwrap_BadBody(mut self) -> roc_std::RocStr {
         debug_assert_eq!(self.discriminant, discriminant_Error::BadBody);
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.BadBody) }
@@ -1117,16 +1126,13 @@ impl Error {
     }
 }
 
-
-
 impl Error {
-
     pub fn BadBody(payload: roc_std::RocStr) -> Self {
         Self {
             discriminant: discriminant_Error::BadBody,
             payload: union_Error {
                 BadBody: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
@@ -1135,34 +1141,28 @@ impl Error {
             discriminant: discriminant_Error::BadRequest,
             payload: union_Error {
                 BadRequest: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
     pub fn BadStatus(payload: u16) -> Self {
         Self {
             discriminant: discriminant_Error::BadStatus,
-            payload: union_Error {
-                BadStatus: payload,
-            }
+            payload: union_Error { BadStatus: payload },
         }
     }
 
     pub fn NetworkError() -> Self {
         Self {
             discriminant: discriminant_Error::NetworkError,
-            payload: union_Error {
-                NetworkError: (),
-            }
+            payload: union_Error { NetworkError: () },
         }
     }
 
     pub fn Timeout(payload: u64) -> Self {
         Self {
             discriminant: discriminant_Error::Timeout,
-            payload: union_Error {
-                Timeout: payload,
-            }
+            payload: union_Error { Timeout: payload },
         }
     }
 }
@@ -1171,8 +1171,12 @@ impl Drop for Error {
     fn drop(&mut self) {
         // Drop the payloads
         match self.discriminant() {
-            discriminant_Error::BadBody => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.BadBody) },
-            discriminant_Error::BadRequest => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.BadRequest) },
+            discriminant_Error::BadBody => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.BadBody)
+            },
+            discriminant_Error::BadRequest => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.BadRequest)
+            },
             discriminant_Error::BadStatus => {}
             discriminant_Error::NetworkError => {}
             discriminant_Error::Timeout => {}
@@ -1180,7 +1184,7 @@ impl Drop for Error {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum discriminant_GlueTypes {
     A = 0,
@@ -1307,39 +1311,39 @@ impl core::fmt::Debug for GlueTypes {
                 A => {
                     let field: &Request = &self.payload.A;
                     f.debug_tuple("GlueTypes::A").field(field).finish()
-                },
+                }
                 B => {
                     let field: &Method = &self.payload.B;
                     f.debug_tuple("GlueTypes::B").field(field).finish()
-                },
+                }
                 C => {
                     let field: &Header = &self.payload.C;
                     f.debug_tuple("GlueTypes::C").field(field).finish()
-                },
+                }
                 D => {
                     let field: &TimeoutConfig = &self.payload.D;
                     f.debug_tuple("GlueTypes::D").field(field).finish()
-                },
+                }
                 E => {
                     let field: &Part = &self.payload.E;
                     f.debug_tuple("GlueTypes::E").field(field).finish()
-                },
+                }
                 F => {
                     let field: &Body = &self.payload.F;
                     f.debug_tuple("GlueTypes::F").field(field).finish()
-                },
+                }
                 G => {
                     let field: &Response = &self.payload.G;
                     f.debug_tuple("GlueTypes::G").field(field).finish()
-                },
+                }
                 H => {
                     let field: &Metadata = &self.payload.H;
                     f.debug_tuple("GlueTypes::H").field(field).finish()
-                },
+                }
                 I => {
                     let field: &Error = &self.payload.I;
                     f.debug_tuple("GlueTypes::I").field(field).finish()
-                },
+                }
             }
         }
     }
@@ -1424,7 +1428,6 @@ impl core::hash::Hash for GlueTypes {
 }
 
 impl GlueTypes {
-
     pub fn unwrap_A(mut self) -> Request {
         debug_assert_eq!(self.discriminant, discriminant_GlueTypes::A);
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.A) }
@@ -1454,7 +1457,7 @@ impl GlueTypes {
 
     pub fn unwrap_D(mut self) -> TimeoutConfig {
         debug_assert_eq!(self.discriminant, discriminant_GlueTypes::D);
-        unsafe { self.payload.D }
+        unsafe { core::mem::ManuallyDrop::take(self.payload.D) }
     }
 
     pub fn is_D(&self) -> bool {
@@ -1507,25 +1510,20 @@ impl GlueTypes {
     }
 }
 
-
-
 impl GlueTypes {
-
     pub fn A(payload: Request) -> Self {
         Self {
             discriminant: discriminant_GlueTypes::A,
             payload: union_GlueTypes {
                 A: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
     pub fn B(payload: Method) -> Self {
         Self {
             discriminant: discriminant_GlueTypes::B,
-            payload: union_GlueTypes {
-                B: payload,
-            }
+            payload: union_GlueTypes { B: payload },
         }
     }
 
@@ -1534,7 +1532,7 @@ impl GlueTypes {
             discriminant: discriminant_GlueTypes::C,
             payload: union_GlueTypes {
                 C: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
@@ -1542,8 +1540,8 @@ impl GlueTypes {
         Self {
             discriminant: discriminant_GlueTypes::D,
             payload: union_GlueTypes {
-                D: payload,
-            }
+                D: core::mem::ManuallyDrop::new(payload),
+            },
         }
     }
 
@@ -1552,7 +1550,7 @@ impl GlueTypes {
             discriminant: discriminant_GlueTypes::E,
             payload: union_GlueTypes {
                 E: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
@@ -1561,7 +1559,7 @@ impl GlueTypes {
             discriminant: discriminant_GlueTypes::F,
             payload: union_GlueTypes {
                 F: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
@@ -1570,7 +1568,7 @@ impl GlueTypes {
             discriminant: discriminant_GlueTypes::G,
             payload: union_GlueTypes {
                 G: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
@@ -1579,7 +1577,7 @@ impl GlueTypes {
             discriminant: discriminant_GlueTypes::H,
             payload: union_GlueTypes {
                 H: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
@@ -1588,7 +1586,7 @@ impl GlueTypes {
             discriminant: discriminant_GlueTypes::I,
             payload: union_GlueTypes {
                 I: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 }
@@ -1597,20 +1595,32 @@ impl Drop for GlueTypes {
     fn drop(&mut self) {
         // Drop the payloads
         match self.discriminant() {
-            discriminant_GlueTypes::A => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.A) },
+            discriminant_GlueTypes::A => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.A)
+            },
             discriminant_GlueTypes::B => {}
-            discriminant_GlueTypes::C => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.C) },
+            discriminant_GlueTypes::C => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.C)
+            },
             discriminant_GlueTypes::D => {}
-            discriminant_GlueTypes::E => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.E) },
-            discriminant_GlueTypes::F => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.F) },
-            discriminant_GlueTypes::G => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.G) },
-            discriminant_GlueTypes::H => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.H) },
-            discriminant_GlueTypes::I => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.I) },
+            discriminant_GlueTypes::E => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.E)
+            },
+            discriminant_GlueTypes::F => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.F)
+            },
+            discriminant_GlueTypes::G => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.G)
+            },
+            discriminant_GlueTypes::H => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.H)
+            },
+            discriminant_GlueTypes::I => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.I)
+            },
         }
     }
 }
-
-
 
 pub fn mainForHost() -> GlueTypes {
     extern "C" {
@@ -1620,8 +1630,9 @@ pub fn mainForHost() -> GlueTypes {
     let mut ret = core::mem::MaybeUninit::uninit();
 
     unsafe {
-        roc__mainForHost_1_exposed_generic(ret.as_mut_ptr(), );
+        roc__mainForHost_1_exposed_generic(ret.as_mut_ptr());
 
         ret.assume_init()
     }
 }
+

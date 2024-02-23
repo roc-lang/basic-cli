@@ -617,15 +617,15 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &glue::Request) -> glue::Respo
     let mut req_builder = hyper::Request::builder().method(method).uri(url);
 
     for header in roc_request.headers.iter() {
-        let (name, value) = unsafe { header.as_Header() };
+        let (name, value) = header.as_Header();
         req_builder = req_builder.header(name.as_str(), value.as_str());
     }
     let body_bytes = if roc_request.body.is_Body() {
         let (mime_type_tag, body_byte_list) = unsafe {
-            let body = roc_request.body.unwrap_Body();
-            (body.f0, body.f1)
+            let body = &roc_request.body.payload.Body;
+            (&body.f0, &body.f1)
         };
-        let mime_type_str: &RocStr = unsafe { mime_type_tag.as_MimeType() };
+        let mime_type_str: &RocStr = mime_type_tag.as_MimeType();
 
         req_builder = req_builder.header("Content-Type", mime_type_str.as_str());
         body_byte_list.as_slice().to_vec()
@@ -641,7 +641,7 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &glue::Request) -> glue::Respo
     };
 
     let time_limit = if roc_request.timeout.is_TimeoutMilliseconds() {
-        let ms: u64 = unsafe { roc_request.timeout.unwrap_TimeoutMilliseconds() };
+        let ms: u64 = unsafe { roc_request.timeout.payload.TimeoutMilliseconds };
         Some(Duration::from_millis(ms))
     } else {
         None
