@@ -4,13 +4,14 @@ mod command_glue;
 mod dir_glue;
 mod file_glue;
 mod glue;
+mod http_glue;
 mod path_glue;
 mod tcp_glue;
 
 use core::alloc::Layout;
 use core::ffi::c_void;
 use core::mem::MaybeUninit;
-use glue::Metadata;
+use glue::{Metadata, Response_BadStatus};
 use roc_std::{RocDict, RocList, RocResult, RocStr};
 use std::borrow::{Borrow, Cow};
 use std::ffi::OsStr;
@@ -619,8 +620,11 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &glue::Request) -> glue::Respo
         let (name, value) = unsafe { header.as_Header() };
         req_builder = req_builder.header(name.as_str(), value.as_str());
     }
-    let body_bytes = if roc_request.body.discriminant() == glue::discriminant_Body::Body {
-        let (mime_type_tag, body_byte_list) = unsafe { roc_request.body.as_Body() };
+    let body_bytes = if roc_request.body.is_Body() {
+        let (mime_type_tag, body_byte_list) = unsafe {
+            let body = roc_request.body.unwrap_Body();
+            (body.f0, body.f1)
+        };
         let mime_type_str: &RocStr = unsafe { mime_type_tag.as_MimeType() };
 
         req_builder = req_builder.header("Content-Type", mime_type_str.as_str());
@@ -636,11 +640,9 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &glue::Request) -> glue::Respo
         }
     };
 
-    let time_limit = if roc_request.timeout.discriminant()
-        == glue::discriminant_TimeoutConfig::TimeoutMilliseconds
-    {
-        let ms: &u64 = unsafe { roc_request.timeout.as_TimeoutMilliseconds() };
-        Some(Duration::from_millis(*ms))
+    let time_limit = if roc_request.timeout.is_TimeoutMilliseconds() {
+        let ms: u64 = unsafe { roc_request.timeout.unwrap_TimeoutMilliseconds() };
+        Some(Duration::from_millis(ms))
     } else {
         None
     };
@@ -677,16 +679,26 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &glue::Request) -> glue::Respo
                 let body: RocList<u8> = RocList::from_iter(bytes);
 
                 if status.is_success() {
-                    glue::Response::GoodStatus(metadata, body)
+                    // Glue code made this expect a Response_BadStatus? BadStatus and GoodStatus
+                    // have the same fields so deduplication makes sense? But possibly a bug?
+                    glue::Response::GoodStatus(Response_BadStatus {
+                        f0: metadata,
+                        f1: body,
+                    })
                 } else {
-                    glue::Response::BadStatus(metadata, body)
+                    glue::Response::BadStatus(Response_BadStatus {
+                        f0: metadata,
+                        f1: body,
+                    })
                 }
             }
             Err(err) => {
                 if err.is_timeout() {
-                    glue::Response::Timeout
+                    glue::Response::Timeout(
+                        time_limit.map(|d| d.as_millis()).unwrap_or_default() as u64
+                    )
                 } else if err.is_connect() || err.is_closed() {
-                    glue::Response::NetworkError
+                    glue::Response::NetworkError()
                 } else {
                     glue::Response::BadRequest(RocStr::from(err.to_string().as_str()))
                 }
@@ -694,9 +706,9 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &glue::Request) -> glue::Respo
         }
     };
     match time_limit {
-        Some(limit) => match rt.block_on(async { tokio::time::timeout(limit, http_fn).await}) {
+        Some(limit) => match rt.block_on(async { tokio::time::timeout(limit, http_fn).await }) {
             Ok(res) => res,
-            Err(_) => glue::Response::Timeout,
+            Err(_) => glue::Response::Timeout(limit.as_millis() as u64),
         },
         None => rt.block_on(http_fn),
     }

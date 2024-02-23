@@ -3,13 +3,20 @@ platform "glue"
     exposes []
     packages {}
     imports [
-        InternalPath,
+        InternalHttp
     ]
     provides [mainForHost]
 
 GlueTypes : [
-    A InternalPath.GetMetadataErr,
-    B InternalPath.InternalPathType,
+     A InternalHttp.Request,
+     B InternalHttp.Method,
+     C InternalHttp.Header,
+     D InternalHttp.TimeoutConfig,
+     E InternalHttp.Part,
+     F InternalHttp.Body,
+     G InternalHttp.Response,
+     H InternalHttp.Metadata,
+     I InternalHttp.Error
 ]
 
 mainForHost : GlueTypes
