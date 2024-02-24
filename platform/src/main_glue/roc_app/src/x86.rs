@@ -17,241 +17,6 @@
 #![allow(clippy::clone_on_copy)]
 
 #[derive(Clone, Default, PartialEq, PartialOrd, Eq, Ord, Hash)]
-#[repr(transparent)]
-pub struct U1 {
-    f0: roc_std::RocStr,
-}
-
-impl U1 {
-    /// A tag named ``MimeType``, with the given payload.
-    pub fn MimeType(f0: roc_std::RocStr) -> Self {
-        Self { f0 }
-    }
-
-    /// Since `U1` only has one tag (namely, `MimeType`),
-    /// convert it to `MimeType`'s payload.
-    pub fn into_MimeType(self) -> roc_std::RocStr {
-        self.f0
-    }
-
-    /// Since `U1` only has one tag (namely, `MimeType`),
-    /// convert it to `MimeType`'s payload.
-    pub fn as_MimeType(&self) -> &roc_std::RocStr {
-        &self.f0
-    }
-}
-
-impl core::fmt::Debug for U1 {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_tuple("U1::MimeType").field(&self.f0).finish()
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
-#[repr(C)]
-pub struct Body_Body {
-    pub f0: U1,
-    pub f1: roc_std::RocList<u8>,
-}
-
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
-#[repr(u8)]
-pub enum discriminant_Body {
-    Body = 0,
-    EmptyBody = 1,
-}
-
-impl core::fmt::Debug for discriminant_Body {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            Self::Body => f.write_str("discriminant_Body::Body"),
-            Self::EmptyBody => f.write_str("discriminant_Body::EmptyBody"),
-        }
-    }
-}
-
-#[repr(C, align(8))]
-pub union union_Body {
-    Body: core::mem::ManuallyDrop<Body_Body>,
-    EmptyBody: (),
-}
-
-const _SIZE_CHECK_union_Body: () = assert!(core::mem::size_of::<union_Body>() == 56);
-const _ALIGN_CHECK_union_Body: () = assert!(core::mem::align_of::<union_Body>() == 8);
-
-const _SIZE_CHECK_Body: () = assert!(core::mem::size_of::<Body>() == 56);
-const _ALIGN_CHECK_Body: () = assert!(core::mem::align_of::<Body>() == 8);
-
-impl Body {
-    /// Returns which variant this tag union holds. Note that this never includes a payload!
-    pub fn discriminant(&self) -> discriminant_Body {
-        unsafe {
-            let bytes = core::mem::transmute::<&Self, &[u8; core::mem::size_of::<Self>()]>(self);
-
-            core::mem::transmute::<u8, discriminant_Body>(*bytes.as_ptr().add(48))
-        }
-    }
-
-    /// Internal helper
-    fn set_discriminant(&mut self, discriminant: discriminant_Body) {
-        let discriminant_ptr: *mut discriminant_Body = (self as *mut Body).cast();
-
-        unsafe {
-            *(discriminant_ptr.add(48)) = discriminant;
-        }
-    }
-}
-
-#[repr(C)]
-pub struct Body {
-    payload: union_Body,
-    discriminant: discriminant_Body,
-}
-
-impl Clone for Body {
-    fn clone(&self) -> Self {
-        use discriminant_Body::*;
-
-        let payload = unsafe {
-            match self.discriminant {
-                Body => union_Body {
-                    Body: self.payload.Body.clone(),
-                },
-                EmptyBody => union_Body {
-                    EmptyBody: self.payload.EmptyBody.clone(),
-                },
-            }
-        };
-
-        Self {
-            discriminant: self.discriminant,
-            payload,
-        }
-    }
-}
-
-impl core::fmt::Debug for Body {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        use discriminant_Body::*;
-
-        unsafe {
-            match self.discriminant {
-                Body => {
-                    let field: &Body_Body = &self.payload.Body;
-                    f.debug_tuple("Body::Body").field(field).finish()
-                }
-                EmptyBody => {
-                    let field: &() = &self.payload.EmptyBody;
-                    f.debug_tuple("Body::EmptyBody").field(field).finish()
-                }
-            }
-        }
-    }
-}
-
-impl Eq for Body {}
-
-impl PartialEq for Body {
-    fn eq(&self, other: &Self) -> bool {
-        use discriminant_Body::*;
-
-        if self.discriminant != other.discriminant {
-            return false;
-        }
-
-        unsafe {
-            match self.discriminant {
-                Body => self.payload.Body == other.payload.Body,
-                EmptyBody => self.payload.EmptyBody == other.payload.EmptyBody,
-            }
-        }
-    }
-}
-
-impl Ord for Body {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.partial_cmp(other).unwrap()
-    }
-}
-
-impl PartialOrd for Body {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        use discriminant_Body::*;
-
-        use std::cmp::Ordering::*;
-
-        match self.discriminant.cmp(&other.discriminant) {
-            Less => Option::Some(Less),
-            Greater => Option::Some(Greater),
-            Equal => unsafe {
-                match self.discriminant {
-                    Body => self.payload.Body.partial_cmp(&other.payload.Body),
-                    EmptyBody => self.payload.EmptyBody.partial_cmp(&other.payload.EmptyBody),
-                }
-            },
-        }
-    }
-}
-
-impl core::hash::Hash for Body {
-    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
-        use discriminant_Body::*;
-
-        unsafe {
-            match self.discriminant {
-                Body => self.payload.Body.hash(state),
-                EmptyBody => self.payload.EmptyBody.hash(state),
-            }
-        }
-    }
-}
-
-impl Body {
-    pub fn unwrap_Body(mut self) -> Body_Body {
-        debug_assert_eq!(self.discriminant, discriminant_Body::Body);
-        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.Body) }
-    }
-
-    pub fn is_Body(&self) -> bool {
-        matches!(self.discriminant, discriminant_Body::Body)
-    }
-
-    pub fn is_EmptyBody(&self) -> bool {
-        matches!(self.discriminant, discriminant_Body::EmptyBody)
-    }
-}
-
-impl Body {
-    pub fn Body(payload: Body_Body) -> Self {
-        Self {
-            discriminant: discriminant_Body::Body,
-            payload: union_Body {
-                Body: core::mem::ManuallyDrop::new(payload),
-            },
-        }
-    }
-
-    pub fn EmptyBody() -> Self {
-        Self {
-            discriminant: discriminant_Body::EmptyBody,
-            payload: union_Body { EmptyBody: () },
-        }
-    }
-}
-
-impl Drop for Body {
-    fn drop(&mut self) {
-        // Drop the payloads
-        match self.discriminant() {
-            discriminant_Body::Body => unsafe {
-                core::mem::ManuallyDrop::drop(&mut self.payload.Body)
-            },
-            discriminant_Body::EmptyBody => {}
-        }
-    }
-}
-
-#[derive(Clone, Default, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct Header {
     f0: roc_std::RocStr,
@@ -304,7 +69,7 @@ impl core::fmt::Debug for discriminant_TimeoutConfig {
     }
 }
 
-#[repr(C, align(8))]
+#[repr(C, align(4))]
 pub union union_TimeoutConfig {
     NoTimeout: (),
     TimeoutMilliseconds: u64,
@@ -313,10 +78,10 @@ pub union union_TimeoutConfig {
 const _SIZE_CHECK_union_TimeoutConfig: () =
     assert!(core::mem::size_of::<union_TimeoutConfig>() == 8);
 const _ALIGN_CHECK_union_TimeoutConfig: () =
-    assert!(core::mem::align_of::<union_TimeoutConfig>() == 8);
+    assert!(core::mem::align_of::<union_TimeoutConfig>() == 4);
 
-const _SIZE_CHECK_TimeoutConfig: () = assert!(core::mem::size_of::<TimeoutConfig>() == 16);
-const _ALIGN_CHECK_TimeoutConfig: () = assert!(core::mem::align_of::<TimeoutConfig>() == 8);
+const _SIZE_CHECK_TimeoutConfig: () = assert!(core::mem::size_of::<TimeoutConfig>() == 12);
+const _ALIGN_CHECK_TimeoutConfig: () = assert!(core::mem::align_of::<TimeoutConfig>() == 4);
 
 impl TimeoutConfig {
     /// Returns which variant this tag union holds. Note that this never includes a payload!
@@ -523,8 +288,9 @@ impl core::fmt::Debug for Method {
 #[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct Request {
-    pub body: Body,
+    pub body: roc_std::RocList<u8>,
     pub headers: roc_std::RocList<Header>,
+    pub mimeType: roc_std::RocStr,
     pub timeout: TimeoutConfig,
     pub url: roc_std::RocStr,
     pub method: Method,
@@ -603,7 +369,7 @@ impl core::fmt::Debug for discriminant_Response {
     }
 }
 
-#[repr(C, align(8))]
+#[repr(C, align(4))]
 pub union union_Response {
     BadRequest: core::mem::ManuallyDrop<roc_std::RocStr>,
     BadStatus: core::mem::ManuallyDrop<Response_BadStatus>,
@@ -612,11 +378,11 @@ pub union union_Response {
     Timeout: u64,
 }
 
-const _SIZE_CHECK_union_Response: () = assert!(core::mem::size_of::<union_Response>() == 112);
-const _ALIGN_CHECK_union_Response: () = assert!(core::mem::align_of::<union_Response>() == 8);
+// const _SIZE_CHECK_union_Response: () = assert!(core::mem::size_of::<union_Response>() == 56);
+const _ALIGN_CHECK_union_Response: () = assert!(core::mem::align_of::<union_Response>() == 4);
 
-const _SIZE_CHECK_Response: () = assert!(core::mem::size_of::<Response>() == 112);
-const _ALIGN_CHECK_Response: () = assert!(core::mem::align_of::<Response>() == 8);
+const _SIZE_CHECK_Response: () = assert!(core::mem::size_of::<Response>() == 56);
+const _ALIGN_CHECK_Response: () = assert!(core::mem::align_of::<Response>() == 4);
 
 impl Response {
     /// Returns which variant this tag union holds. Note that this never includes a payload!
@@ -624,7 +390,7 @@ impl Response {
         unsafe {
             let bytes = core::mem::transmute::<&Self, &[u8; core::mem::size_of::<Self>()]>(self);
 
-            core::mem::transmute::<u8, discriminant_Response>(*bytes.as_ptr().add(104))
+            core::mem::transmute::<u8, discriminant_Response>(*bytes.as_ptr().add(52))
         }
     }
 
@@ -633,7 +399,7 @@ impl Response {
         let discriminant_ptr: *mut discriminant_Response = (self as *mut Response).cast();
 
         unsafe {
-            *(discriminant_ptr.add(104)) = discriminant;
+            *(discriminant_ptr.add(52)) = discriminant;
         }
     }
 }
@@ -909,7 +675,7 @@ impl core::fmt::Debug for discriminant_Error {
     }
 }
 
-#[repr(C, align(8))]
+#[repr(C, align(4))]
 pub union union_Error {
     BadBody: core::mem::ManuallyDrop<roc_std::RocStr>,
     BadRequest: core::mem::ManuallyDrop<roc_std::RocStr>,
@@ -918,11 +684,11 @@ pub union union_Error {
     Timeout: u64,
 }
 
-const _SIZE_CHECK_union_Error: () = assert!(core::mem::size_of::<union_Error>() == 24);
-const _ALIGN_CHECK_union_Error: () = assert!(core::mem::align_of::<union_Error>() == 8);
+const _SIZE_CHECK_union_Error: () = assert!(core::mem::size_of::<union_Error>() == 12);
+const _ALIGN_CHECK_union_Error: () = assert!(core::mem::align_of::<union_Error>() == 4);
 
-const _SIZE_CHECK_Error: () = assert!(core::mem::size_of::<Error>() == 32);
-const _ALIGN_CHECK_Error: () = assert!(core::mem::align_of::<Error>() == 8);
+const _SIZE_CHECK_Error: () = assert!(core::mem::size_of::<Error>() == 16);
+const _ALIGN_CHECK_Error: () = assert!(core::mem::align_of::<Error>() == 4);
 
 impl Error {
     /// Returns which variant this tag union holds. Note that this never includes a payload!
@@ -930,7 +696,7 @@ impl Error {
         unsafe {
             let bytes = core::mem::transmute::<&Self, &[u8; core::mem::size_of::<Self>()]>(self);
 
-            core::mem::transmute::<u8, discriminant_Error>(*bytes.as_ptr().add(24))
+            core::mem::transmute::<u8, discriminant_Error>(*bytes.as_ptr().add(12))
         }
     }
 
@@ -939,7 +705,7 @@ impl Error {
         let discriminant_ptr: *mut discriminant_Error = (self as *mut Error).cast();
 
         unsafe {
-            *(discriminant_ptr.add(24)) = discriminant;
+            *(discriminant_ptr.add(12)) = discriminant;
         }
     }
 }
@@ -1192,10 +958,9 @@ pub enum discriminant_GlueTypes {
     C = 2,
     D = 3,
     E = 4,
-    F = 5,
-    G = 6,
-    H = 7,
-    I = 8,
+    G = 5,
+    H = 6,
+    I = 7,
 }
 
 impl core::fmt::Debug for discriminant_GlueTypes {
@@ -1206,7 +971,6 @@ impl core::fmt::Debug for discriminant_GlueTypes {
             Self::C => f.write_str("discriminant_GlueTypes::C"),
             Self::D => f.write_str("discriminant_GlueTypes::D"),
             Self::E => f.write_str("discriminant_GlueTypes::E"),
-            Self::F => f.write_str("discriminant_GlueTypes::F"),
             Self::G => f.write_str("discriminant_GlueTypes::G"),
             Self::H => f.write_str("discriminant_GlueTypes::H"),
             Self::I => f.write_str("discriminant_GlueTypes::I"),
@@ -1214,24 +978,23 @@ impl core::fmt::Debug for discriminant_GlueTypes {
     }
 }
 
-#[repr(C, align(8))]
+#[repr(C, align(4))]
 pub union union_GlueTypes {
     A: core::mem::ManuallyDrop<Request>,
     B: Method,
     C: core::mem::ManuallyDrop<Header>,
-    D: TimeoutConfig,
+    D: core::mem::ManuallyDrop<TimeoutConfig>,
     E: core::mem::ManuallyDrop<Part>,
-    F: core::mem::ManuallyDrop<Body>,
     G: core::mem::ManuallyDrop<Response>,
     H: core::mem::ManuallyDrop<Metadata>,
     I: core::mem::ManuallyDrop<Error>,
 }
 
-const _SIZE_CHECK_union_GlueTypes: () = assert!(core::mem::size_of::<union_GlueTypes>() == 128);
-const _ALIGN_CHECK_union_GlueTypes: () = assert!(core::mem::align_of::<union_GlueTypes>() == 8);
+const _SIZE_CHECK_union_GlueTypes: () = assert!(core::mem::size_of::<union_GlueTypes>() == 64);
+const _ALIGN_CHECK_union_GlueTypes: () = assert!(core::mem::align_of::<union_GlueTypes>() == 4);
 
-const _SIZE_CHECK_GlueTypes: () = assert!(core::mem::size_of::<GlueTypes>() == 136);
-const _ALIGN_CHECK_GlueTypes: () = assert!(core::mem::align_of::<GlueTypes>() == 8);
+const _SIZE_CHECK_GlueTypes: () = assert!(core::mem::size_of::<GlueTypes>() == 68);
+const _ALIGN_CHECK_GlueTypes: () = assert!(core::mem::align_of::<GlueTypes>() == 4);
 
 impl GlueTypes {
     /// Returns which variant this tag union holds. Note that this never includes a payload!
@@ -1239,7 +1002,7 @@ impl GlueTypes {
         unsafe {
             let bytes = core::mem::transmute::<&Self, &[u8; core::mem::size_of::<Self>()]>(self);
 
-            core::mem::transmute::<u8, discriminant_GlueTypes>(*bytes.as_ptr().add(128))
+            core::mem::transmute::<u8, discriminant_GlueTypes>(*bytes.as_ptr().add(64))
         }
     }
 
@@ -1248,7 +1011,7 @@ impl GlueTypes {
         let discriminant_ptr: *mut discriminant_GlueTypes = (self as *mut GlueTypes).cast();
 
         unsafe {
-            *(discriminant_ptr.add(128)) = discriminant;
+            *(discriminant_ptr.add(64)) = discriminant;
         }
     }
 }
@@ -1279,9 +1042,6 @@ impl Clone for GlueTypes {
                 },
                 E => union_GlueTypes {
                     E: self.payload.E.clone(),
-                },
-                F => union_GlueTypes {
-                    F: self.payload.F.clone(),
                 },
                 G => union_GlueTypes {
                     G: self.payload.G.clone(),
@@ -1328,10 +1088,6 @@ impl core::fmt::Debug for GlueTypes {
                     let field: &Part = &self.payload.E;
                     f.debug_tuple("GlueTypes::E").field(field).finish()
                 }
-                F => {
-                    let field: &Body = &self.payload.F;
-                    f.debug_tuple("GlueTypes::F").field(field).finish()
-                }
                 G => {
                     let field: &Response = &self.payload.G;
                     f.debug_tuple("GlueTypes::G").field(field).finish()
@@ -1366,7 +1122,6 @@ impl PartialEq for GlueTypes {
                 C => self.payload.C == other.payload.C,
                 D => self.payload.D == other.payload.D,
                 E => self.payload.E == other.payload.E,
-                F => self.payload.F == other.payload.F,
                 G => self.payload.G == other.payload.G,
                 H => self.payload.H == other.payload.H,
                 I => self.payload.I == other.payload.I,
@@ -1397,7 +1152,6 @@ impl PartialOrd for GlueTypes {
                     C => self.payload.C.partial_cmp(&other.payload.C),
                     D => self.payload.D.partial_cmp(&other.payload.D),
                     E => self.payload.E.partial_cmp(&other.payload.E),
-                    F => self.payload.F.partial_cmp(&other.payload.F),
                     G => self.payload.G.partial_cmp(&other.payload.G),
                     H => self.payload.H.partial_cmp(&other.payload.H),
                     I => self.payload.I.partial_cmp(&other.payload.I),
@@ -1418,7 +1172,6 @@ impl core::hash::Hash for GlueTypes {
                 C => self.payload.C.hash(state),
                 D => self.payload.D.hash(state),
                 E => self.payload.E.hash(state),
-                F => self.payload.F.hash(state),
                 G => self.payload.G.hash(state),
                 H => self.payload.H.hash(state),
                 I => self.payload.I.hash(state),
@@ -1457,7 +1210,7 @@ impl GlueTypes {
 
     pub fn unwrap_D(mut self) -> TimeoutConfig {
         debug_assert_eq!(self.discriminant, discriminant_GlueTypes::D);
-        unsafe { core::mem::ManuallyDrop::take(self.payload.D) }
+        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.D) }
     }
 
     pub fn is_D(&self) -> bool {
@@ -1471,15 +1224,6 @@ impl GlueTypes {
 
     pub fn is_E(&self) -> bool {
         matches!(self.discriminant, discriminant_GlueTypes::E)
-    }
-
-    pub fn unwrap_F(mut self) -> Body {
-        debug_assert_eq!(self.discriminant, discriminant_GlueTypes::F);
-        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.F) }
-    }
-
-    pub fn is_F(&self) -> bool {
-        matches!(self.discriminant, discriminant_GlueTypes::F)
     }
 
     pub fn unwrap_G(mut self) -> Response {
@@ -1554,15 +1298,6 @@ impl GlueTypes {
         }
     }
 
-    pub fn F(payload: Body) -> Self {
-        Self {
-            discriminant: discriminant_GlueTypes::F,
-            payload: union_GlueTypes {
-                F: core::mem::ManuallyDrop::new(payload),
-            },
-        }
-    }
-
     pub fn G(payload: Response) -> Self {
         Self {
             discriminant: discriminant_GlueTypes::G,
@@ -1606,9 +1341,6 @@ impl Drop for GlueTypes {
             discriminant_GlueTypes::E => unsafe {
                 core::mem::ManuallyDrop::drop(&mut self.payload.E)
             },
-            discriminant_GlueTypes::F => unsafe {
-                core::mem::ManuallyDrop::drop(&mut self.payload.F)
-            },
             discriminant_GlueTypes::G => unsafe {
                 core::mem::ManuallyDrop::drop(&mut self.payload.G)
             },
@@ -1623,6 +1355,7 @@ impl Drop for GlueTypes {
 }
 
 pub fn mainForHost() -> GlueTypes {
+    #[allow(improper_ctypes)]
     extern "C" {
         fn roc__mainForHost_1_exposed_generic(_: *mut GlueTypes);
     }
@@ -1635,4 +1368,3 @@ pub fn mainForHost() -> GlueTypes {
         ret.assume_init()
     }
 }
-

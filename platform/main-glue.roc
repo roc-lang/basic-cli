@@ -13,7 +13,6 @@ GlueTypes : [
      C InternalHttp.Header,
      D InternalHttp.TimeoutConfig,
      E InternalHttp.Part,
-     F InternalHttp.Body,
      G InternalHttp.Response,
      H InternalHttp.Metadata,
      I InternalHttp.Error

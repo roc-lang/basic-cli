@@ -9,7 +9,8 @@ main =
         method: Get,
         headers: [],
         url: "http://www.example.com",
-        body: Http.emptyBody,
+        mimeType: "",
+        body: [],
         timeout: TimeoutMilliseconds 5000,
     }
 

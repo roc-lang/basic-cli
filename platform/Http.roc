@@ -4,14 +4,10 @@ interface Http
         Method,
         Header,
         TimeoutConfig,
-        Body,
         Response,
         Metadata,
         Error,
         header,
-        emptyBody,
-        bytesBody,
-        stringBody,
         handleStringResponse,
         defaultRequest,
         errorToString,
@@ -30,9 +26,6 @@ Header : InternalHttp.Header
 
 ## Represents a timeout configuration for an HTTP request.
 TimeoutConfig : InternalHttp.TimeoutConfig
-
-## Represents an HTTP request body.
-Body : InternalHttp.Body
 
 ## Represents an HTTP response.
 Response : InternalHttp.Response
@@ -57,7 +50,8 @@ defaultRequest = {
     method: Get,
     headers: [],
     url: "",
-    body: Http.emptyBody,
+    mimeType: "",
+    body: [],
     timeout: NoTimeout,
 }
 
@@ -69,57 +63,6 @@ header : Str, Str -> Header
 header =
     Header
 
-## An empty HTTP request [Body].
-emptyBody : Body
-emptyBody =
-    EmptyBody
-
-## A request [Body] with raw bytes.
-##
-## ```
-## # A application/json body of "{}".
-## Http.bytesBody
-##     (MimeType "application/json")
-##     [123, 125]
-## ```
-bytesBody : [MimeType Str], List U8 -> Body
-bytesBody =
-    Body
-
-## A request [Body] with a string.
-##
-## ```
-## Http.stringBody
-##     (MimeType "application/json")
-##     "{\"name\": \"Louis\",\"age\": 22}"
-## ```
-stringBody : [MimeType Str], Str -> Body
-stringBody = \mimeType, str ->
-    Body mimeType (Str.toUtf8 str)
-
-# jsonBody : a -> Body where a implements Encoding
-# jsonBody = \val ->
-#     Body (MimeType "application/json") (Encode.toBytes val Json.format)
-#
-# multiPartBody : List Part -> Body
-# multiPartBody = \parts ->
-#     boundary = "7MA4YWxkTrZu0gW" # TODO: what's this exactly? a hash of all the part bodies?
-#     beforeName = Str.toUtf8 "-- $(boundary)\r\nContent-Disposition: form-data; name=\""
-#     afterName = Str.toUtf8 "\"\r\n"
-#     appendPart = \buffer, Part name partBytes ->
-#         buffer
-#         |> List.concat beforeName
-#         |> List.concat (Str.toUtf8 name)
-#         |> List.concat afterName
-#         |> List.concat partBytes
-#     bodyBytes = List.walk parts [] appendPart
-#     Body (MimeType "multipart/form-data;boundary=\"$(boundary)\"") bodyBytes
-# bytesPart : Str, List U8 -> Part
-# bytesPart =
-#     Part
-# stringPart : Str, Str -> Part
-# stringPart = \name, str ->
-#     Part name (Str.toUtf8 str)
 ## Map a [Response] body to a [Str] or return an [Error].
 handleStringResponse : Response -> Result Str Error
 handleStringResponse = \response ->
