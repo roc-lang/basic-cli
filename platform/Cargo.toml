@@ -22,7 +22,8 @@ name = "host"
 path = "src/main.rs"
 
 [dependencies]
-roc_std = { git = "https://github.com/roc-lang/roc", rev = "7b1f2d2ac1f6e0b7a283cfbe932318f37a0a6861" }
+roc_std = { path = "src/main_glue/roc_std", features = ["std"] }
+roc_app = { path = "src/main_glue/roc_app" }
 libc = "=0.2.150"
 backtrace = "=0.3.69"
 hyper = { version = "=0.14.27", default-features = false, features = ["http1", "client"] }

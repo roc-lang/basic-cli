@@ -16,15 +16,14 @@
 #![allow(clippy::needless_borrow)]
 #![allow(clippy::clone_on_copy)]
 
-
-#[derive(Clone, Default, Debug, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Default, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct GetMetadataErr_Unrecognized {
     pub f1: roc_std::RocStr,
     pub f0: i32,
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum discriminant_GetMetadataErr {
     PathDoesNotExist = 0,
@@ -49,7 +48,6 @@ pub union union_GetMetadataErr {
     Unrecognized: core::mem::ManuallyDrop<GetMetadataErr_Unrecognized>,
 }
 
-
 impl GetMetadataErr {
     /// Returns which variant this tag union holds. Note that this never includes a payload!
     pub fn discriminant(&self) -> discriminant_GetMetadataErr {
@@ -62,7 +60,8 @@ impl GetMetadataErr {
 
     /// Internal helper
     fn set_discriminant(&mut self, discriminant: discriminant_GetMetadataErr) {
-        let discriminant_ptr: *mut discriminant_GetMetadataErr = (self as *mut GetMetadataErr).cast();
+        let discriminant_ptr: *mut discriminant_GetMetadataErr =
+            (self as *mut GetMetadataErr).cast();
 
         unsafe {
             *(discriminant_ptr.add(32)) = discriminant;
@@ -109,16 +108,22 @@ impl core::fmt::Debug for GetMetadataErr {
             match self.discriminant {
                 PathDoesNotExist => {
                     let field: &() = &self.payload.PathDoesNotExist;
-                    f.debug_tuple("GetMetadataErr::PathDoesNotExist").field(field).finish()
-                },
+                    f.debug_tuple("GetMetadataErr::PathDoesNotExist")
+                        .field(field)
+                        .finish()
+                }
                 PermissionDenied => {
                     let field: &() = &self.payload.PermissionDenied;
-                    f.debug_tuple("GetMetadataErr::PermissionDenied").field(field).finish()
-                },
+                    f.debug_tuple("GetMetadataErr::PermissionDenied")
+                        .field(field)
+                        .finish()
+                }
                 Unrecognized => {
                     let field: &GetMetadataErr_Unrecognized = &self.payload.Unrecognized;
-                    f.debug_tuple("GetMetadataErr::Unrecognized").field(field).finish()
-                },
+                    f.debug_tuple("GetMetadataErr::Unrecognized")
+                        .field(field)
+                        .finish()
+                }
             }
         }
     }
@@ -161,9 +166,18 @@ impl PartialOrd for GetMetadataErr {
             Greater => Option::Some(Greater),
             Equal => unsafe {
                 match self.discriminant {
-                    PathDoesNotExist => self.payload.PathDoesNotExist.partial_cmp(&other.payload.PathDoesNotExist),
-                    PermissionDenied => self.payload.PermissionDenied.partial_cmp(&other.payload.PermissionDenied),
-                    Unrecognized => self.payload.Unrecognized.partial_cmp(&other.payload.Unrecognized),
+                    PathDoesNotExist => self
+                        .payload
+                        .PathDoesNotExist
+                        .partial_cmp(&other.payload.PathDoesNotExist),
+                    PermissionDenied => self
+                        .payload
+                        .PermissionDenied
+                        .partial_cmp(&other.payload.PermissionDenied),
+                    Unrecognized => self
+                        .payload
+                        .Unrecognized
+                        .partial_cmp(&other.payload.Unrecognized),
                 }
             },
         }
@@ -185,13 +199,18 @@ impl core::hash::Hash for GetMetadataErr {
 }
 
 impl GetMetadataErr {
-
     pub fn is_PathDoesNotExist(&self) -> bool {
-        matches!(self.discriminant, discriminant_GetMetadataErr::PathDoesNotExist)
+        matches!(
+            self.discriminant,
+            discriminant_GetMetadataErr::PathDoesNotExist
+        )
     }
 
     pub fn is_PermissionDenied(&self) -> bool {
-        matches!(self.discriminant, discriminant_GetMetadataErr::PermissionDenied)
+        matches!(
+            self.discriminant,
+            discriminant_GetMetadataErr::PermissionDenied
+        )
     }
 
     pub fn unwrap_Unrecognized(mut self) -> GetMetadataErr_Unrecognized {
@@ -204,16 +223,13 @@ impl GetMetadataErr {
     }
 }
 
-
-
 impl GetMetadataErr {
-
     pub fn PathDoesNotExist() -> Self {
         Self {
             discriminant: discriminant_GetMetadataErr::PathDoesNotExist,
             payload: union_GetMetadataErr {
                 PathDoesNotExist: (),
-            }
+            },
         }
     }
 
@@ -222,7 +238,7 @@ impl GetMetadataErr {
             discriminant: discriminant_GetMetadataErr::PermissionDenied,
             payload: union_GetMetadataErr {
                 PermissionDenied: (),
-            }
+            },
         }
     }
 
@@ -231,7 +247,7 @@ impl GetMetadataErr {
             discriminant: discriminant_GetMetadataErr::Unrecognized,
             payload: union_GetMetadataErr {
                 Unrecognized: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 }
@@ -242,12 +258,14 @@ impl Drop for GetMetadataErr {
         match self.discriminant() {
             discriminant_GetMetadataErr::PathDoesNotExist => {}
             discriminant_GetMetadataErr::PermissionDenied => {}
-            discriminant_GetMetadataErr::Unrecognized => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.Unrecognized) },
+            discriminant_GetMetadataErr::Unrecognized => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.Unrecognized)
+            },
         }
     }
 }
 
-#[derive(Clone, Copy, Default, Debug, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, Default, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct InternalPathType {
     pub isDir: bool,

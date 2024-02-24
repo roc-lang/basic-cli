@@ -3,14 +3,12 @@
 mod command_glue;
 mod dir_glue;
 mod file_glue;
-mod glue;
 mod path_glue;
 mod tcp_glue;
 
 use core::alloc::Layout;
 use core::ffi::c_void;
 use core::mem::MaybeUninit;
-use glue::Metadata;
 use roc_std::{RocDict, RocList, RocResult, RocStr};
 use std::borrow::{Borrow, Cow};
 use std::ffi::OsStr;
@@ -587,7 +585,7 @@ fn os_str_to_roc_path(os_str: &OsStr) -> RocList<u8> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_sendRequest(roc_request: &glue::Request) -> glue::Response {
+pub extern "C" fn roc_fx_sendRequest(roc_request: &roc_app::Request) -> roc_app::Response {
     use hyper::Client;
     use hyper_rustls::HttpsConnectorBuilder;
 
@@ -597,50 +595,44 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &glue::Request) -> glue::Respo
         .enable_http1()
         .build();
 
-    let client: Client<_, hyper::Body> = Client::builder().build(https);
+    let client: Client<_, String> = Client::builder().build(https);
 
     let method = match roc_request.method {
-        glue::Method::Connect => hyper::Method::CONNECT,
-        glue::Method::Delete => hyper::Method::DELETE,
-        glue::Method::Get => hyper::Method::GET,
-        glue::Method::Head => hyper::Method::HEAD,
-        glue::Method::Options => hyper::Method::OPTIONS,
-        glue::Method::Patch => hyper::Method::PATCH,
-        glue::Method::Post => hyper::Method::POST,
-        glue::Method::Put => hyper::Method::PUT,
-        glue::Method::Trace => hyper::Method::TRACE,
+        roc_app::Method::Connect => hyper::Method::CONNECT,
+        roc_app::Method::Delete => hyper::Method::DELETE,
+        roc_app::Method::Get => hyper::Method::GET,
+        roc_app::Method::Head => hyper::Method::HEAD,
+        roc_app::Method::Options => hyper::Method::OPTIONS,
+        roc_app::Method::Patch => hyper::Method::PATCH,
+        roc_app::Method::Post => hyper::Method::POST,
+        roc_app::Method::Put => hyper::Method::PUT,
+        roc_app::Method::Trace => hyper::Method::TRACE,
     };
 
-    let url = roc_request.url.as_str();
-
-    let mut req_builder = hyper::Request::builder().method(method).uri(url);
+    let mut req_builder = hyper::Request::builder()
+        .method(method)
+        .uri(roc_request.url.as_str());
 
     for header in roc_request.headers.iter() {
-        let (name, value) = unsafe { header.as_Header() };
+        let (name, value) = header.as_Header();
         req_builder = req_builder.header(name.as_str(), value.as_str());
     }
-    let body_bytes = if roc_request.body.discriminant() == glue::discriminant_Body::Body {
-        let (mime_type_tag, body_byte_list) = unsafe { roc_request.body.as_Body() };
-        let mime_type_str: &RocStr = unsafe { mime_type_tag.as_MimeType() };
 
-        req_builder = req_builder.header("Content-Type", mime_type_str.as_str());
-        body_byte_list.as_slice().to_vec()
-    } else {
-        vec![]
-    };
+    let mime_type_str = roc_request.mimeType.as_str();
+    let bytes = String::from_utf8(roc_request.body.as_slice().to_vec()).unwrap();
 
-    let request = match req_builder.body(body_bytes.into()) {
+    req_builder = req_builder.header("Content-Type", mime_type_str);
+
+    let request = match req_builder.body(bytes) {
         Ok(req) => req,
         Err(err) => {
-            return glue::Response::BadRequest(RocStr::from(err.to_string().as_str()));
+            return roc_app::Response::BadRequest(RocStr::from(err.to_string().as_str()));
         }
     };
 
-    let time_limit = if roc_request.timeout.discriminant()
-        == glue::discriminant_TimeoutConfig::TimeoutMilliseconds
-    {
-        let ms: &u64 = unsafe { roc_request.timeout.as_TimeoutMilliseconds() };
-        Some(Duration::from_millis(*ms))
+    let time_limit = if roc_request.timeout.is_TimeoutMilliseconds() {
+        let ms: u64 = roc_request.timeout.clone().unwrap_TimeoutMilliseconds();
+        Some(Duration::from_millis(ms))
     } else {
         None
     };
@@ -660,16 +652,16 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &glue::Request) -> glue::Respo
                 let status_str = status.canonical_reason().unwrap_or_else(|| status.as_str());
 
                 let headers_iter = response.headers().iter().map(|(name, value)| {
-                    glue::Header::Header(
+                    roc_app::Header::Header(
                         RocStr::from(name.as_str()),
                         RocStr::from(value.to_str().unwrap_or_default()),
                     )
                 });
 
-                let metadata = Metadata {
+                let metadata = roc_app::Metadata {
                     headers: RocList::from_iter(headers_iter),
                     statusText: RocStr::from(status_str),
-                    url: RocStr::from(url),
+                    url: RocStr::from(roc_request.url.as_str()),
                     statusCode: status.as_u16(),
                 };
 
@@ -677,26 +669,36 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &glue::Request) -> glue::Respo
                 let body: RocList<u8> = RocList::from_iter(bytes);
 
                 if status.is_success() {
-                    glue::Response::GoodStatus(metadata, body)
+                    // Glue code made this expect a Response_BadStatus? BadStatus and GoodStatus
+                    // have the same fields so deduplication makes sense? But possibly a bug?
+                    roc_app::Response::GoodStatus(roc_app::Response_BadStatus {
+                        f0: metadata,
+                        f1: body,
+                    })
                 } else {
-                    glue::Response::BadStatus(metadata, body)
+                    roc_app::Response::BadStatus(roc_app::Response_BadStatus {
+                        f0: metadata,
+                        f1: body,
+                    })
                 }
             }
             Err(err) => {
                 if err.is_timeout() {
-                    glue::Response::Timeout
+                    roc_app::Response::Timeout(
+                        time_limit.map(|d| d.as_millis()).unwrap_or_default() as u64,
+                    )
                 } else if err.is_connect() || err.is_closed() {
-                    glue::Response::NetworkError
+                    roc_app::Response::NetworkError()
                 } else {
-                    glue::Response::BadRequest(RocStr::from(err.to_string().as_str()))
+                    roc_app::Response::BadRequest(RocStr::from(err.to_string().as_str()))
                 }
             }
         }
     };
     match time_limit {
-        Some(limit) => match rt.block_on(async { tokio::time::timeout(limit, http_fn).await}) {
+        Some(limit) => match rt.block_on(async { tokio::time::timeout(limit, http_fn).await }) {
             Ok(res) => res,
-            Err(_) => glue::Response::Timeout,
+            Err(_) => roc_app::Response::Timeout(limit.as_millis() as u64),
         },
         None => rt.block_on(http_fn),
     }

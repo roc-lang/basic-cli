@@ -1,12 +1,13 @@
 interface InternalHttp
-    exposes [Request, Method, Header, TimeoutConfig, Part, Body, Response, Metadata, Error]
+    exposes [Request, Method, Header, TimeoutConfig, Part, Response, Metadata, Error]
     imports []
 
 Request : {
     method : Method,
     headers : List Header,
     url : Str,
-    body : Body,
+    mimeType : Str,
+    body : List U8,
     timeout : TimeoutConfig,
 }
 
@@ -19,14 +20,9 @@ TimeoutConfig : [TimeoutMilliseconds U64, NoTimeout]
 
 Part : [Part Str (List U8)]
 
-Body : [
-    Body [MimeType Str] (List U8),
-    EmptyBody,
-]
-
 Response : [
     BadRequest Str,
-    Timeout,
+    Timeout U64,
     NetworkError,
     BadStatus Metadata (List U8),
     GoodStatus Metadata (List U8),
@@ -41,7 +37,7 @@ Metadata : {
 
 Error : [
     BadRequest Str,
-    Timeout,
+    Timeout U64,
     NetworkError,
     BadStatus U16,
     BadBody Str,
