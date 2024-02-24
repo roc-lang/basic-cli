@@ -84,10 +84,10 @@ errorToString : Error -> Str
 errorToString = \err ->
     when err is
         BadRequest e -> "Invalid Request: $(e)"
-        Timeout ms -> "Request timed out ($(Num.toStr ms)ms)"
-        NetworkError -> "Network error"
-        BadStatus code -> Str.concat "Request failed with status " (Num.toStr code)
-        BadBody details -> Str.concat "Request failed. Invalid body. " details
+        Timeout ms -> "Request timed out after $(Num.toStr ms) ms."
+        NetworkError -> "Network error."
+        BadStatus code -> "Request failed with status $(Num.toStr code)."
+        BadBody details -> "Request failed: Invalid body: $(details)"
 
 ## Task to send an HTTP request, succeeds with a value of [Str] or fails with an
 ## [Error].
