@@ -1,5 +1,5 @@
 interface InternalHttp
-    exposes [Request, Method, Header, TimeoutConfig, Part, Response, Metadata, Error]
+    exposes [Request, Method, Header, TimeoutConfig, Part, InternalResponse, Error]
     imports []
 
 Request : {
@@ -20,7 +20,7 @@ TimeoutConfig : [TimeoutMilliseconds U64, NoTimeout]
 
 Part : [Part Str (List U8)]
 
-Response : [
+InternalResponse : [
     BadRequest Str,
     Timeout U64,
     NetworkError,
