@@ -14,10 +14,10 @@ main =
         timeout: TimeoutMilliseconds 5000,
     }
 
-    output <- Http.send request
-        |> Task.onErr \err -> err 
-            |> Http.errorToString 
-            |> Task.ok
+    output <-
+        Http.send request
+        |> Task.await \resp -> resp |> Http.handleStringResponse |> Task.fromResult
+        |> Task.onErr \err -> crash (Http.errorToString err)
         |> Task.await
 
     Stdout.line output

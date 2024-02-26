@@ -5,7 +5,6 @@ interface Http
         Header,
         TimeoutConfig,
         Response,
-        Metadata,
         Error,
         header,
         handleStringResponse,
@@ -28,10 +27,13 @@ Header : InternalHttp.Header
 TimeoutConfig : InternalHttp.TimeoutConfig
 
 ## Represents an HTTP response.
-Response : InternalHttp.Response
-
-## Represents HTTP metadata, such as the URL or status code.
-Metadata : InternalHttp.Metadata
+Response : {
+    url : Str,
+    statusCode : U16,
+    statusText : Str,
+    headers : List Header,
+    body : List U8,
+}
 
 ## Represents an HTTP error.
 Error : InternalHttp.Error
@@ -66,18 +68,12 @@ header =
 ## Map a [Response] body to a [Str] or return an [Error].
 handleStringResponse : Response -> Result Str Error
 handleStringResponse = \response ->
-    when response is
-        BadRequest err -> Err (BadRequest err)
-        Timeout ms -> Err (Timeout ms)
-        NetworkError -> Err NetworkError
-        BadStatus metadata _ -> Err (BadStatus metadata.statusCode)
-        GoodStatus _ bodyBytes ->
-            Str.fromUtf8 bodyBytes
-            |> Result.mapErr
-                \BadUtf8 _ pos ->
-                    position = Num.toStr pos
+    response.body    
+    |> Str.fromUtf8 
+    |> Result.mapErr \BadUtf8 _ pos ->
+        position = Num.toStr pos
 
-                    BadBody "Invalid UTF-8 at byte offset $(position)"
+        BadBody "Invalid UTF-8 at byte offset $(position)"
 
 ## Convert an [Error] to a [Str].
 errorToString : Error -> Str
@@ -94,20 +90,33 @@ errorToString = \err ->
 ##
 ## ```
 ## # Prints out the HTML of the Roc-lang website.
-## result <-
-##     { Http.defaultRequest &
-##         url: "https://www.roc-lang.org",
-##     }
+## response <-
+##     { Http.defaultRequest & url: "https://www.roc-lang.org" }
 ##     |> Http.send
-##     |> Task.attempt
-##
-## when result is
-##     Ok responseBody -> Stdout.line responseBody
-##     Err _ -> Stdout.line "Oops, something went wrong!"
+##     |> Task.await
+## 
+## response.body 
+## |> Str.fromUtf8 
+## |> Result.withDefault "Invalid UTF-8"
+## |> Stdout.line
 ## ```
-send : Request -> Task Str Error
+send : Request -> Task Response Error
 send = \req ->
     # TODO: Fix our C ABI codegen so that we don't this Box.box heap allocation
     Effect.sendRequest (Box.box req)
-    |> Effect.map handleStringResponse
+    |> Effect.map Ok
     |> InternalTask.fromEffect
+    |> Task.await \internalResponse ->
+        when internalResponse is
+            BadRequest str -> Task.err (BadRequest str)
+            Timeout u64 -> Task.err (Timeout u64) 
+            NetworkError -> Task.err NetworkError
+            BadStatus meta _ -> Task.err (BadStatus meta.statusCode)
+            GoodStatus meta body -> 
+                Task.ok {
+                    url : meta.url,
+                    statusCode : meta.statusCode,
+                    statusText : meta.statusText,
+                    headers : meta.headers,
+                    body,
+                }
