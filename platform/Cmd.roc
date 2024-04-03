@@ -42,6 +42,7 @@ new = \program ->
     }
 
 ## Add a single argument to the command.
+## ! Shell features like variable subsitition (e.g. `$FOO`), glob patterns (e.g. `*.txt`), ... are not available.
 ##
 ## ```
 ## # Represent the command "ls -l"
@@ -57,6 +58,7 @@ arg = \@Cmd cmd, value ->
         }
 
 ## Add multiple arguments to the command.
+## ! Shell features like variable subsitition (e.g. `$FOO`), glob patterns (e.g. `*.txt`), ... are not available.
 ##
 ## ```
 ## # Represent the command "ls -l -a"
