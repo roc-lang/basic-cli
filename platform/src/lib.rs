@@ -612,16 +612,22 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &roc_app::Request) -> roc_app:
     let mut req_builder = hyper::Request::builder()
         .method(method)
         .uri(roc_request.url.as_str());
+    let mut has_content_type_header = false;
 
     for header in roc_request.headers.iter() {
         let (name, value) = header.as_Header();
         req_builder = req_builder.header(name.as_str(), value.as_str());
+        if name.eq_ignore_ascii_case("Content-Type") {
+            has_content_type_header = true;
+        }
     }
 
-    let mime_type_str = roc_request.mimeType.as_str();
     let bytes = String::from_utf8(roc_request.body.as_slice().to_vec()).unwrap();
+    let mime_type_str = roc_request.mimeType.as_str();
 
-    req_builder = req_builder.header("Content-Type", mime_type_str);
+    if !has_content_type_header && mime_type_str.len() > 0 {
+        req_builder = req_builder.header("Content-Type", mime_type_str);
+    }
 
     let request = match req_builder.body(bytes) {
         Ok(req) => req,
