@@ -91,7 +91,7 @@ envList = \decodeElem -> Decode.custom \bytes, @EnvFormat {} ->
 # TODO: we must currently annotate the arrows here so that the lambda sets are
 # exercised, and the solver can find an ambient lambda set for the
 # specialization.
-envRecord : _, (_, _ -> [Keep (Decoder _ _), Skip]), (_ -> _) -> Decoder _ _
+envRecord : _, (_, _ -> [Keep (Decoder _ _), Skip]), (_, _ -> _) -> Decoder _ _
 envRecord = \_initialState, _stepField, _finalizer -> Decode.custom \bytes, @EnvFormat {} ->
         { result: Err TooShort, rest: bytes }
 
