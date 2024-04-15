@@ -2,9 +2,7 @@
   description = "Basic cli devShell flake";
 
   inputs = {
-    roc = {
-      url = "github:faldor20/roc/3fef8b9f82acb70c7fb8b142e886ac5dd4495fe6";
-    };
+    roc.url = "github:roc-lang/roc";
 
     nixpkgs.follows = "roc/nixpkgs";
 
