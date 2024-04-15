@@ -3,9 +3,9 @@
 A Roc [platform](https://github.com/roc-lang/roc/wiki/Roc-concepts-explained#platform) to work with files, commands, HTTP, TCP, command line arguments,...
 
 :eyes: **examples**:
+  - [0.9.x](https://github.com/roc-lang/basic-cli/tree/0.9.0/examples)
   - [0.8.x](https://github.com/roc-lang/basic-cli/tree/0.8.1/examples)
   - [0.7.x](https://github.com/roc-lang/basic-cli/tree/0.7.1/examples)
-  - [0.6.x](https://github.com/roc-lang/basic-cli/tree/0.6.2/examples)
   - [latest main branch](https://github.com/roc-lang/basic-cli/tree/main/examples)
 
 :book: **documentation**:
