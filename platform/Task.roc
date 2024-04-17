@@ -14,6 +14,7 @@ interface Task
         batch,
         seq,
         forEach,
+        toResult,
     ]
     imports [Effect, InternalTask]
 
@@ -219,7 +220,7 @@ batch = \current -> \next ->
 ## fetchAuthorTasks : List (Task Author [DbError])
 ##
 ## getAuthors : Task (List Author) [DbError]
-## getAuthors = Task.seq fetchAuthorTasks 
+## getAuthors = Task.seq fetchAuthorTasks
 ## ```
 ##
 seq : List (Task ok err) -> Task (List ok) err
@@ -243,3 +244,32 @@ forEach : List a, (a -> Task {} b) -> Task {} b
 forEach = \items, fn ->
     List.walk items (InternalTask.ok {}) \state, item ->
         state |> await \_ -> fn item
+
+## Transform a task that can succeed with `ok` or fail with `err` into a task
+## that always succeeds with a `Result ok err`.
+##
+## This is useful when chaining tasks using the `!` suffix.
+##
+## ```
+## # Path.roc
+## checkFile : Str -> Task [Good, Bad] [IOError]
+##
+## # main.roc
+## result =
+##     checkFile "/usr/local/bin/roc"
+##     |> Task.toResult!
+##
+## when result is
+##     Ok Good -> "..."
+##     Ok Bad -> "..."
+##     Err IOError -> "..."
+## ```
+##
+toResult : Task ok err -> Task (Result ok err) *
+toResult = \task ->
+    effect =
+        Effect.after
+            (InternalTask.toEffect task)
+            \result -> result |> ok |> InternalTask.toEffect
+
+    InternalTask.fromEffect effect
