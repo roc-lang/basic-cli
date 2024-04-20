@@ -15,7 +15,7 @@ interface Path
         isSymLink,
         type,
     ]
-    imports [InternalPath.{ InternalPath }, InternalPath.{ GetMetadataErr }, Effect.{ Effect }, InternalTask, Task.{ Task }]
+    imports [InternalPath.{ InternalPath }, InternalPath.{ GetMetadataErr }, Effect, InternalTask, Task.{ Task }]
 
 # You can canonicalize a [Path] using `Path.canonicalize`.
 #
