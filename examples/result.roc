@@ -3,7 +3,6 @@ app "result"
     imports [pf.Stdout, pf.Task.{ Task }]
     provides [main] to pf
 
-main : Task {} I32
 main =
     when checkFile "good" |> Task.result! is
         Ok Good -> Stdout.line "GOOD"

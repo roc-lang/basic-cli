@@ -29,4 +29,4 @@ mainForHost =
         when res is
             Ok {} -> Task.ok {}
             Err (Exit code) -> Task.err code
-            Err e -> crash "Program exited with error: $(Inspect.toStr e)"
+            Err e -> crash "Program crashed with error: $(Inspect.toStr e)"

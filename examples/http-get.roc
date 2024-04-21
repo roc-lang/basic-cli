@@ -3,7 +3,6 @@ app "http-get"
     imports [pf.Http, pf.Task.{ Task }, pf.Stdout]
     provides [main] to pf
 
-main : Task {} I32
 main =
     request = {
         method: Get,
@@ -14,10 +13,10 @@ main =
         timeout: TimeoutMilliseconds 5000,
     }
 
-    output <-
-        Http.send request
-        |> Task.await \resp -> resp |> Http.handleStringResponse |> Task.fromResult
-        |> Task.onErr \err -> crash (Http.errorToString err)
-        |> Task.await
+    resp = Http.send! request
+
+    output = when resp |> Http.handleStringResponse is 
+        Err err -> crash (Http.errorToString err)
+        Ok body -> body
 
     Stdout.line output

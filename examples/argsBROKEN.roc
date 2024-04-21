@@ -3,9 +3,8 @@ app "args"
     imports [pf.Stdout, pf.Arg, pf.Task.{ Task }]
     provides [main] to pf
 
-main : Task {} I32
 main =
-    args <- Arg.list |> Task.await
+    args = Arg.list!
     parser =
         divCmd =
             Arg.succeed (\dividend -> \divisor -> Div (Num.toF64 dividend) (Num.toF64 divisor))
@@ -56,9 +55,9 @@ main =
             |> Stdout.line
 
         Err helpMenu ->
-            {} <- Stdout.line helpMenu |> Task.await
+            Stdout.line! helpMenu
             
-            Task.err 1 # 1 is an exit code to indicate failure
+            Task.err (Exit 1) # 1 is an exit code to indicate failure
 
 runCmd = \cmd ->
     when cmd is

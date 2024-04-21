@@ -9,12 +9,12 @@ app "time"
     provides [main] to pf
 
 main =
-    start <- Utc.now |> Task.await
+    start = Utc.now!
 
-    {} <- Sleep.millis 1500 |> Task.await
+    Sleep.millis! 1500
 
-    finish <- Utc.now |> Task.await
+    finish = Utc.now!
 
-    duration = Utc.deltaAsNanos start finish |> Num.toStr
+    duration = Num.toStr (Utc.deltaAsNanos start finish)
 
-    Stdout.line "Completed in $(duration)ns"
+    Stdout.line! "Completed in $(duration)ns"

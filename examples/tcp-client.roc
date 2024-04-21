@@ -3,11 +3,11 @@ app "tcp-client"
     imports [pf.Tcp, pf.Task.{ Task, await }, pf.Stdout, pf.Stdin, pf.Stderr]
     provides [main] to pf
 
-main : Task {} I32
 main =
     task =
         stream <- Tcp.withConnect "127.0.0.1" 8085
-        _ <- Stdout.line "Connected!" |> await
+        
+        Stdout.line! "Connected!"
 
         Task.loop {} \_ -> Task.map (tick stream) Step
 
@@ -42,16 +42,17 @@ main =
 
 tick : Tcp.Stream -> Task.Task {} _
 tick = \stream ->
-    _ <- Stdout.write "> " |> await
+    Stdout.write! "> "
 
-    input <- Stdin.line |> await
+    input = Stdin.line |> Task.result!
 
     outMsg =
         when input is
-            End -> "Received end of input (EOF)."
-            Input msg -> msg
+            Ok msg -> msg 
+            Err End -> "Received end of input (EOF)."
 
-    _ <- Tcp.writeUtf8 "$(outMsg)\n" stream |> await
+    Tcp.writeUtf8! "$(outMsg)\n" stream
 
-    inMsg <- Tcp.readLine stream |> await
-    Stdout.line "< $(inMsg)"
+    inMsg = Tcp.readLine! stream
+
+    Stdout.line! "< $(inMsg)"

@@ -3,19 +3,17 @@ app "echo"
     imports [pf.Stdin, pf.Stdout, pf.Task.{ Task }]
     provides [main] to pf
 
-main : Task {} I32
 main =
-    _ <- Task.await (Stdout.line "🗣  Shout into this cave and hear the echo! 👂👂👂")
+    Stdout.line! "🗣  Shout into this cave and hear the echo! 👂👂👂"
 
     Task.loop {} tick
 
-tick : {} -> Task [Step {}, Done {}] *
+tick : {} -> Task [Step {}, Done {}] _
 tick = \{} ->
-    shout <- Task.await Stdin.line
-
-    when shout is
-        Input s -> Stdout.line (echo s) |> Task.map Step
-        End -> Stdout.line (echo "Received end of input (EOF).") |> Task.map Done
+    res = Stdin.line |> Task.result!
+    when res is
+        Ok str -> Stdout.line (echo str) |> Task.map Step
+        Err End -> Stdout.line (echo "Received end of input (EOF).") |> Task.map Done
 
 echo : Str -> Str
 echo = \shout ->

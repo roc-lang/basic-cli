@@ -4,15 +4,15 @@ app "countdown"
     provides [main] to pf
 
 main =
-    _ <- await (Stdout.line "\nLet's count down from 3 together - all you have to do is press <ENTER>.")
-    _ <- await Stdin.line
+    Stdout.line! "\nLet's count down from 3 together - all you have to do is press <ENTER>."
+    _ = Stdin.line!
     loop 3 tick
 
 tick = \n ->
     if n == 0 then
-        _ <- await (Stdout.line "🎉 SURPRISE! Happy Birthday! 🎂")
+        Stdout.line! "🎉 SURPRISE! Happy Birthday! 🎂"
         Task.ok (Done {})
     else
-        _ <- await (n |> Num.toStr |> \s -> "$(s)..." |> Stdout.line)
-        _ <- await Stdin.line
+        Stdout.line! (n |> Num.toStr |> \s -> "$(s)...")
+        _ = Stdin.line!
         Task.ok (Step (n - 1))

@@ -11,13 +11,13 @@ interface Stdin
 ## (e.g. because the user pressed Enter in the terminal), so using it can result in the appearance of the
 ## programming having gotten stuck. It's often helpful to print a prompt first, so
 ## the user knows it's necessary to enter something before the program will continue.
-line : Task [Input Str, End] *
+line : Task Str [End]
 line =
     Effect.stdinLine
     |> Effect.map \r ->
         when r is
-            Ok str -> Ok (Input str)
-            Err _ -> Ok End
+            Ok str -> Ok str
+            Err _ -> Err End
     |> InternalTask.fromEffect
 
 ## Read bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
