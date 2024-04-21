@@ -52,4 +52,4 @@ runStat =
     stdoutStr = output.stdout |> Str.fromUtf8 |> Result.withDefault "Failed to decode stdout"
     stderrStr = output.stderr |> Str.fromUtf8 |> Result.withDefault "Failed to decode stderr"
 
-    Stdout.write "STATUS SUCCESS \nSTDOUT $(stdoutStr)\nSTDERR $(stderrStr)\n"
+    Stdout.write "STDOUT $(stdoutStr)\nSTDERR $(stderrStr)\n"
