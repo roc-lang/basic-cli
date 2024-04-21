@@ -1,5 +1,5 @@
 platform "cli"
-    requires {} { main : Task {} I32 }
+    requires {} { main : Task {} [Exit I32]_ }
     exposes [
         Path,
         Arg,
@@ -24,4 +24,9 @@ platform "cli"
     provides [mainForHost]
 
 mainForHost : Task {} I32 as Fx
-mainForHost = main
+mainForHost =
+    Task.attempt main \res ->
+        when res is
+            Ok {} -> Task.ok {}
+            Err (Exit code) -> Task.err code
+            Err e -> crash "Program exited with error: $(Inspect.toStr e)"
