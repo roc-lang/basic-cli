@@ -2,6 +2,29 @@ interface Stdin
     exposes [line,bytes,Error]
     imports [Effect, Task.{ Task }, InternalTask]
 
+## **EndOfFile** - This error occurs when an end-of-file (EOF) condition is met unexpectedly 
+## during input operations. Typically indicates that no more data is available for reading.
+##
+## **BrokenPipe** - This error happens when an attempt to write to a pipe cannot proceed because
+## the other end of the pipe has been closed. Common in IPC (Inter-Process Communication) scenarios.
+##
+## **UnexpectedEof** - Similar to EndOfFile but specifically refers to cases where the EOF occurs
+## unexpectedly, possibly indicating truncated or corrupted data streams.
+##
+## **InvalidInput** - This error is raised when an input operation receives data that is not in a 
+## valid format, suggesting possible data corruption or a mismatch in expected data format.
+##
+## **OutOfMemory** - Occurs when an operation fails due to insufficient memory available to 
+## complete the operation. This can affect data reading, buffering, or processing.
+##
+## **Interrupted** - This error can happen if an input operation is interrupted by a system 
+## signal before it could complete, often needing a retry or causing the operation to fail.
+##
+## **Unsupported** - Raised when an operation involves a feature or operation mode that is not 
+## supported. This might involve character encodings, data compression formats, etc.
+##
+## **Other** - A catch-all category for errors that do not fall into the specified categories.
+## Allows for flexible error handling of uncommon or unexpected conditions.
 Error : [
     EndOfFile,
     BrokenPipe,
