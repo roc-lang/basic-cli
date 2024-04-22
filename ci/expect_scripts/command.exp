@@ -10,7 +10,7 @@ source ./ci/expect_scripts/shared-code.exp
 spawn $env(EXAMPLES_DIR)command
 
 
-expect -exact "BAZ=DUCK\r\nFOO=BAR\r\nSuccess\r\nSTDOUT '-rw-r--r--'\r\n\r\nSTDERR \r\n" {
+expect -exact "BAZ=DUCK\r\nFOO=BAR\r\nSuccess\r\nSTDOUT '-rw-r--r--'\r\n\r\nSTDERR \r\nSUCCESS\n\n" {
     expect eof {
         check_exit_and_segfault
     }

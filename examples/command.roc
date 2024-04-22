@@ -11,6 +11,8 @@ main =
     runEnv!
     runStat!
 
+    Cmd.exec! "echo" ["SUCCESS"]
+
 # Run "env" with verbose option, clear all environment variables, and pass in
 # "FOO" and "BAZ".
 runEnv =
