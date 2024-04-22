@@ -3,6 +3,7 @@ app "task-list"
     imports [pf.Stdout, pf.Task.{ Task }]
     provides [main] to pf
 
+main : Task {} I32
 main =
 
     authors : List Str

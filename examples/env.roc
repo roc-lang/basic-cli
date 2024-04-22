@@ -3,6 +3,7 @@ app "env"
     imports [pf.Stdout, pf.Stderr, pf.Env, pf.Task.{ Task }]
     provides [main] to pf
 
+main : Task {} I32
 main =
     when run |> Task.result! is
         Ok letters ->

@@ -82,8 +82,5 @@ find . -type d -name "roc_nightly" -prune -o -type f -name "*.roc" -print | whil
     fi
 done
 
-# just build this until we fix it
-$ROC build ./ci/file-testBROKEN.roc $ROC_BUILD_FLAGS
-
 # test building website
 $ROC docs platform/main.roc

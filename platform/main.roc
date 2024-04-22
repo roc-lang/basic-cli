@@ -1,5 +1,5 @@
 platform "cli"
-    requires {} { main : Task {} [Exit I32]_ }
+    requires {} { main : Task {} I32 }
     exposes [
         Path,
         Arg,

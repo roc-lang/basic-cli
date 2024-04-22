@@ -3,6 +3,6 @@ app "hello-world"
     imports [pf.Stdout, pf.Task.{ Task }]
     provides [main] to pf
 
+main : Task {} I32
 main =
-    Stdout.write! "Hello,"
-    Stdout.line! " World!"
+    Stdout.line! "Hello, World!"

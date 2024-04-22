@@ -7,7 +7,10 @@ app "path-example"
     ]
     provides [main] to pf
 
-main = run |> Task.onErr \err -> crash "ERROR: $(Inspect.toStr err)"
+main : Task {} I32
+main =
+    run
+    |> Task.onErr \err -> crash "ERROR: $(Inspect.toStr err)"
 
 run =
     path = Path.fromStr "path.roc"

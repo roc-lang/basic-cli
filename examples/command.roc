@@ -7,6 +7,7 @@ app "command"
     ]
     provides [main] to pf
 
+main : Task {} I32
 main =
     statusExample |> Task.mapErr! StatusErr
 
@@ -26,12 +27,15 @@ statusExample =
     |> Cmd.status
     |> Task.onErr \err -> 
         when err is
-            ExitCode code -> Stdout.line "Child exited with non-zero code: $(Num.toStr code)"
-            KilledBySignal -> Stdout.line "Child was killed by signal"
-            IOError str -> Stdout.line "IOError executing: $(str)"
+            ExitCode code ->
+                Stdout.line "Command `env` (statusExample) exited with non-zero code: $(Num.toStr code)."
+            KilledBySignal ->
+                Stdout.line "Command `env` (statusExample) was killed by signal."
+            IOError errStr ->
+                Stdout.line "Command `env` (statusExample) hit IOError: $(errStr)."
         
-# Run "env" with verbose option, clear all environment variables, and pass in
-# only as an environment variable "FOO"
+# Similar to above but with `Cmd.output` we now get back the record `Output` containing the `stdout` and `stderr` of
+# the command.
 outputExample =
     output =
         Cmd.new "env"
@@ -41,11 +45,17 @@ outputExample =
         |> Cmd.output
         |> Task.onErr! \(output, err) ->
             when err is
-                ExitCode code -> Task.err (StatError "Child exited with non-zero code: $(Num.toStr code), stderr: $(output.stderr |> Str.fromUtf8 |> Result.withDefault "")")
-                KilledBySignal -> Task.err (StatError "Child was killed by signal")
-                IOError ioErr -> Task.err (StatError "IOError executing: $(ioErr)")
+                ExitCode code ->
+                    stderr = 
+                        output.stderr |> Str.fromUtf8 |> Result.withDefault ""
+
+                    Task.err (EnvCmdError "Command `env` (outputExample) exited with non-zero code: $(Num.toStr code), stderr:\n\t$(stderr)")
+                KilledBySignal ->
+                    Task.err (EnvCmdError "Command `env` (outputExample) was killed by signal.")
+                IOError ioErr ->
+                    Task.err (EnvCmdError "Command `env` (outputExample) hit IOError executing: $(ioErr).")
 
     output.stdout 
     |> Str.fromUtf8 
-    |> Result.withDefault "Failed to decode stdout"
+    |> Result.withDefault "Failed to decode stdout with Utf-8."
     |> Stdout.write

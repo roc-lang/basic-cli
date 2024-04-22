@@ -8,6 +8,7 @@ app "stdin"
     ]
     provides [main] to pf
 
+main : Task {} I32
 main =
     Stdout.line! "Enter a series of number characters (0-9):"
     numberBytes = takeNumberBytes!

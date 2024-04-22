@@ -13,7 +13,7 @@ interface Stderr
 ## (no-op), but if detected, it could be raised as an error.
 ##
 ## **Unsupported** - If the stdout operation involves writing data in a manner or format that is not
-## supported, this error could be raised.
+## supported.
 ##
 ## **Interrupted** - This can happen if a signal interrupts the writing process before it completes.
 ##

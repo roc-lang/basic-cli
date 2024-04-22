@@ -3,6 +3,7 @@ app "tcp-client"
     imports [pf.Tcp, pf.Task.{ Task, await }, pf.Stdout, pf.Stdin, pf.Stderr]
     provides [main] to pf
 
+main : Task {} I32
 main = run |> Task.onErr handleErr
 
 handleErr = \error ->

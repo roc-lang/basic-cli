@@ -3,6 +3,7 @@ app "args"
     imports [pf.Stdout, pf.Arg, pf.Task.{ Task }]
     provides [main] to pf
 
+main : Task {} I32
 main =
     args = Arg.list!
     parser =
@@ -57,7 +58,7 @@ main =
         Err helpMenu ->
             Stdout.line! helpMenu
             
-            Task.err (Exit 1) # 1 is an exit code to indicate failure
+            Task.err 1 # 1 is an exit code to indicate failure
 
 runCmd = \cmd ->
     when cmd is

@@ -138,14 +138,14 @@ output = \@Cmd cmd ->
             Err err -> Err (out, err)
     |> InternalTask.fromEffect
 
-## Execute command and inherit stdin, stdout and stderr from parent
+## Execute command and inherit stdin, stdout and stderr from parent.
 ##
 status : Cmd -> Task {} Error
 status = \@Cmd cmd ->
     Effect.commandStatus (Box.box cmd)
     |> InternalTask.fromEffect
 
-## Execute command and inherit stdin, stdout and stderr from parent
+## Execute command with list of arguments. stdin, stdout and stderr are inherited from parent.
 ##
 ## ```
 ## # Call echo to print "hello world"

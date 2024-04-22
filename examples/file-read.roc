@@ -9,6 +9,7 @@ app "file-read"
     ]
     provides [main] to pf
 
+main : Task {} I32
 main =
     when run |> Task.result! is
         Ok {} -> Task.ok {}
@@ -23,7 +24,7 @@ main =
 
             _ = Stderr.line! msg
 
-            Task.err (Exit 1) # non-zero exit code to indicate failure
+            Task.err 1 # non-zero exit code to indicate failure
 
 run =
     fileName = "LICENSE"
@@ -31,6 +32,8 @@ run =
     contents = File.readUtf8! path
     lines = Str.split contents "\n"
 
-    Stdout.line (Str.concat "First line of $(fileName): " (List.first lines |> Result.withDefault "err"))
+    firstLine = (List.first lines |> Result.withDefault "Error: file was empty!")
+
+    Stdout.line "First line of $(fileName): $(firstLine)" 
 
     

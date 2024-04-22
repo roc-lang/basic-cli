@@ -9,20 +9,24 @@ app "dir"
     ]
     provides [main] to pf
 
+main : Task {} I32
 main =
 
     # Create a directory
     createShouldSucceed = Dir.create (Path.fromStr "e") |> Task.result!
+
     expect
         createShouldSucceed == Ok {}
 
     # Create a directory and its parents
     createAllShouldSucceed = Dir.createAll (Path.fromStr "a/b/c/child") |> Task.result!
+
     expect
         createAllShouldSucceed == Ok {}
 
     # Create a child directory
     createChildShouldSucceed = Dir.create (Path.fromStr "a/child") |> Task.result!
+
     expect
         createChildShouldSucceed == Ok {}
 
@@ -38,6 +42,7 @@ main =
 
     # Try to create a directory without a parent
     createWithoutParentShouldFail = Dir.create (Path.fromStr "d/child") |> Task.result!
+
     expect
         createWithoutParentShouldFail == Err NotFound
 

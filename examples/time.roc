@@ -8,6 +8,7 @@ app "time"
     ]
     provides [main] to pf
 
+main : Task {} I32
 main =
     start = Utc.now!
 

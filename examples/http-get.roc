@@ -3,6 +3,7 @@ app "http-get"
     imports [pf.Http, pf.Task.{ Task }, pf.Stdout]
     provides [main] to pf
 
+main : Task {} I32
 main =
     request = {
         method: Get,
