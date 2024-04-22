@@ -7,8 +7,7 @@ set timeout 7
 
 spawn $env(EXAMPLES_DIR)echo
 
-
-expect -exact "🗣  Shout into this cave and hear the echo! 👂👂👂\r\n"
+expect -exact "Shout into this cave and hear the echo!\r\n"
 
 send -- "a\r"
 expect "  a\r\n"

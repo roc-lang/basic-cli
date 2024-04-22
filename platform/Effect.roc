@@ -52,8 +52,8 @@ hosted Effect
     ]
     generates Effect with [after, map, always, forever, loop]
 
-stdoutLine : Str -> Effect {}
-stdoutWrite : Str -> Effect {}
+stdoutLine : Str -> Effect (Result {} Str)
+stdoutWrite : Str -> Effect (Result {} Str)
 stderrLine : Str -> Effect {}
 stderrWrite : Str -> Effect {}
 stdinLine : Effect (Result Str {})

@@ -8,45 +8,42 @@ app "command"
     provides [main] to pf
 
 main =
-    runEnv!
-    runStat!
+    statusExample |> Task.mapErr! StatusErr
 
-    Cmd.exec! "echo" ["EXEC"]
+    outputExample |> Task.mapErr! OutputErr
+
+    execExample |> Task.mapErr! ExecErr
+
+execExample = Cmd.exec "echo" ["EXEC"]
 
 # Run "env" with verbose option, clear all environment variables, and pass in
 # "FOO" and "BAZ".
-runEnv =
-    result =
-        Cmd.new "env"
-            |> Cmd.arg "-v"
-            |> Cmd.clearEnvs
-            |> Cmd.envs [("FOO", "BAR"), ("BAZ", "DUCK")]
-            |> Cmd.status
-            |> Task.result!
-
-    when result is
-        Ok {} -> Stdout.line "STATUS"
-        Err (ExitCode code) ->
-            codeStr = Num.toStr code
-            Stdout.line "Child exited with non-zero code: $(codeStr)"
-
-        Err KilledBySignal -> Stdout.line "Child was killed by signal"
-        Err (IOError err) -> Stdout.line "IOError executing: $(err)"
-
+statusExample =
+    Cmd.new "env"
+    |> Cmd.arg "-v"
+    |> Cmd.clearEnvs
+    |> Cmd.envs [("FOO", "BAR"), ("BAZ", "DUCK")]
+    |> Cmd.status
+    |> Task.onErr \err -> 
+        when err is
+            ExitCode code -> Stdout.line "Child exited with non-zero code: $(Num.toStr code)"
+            KilledBySignal -> Stdout.line "Child was killed by signal"
+            IOError str -> Stdout.line "IOError executing: $(str)"
+        
 # Run "env" with verbose option, clear all environment variables, and pass in
 # only as an environment variable "FOO"
-runStat =
+outputExample =
     output =
         Cmd.new "env"
-            |> Cmd.clearEnvs
-            |> Cmd.env "FOO" "BAR"
-            |> Cmd.args ["-v"]
-            |> Cmd.output
-            |> Task.onErr! \(output, err) ->
-                when err is
-                    ExitCode code -> Task.err (StatError "Child exited with non-zero code: $(Num.toStr code), stderr: $(output.stderr |> Str.fromUtf8 |> Result.withDefault "")")
-                    KilledBySignal -> Task.err (StatError "Child was killed by signal")
-                    IOError ioErr -> Task.err (StatError "IOError executing: $(ioErr)")
+        |> Cmd.clearEnvs
+        |> Cmd.env "FOO" "BAR"
+        |> Cmd.args ["-v"]
+        |> Cmd.output
+        |> Task.onErr! \(output, err) ->
+            when err is
+                ExitCode code -> Task.err (StatError "Child exited with non-zero code: $(Num.toStr code), stderr: $(output.stderr |> Str.fromUtf8 |> Result.withDefault "")")
+                KilledBySignal -> Task.err (StatError "Child was killed by signal")
+                IOError ioErr -> Task.err (StatError "IOError executing: $(ioErr)")
 
     output.stdout 
     |> Str.fromUtf8 

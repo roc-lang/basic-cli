@@ -375,17 +375,50 @@ pub extern "C" fn roc_fx_stdinBytes() -> RocList<u8> {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn roc_fx_stdoutLine(line: &RocStr) {
-    let string = line.as_str();
-    println!("{}", string);
+/// See docs in `platform/Stdout.roc` for descriptions
+fn handleStdoutErr(io_err: std::io::Error) -> RocResult<(), RocStr> {
+    match io_err.kind() {
+        ErrorKind::BrokenPipe => RocResult::err(RocStr::from("ErrorKind::BrokenPipe")),
+        ErrorKind::WouldBlock => RocResult::err(RocStr::from("ErrorKind::WouldBlock")),
+        ErrorKind::WriteZero => RocResult::err(RocStr::from("ErrorKind::WriteZero")),
+        ErrorKind::Unsupported => RocResult::err(RocStr::from("ErrorKind::Unsupported")),
+        ErrorKind::Interrupted => RocResult::err(RocStr::from("ErrorKind::Interrupted")),
+        ErrorKind::OutOfMemory => RocResult::err(RocStr::from("ErrorKind::OutOfMemory")),
+        _ => RocResult::err(RocStr::from(RocStr::from(format!("{:?}", io_err).as_str()))),
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdoutWrite(text: &RocStr) {
-    let string = text.as_str();
-    print!("{}", string);
-    std::io::stdout().flush().unwrap();
+pub extern "C" fn roc_fx_stdoutLine(line: &RocStr) -> RocResult<(), RocStr> {
+    let stdout = std::io::stdout();
+
+    let mut handle = stdout.lock();
+
+    match handle.write_all(line.as_bytes()) {
+        Ok(()) => match handle.write_all("\n".as_bytes()){
+            Ok(()) => match handle.flush() {
+                Ok(()) => RocResult::ok(()),
+                Err(io_err) => handleStdoutErr(io_err),
+            }
+            Err(io_err) => handleStdoutErr(io_err),
+        },
+        Err(io_err) => handleStdoutErr(io_err),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_stdoutWrite(text: &RocStr) -> RocResult<(), RocStr> {
+    let stdout = std::io::stdout();
+
+    let mut handle = stdout.lock();
+
+    match handle.write_all(text.as_bytes()) {
+        Ok(()) => match handle.flush() {
+            Ok(()) => RocResult::ok(()),
+            Err(io_err) => handleStdoutErr(io_err),
+        },
+        Err(io_err) => handleStdoutErr(io_err),
+    }
 }
 
 #[no_mangle]
