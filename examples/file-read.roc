@@ -10,15 +10,7 @@ app "file-read"
     provides [main] to pf
 
 main =
-    fileName = "LICENSE"
-    path = Path.fromStr fileName
-    task =
-        contents = File.readUtf8! path
-        lines = Str.split contents "\n"
-
-        Stdout.line (Str.concat "First line of $(fileName): " (List.first lines |> Result.withDefault "err"))
-
-    when task |> Task.result! is
+    when run |> Task.result! is
         Ok {} -> Task.ok {}
         Err err ->
             msg =
@@ -32,3 +24,13 @@ main =
             _ = Stderr.line! msg
 
             Task.err (Exit 1) # non-zero exit code to indicate failure
+
+run =
+    fileName = "LICENSE"
+    path = Path.fromStr fileName
+    contents = File.readUtf8! path
+    lines = Str.split contents "\n"
+
+    Stdout.line (Str.concat "First line of $(fileName): " (List.first lines |> Result.withDefault "err"))
+
+    
