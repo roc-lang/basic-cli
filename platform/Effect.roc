@@ -56,7 +56,7 @@ stdoutLine : Str -> Effect (Result {} Str)
 stdoutWrite : Str -> Effect (Result {} Str)
 stderrLine : Str -> Effect (Result {} Str)
 stderrWrite : Str -> Effect (Result {} Str)
-stdinLine : Effect (Result Str {})
+stdinLine : Effect (Result Str Str)
 stdinBytes : Effect (List U8)
 ttyModeCanonical : Effect {}
 ttyModeRaw : Effect {}

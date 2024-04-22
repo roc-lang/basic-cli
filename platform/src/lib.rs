@@ -352,15 +352,27 @@ pub extern "C" fn roc_fx_exePath(_roc_str: &RocStr) -> RocResult<RocList<u8>, ()
     }
 }
 
+/// See docs in `platform/Stdin.roc` for descriptions
+fn handleStdinErr(io_err: std::io::Error) -> RocStr {
+    match io_err.kind() {
+        ErrorKind::BrokenPipe => RocStr::from("ErrorKind::BrokenPipe"),
+        ErrorKind::UnexpectedEof => RocStr::from("ErrorKind::UnexpectedEof"),
+        ErrorKind::InvalidInput => RocStr::from("ErrorKind::InvalidInput"),
+        ErrorKind::OutOfMemory => RocStr::from("ErrorKind::OutOfMemory"),
+        ErrorKind::Interrupted => RocStr::from("ErrorKind::Interrupted"),
+        ErrorKind::Unsupported => RocStr::from("ErrorKind::Unsupported"),
+        _ => RocStr::from(RocStr::from(format!("{:?}", io_err).as_str())),
+    }
+}
+
 #[no_mangle]
-pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, ()> {
-    // () is used for EOF
+pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, RocStr> {
     let stdin = std::io::stdin();
 
     match stdin.lock().lines().next() {
-        None => RocResult::err(()),
+        None => RocResult::err(RocStr::from("EOF")),
         Some(Ok(str)) => RocResult::ok(RocStr::from(str.as_str())),
-        Some(Err(err)) => panic!("Failed to get next line from stdin:\n\t{:?}", err),
+        Some(Err(io_err)) => RocResult::err(handleStdinErr(io_err)),
     }
 }
 

@@ -13,7 +13,6 @@ main =
     Stdout.line! "I read $(Num.toStr lines) lines from stdin."
 
 count = \n ->
-    res = Stdin.line |> Task.result!
-    when res is
+    when Stdin.line |> Task.result! is
         Ok _ -> Step (n + 1) |> Task.ok
-        Err End -> Done n |> Task.ok
+        Err _ -> Done n |> Task.ok

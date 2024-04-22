@@ -10,10 +10,9 @@ main =
 
 tick : {} -> Task [Step {}, Done {}] _
 tick = \{} ->
-    res = Stdin.line |> Task.result!
-    when res is
+    when Stdin.line |> Task.result! is
         Ok str -> Stdout.line (echo str) |> Task.map Step
-        Err End -> Stdout.line (echo "Received end of input (EOF).") |> Task.map Done
+        Err _ -> Stdout.line (echo "Received end of input (EOF).") |> Task.map Done
 
 echo : Str -> Str
 echo = \shout ->

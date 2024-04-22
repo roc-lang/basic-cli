@@ -45,13 +45,8 @@ tick : Tcp.Stream -> Task.Task {} _
 tick = \stream ->
     Stdout.write! "> "
 
-    input = Stdin.line |> Task.result!
-
-    outMsg =
-        when input is
-            Ok msg -> msg 
-            Err End -> "Received end of input (EOF)."
-
+    outMsg = Stdin.line!
+    
     Tcp.writeUtf8! "$(outMsg)\n" stream
 
     inMsg = Tcp.readLine! stream
