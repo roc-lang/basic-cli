@@ -11,7 +11,7 @@ main =
     runEnv!
     runStat!
 
-    Cmd.exec! "echo" ["SUCCESS"]
+    Cmd.exec! "echo" ["EXEC"]
 
 # Run "env" with verbose option, clear all environment variables, and pass in
 # "FOO" and "BAZ".
@@ -25,7 +25,7 @@ runEnv =
             |> Task.result!
 
     when result is
-        Ok {} -> Stdout.line "Success"
+        Ok {} -> Stdout.line "STATUS"
         Err (ExitCode code) ->
             codeStr = Num.toStr code
             Stdout.line "Child exited with non-zero code: $(codeStr)"
@@ -33,17 +33,14 @@ runEnv =
         Err KilledBySignal -> Stdout.line "Child was killed by signal"
         Err (IOError err) -> Stdout.line "IOError executing: $(err)"
 
-# Run "stat" with environment variable "FOO" set to "BAR" and three arguments:
-# "--format", "'%A'", and "LICENSE". Capture stdout and stderr and print them.
+# Run "env" with verbose option, clear all environment variables, and pass in
+# only as an environment variable "FOO"
 runStat =
     output =
-        Cmd.new "stat"
+        Cmd.new "env"
+            |> Cmd.clearEnvs
             |> Cmd.env "FOO" "BAR"
-            |> Cmd.args [
-                "--format",
-                "'%A'", # print permission bits in human readable form
-                "LICENSE", # filename
-            ]
+            |> Cmd.args ["-v"]
             |> Cmd.output
             |> Task.onErr! \(output, err) ->
                 when err is
@@ -51,7 +48,7 @@ runStat =
                     KilledBySignal -> Task.err (StatError "Child was killed by signal")
                     IOError ioErr -> Task.err (StatError "IOError executing: $(ioErr)")
 
-    stdoutStr = output.stdout |> Str.fromUtf8 |> Result.withDefault "Failed to decode stdout"
-    stderrStr = output.stderr |> Str.fromUtf8 |> Result.withDefault "Failed to decode stderr"
-
-    Stdout.write "STDOUT $(stdoutStr)\nSTDERR $(stderrStr)\n"
+    output.stdout 
+    |> Str.fromUtf8 
+    |> Result.withDefault "Failed to decode stdout"
+    |> Stdout.write
