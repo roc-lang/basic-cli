@@ -16,13 +16,12 @@ app "file-test"
 # Pass: expected PermissionDenied
 # Tests complete
 # ```
-main : Task {} I32
 main =
-    {} <- attemptWriteTaskShouldError (File.writeUtf8 (Path.fromStr "/asdf/asdf/asdf/asdf.txt") "str") "NotFound" |> Task.await
-    {} <- attemptWriteTaskShouldError (File.writeUtf8 (Path.fromStr "/System/asdf") "str") "PermissionDenied" |> Task.await
+    attemptWriteTaskShouldError! (File.writeUtf8 (Path.fromStr "/asdf/asdf/asdf/asdf.txt") "str") "NotFound"
+    attemptWriteTaskShouldError! (File.writeUtf8 (Path.fromStr "/System/asdf") "str") "PermissionDenied"
 
-    {} <- attemptReadTaskShouldError (File.readUtf8 (Path.fromStr "/asdf/asdf/asdf/asdf.txt")) "NotFound" |> Task.await
-    {} <- attemptReadTaskShouldError (File.readUtf8 (Path.fromStr "/etc/master.passwd")) "PermissionDenied" |> Task.await
+    attemptReadTaskShouldError! (File.readUtf8 (Path.fromStr "/asdf/asdf/asdf/asdf.txt")) "NotFound"
+    attemptReadTaskShouldError! (File.readUtf8 (Path.fromStr "/etc/master.passwd")) "PermissionDenied"
 
     Stdout.line "Tests complete"
 

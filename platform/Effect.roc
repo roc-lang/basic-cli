@@ -52,11 +52,11 @@ hosted Effect
     ]
     generates Effect with [after, map, always, forever, loop]
 
-stdoutLine : Str -> Effect {}
-stdoutWrite : Str -> Effect {}
-stderrLine : Str -> Effect {}
-stderrWrite : Str -> Effect {}
-stdinLine : Effect (Result Str {})
+stdoutLine : Str -> Effect (Result {} Str)
+stdoutWrite : Str -> Effect (Result {} Str)
+stderrLine : Str -> Effect (Result {} Str)
+stderrWrite : Str -> Effect (Result {} Str)
+stdinLine : Effect (Result Str Str)
 stdinBytes : Effect (List U8)
 ttyModeCanonical : Effect {}
 ttyModeRaw : Effect {}

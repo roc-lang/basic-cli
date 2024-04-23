@@ -11,6 +11,7 @@ interface Cmd
         clearEnvs,
         status,
         output,
+        exec,
     ]
     imports [
         Task.{ Task },
@@ -137,9 +138,23 @@ output = \@Cmd cmd ->
             Err err -> Err (out, err)
     |> InternalTask.fromEffect
 
-## Execute command and inheriting stdin, stdout and stderr from parent
+## Execute command and inherit stdin, stdout and stderr from parent
 ##
 status : Cmd -> Task {} Error
 status = \@Cmd cmd ->
+    Effect.commandStatus (Box.box cmd)
+    |> InternalTask.fromEffect
+
+## Execute command and inherit stdin, stdout and stderr from parent
+##
+## ```
+## # Call echo to print "hello world"
+## Cmd.exec! "echo" ["hello world"]
+## ```
+exec : Str, List Str -> Task {} Error
+exec = \program, arguments ->
+
+    @Cmd cmd = new program |> args arguments
+
     Effect.commandStatus (Box.box cmd)
     |> InternalTask.fromEffect

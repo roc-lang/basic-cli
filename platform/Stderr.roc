@@ -1,15 +1,55 @@
 interface Stderr
-    exposes [line, write]
+    exposes [line, write, Error]
     imports [Effect, Task.{ Task }, InternalTask]
 
+## **BrokenPipe** - This error can occur when writing to a stdout that is no longer connected 
+## to a valid input. For example, if the process on the receiving end of a pipe closes its
+## end, any write to that pipe could lead to a BrokenPipe error.
+##
+## **WouldBlock** - This error might occur if stdout is set to non-blocking mode and the write
+## operation would block because the output buffer is full.
+##
+## **WriteZero** - This indicates an attempt to write "zero" bytes which is technically a no-operation
+## (no-op), but if detected, it could be raised as an error.
+##
+## **Unsupported** - If the stdout operation involves writing data in a manner or format that is not
+## supported, this error could be raised.
+##
+## **Interrupted** - This can happen if a signal interrupts the writing process before it completes.
+##
+## **OutOfMemory** - This could occur if there is not enough memory available to buffer the data being
+## written to stdout.
+##
+## **Other** - This is a catch-all for any error not specifically categorized by the other ErrorKind 
+## variants.
+Error : [
+    BrokenPipe,
+    WouldBlock,
+    WriteZero,
+    Unsupported,
+    Interrupted,
+    OutOfMemory,
+    Other Str,
+]
+
+handleErr = \err ->    
+    when err is 
+        e if e == "ErrorKind::BrokenPipe" -> StderrErr BrokenPipe
+        e if e == "ErrorKind::WouldBlock" -> StderrErr WouldBlock
+        e if e == "ErrorKind::WriteZero" -> StderrErr WriteZero
+        e if e == "ErrorKind::Unsupported" -> StderrErr Unsupported
+        e if e == "ErrorKind::Interrupted" -> StderrErr Interrupted
+        e if e == "ErrorKind::OutOfMemory" -> StderrErr OutOfMemory
+        str -> StderrErr (Other str)
+    
 ## Write the given string to [standard error](https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)),
 ## followed by a newline.
 ##
 ## > To write to `stderr` without the newline, see [Stderr.write].
-line : Str -> Task {} *
+line : Str -> Task {} [StderrErr Error]
 line = \str ->
     Effect.stderrLine str
-    |> Effect.map (\_ -> Ok {})
+    |> Effect.map \res -> Result.mapErr res handleErr
     |> InternalTask.fromEffect
 
 ## Write the given string to [standard error](https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)).
@@ -18,8 +58,8 @@ line = \str ->
 ## so this may appear to do nothing until you write a newline!
 ##
 ## > To write to `stderr` with a newline at the end, see [Stderr.line].
-write : Str -> Task {} *
+write : Str -> Task {} [StderrErr Error]
 write = \str ->
     Effect.stderrWrite str
-    |> Effect.map (\_ -> Ok {})
+    |> Effect.map \res -> Result.mapErr res handleErr
     |> InternalTask.fromEffect

@@ -7,13 +7,14 @@ app "path-example"
     ]
     provides [main] to pf
 
-main : Task {} I32
-main =
+main = run |> Task.onErr \err -> crash "ERROR: $(Inspect.toStr err)"
+
+run =
     path = Path.fromStr "path.roc"
-    a <- path |> Path.isFile |> Task.attempt
-    b <- path |> Path.isDir |> Task.attempt
-    c <- path |> Path.isSymLink |> Task.attempt
-    d <- path |> Path.type |> Task.attempt
+    a = Path.isFile! path
+    b = Path.isDir! path
+    c = Path.isSymLink! path
+    d = Path.type! path
 
     Stdout.line "isFile: \(Inspect.toStr a) isDir: \(Inspect.toStr b) isSymLink: \(Inspect.toStr c) type: \(Inspect.toStr d)"
 

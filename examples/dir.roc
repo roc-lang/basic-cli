@@ -9,43 +9,41 @@ app "dir"
     ]
     provides [main] to pf
 
-main : Task {} I32
 main =
 
     # Create a directory
-    createShouldSucceed <- Task.attempt (Dir.create (Path.fromStr "e"))
+    createShouldSucceed = Dir.create (Path.fromStr "e") |> Task.result!
     expect
         createShouldSucceed == Ok {}
 
     # Create a directory and its parents
-    createAllShouldSucceed <- Task.attempt (Dir.createAll (Path.fromStr "a/b/c/child"))
+    createAllShouldSucceed = Dir.createAll (Path.fromStr "a/b/c/child") |> Task.result!
     expect
         createAllShouldSucceed == Ok {}
 
     # Create a child directory
-    createChildShouldSucceed <- Task.attempt (Dir.create (Path.fromStr "a/child"))
+    createChildShouldSucceed = Dir.create (Path.fromStr "a/child") |> Task.result!
     expect
         createChildShouldSucceed == Ok {}
 
     # List the contents of a directory
-    paths <-
+    paths =
         Path.fromStr "a"
         |> Dir.list
-        |> Task.onErr \_ -> crash "Failed to list directory"
-        |> Task.await
+        |> Task.onErr! \_ -> crash "Failed to list directory"
 
     # Check the contents of the directory
     expect
         (List.map paths Path.display) == ["b", "child"]
 
     # Try to create a directory without a parent
-    createWithoutParentShouldFail <- Task.attempt (Dir.create (Path.fromStr "d/child"))
+    createWithoutParentShouldFail = Dir.create (Path.fromStr "d/child") |> Task.result!
     expect
         createWithoutParentShouldFail == Err NotFound
 
     # Delete an empty directory
     _ <-
-        Task.attempt (Dir.deleteEmpty (Path.fromStr "e")) \removeChild ->
+        Dir.deleteEmpty (Path.fromStr "e") |> Task.attempt \removeChild ->
             when removeChild is
                 Ok _ -> Task.ok {}
                 Err err ->

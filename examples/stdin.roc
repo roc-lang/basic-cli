@@ -9,8 +9,8 @@ app "stdin"
     provides [main] to pf
 
 main =
-    {} <- Stdout.line "Enter a series of number characters (0-9):" |> Task.await
-    numberBytes <- takeNumberBytes |> Task.await
+    Stdout.line! "Enter a series of number characters (0-9):"
+    numberBytes = takeNumberBytes!
 
     if List.isEmpty numberBytes then
         Stderr.line "Expected a series of number characters (0-9)"
@@ -22,10 +22,10 @@ main =
             Err _ ->
                 Stderr.line "Error, bad utf8"
 
-takeNumberBytes : Task (List U8) *
+takeNumberBytes : Task (List U8) _
 takeNumberBytes =
 
-    bytesRead <- Stdin.bytes |> Task.await
+    bytesRead = Stdin.bytes!
 
     numberBytes =
         List.walk bytesRead [] \bytes, b ->

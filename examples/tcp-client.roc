@@ -3,55 +3,52 @@ app "tcp-client"
     imports [pf.Tcp, pf.Task.{ Task, await }, pf.Stdout, pf.Stdin, pf.Stderr]
     provides [main] to pf
 
-main : Task {} I32
-main =
-    task =
-        stream <- Tcp.withConnect "127.0.0.1" 8085
-        _ <- Stdout.line "Connected!" |> await
+main = run |> Task.onErr handleErr
 
-        Task.loop {} \_ -> Task.map (tick stream) Step
+handleErr = \error ->
+    when error is 
+        (TcpConnectErr err) ->
+            errStr = Tcp.connectErrToStr err
+            Stderr.line
+                """
+                Failed to connect: $(errStr)
 
-    Task.attempt task \result ->
-        when result is
-            Ok _ ->
-                Task.ok {}
+                If you don't have anything listening on port 8085, run: 
+                \$ nc -l 8085
 
-            Err (TcpConnectErr err) ->
-                errStr = Tcp.connectErrToStr err
-                Stderr.line
-                    """
-                    Failed to connect: $(errStr)
+                If you want an echo server you can run:
+                $ ncat -e \$(which cat) -l 8085
+                """
 
-                    If you don't have anything listening on port 8085, run: 
-                    \$ nc -l 8085
+        (TcpPerformErr (TcpReadBadUtf8 _)) ->
+            Stderr.line "Received invalid UTF-8 data"
 
-                    If you want an echo server you can run:
-                    $ ncat -e \$(which cat) -l 8085
-                    """
+        (TcpPerformErr (TcpReadErr err)) ->
+            errStr = Tcp.streamErrToStr err
+            Stderr.line "Error while reading: $(errStr)"
 
-            Err (TcpPerformErr (TcpReadBadUtf8 _)) ->
-                Stderr.line "Received invalid UTF-8 data"
+        (TcpPerformErr (TcpWriteErr err)) ->
+            errStr = Tcp.streamErrToStr err
+            Stderr.line "Error while writing: $(errStr)"
 
-            Err (TcpPerformErr (TcpReadErr err)) ->
-                errStr = Tcp.streamErrToStr err
-                Stderr.line "Error while reading: $(errStr)"
+        other -> Stderr.line "Got other error: $(Inspect.toStr other)"
 
-            Err (TcpPerformErr (TcpWriteErr err)) ->
-                errStr = Tcp.streamErrToStr err
-                Stderr.line "Error while writing: $(errStr)"
+run = 
+    stream <- Tcp.withConnect "127.0.0.1" 8085
+            
+    Stdout.line! "Connected!"
+
+    Task.loop {} \_ -> Task.map (tick stream) Step
+
 
 tick : Tcp.Stream -> Task.Task {} _
 tick = \stream ->
-    _ <- Stdout.write "> " |> await
+    Stdout.write! "> "
 
-    input <- Stdin.line |> await
+    outMsg = Stdin.line!
+    
+    Tcp.writeUtf8! "$(outMsg)\n" stream
 
-    outMsg =
-        when input is
-            End -> "Received end of input (EOF)."
-            Input msg -> msg
+    inMsg = Tcp.readLine! stream
 
-    _ <- Tcp.writeUtf8 "$(outMsg)\n" stream |> await
-
-    inMsg <- Tcp.readLine stream |> await
-    Stdout.line "< $(inMsg)"
+    Stdout.line! "< $(inMsg)"

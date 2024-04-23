@@ -352,15 +352,27 @@ pub extern "C" fn roc_fx_exePath(_roc_str: &RocStr) -> RocResult<RocList<u8>, ()
     }
 }
 
+/// See docs in `platform/Stdin.roc` for descriptions
+fn handleStdinErr(io_err: std::io::Error) -> RocStr {
+    match io_err.kind() {
+        ErrorKind::BrokenPipe => RocStr::from("ErrorKind::BrokenPipe"),
+        ErrorKind::UnexpectedEof => RocStr::from("ErrorKind::UnexpectedEof"),
+        ErrorKind::InvalidInput => RocStr::from("ErrorKind::InvalidInput"),
+        ErrorKind::OutOfMemory => RocStr::from("ErrorKind::OutOfMemory"),
+        ErrorKind::Interrupted => RocStr::from("ErrorKind::Interrupted"),
+        ErrorKind::Unsupported => RocStr::from("ErrorKind::Unsupported"),
+        _ => RocStr::from(RocStr::from(format!("{:?}", io_err).as_str())),
+    }
+}
+
 #[no_mangle]
-pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, ()> {
-    // () is used for EOF
+pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, RocStr> {
     let stdin = std::io::stdin();
 
     match stdin.lock().lines().next() {
-        None => RocResult::err(()),
+        None => RocResult::err(RocStr::from("EOF")),
         Some(Ok(str)) => RocResult::ok(RocStr::from(str.as_str())),
-        Some(Err(err)) => panic!("Failed to get next line from stdin:\n\t{:?}", err),
+        Some(Err(io_err)) => RocResult::err(handleStdinErr(io_err)),
     }
 }
 
@@ -375,30 +387,84 @@ pub extern "C" fn roc_fx_stdinBytes() -> RocList<u8> {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn roc_fx_stdoutLine(line: &RocStr) {
-    let string = line.as_str();
-    println!("{}", string);
+/// See docs in `platform/Stdout.roc` for descriptions
+fn handleStdoutErr(io_err: std::io::Error) -> RocStr {
+    match io_err.kind() {
+        ErrorKind::BrokenPipe => RocStr::from("ErrorKind::BrokenPipe"),
+        ErrorKind::WouldBlock => RocStr::from("ErrorKind::WouldBlock"),
+        ErrorKind::WriteZero => RocStr::from("ErrorKind::WriteZero"),
+        ErrorKind::Unsupported => RocStr::from("ErrorKind::Unsupported"),
+        ErrorKind::Interrupted => RocStr::from("ErrorKind::Interrupted"),
+        ErrorKind::OutOfMemory => RocStr::from("ErrorKind::OutOfMemory"),
+        _ => RocStr::from(RocStr::from(format!("{:?}", io_err).as_str())),
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdoutWrite(text: &RocStr) {
-    let string = text.as_str();
-    print!("{}", string);
-    std::io::stdout().flush().unwrap();
+pub extern "C" fn roc_fx_stdoutLine(line: &RocStr) -> RocResult<(), RocStr> {
+    let stdout = std::io::stdout();
+
+    let mut handle = stdout.lock();
+
+    handle
+        .write_all(line.as_bytes())
+        .and_then(|()| handle.write_all("\n".as_bytes()))
+        .and_then(|()| handle.flush())
+        .map_err(handleStdoutErr)
+        .into()
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stderrLine(line: &RocStr) {
-    let string = line.as_str();
-    eprintln!("{}", string);
+pub extern "C" fn roc_fx_stdoutWrite(text: &RocStr) -> RocResult<(), RocStr> {
+    let stdout = std::io::stdout();
+
+    let mut handle = stdout.lock();
+
+    handle
+        .write_all(text.as_bytes())
+        .and_then(|()| handle.flush())
+        .map_err(handleStdoutErr)
+        .into()
+}
+
+/// See docs in `platform/Stdout.roc` for descriptions
+fn handleStderrErr(io_err: std::io::Error) -> RocStr {
+    match io_err.kind() {
+        ErrorKind::BrokenPipe => RocStr::from("ErrorKind::BrokenPipe"),
+        ErrorKind::WouldBlock => RocStr::from("ErrorKind::WouldBlock"),
+        ErrorKind::WriteZero => RocStr::from("ErrorKind::WriteZero"),
+        ErrorKind::Unsupported => RocStr::from("ErrorKind::Unsupported"),
+        ErrorKind::Interrupted => RocStr::from("ErrorKind::Interrupted"),
+        ErrorKind::OutOfMemory => RocStr::from("ErrorKind::OutOfMemory"),
+        _ => RocStr::from(RocStr::from(format!("{:?}", io_err).as_str())),
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stderrWrite(text: &RocStr) {
-    let string = text.as_str();
-    eprint!("{}", string);
-    std::io::stderr().flush().unwrap();
+pub extern "C" fn roc_fx_stderrLine(line: &RocStr) -> RocResult<(), RocStr> {
+    let stderr = std::io::stderr();
+
+    let mut handle = stderr.lock();
+
+    handle
+        .write_all(line.as_bytes())
+        .and_then(|()| handle.write_all("\n".as_bytes()))
+        .and_then(|()| handle.flush())
+        .map_err(handleStderrErr)
+        .into()
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_stderrWrite(text: &RocStr) -> RocResult<(), RocStr> {
+    let stderr = std::io::stderr();
+
+    let mut handle = stderr.lock();
+
+    handle
+        .write_all(text.as_bytes())
+        .and_then(|()| handle.flush())
+        .map_err(handleStderrErr)
+        .into()
 }
 
 #[no_mangle]
@@ -411,21 +477,6 @@ pub extern "C" fn roc_fx_ttyModeRaw() {
     crossterm::terminal::enable_raw_mode().expect("failed to enable raw mode");
 }
 
-// #[no_mangle]
-// pub extern "C" fn roc_fx_fileWriteUtf8(
-//     roc_path: &RocList<u8>,
-//     roc_string: &RocStr,
-//     // ) -> RocResult<(), WriteErr> {
-// ) -> (u8, u8) {
-//     let _ = write_slice(roc_path, roc_string.as_str().as_bytes());
-
-//     (255, 255)
-// }
-
-// #[no_mangle]
-// pub extern "C" fn roc_fx_fileWriteUtf8(roc_path: &RocList<u8>, roc_string: &RocStr) -> Fail {
-//     write_slice2(roc_path, roc_string.as_str().as_bytes())
-// }
 #[no_mangle]
 pub extern "C" fn roc_fx_fileWriteUtf8(
     roc_path: &RocList<u8>,

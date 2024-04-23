@@ -3,7 +3,6 @@ app "task-list"
     imports [pf.Stdout, pf.Task.{ Task }]
     provides [main] to pf
 
-main : Task {} I32
 main =
 
     authors : List Str
@@ -13,6 +12,11 @@ main =
         "Baz",
     ]
 
-    _ <- authors |> List.map Stdout.line |> Task.seq |> Task.await
+    # Print out each of the authors (in reverse)
+    _ = 
+        authors 
+        |> List.map Stdout.line 
+        |> Task.seq!
 
-    Task.forEach authors Stdout.line
+    # Also prints out each of the authors
+    Task.forEach! authors Stdout.line
