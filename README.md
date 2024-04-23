@@ -9,7 +9,7 @@ A Roc [platform](https://github.com/roc-lang/roc/wiki/Roc-concepts-explained#pla
   - [latest main branch](https://github.com/roc-lang/basic-cli/tree/main/examples)
 
 :book: **documentation**:
-  - [0.9.x](https://www.roc-lang.org/packages/basic-cli/0.9.0)
+  - [0.9.x](https://www.roc-lang.org/packages/basic-cli/0.9.1)
   - [0.8.x](https://www.roc-lang.org/packages/basic-cli/0.8.1)
   - [0.7.x](https://www.roc-lang.org/packages/basic-cli/0.7.1)
   - [latest main branch](https://www.roc-lang.org/packages/basic-cli)
