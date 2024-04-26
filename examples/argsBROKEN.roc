@@ -54,10 +54,8 @@ main =
             |> Num.toStr
             |> Stdout.line
 
-        Err helpMenu ->
-            Stdout.line! helpMenu
-            
-            Task.err (Exit 1) # 1 is an exit code to indicate failure
+        Err helpMenuErr ->
+            Task.err (Exit 1 "unable to parse args: $(Inspect.toStr helpMenuErr)")
 
 runCmd = \cmd ->
     when cmd is

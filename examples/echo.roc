@@ -12,7 +12,8 @@ tick : {} -> Task [Step {}, Done {}] _
 tick = \{} ->
     when Stdin.line |> Task.result! is
         Ok str -> Stdout.line (echo str) |> Task.map Step
-        Err _ -> Stdout.line (echo "Received end of input (EOF).") |> Task.map Done
+        Err (StdinErr EndOfFile) -> Stdout.line (echo "Received end of input (EOF).") |> Task.map Done
+        Err (StdinErr err) -> Stdout.line (echo "Unable to read input $(Inspect.toStr err)") |> Task.map Done
 
 echo : Str -> Str
 echo = \shout ->
