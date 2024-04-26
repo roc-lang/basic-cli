@@ -28,11 +28,11 @@ Cmd := InternalCommand.Command implements [Inspect]
 Err : InternalCommand.CommandErr
 
 outputErrToStr : (Output, Err) -> Str
-outputErrToStr = \err ->
+outputErrToStr = \(_, err) ->
     when err is
-        (_, (ExitCode code)) -> "Child exited with non-zero code: $(Num.toStr code)"
-        (_, (KilledBySignal)) -> "Child was killed by signal"
-        (_, (IOError ioErr)) -> "IOError executing: $(ioErr)"
+        ExitCode code -> "Child exited with non-zero code: $(Num.toStr code)"
+        KilledBySignal -> "Child was killed by signal"
+        IOError ioErr -> "IOError executing: $(ioErr)"
 
 ## Represents the output of a command.
 Output : {
