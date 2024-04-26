@@ -29,7 +29,7 @@ mainForHost =
         when res is
             Ok {} -> Task.ok {}
             Err (Exit code str) -> 
-                line "Program exited with code: $(Num.toStr code) and msg: $(str)"
+                line str
                 |> Task.onErr \_ -> Task.err code
                 |> Task.await \_ -> Task.err code
             Err err ->
