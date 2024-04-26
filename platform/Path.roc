@@ -15,7 +15,9 @@ interface Path
         isSymLink,
         type,
     ]
-    imports [InternalPath.{ InternalPath }, InternalPath.{ GetMetadataErr }, Effect, InternalTask, Task.{ Task }]
+    imports [InternalPath, Effect, InternalTask, Task.{ Task }]
+
+Err : InternalPath.GetMetadataErr
 
 # You can canonicalize a [Path] using `Path.canonicalize`.
 #
@@ -43,7 +45,7 @@ interface Path
 # paths but is considered invalid in FAT32 paths.
 
 ## Represents a path to a file or directory on the filesystem.
-Path : InternalPath
+Path : InternalPath.InternalPath
 
 ## Represents an error that can happen when canonicalizing a path.
 CanonicalizeErr a : [
@@ -298,7 +300,7 @@ WindowsRoot : []
 ## Any error will return false.
 ## This uses [rust's std::path::is_dir](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_dir).
 ##
-isDir : Path -> Task Bool GetMetadataErr
+isDir : Path -> Task Bool [PathErr Err]
 isDir = \path ->
     res <- type path |> Task.await
     Task.ok (res == IsDir)
@@ -307,7 +309,7 @@ isDir = \path ->
 ## Any error will return false.
 ## This uses [rust's std::path::is_file](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_file).
 ##
-isFile : Path -> Task Bool GetMetadataErr
+isFile : Path -> Task Bool [PathErr Err]
 isFile = \path ->
     res <- type path |> Task.await
     Task.ok (res == IsFile)
@@ -316,7 +318,7 @@ isFile = \path ->
 ## Any error will return false.
 ## This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
 ##
-isSymLink : Path -> Task Bool GetMetadataErr
+isSymLink : Path -> Task Bool [PathErr Err]
 isSymLink = \path ->
     res <- type path |> Task.await
     Task.ok (res == IsSymLink)
@@ -324,7 +326,7 @@ isSymLink = \path ->
 ## Return the type of the path if the path exists on disk.
 ## This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
 ##
-type : Path -> Task [IsFile, IsDir, IsSymLink] GetMetadataErr
+type : Path -> Task [IsFile, IsDir, IsSymLink] [PathErr Err]
 type = \path ->
     InternalPath.toBytes path
     |> Effect.pathType
@@ -340,6 +342,7 @@ type = \path ->
 
             Err e -> Err e
     |> InternalTask.fromEffect
+    |> Task.mapErr PathErr
 
 ## If the last component of this path has no `.`, appends `.` followed by the given string.
 ## Otherwise, replaces everything after the last `.` with the given string.
