@@ -4,5 +4,4 @@ app "hello-world"
     provides [main] to pf
 
 main =
-    Stdout.write! "Hello,"
-    Stdout.line! " World!"
+    Stdout.line! "Hello, World!"
