@@ -1,6 +1,5 @@
 #![allow(non_snake_case)]
 
-mod command_glue;
 mod file_glue;
 mod path_glue;
 mod tcp_glue;
@@ -944,8 +943,8 @@ fn to_tcp_stream_err(err: std::io::Error) -> tcp_glue::StreamErr {
 
 #[no_mangle]
 pub extern "C" fn roc_fx_commandStatus(
-    roc_cmd: &command_glue::Command,
-) -> RocResult<(), command_glue::CommandErr> {
+    roc_cmd: &roc_app::Command,
+) -> RocResult<(), roc_app::CommandErr> {
     let args = roc_cmd.args.into_iter().map(|arg| arg.as_str());
     let num_envs = roc_cmd.envs.len() / 2;
     let flat_envs = &roc_cmd.envs;
@@ -982,12 +981,12 @@ pub extern "C" fn roc_fx_commandStatus(
             } else {
                 match status.code() {
                     Some(code) => {
-                        let error = command_glue::CommandErr::ExitCode(code);
+                        let error = roc_app::CommandErr::ExitCode(code);
                         RocResult::err(error)
                     }
                     None => {
                         // If no exit code is returned, the process was terminated by a signal.
-                        let error = command_glue::CommandErr::KilledBySignal();
+                        let error = roc_app::CommandErr::KilledBySignal();
                         RocResult::err(error)
                     }
                 }
@@ -995,14 +994,14 @@ pub extern "C" fn roc_fx_commandStatus(
         }
         Err(err) => {
             let str = RocStr::from(err.to_string().borrow());
-            let error = command_glue::CommandErr::IOError(str);
+            let error = roc_app::CommandErr::IOError(str);
             RocResult::err(error)
         }
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_commandOutput(roc_cmd: &command_glue::Command) -> command_glue::Output {
+pub extern "C" fn roc_fx_commandOutput(roc_cmd: &roc_app::Command) -> roc_app::Output {
     let args = roc_cmd.args.into_iter().map(|arg| arg.as_str());
     let num_envs = roc_cmd.envs.len() / 2;
     let flat_envs = &roc_cmd.envs;
@@ -1040,25 +1039,25 @@ pub extern "C" fn roc_fx_commandOutput(roc_cmd: &command_glue::Command) -> comma
             } else {
                 match output.status.code() {
                     Some(code) => {
-                        let error = command_glue::CommandErr::ExitCode(code);
+                        let error = roc_app::CommandErr::ExitCode(code);
                         RocResult::err(error)
                     }
                     None => {
                         // If no exit code is returned, the process was terminated by a signal.
-                        let error = command_glue::CommandErr::KilledBySignal();
+                        let error = roc_app::CommandErr::KilledBySignal();
                         RocResult::err(error)
                     }
                 }
             };
 
-            command_glue::Output {
+            roc_app::Output {
                 status: status,
                 stdout: RocList::from(&output.stdout[..]),
                 stderr: RocList::from(&output.stderr[..]),
             }
         }
-        Err(err) => command_glue::Output {
-            status: RocResult::err(command_glue::CommandErr::IOError(RocStr::from(
+        Err(err) => roc_app::Output {
+            status: RocResult::err(roc_app::CommandErr::IOError(RocStr::from(
                 err.to_string().borrow(),
             ))),
             stdout: RocList::empty(),
