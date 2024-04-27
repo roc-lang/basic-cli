@@ -46,6 +46,9 @@ jobs:
 
       - run: expect -v
 
+      # temp for debugging
+      - run: which ./roc_nightly/roc
+
       - name: Run all tests
         run: ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
 
