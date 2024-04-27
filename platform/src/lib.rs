@@ -1,7 +1,6 @@
 #![allow(non_snake_case)]
 
 mod command_glue;
-mod dir_glue;
 mod file_glue;
 mod path_glue;
 mod tcp_glue;
@@ -20,8 +19,6 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use file_glue::ReadErr;
 use file_glue::WriteErr;
-
-use dir_glue::IOError;
 
 extern "C" {
     #[link_name = "roc__mainForHost_1_exposed_generic"]
@@ -591,7 +588,7 @@ pub extern "C" fn roc_fx_sleepMillis(milliseconds: u64) {
 #[no_mangle]
 pub extern "C" fn roc_fx_dirList(
     roc_path: &RocList<u8>,
-) -> RocResult<RocList<RocList<u8>>, IOError> {
+) -> RocResult<RocList<RocList<u8>>, roc_app::IOError> {
     let path = path_from_roc_path(roc_path);
 
     if path.is_dir() {
@@ -615,7 +612,7 @@ pub extern "C" fn roc_fx_dirList(
 
         return roc_std::RocResult::ok(RocList::from_iter(entries));
     } else {
-        return roc_std::RocResult::err(dir_glue::IOError::NotADirectory());
+        return roc_std::RocResult::err(roc_app::IOError::NotADirectory());
     }
 }
 
@@ -1071,7 +1068,7 @@ pub extern "C" fn roc_fx_commandOutput(roc_cmd: &command_glue::Command) -> comma
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirCreate(roc_path: &RocList<u8>) -> RocResult<(), IOError> {
+pub extern "C" fn roc_fx_dirCreate(roc_path: &RocList<u8>) -> RocResult<(), roc_app::IOError> {
     match std::fs::create_dir(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
         Err(err) => RocResult::err(toRocIOError(err)),
@@ -1079,7 +1076,7 @@ pub extern "C" fn roc_fx_dirCreate(roc_path: &RocList<u8>) -> RocResult<(), IOEr
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirCreateAll(roc_path: &RocList<u8>) -> RocResult<(), IOError> {
+pub extern "C" fn roc_fx_dirCreateAll(roc_path: &RocList<u8>) -> RocResult<(), roc_app::IOError> {
     match std::fs::create_dir_all(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
         Err(err) => RocResult::err(toRocIOError(err)),
@@ -1087,7 +1084,7 @@ pub extern "C" fn roc_fx_dirCreateAll(roc_path: &RocList<u8>) -> RocResult<(), I
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirDeleteEmpty(roc_path: &RocList<u8>) -> RocResult<(), IOError> {
+pub extern "C" fn roc_fx_dirDeleteEmpty(roc_path: &RocList<u8>) -> RocResult<(), roc_app::IOError> {
     match std::fs::remove_dir(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
         Err(err) => RocResult::err(toRocIOError(err)),
@@ -1095,7 +1092,7 @@ pub extern "C" fn roc_fx_dirDeleteEmpty(roc_path: &RocList<u8>) -> RocResult<(),
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirDeleteAll(roc_path: &RocList<u8>) -> RocResult<(), IOError> {
+pub extern "C" fn roc_fx_dirDeleteAll(roc_path: &RocList<u8>) -> RocResult<(), roc_app::IOError> {
     match std::fs::remove_dir_all(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
         Err(err) => RocResult::err(toRocIOError(err)),
@@ -1103,47 +1100,47 @@ pub extern "C" fn roc_fx_dirDeleteAll(roc_path: &RocList<u8>) -> RocResult<(), I
 }
 
 // Note commented out error kinds are not available in stable Rust
-fn toRocIOError(err: std::io::Error) -> IOError {
+fn toRocIOError(err: std::io::Error) -> roc_app::IOError {
     match err.kind() {
-        ErrorKind::NotFound => IOError::NotFound(),
-        ErrorKind::PermissionDenied => IOError::PermissionDenied(),
-        ErrorKind::ConnectionRefused => IOError::ConnectionRefused(),
-        ErrorKind::ConnectionReset => IOError::ConnectionReset(),
-        // ErrorKind::HostUnreachable => IOError::HostUnreachable(),
-        // ErrorKind::NetworkUnreachable => IOError::NetworkUnreachable(),
-        ErrorKind::ConnectionAborted => IOError::ConnectionAborted(),
-        ErrorKind::NotConnected => IOError::NotConnected(),
-        ErrorKind::AddrInUse => IOError::AddrInUse(),
-        ErrorKind::AddrNotAvailable => IOError::AddrNotAvailable(),
-        // ErrorKind::NetworkDown => IOError::NetworkDown(),
-        ErrorKind::BrokenPipe => IOError::BrokenPipe(),
-        ErrorKind::AlreadyExists => IOError::AlreadyExists(),
-        ErrorKind::WouldBlock => IOError::WouldBlock(),
-        // ErrorKind::NotADirectory => IOError::NotADirectory(),
-        // ErrorKind::IsADirectory => IOError::IsADirectory(),
-        // ErrorKind::DirectoryNotEmpty => IOError::DirectoryNotEmpty(),
-        // ErrorKind::ReadOnlyFilesystem => IOError::ReadOnlyFilesystem(),
-        // ErrorKind::FilesystemLoop => IOError::FilesystemLoop(),
-        // ErrorKind::StaleNetworkFileHandle => IOError::StaleNetworkFileHandle(),
-        ErrorKind::InvalidInput => IOError::InvalidInput(),
-        ErrorKind::InvalidData => IOError::InvalidData(),
-        ErrorKind::TimedOut => IOError::TimedOut(),
-        ErrorKind::WriteZero => IOError::WriteZero(),
-        // ErrorKind::StorageFull => IOError::StorageFull(),
-        // ErrorKind::NotSeekable => IOError::NotSeekable(),
-        // ErrorKind::FilesystemQuotaExceeded => IOError::FilesystemQuotaExceeded(),
-        // ErrorKind::FileTooLarge => IOError::FileTooLarge(),
-        // ErrorKind::ResourceBusy => IOError::ResourceBusy(),
-        // ErrorKind::ExecutableFileBusy => IOError::ExecutableFileBusy(),
-        // ErrorKind::Deadlock => IOError::Deadlock(),
-        // ErrorKind::CrossesDevices => IOError::CrossesDevices(),
-        // ErrorKind::TooManyLinks => IOError::TooManyLinks(),
-        // ErrorKind::InvalidFilename => IOError::InvalidFilename(),
-        // ErrorKind::ArgumentListTooLong => IOError::ArgumentListTooLong(),
-        ErrorKind::Interrupted => IOError::Interrupted(),
-        ErrorKind::UnexpectedEof => IOError::UnexpectedEof(),
-        ErrorKind::OutOfMemory => IOError::OutOfMemory(),
-        ErrorKind::Other => IOError::Other(),
-        _ => IOError::Unsupported(),
+        ErrorKind::NotFound => roc_app::IOError::NotFound(),
+        ErrorKind::PermissionDenied => roc_app::IOError::PermissionDenied(),
+        ErrorKind::ConnectionRefused => roc_app::IOError::ConnectionRefused(),
+        ErrorKind::ConnectionReset => roc_app::IOError::ConnectionReset(),
+        // ErrorKind::HostUnreachable => roc_app::IOError::HostUnreachable(),
+        // ErrorKind::NetworkUnreachable => roc_app::IOError::NetworkUnreachable(),
+        ErrorKind::ConnectionAborted => roc_app::IOError::ConnectionAborted(),
+        ErrorKind::NotConnected => roc_app::IOError::NotConnected(),
+        ErrorKind::AddrInUse => roc_app::IOError::AddrInUse(),
+        ErrorKind::AddrNotAvailable => roc_app::IOError::AddrNotAvailable(),
+        // ErrorKind::NetworkDown => roc_app::IOError::NetworkDown(),
+        ErrorKind::BrokenPipe => roc_app::IOError::BrokenPipe(),
+        ErrorKind::AlreadyExists => roc_app::IOError::AlreadyExists(),
+        ErrorKind::WouldBlock => roc_app::IOError::WouldBlock(),
+        // ErrorKind::NotADirectory => roc_app::IOError::NotADirectory(),
+        // ErrorKind::IsADirectory => roc_app::IOError::IsADirectory(),
+        // ErrorKind::DirectoryNotEmpty => roc_app::IOError::DirectoryNotEmpty(),
+        // ErrorKind::ReadOnlyFilesystem => roc_app::IOError::ReadOnlyFilesystem(),
+        // ErrorKind::FilesystemLoop => roc_app::IOError::FilesystemLoop(),
+        // ErrorKind::StaleNetworkFileHandle => roc_app::IOError::StaleNetworkFileHandle(),
+        ErrorKind::InvalidInput => roc_app::IOError::InvalidInput(),
+        ErrorKind::InvalidData => roc_app::IOError::InvalidData(),
+        ErrorKind::TimedOut => roc_app::IOError::TimedOut(),
+        ErrorKind::WriteZero => roc_app::IOError::WriteZero(),
+        // ErrorKind::StorageFull => roc_app::IOError::StorageFull(),
+        // ErrorKind::NotSeekable => roc_app::IOError::NotSeekable(),
+        // ErrorKind::FilesystemQuotaExceeded => roc_app::IOError::FilesystemQuotaExceeded(),
+        // ErrorKind::FileTooLarge => roc_app::IOError::FileTooLarge(),
+        // ErrorKind::ResourceBusy => roc_app::IOError::ResourceBusy(),
+        // ErrorKind::ExecutableFileBusy => roc_app::IOError::ExecutableFileBusy(),
+        // ErrorKind::Deadlock => roc_app::IOError::Deadlock(),
+        // ErrorKind::CrossesDevices => roc_app::IOError::CrossesDevices(),
+        // ErrorKind::TooManyLinks => roc_app::IOError::TooManyLinks(),
+        // ErrorKind::InvalidFilename => roc_app::IOError::InvalidFilename(),
+        // ErrorKind::ArgumentListTooLong => roc_app::IOError::ArgumentListTooLong(),
+        ErrorKind::Interrupted => roc_app::IOError::Interrupted(),
+        ErrorKind::UnexpectedEof => roc_app::IOError::UnexpectedEof(),
+        ErrorKind::OutOfMemory => roc_app::IOError::OutOfMemory(),
+        ErrorKind::Other => roc_app::IOError::Other(),
+        _ => roc_app::IOError::Unsupported(),
     }
 }
