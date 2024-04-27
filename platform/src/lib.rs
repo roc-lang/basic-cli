@@ -1,6 +1,5 @@
 #![allow(non_snake_case)]
 
-mod file_glue;
 mod path_glue;
 mod tcp_glue;
 
@@ -15,9 +14,6 @@ use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
 use std::net::TcpStream;
 use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-
-use file_glue::ReadErr;
-use file_glue::WriteErr;
 
 extern "C" {
     #[link_name = "roc__mainForHost_1_exposed_generic"]
@@ -258,10 +254,12 @@ pub fn init() {
         roc_fx_dirDeleteAll as _,
         roc_fx_pathType as _,
     ];
+    #[allow(forgetting_references)]
     std::mem::forget(std::hint::black_box(funcs));
     if cfg!(unix) {
         let unix_funcs: &[*const extern "C" fn()] =
             &[roc_getppid as _, roc_mmap as _, roc_shm_open as _];
+        #[allow(forgetting_references)]
         std::mem::forget(std::hint::black_box(unix_funcs));
     }
 }
@@ -477,7 +475,7 @@ pub extern "C" fn roc_fx_ttyModeRaw() {
 pub extern "C" fn roc_fx_fileWriteUtf8(
     roc_path: &RocList<u8>,
     roc_str: &RocStr,
-) -> RocResult<(), WriteErr> {
+) -> RocResult<(), roc_app::WriteErr> {
     write_slice(roc_path, roc_str.as_str().as_bytes())
 }
 
@@ -485,11 +483,11 @@ pub extern "C" fn roc_fx_fileWriteUtf8(
 pub extern "C" fn roc_fx_fileWriteBytes(
     roc_path: &RocList<u8>,
     roc_bytes: &RocList<u8>,
-) -> RocResult<(), WriteErr> {
+) -> RocResult<(), roc_app::WriteErr> {
     write_slice(roc_path, roc_bytes.as_slice())
 }
 
-fn write_slice(roc_path: &RocList<u8>, bytes: &[u8]) -> RocResult<(), WriteErr> {
+fn write_slice(roc_path: &RocList<u8>, bytes: &[u8]) -> RocResult<(), roc_app::WriteErr> {
     match File::create(path_from_roc_path(roc_path)) {
         Ok(mut file) => match file.write_all(bytes) {
             Ok(()) => RocResult::ok(()),
@@ -536,7 +534,9 @@ fn path_from_roc_path(bytes: &RocList<u8>) -> Cow<'_, Path> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocList<u8>, ReadErr> {
+pub extern "C" fn roc_fx_fileReadBytes(
+    roc_path: &RocList<u8>,
+) -> RocResult<RocList<u8>, roc_app::ReadErr> {
     let mut bytes = Vec::new();
 
     match File::open(path_from_roc_path(roc_path)) {
@@ -549,7 +549,7 @@ pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocL
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_fileDelete(roc_path: &RocList<u8>) -> RocResult<(), ReadErr> {
+pub extern "C" fn roc_fx_fileDelete(roc_path: &RocList<u8>) -> RocResult<(), roc_app::ReadErr> {
     match std::fs::remove_file(path_from_roc_path(roc_path)) {
         Ok(()) => RocResult::ok(()),
         Err(err) => RocResult::err(toRocReadError(err)),
@@ -757,17 +757,17 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &roc_app::Request) -> roc_app:
     }
 }
 
-fn toRocWriteError(err: std::io::Error) -> file_glue::WriteErr {
+fn toRocWriteError(err: std::io::Error) -> roc_app::WriteErr {
     match err.kind() {
-        ErrorKind::NotFound => file_glue::WriteErr::NotFound,
-        ErrorKind::AlreadyExists => file_glue::WriteErr::AlreadyExists,
-        ErrorKind::Interrupted => file_glue::WriteErr::Interrupted,
-        ErrorKind::OutOfMemory => file_glue::WriteErr::OutOfMemory,
-        ErrorKind::PermissionDenied => file_glue::WriteErr::PermissionDenied,
-        ErrorKind::TimedOut => file_glue::WriteErr::TimedOut,
+        ErrorKind::NotFound => roc_app::WriteErr::NotFound(),
+        ErrorKind::AlreadyExists => roc_app::WriteErr::AlreadyExists(),
+        ErrorKind::Interrupted => roc_app::WriteErr::Interrupted(),
+        ErrorKind::OutOfMemory => roc_app::WriteErr::OutOfMemory(),
+        ErrorKind::PermissionDenied => roc_app::WriteErr::PermissionDenied(),
+        ErrorKind::TimedOut => roc_app::WriteErr::TimedOut(),
         // TODO investigate support the following IO errors may need to update API
-        ErrorKind::WriteZero => file_glue::WriteErr::WriteZero,
-        _ => file_glue::WriteErr::Unsupported,
+        ErrorKind::WriteZero => roc_app::WriteErr::WriteZero(),
+        _ => roc_app::WriteErr::Unsupported(),
         // TODO investigate support the following IO errors
         // std::io::ErrorKind::FileTooLarge <- unstable language feature
         // std::io::ErrorKind::ExecutableFileBusy <- unstable language feature
@@ -781,20 +781,20 @@ fn toRocWriteError(err: std::io::Error) -> file_glue::WriteErr {
     }
 }
 
-fn toRocReadError(err: std::io::Error) -> file_glue::ReadErr {
+fn toRocReadError(err: std::io::Error) -> roc_app::ReadErr {
     match err.kind() {
-        ErrorKind::Interrupted => file_glue::ReadErr::Interrupted,
-        ErrorKind::NotFound => file_glue::ReadErr::NotFound,
-        ErrorKind::OutOfMemory => file_glue::ReadErr::OutOfMemory,
-        ErrorKind::PermissionDenied => file_glue::ReadErr::PermissionDenied,
-        ErrorKind::TimedOut => file_glue::ReadErr::TimedOut,
+        ErrorKind::Interrupted => roc_app::ReadErr::Interrupted(),
+        ErrorKind::NotFound => roc_app::ReadErr::NotFound(),
+        ErrorKind::OutOfMemory => roc_app::ReadErr::OutOfMemory(),
+        ErrorKind::PermissionDenied => roc_app::ReadErr::PermissionDenied(),
+        ErrorKind::TimedOut => roc_app::ReadErr::TimedOut(),
         // TODO investigate support the following IO errors may need to update API
-        // std::io::ErrorKind:: => file_glue::ReadErr::TooManyHardlinks,
-        // std::io::ErrorKind:: => file_glue::ReadErr::TooManySymlinks,
-        // std::io::ErrorKind:: => file_glue::ReadErr::Unrecognized,
+        // std::io::ErrorKind:: => roc_app::ReadErr::TooManyHardlinks,
+        // std::io::ErrorKind:: => roc_app::ReadErr::TooManySymlinks,
+        // std::io::ErrorKind:: => roc_app::ReadErr::Unrecognized,
         // std::io::ErrorKind::StaleNetworkFileHandle <- unstable language feature
         // std::io::ErrorKind::InvalidFilename <- unstable language feature
-        _ => file_glue::ReadErr::Unsupported,
+        _ => roc_app::ReadErr::Unsupported(),
     }
 }
 
