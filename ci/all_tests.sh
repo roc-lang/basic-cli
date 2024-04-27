@@ -86,7 +86,8 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     # For path.roc we need be inside the EXAMPLES_DIR
     if [ "$base_file" == "path.roc" ]; then
         cd $EXAMPLES_DIR
-        $ROC dev $base_file
+        absolute_roc=$(which $ROC)
+        $absolute_roc dev $base_file
         cd ..
     else
         $ROC dev $roc_file
