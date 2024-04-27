@@ -1,22 +1,43 @@
 platform "glue"
-    requires {} { main : GlueTypes }
+    requires {} { main : _ }
     exposes []
     packages {}
     imports [
-        InternalHttp
+        InternalHttp,
+        InternalCommand,
+        InternalDir,
+        InternalFile,
+        InternalPath,
+        InternalTcp,
     ]
     provides [mainForHost]
 
-GlueTypes : [
-     A InternalHttp.Request,
-     B InternalHttp.Method,
-     C InternalHttp.Header,
-     D InternalHttp.TimeoutConfig,
-     E InternalHttp.Part,
-     G InternalHttp.Response,
-     H InternalHttp.Metadata,
-     I InternalHttp.Error
-]
+GlueTypes : {
+    ha: InternalHttp.Request,
+    hb: InternalHttp.Method,
+    hc: InternalHttp.Header,
+    hd: InternalHttp.TimeoutConfig,
+    he: InternalHttp.Part,
+    hf: InternalHttp.InternalResponse,
+    hi: InternalHttp.Error,
+    ca: InternalCommand.Command,
+    cb: InternalCommand.Output,
+    cc: InternalCommand.CommandErr,
+    dir: InternalDir.IOError,
+    fa: InternalFile.ReadErr, 
+    fb: InternalFile.WriteErr,
+    pa: InternalPath.UnwrappedPath,
+    pb: InternalPath.InternalPath,
+    pc: InternalPath.GetMetadataErr,
+    pd: InternalPath.InternalPathType,
+    tcpa: InternalTcp.Stream,
+    tcpb: InternalTcp.ConnectErr,
+    tcpc: InternalTcp.StreamErr,
+    tcpd: InternalTcp.ConnectResult,
+    tcpe: InternalTcp.WriteResult,
+    tcpf: InternalTcp.ReadResult,
+    tcpg: InternalTcp.ReadExactlyResult
+}
 
 mainForHost : GlueTypes
 mainForHost = main

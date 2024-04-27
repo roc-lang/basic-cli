@@ -636,7 +636,7 @@ fn os_str_to_roc_path(os_str: &OsStr) -> RocList<u8> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_sendRequest(roc_request: &roc_app::Request) -> roc_app::Response {
+pub extern "C" fn roc_fx_sendRequest(roc_request: &roc_app::Request) -> roc_app::InternalResponse {
     use hyper::Client;
     use hyper_rustls::HttpsConnectorBuilder;
 
@@ -683,7 +683,7 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &roc_app::Request) -> roc_app:
     let request = match req_builder.body(bytes) {
         Ok(req) => req,
         Err(err) => {
-            return roc_app::Response::BadRequest(RocStr::from(err.to_string().as_str()));
+            return roc_app::InternalResponse::BadRequest(RocStr::from(err.to_string().as_str()));
         }
     };
 
@@ -728,12 +728,12 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &roc_app::Request) -> roc_app:
                 if status.is_success() {
                     // Glue code made this expect a Response_BadStatus? BadStatus and GoodStatus
                     // have the same fields so deduplication makes sense? But possibly a bug?
-                    roc_app::Response::GoodStatus(roc_app::Response_BadStatus {
+                    roc_app::InternalResponse::GoodStatus(roc_app::InternalResponse_BadStatus {
                         f0: metadata,
                         f1: body,
                     })
                 } else {
-                    roc_app::Response::BadStatus(roc_app::Response_BadStatus {
+                    roc_app::InternalResponse::BadStatus(roc_app::InternalResponse_BadStatus {
                         f0: metadata,
                         f1: body,
                     })
@@ -741,13 +741,13 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &roc_app::Request) -> roc_app:
             }
             Err(err) => {
                 if err.is_timeout() {
-                    roc_app::Response::Timeout(
+                    roc_app::InternalResponse::Timeout(
                         time_limit.map(|d| d.as_millis()).unwrap_or_default() as u64,
                     )
                 } else if err.is_connect() || err.is_closed() {
-                    roc_app::Response::NetworkError()
+                    roc_app::InternalResponse::NetworkError()
                 } else {
-                    roc_app::Response::BadRequest(RocStr::from(err.to_string().as_str()))
+                    roc_app::InternalResponse::BadRequest(RocStr::from(err.to_string().as_str()))
                 }
             }
         }
@@ -755,7 +755,7 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &roc_app::Request) -> roc_app:
     match time_limit {
         Some(limit) => match rt.block_on(async { tokio::time::timeout(limit, http_fn).await }) {
             Ok(res) => res,
-            Err(_) => roc_app::Response::Timeout(limit.as_millis() as u64),
+            Err(_) => roc_app::InternalResponse::Timeout(limit.as_millis() as u64),
         },
         None => rt.block_on(http_fn),
     }

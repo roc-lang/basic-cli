@@ -63,3 +63,5 @@ dirExampleD
 all_tests_output.log
 
 platform/*.a
+
+ci/file-testBROKEN
