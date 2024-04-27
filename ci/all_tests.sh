@@ -24,7 +24,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     $ROC check $roc_file
 done
 
-# roc build
+roc build
 architecture=$(uname -m)
 
 for roc_file in $EXAMPLES_DIR*.roc; do
@@ -60,6 +60,36 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     roc_file_only="$(basename "$roc_file")"
     no_ext_name=${roc_file_only%.*}
     expect ci/expect_scripts/$no_ext_name.exp
+done
+
+# roc dev (some expects only run with `roc dev`)
+for roc_file in $EXAMPLES_DIR*.roc; do
+    base_file=$(basename "$roc_file")
+
+    # Skip argsBROKEN.roc
+    #      countdown, echo, form, piping, stdin require user input
+    file_list=("argsBROKEN.roc" "countdown.roc" "echo.roc" "form.roc" "piping.roc" "stdin.roc" "dir.roc")
+
+    # Loop through the array and check if base_file matches any item
+    for file in "${file_list[@]}"; do
+        if [ "$base_file" == "$file" ]; then
+            continue 2 # continue the outer loop if a match is found
+        fi
+    done
+
+    # Skip env.roc when on aarch64
+    if [ "$architecture" == "aarch64" ] && [ "$base_file" == "env.roc" ]; then
+        continue
+    fi
+
+    # For path.roc we need be inside the EXAMPLES_DIR
+    if [ "$base_file" == "path.roc" ]; then
+        cd $EXAMPLES_DIR
+        $ROC dev $base_file
+        cd ..
+    else
+        $ROC dev $roc_file
+    fi
 done
 
 # `roc test` every roc file if it contains a test, skip roc_nightly folder

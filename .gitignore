@@ -54,4 +54,6 @@ out.txt
 # local roc folder for testing
 roc_nightly
 
+all_tests_output.log
+
 platform/*.a

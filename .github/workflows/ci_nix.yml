@@ -25,6 +25,10 @@ jobs:
             
             #  the result folder is produced by the previous step
             - name: Run all tests 
-              run: nix develop -c sh -c 'export ROC=roc && export EXAMPLES_DIR=./examples/ && ./ci/all_tests.sh'
+              run: nix develop -c sh -c 'export ROC=roc && export EXAMPLES_DIR=./examples/ && ./ci/all_tests.sh 2>&1 | tee all_tests_output.log'
+
+            # Workaround for https://github.com/roc-lang/roc/issues/6688
+            - name: Check if crash occurred
+              run: grep -zqv "crashed" all_tests_output.log
     
     
