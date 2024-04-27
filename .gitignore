@@ -55,3 +55,8 @@ out.txt
 roc_nightly
 
 platform/*.a
+
+# see examples/dir.roc
+dirExampleE
+dirExampleA
+dirExampleD
