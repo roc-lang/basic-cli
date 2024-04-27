@@ -1,6 +1,5 @@
 #![allow(non_snake_case)]
 
-mod path_glue;
 mod tcp_glue;
 
 use core::alloc::Layout;
@@ -500,10 +499,10 @@ fn write_slice(roc_path: &RocList<u8>, bytes: &[u8]) -> RocResult<(), roc_app::W
 #[no_mangle]
 pub extern "C" fn roc_fx_pathType(
     roc_path: &RocList<u8>,
-) -> RocResult<path_glue::InternalPathType, path_glue::GetMetadataErr> {
+) -> RocResult<roc_app::InternalPathType, roc_app::GetMetadataErr> {
     let path = path_from_roc_path(roc_path);
     match path.symlink_metadata() {
-        Ok(m) => RocResult::ok(path_glue::InternalPathType {
+        Ok(m) => RocResult::ok(roc_app::InternalPathType {
             isDir: m.is_dir(),
             isFile: m.is_file(),
             isSymLink: m.is_symlink(),
@@ -798,15 +797,18 @@ fn toRocReadError(err: std::io::Error) -> roc_app::ReadErr {
     }
 }
 
-fn toRocGetMetadataError(err: std::io::Error) -> path_glue::GetMetadataErr {
+fn toRocGetMetadataError(err: std::io::Error) -> roc_app::GetMetadataErr {
     let kind = err.kind();
+
+    let read_err = roc_app::ReadErr_Unrecognized {
+        f1: RocStr::from(kind.to_string().borrow()),
+        f0: err.raw_os_error().unwrap_or_default(),
+    };
+
     match kind {
-        ErrorKind::NotFound => path_glue::GetMetadataErr::PathDoesNotExist(),
-        ErrorKind::PermissionDenied => path_glue::GetMetadataErr::PermissionDenied(),
-        _ => path_glue::GetMetadataErr::Unrecognized(path_glue::GetMetadataErr_Unrecognized {
-            f1: RocStr::from(kind.to_string().borrow()),
-            f0: err.raw_os_error().unwrap_or_default(),
-        }),
+        ErrorKind::NotFound => roc_app::GetMetadataErr::PathDoesNotExist(),
+        ErrorKind::PermissionDenied => roc_app::GetMetadataErr::PermissionDenied(),
+        _ => roc_app::GetMetadataErr::Unrecognized(read_err),
     }
 }
 
