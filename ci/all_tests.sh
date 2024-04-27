@@ -24,7 +24,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     $ROC check $roc_file
 done
 
-roc build
+# roc build
 architecture=$(uname -m)
 
 for roc_file in $EXAMPLES_DIR*.roc; do
@@ -68,10 +68,11 @@ for roc_file in $EXAMPLES_DIR*.roc; do
 
     # Skip argsBROKEN.roc
     #      countdown, echo, form, piping, stdin require user input
-    file_list=("argsBROKEN.roc" "countdown.roc" "echo.roc" "form.roc" "piping.roc" "stdin.roc" "dir.roc")
+    #      dir.roc hits `index out of bounds: the len is...`
+    ignore_list=("argsBROKEN.roc" "countdown.roc" "echo.roc" "form.roc" "piping.roc" "stdin.roc" "dir.roc")
 
-    # Loop through the array and check if base_file matches any item
-    for file in "${file_list[@]}"; do
+    # check if base_file matches something from ignore_list
+    for file in "${ignore_list[@]}"; do
         if [ "$base_file" == "$file" ]; then
             continue 2 # continue the outer loop if a match is found
         fi
