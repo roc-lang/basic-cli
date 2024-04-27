@@ -54,9 +54,12 @@ out.txt
 # local roc folder for testing
 roc_nightly
 
-platform/*.a
-
 # see examples/dir.roc
 dirExampleE
 dirExampleA
 dirExampleD
+
+# see ci/all_tests.sh
+all_tests_output.log
+
+platform/*.a

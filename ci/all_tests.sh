@@ -67,6 +67,42 @@ rm -rf dirExampleE
 rm -rf dirExampleA
 rm -rf dirExampleD
 
+# roc dev (some expects only run with `roc dev`)
+for roc_file in $EXAMPLES_DIR*.roc; do
+    base_file=$(basename "$roc_file")
+
+    # Skip argsBROKEN.roc
+    #      countdown, echo, form, piping, stdin require user input
+    #      dir.roc hits `index out of bounds: the len is...`
+    ignore_list=("argsBROKEN.roc" "countdown.roc" "echo.roc" "form.roc" "piping.roc" "stdin.roc" "dir.roc")
+
+    # check if base_file matches something from ignore_list
+    for file in "${ignore_list[@]}"; do
+        if [ "$base_file" == "$file" ]; then
+            continue 2 # continue the outer loop if a match is found
+        fi
+    done
+
+    # Skip env.roc when on aarch64
+    if [ "$architecture" == "aarch64" ] && [ "$base_file" == "env.roc" ]; then
+        continue
+    fi
+
+    # For path.roc we need be inside the EXAMPLES_DIR
+    if [ "$base_file" == "path.roc" ]; then
+        cd $EXAMPLES_DIR
+        $ROC dev $base_file
+        cd ..
+    else
+        $ROC dev $roc_file
+    fi
+done
+
+# remove Dir example directorys if they exist
+rm -rf dirExampleE
+rm -rf dirExampleA
+rm -rf dirExampleD
+
 # `roc test` every roc file if it contains a test, skip roc_nightly folder
 find . -type d -name "roc_nightly" -prune -o -type f -name "*.roc" -print | while read file; do
     # Arg.roc hits github.com/roc-lang/roc/issues/5701
