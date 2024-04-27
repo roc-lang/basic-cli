@@ -46,8 +46,11 @@ jobs:
 
       - run: expect -v
 
-      # Run all tests 
-      - run: ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh 2>&1 | tee all_tests_output.log
+      - name: Run all tests
+        run: ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
+
+      - name: Run all tests and capture output to check for crash later
+        run: ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh 2>&1 | tee all_tests_output.log
 
       # Workaround for https://github.com/roc-lang/roc/issues/6688
       - name: Check if crash occurred
