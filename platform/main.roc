@@ -20,7 +20,7 @@ platform "cli"
         Tty,
     ]
     packages {}
-    imports [Task.{ Task }, Stderr.{line}]
+    imports [Task.{ Task }, Stderr]
     provides [mainForHost]
 
 mainForHost : Task {} I32 as Fx
@@ -28,11 +28,16 @@ mainForHost =
     Task.attempt main \res ->
         when res is
             Ok {} -> Task.ok {}
-            Err (Exit code str) -> 
-                line str
-                |> Task.onErr \_ -> Task.err code
-                |> Task.await \_ -> Task.err code
+
+            Err (Exit code str) ->
+                if Str.isEmpty str then
+                    Task.err code
+                else
+                    Stderr.line str
+                    |> Task.onErr \_ -> Task.err code
+                    |> Task.await \{} -> Task.err code
+
             Err err ->
-                line "Program exited early with error: $(Inspect.toStr err)"
+                Stderr.line "Program exited early with error: $(Inspect.toStr err)"
                 |> Task.onErr \_ -> Task.err 1
                 |> Task.await \_ -> Task.err 1
