@@ -1,0 +1,7 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/host",
+    "crates/roc_app",
+    "crates/roc_std",
+]

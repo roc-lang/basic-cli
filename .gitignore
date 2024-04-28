@@ -63,6 +63,14 @@ dirExampleD
 # see ci/all_tests.sh
 all_tests_output.log
 
+examples/*.dylib
+
 platform/*.a
+platform/*.dylib
+platform/*.so
+platform/*.o
 
 ci/file-testBROKEN
+
+# build script executable
+build

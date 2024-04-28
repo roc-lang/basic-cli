@@ -5,8 +5,6 @@ authors = ["The Roc Contributors"]
 license = "UPL-1.0"
 edition = "2021"
 
-links = "app"
-
 [profile.release]
 lto = true
 strip = "debuginfo"
@@ -15,20 +13,14 @@ codegen-units = 1
 [lib]
 name = "host"
 path = "src/lib.rs"
-crate-type = ["staticlib", "lib"]
-
-[[bin]]
-name = "host"
-path = "src/main.rs"
+crate-type = ["staticlib"]
 
 [dependencies]
-roc_std = { path = "../crates/roc_std" }
-roc_app = { path = "../crates/roc_app" }
+roc_std = { path = "../roc_std" }
+roc_app = { path = "../roc_app" }
 libc = "=0.2.150"
 backtrace = "=0.3.69"
 hyper = { version = "=0.14.27", default-features = false, features = ["http1", "client"] }
 hyper-rustls = { version = "=0.24.2", default-features = false, features = ["http1", "tls12", "native-tokio"]}
 tokio = { version = "=1.31.0", default-features = false}
 crossterm = "=0.27.0"
-
-[workspace]
