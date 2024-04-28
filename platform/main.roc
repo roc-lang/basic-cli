@@ -1,5 +1,5 @@
 platform "cli"
-    requires {} { main : Task {} [Exit I32]_ }
+    requires {} { main : Task {} [Exit I32 Str]_ }
     exposes [
         Path,
         Arg,
@@ -20,7 +20,7 @@ platform "cli"
         Tty,
     ]
     packages {}
-    imports [Task.{ Task }]
+    imports [Task.{ Task }, Stderr.{line}]
     provides [mainForHost]
 
 mainForHost : Task {} I32 as Fx
@@ -28,5 +28,11 @@ mainForHost =
     Task.attempt main \res ->
         when res is
             Ok {} -> Task.ok {}
-            Err (Exit code) -> Task.err code
-            Err e -> crash "Program crashed with error: $(Inspect.toStr e)"
+            Err (Exit code str) -> 
+                line str
+                |> Task.onErr \_ -> Task.err code
+                |> Task.await \_ -> Task.err code
+            Err err ->
+                line "Program exited early with error: $(Inspect.toStr err)"
+                |> Task.onErr \_ -> Task.err 1
+                |> Task.await \_ -> Task.err 1

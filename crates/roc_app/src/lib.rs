@@ -12,14 +12,11 @@
 #![allow(clippy::missing_safety_doc)]
 #![allow(clippy::let_and_return)]
 #![allow(clippy::missing_safety_doc)]
-#![allow(clippy::redundant_static_lifetimes)]
 #![allow(clippy::needless_borrow)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::incorrect_partial_ord_impl_on_ord_type)]
 
-#[cfg(target_arch = "arm")]
-mod arm;
-#[cfg(target_arch = "arm")]
-pub use arm::*;
+
 #[cfg(target_arch = "aarch64")]
 mod aarch64;
 #[cfg(target_arch = "aarch64")]
@@ -28,10 +25,6 @@ pub use aarch64::*;
 mod wasm32;
 #[cfg(target_arch = "wasm32")]
 pub use wasm32::*;
-#[cfg(target_arch = "x86")]
-mod x86;
-#[cfg(target_arch = "x86")]
-pub use x86::*;
 #[cfg(target_arch = "x86_64")]
 mod x86_64;
 #[cfg(target_arch = "x86_64")]

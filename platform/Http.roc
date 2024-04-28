@@ -5,7 +5,7 @@ interface Http
         Header,
         TimeoutConfig,
         Response,
-        Error,
+        Err,
         header,
         handleStringResponse,
         defaultRequest,
@@ -36,7 +36,7 @@ Response : {
 }
 
 ## Represents an HTTP error.
-Error : InternalHttp.Error
+Err : InternalHttp.Error
 
 ## A default [Request] value.
 ##
@@ -65,8 +65,8 @@ header : Str, Str -> Header
 header =
     Header
 
-## Map a [Response] body to a [Str] or return an [Error].
-handleStringResponse : Response -> Result Str Error
+## Map a [Response] body to a [Str] or return an [Err].
+handleStringResponse : Response -> Result Str Err
 handleStringResponse = \response ->
     response.body    
     |> Str.fromUtf8 
@@ -75,8 +75,8 @@ handleStringResponse = \response ->
 
         BadBody "Invalid UTF-8 at byte offset $(position)"
 
-## Convert an [Error] to a [Str].
-errorToString : Error -> Str
+## Convert an [Err] to a [Str].
+errorToString : Err -> Str
 errorToString = \err ->
     when err is
         BadRequest e -> "Invalid Request: $(e)"
@@ -86,7 +86,7 @@ errorToString = \err ->
         BadBody details -> "Request failed: Invalid body: $(details)"
 
 ## Task to send an HTTP request, succeeds with a value of [Str] or fails with an
-## [Error].
+## [Err].
 ##
 ## ```
 ## # Prints out the HTML of the Roc-lang website.
@@ -100,7 +100,7 @@ errorToString = \err ->
 ## |> Result.withDefault "Invalid UTF-8"
 ## |> Stdout.line
 ## ```
-send : Request -> Task Response Error
+send : Request -> Task Response [HttpError Err]
 send = \req ->
     # TODO: Fix our C ABI codegen so that we don't this Box.box heap allocation
     Effect.sendRequest (Box.box req)
@@ -120,3 +120,4 @@ send = \req ->
                     headers : meta.headers,
                     body,
                 }
+    |> Task.mapErr HttpError

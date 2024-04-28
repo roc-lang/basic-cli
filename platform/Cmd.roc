@@ -2,7 +2,8 @@ interface Cmd
     exposes [
         Cmd,
         Output,
-        Error,
+        Err,
+        outputErrToStr,
         new,
         arg,
         args,
@@ -24,7 +25,14 @@ interface Cmd
 Cmd := InternalCommand.Command implements [Inspect]
 
 ## Errors from executing a command.
-Error : InternalCommand.CommandErr
+Err : InternalCommand.CommandErr
+
+outputErrToStr : (Output, Err) -> Str
+outputErrToStr = \(_, err) ->
+    when err is
+        ExitCode code -> "Child exited with non-zero code: $(Num.toStr code)"
+        KilledBySignal -> "Child was killed by signal"
+        IOError ioErr -> "IOError executing: $(ioErr)"
 
 ## Represents the output of a command.
 Output : {
@@ -124,7 +132,7 @@ clearEnvs = \@Cmd cmd ->
 ## > Stdin is not inherited from the parent and any attempt by the child process
 ## > to read from the stdin stream will result in the stream immediately closing.
 ##
-output : Cmd -> Task Output (Output, Error)
+output : Cmd -> Task Output [CmdOutputError (Output, Err)]
 output = \@Cmd cmd ->
     Effect.commandOutput (Box.box cmd)
     |> Effect.map \internalOutput ->
@@ -137,13 +145,15 @@ output = \@Cmd cmd ->
             Ok {} -> Ok (out)
             Err err -> Err (out, err)
     |> InternalTask.fromEffect
+    |> Task.mapErr CmdOutputError
 
 ## Execute command and inherit stdin, stdout and stderr from parent
 ##
-status : Cmd -> Task {} Error
+status : Cmd -> Task {} [CmdError Err]
 status = \@Cmd cmd ->
     Effect.commandStatus (Box.box cmd)
     |> InternalTask.fromEffect
+    |> Task.mapErr CmdError
 
 ## Execute command and inherit stdin, stdout and stderr from parent
 ##
@@ -151,10 +161,11 @@ status = \@Cmd cmd ->
 ## # Call echo to print "hello world"
 ## Cmd.exec! "echo" ["hello world"]
 ## ```
-exec : Str, List Str -> Task {} Error
+exec : Str, List Str -> Task {} [CmdError Err]
 exec = \program, arguments ->
 
     @Cmd cmd = new program |> args arguments
 
     Effect.commandStatus (Box.box cmd)
     |> InternalTask.fromEffect
+    |> Task.mapErr CmdError

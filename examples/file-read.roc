@@ -2,7 +2,6 @@ app "file-read"
     packages { pf: "../platform/main.roc" }
     imports [
         pf.Stdout,
-        pf.Stderr,
         pf.Task.{ Task, await },
         pf.File,
         pf.Path,
@@ -21,9 +20,7 @@ main =
                     FileReadErr _ _ -> "Error reading file"
                     _ -> "Uh oh, there was an error!"
 
-            _ = Stderr.line! msg
-
-            Task.err (Exit 1) # non-zero exit code to indicate failure
+            Task.err (Exit 1 "unable to read file: $(msg)") # non-zero exit code to indicate failure
 
 run =
     fileName = "LICENSE"

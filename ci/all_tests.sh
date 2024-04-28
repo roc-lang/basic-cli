@@ -62,6 +62,11 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     expect ci/expect_scripts/$no_ext_name.exp
 done
 
+# remove Dir example directorys if they exist
+rm -rf dirExampleE
+rm -rf dirExampleA
+rm -rf dirExampleD
+
 # roc dev (some expects only run with `roc dev`)
 for roc_file in $EXAMPLES_DIR*.roc; do
     base_file=$(basename "$roc_file")
@@ -93,6 +98,11 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         $ROC dev $roc_file
     fi
 done
+
+# remove Dir example directorys if they exist
+rm -rf dirExampleE
+rm -rf dirExampleA
+rm -rf dirExampleD
 
 # `roc test` every roc file if it contains a test, skip roc_nightly folder
 find . -type d -name "roc_nightly" -prune -o -type f -name "*.roc" -print | while read file; do

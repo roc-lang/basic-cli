@@ -1,5 +1,5 @@
 interface Stderr
-    exposes [line, write, Error]
+    exposes [line, write, Err]
     imports [Effect, Task.{ Task }, InternalTask]
 
 ## **BrokenPipe** - This error can occur when writing to a stdout that is no longer connected 
@@ -22,7 +22,7 @@ interface Stderr
 ##
 ## **Other** - This is a catch-all for any error not specifically categorized by the other ErrorKind 
 ## variants.
-Error : [
+Err : [
     BrokenPipe,
     WouldBlock,
     WriteZero,
@@ -46,7 +46,7 @@ handleErr = \err ->
 ## followed by a newline.
 ##
 ## > To write to `stderr` without the newline, see [Stderr.write].
-line : Str -> Task {} [StderrErr Error]
+line : Str -> Task {} [StderrErr Err]
 line = \str ->
     Effect.stderrLine str
     |> Effect.map \res -> Result.mapErr res handleErr
@@ -58,7 +58,7 @@ line = \str ->
 ## so this may appear to do nothing until you write a newline!
 ##
 ## > To write to `stderr` with a newline at the end, see [Stderr.line].
-write : Str -> Task {} [StderrErr Error]
+write : Str -> Task {} [StderrErr Err]
 write = \str ->
     Effect.stderrWrite str
     |> Effect.map \res -> Result.mapErr res handleErr

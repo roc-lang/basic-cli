@@ -24,7 +24,7 @@ statusExample =
     |> Cmd.clearEnvs
     |> Cmd.envs [("FOO", "BAR"), ("BAZ", "DUCK")]
     |> Cmd.status
-    |> Task.onErr \err -> 
+    |> Task.onErr \CmdError err -> 
         when err is
             ExitCode code -> Stdout.line "Child exited with non-zero code: $(Num.toStr code)"
             KilledBySignal -> Stdout.line "Child was killed by signal"
@@ -32,6 +32,7 @@ statusExample =
         
 # Run "env" with verbose option, clear all environment variables, and pass in
 # only as an environment variable "FOO"
+outputExample : Task {} _
 outputExample =
     output =
         Cmd.new "env"
@@ -39,11 +40,7 @@ outputExample =
         |> Cmd.env "FOO" "BAR"
         |> Cmd.args ["-v"]
         |> Cmd.output
-        |> Task.onErr! \(output, err) ->
-            when err is
-                ExitCode code -> Task.err (StatError "Child exited with non-zero code: $(Num.toStr code), stderr: $(output.stderr |> Str.fromUtf8 |> Result.withDefault "")")
-                KilledBySignal -> Task.err (StatError "Child was killed by signal")
-                IOError ioErr -> Task.err (StatError "IOError executing: $(ioErr)")
+        |> Task.mapErr! \CmdOutputError err -> EnvFailed (Cmd.outputErrToStr err)
 
     output.stdout 
     |> Str.fromUtf8 

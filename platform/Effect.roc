@@ -45,7 +45,6 @@ hosted Effect
     imports [
         InternalHttp.{ Request, InternalResponse },
         InternalFile,
-        InternalDir,
         InternalTcp,
         InternalCommand,
         InternalPath,
@@ -94,8 +93,8 @@ sleepMillis : U64 -> Effect {}
 commandStatus : Box InternalCommand.Command -> Effect (Result {} InternalCommand.CommandErr)
 commandOutput : Box InternalCommand.Command -> Effect InternalCommand.Output
 
-dirList : List U8 -> Effect (Result (List (List U8)) InternalDir.IOError)
-dirCreate : List U8 -> Effect (Result {} InternalDir.IOError)
-dirCreateAll : List U8 -> Effect (Result {} InternalDir.IOError)
-dirDeleteEmpty : List U8 -> Effect (Result {} InternalDir.IOError)
-dirDeleteAll : List U8 -> Effect (Result {} InternalDir.IOError)
+dirList : List U8 -> Effect (Result (List (List U8)) Str)
+dirCreate : List U8 -> Effect (Result {} Str)
+dirCreateAll : List U8 -> Effect (Result {} Str)
+dirDeleteEmpty : List U8 -> Effect (Result {} Str)
+dirDeleteAll : List U8 -> Effect (Result {} Str)

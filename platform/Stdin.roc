@@ -1,5 +1,5 @@
 interface Stdin
-    exposes [line,bytes,Error]
+    exposes [line,bytes,Err]
     imports [Effect, Task.{ Task }, InternalTask]
 
 ## **EndOfFile** - This error occurs when an end-of-file (EOF) condition is met unexpectedly 
@@ -25,7 +25,7 @@ interface Stdin
 ##
 ## **Other** - A catch-all category for errors that do not fall into the specified categories.
 ## Allows for flexible error handling of uncommon or unexpected conditions.
-Error : [
+Err : [
     EndOfFile,
     BrokenPipe,
     UnexpectedEof,
@@ -53,7 +53,7 @@ handleErr = \err ->
 ## (e.g. because the user pressed Enter in the terminal), so using it can result in the appearance of the
 ## programming having gotten stuck. It's often helpful to print a prompt first, so
 ## the user knows it's necessary to enter something before the program will continue.
-line : Task Str [StdinErr Error]
+line : Task Str [StdinErr Err]
 line =
     Effect.stdinLine
     |> Effect.map \res -> Result.mapErr res handleErr
