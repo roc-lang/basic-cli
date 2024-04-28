@@ -5,7 +5,6 @@ platform "glue"
     imports [
         InternalHttp,
         InternalCommand,
-        InternalDir,
         InternalFile,
         InternalPath,
         InternalTcp,
@@ -23,7 +22,6 @@ GlueTypes : {
     ca: InternalCommand.Command,
     cb: InternalCommand.Output,
     cc: InternalCommand.CommandErr,
-    dir: InternalDir.IOError,
     fa: InternalFile.ReadErr, 
     fb: InternalFile.WriteErr,
     pa: InternalPath.UnwrappedPath,

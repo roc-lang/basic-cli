@@ -57,11 +57,6 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         continue
     fi
 
-    # Skip dir.exp until https://github.com/roc-lang/basic-cli/issues/193 is resolved
-    if [ "$base_file" == "dir.exp" ]; then
-        continue
-    fi
-
     roc_file_only="$(basename "$roc_file")"
     no_ext_name=${roc_file_only%.*}
     expect ci/expect_scripts/$no_ext_name.exp

@@ -584,13 +584,13 @@ pub extern "C" fn roc_fx_sleepMillis(milliseconds: u64) {
 #[no_mangle]
 pub extern "C" fn roc_fx_dirList(
     roc_path: &RocList<u8>,
-) -> RocResult<RocList<RocList<u8>>, roc_app::IOError> {
+) -> RocResult<RocList<RocList<u8>>, RocStr> {
     let path = path_from_roc_path(roc_path);
 
     if path.is_dir() {
         let dir = match std::fs::read_dir(path) {
             Ok(dir) => dir,
-            Err(err) => return RocResult::err(toRocIOError(err)),
+            Err(err) => return RocResult::err(handleDirError(err)),
         };
 
         let mut entries = Vec::new();
@@ -608,7 +608,7 @@ pub extern "C" fn roc_fx_dirList(
 
         return roc_std::RocResult::ok(RocList::from_iter(entries));
     } else {
-        return roc_std::RocResult::err(roc_app::IOError::NotADirectory());
+        return roc_std::RocResult::err("ErrorKind::NotADirectory".into());
     }
 }
 
@@ -1067,79 +1067,53 @@ pub extern "C" fn roc_fx_commandOutput(roc_cmd: &roc_app::Command) -> roc_app::O
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirCreate(roc_path: &RocList<u8>) -> RocResult<(), roc_app::IOError> {
+pub extern "C" fn roc_fx_dirCreate(roc_path: &RocList<u8>) -> RocResult<(), RocStr> {
     match std::fs::create_dir(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
-        Err(err) => RocResult::err(toRocIOError(err)),
+        Err(err) => RocResult::err(handleDirError(err)),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirCreateAll(roc_path: &RocList<u8>) -> RocResult<(), roc_app::IOError> {
+pub extern "C" fn roc_fx_dirCreateAll(roc_path: &RocList<u8>) -> RocResult<(), RocStr> {
     match std::fs::create_dir_all(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
-        Err(err) => RocResult::err(toRocIOError(err)),
+        Err(err) => RocResult::err(handleDirError(err)),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirDeleteEmpty(roc_path: &RocList<u8>) -> RocResult<(), roc_app::IOError> {
+pub extern "C" fn roc_fx_dirDeleteEmpty(roc_path: &RocList<u8>) -> RocResult<(), RocStr> {
     match std::fs::remove_dir(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
-        Err(err) => RocResult::err(toRocIOError(err)),
+        Err(err) => RocResult::err(handleDirError(err)),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirDeleteAll(roc_path: &RocList<u8>) -> RocResult<(), roc_app::IOError> {
+pub extern "C" fn roc_fx_dirDeleteAll(roc_path: &RocList<u8>) -> RocResult<(), RocStr> {
     match std::fs::remove_dir_all(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
-        Err(err) => RocResult::err(toRocIOError(err)),
+        Err(err) => RocResult::err(handleDirError(err)),
     }
 }
 
-// Note commented out error kinds are not available in stable Rust
-fn toRocIOError(err: std::io::Error) -> roc_app::IOError {
-    match err.kind() {
-        ErrorKind::NotFound => roc_app::IOError::NotFound(),
-        ErrorKind::PermissionDenied => roc_app::IOError::PermissionDenied(),
-        ErrorKind::ConnectionRefused => roc_app::IOError::ConnectionRefused(),
-        ErrorKind::ConnectionReset => roc_app::IOError::ConnectionReset(),
-        // ErrorKind::HostUnreachable => roc_app::IOError::HostUnreachable(),
-        // ErrorKind::NetworkUnreachable => roc_app::IOError::NetworkUnreachable(),
-        ErrorKind::ConnectionAborted => roc_app::IOError::ConnectionAborted(),
-        ErrorKind::NotConnected => roc_app::IOError::NotConnected(),
-        ErrorKind::AddrInUse => roc_app::IOError::AddrInUse(),
-        ErrorKind::AddrNotAvailable => roc_app::IOError::AddrNotAvailable(),
-        // ErrorKind::NetworkDown => roc_app::IOError::NetworkDown(),
-        ErrorKind::BrokenPipe => roc_app::IOError::BrokenPipe(),
-        ErrorKind::AlreadyExists => roc_app::IOError::AlreadyExists(),
-        ErrorKind::WouldBlock => roc_app::IOError::WouldBlock(),
-        // ErrorKind::NotADirectory => roc_app::IOError::NotADirectory(),
-        // ErrorKind::IsADirectory => roc_app::IOError::IsADirectory(),
-        // ErrorKind::DirectoryNotEmpty => roc_app::IOError::DirectoryNotEmpty(),
-        // ErrorKind::ReadOnlyFilesystem => roc_app::IOError::ReadOnlyFilesystem(),
-        // ErrorKind::FilesystemLoop => roc_app::IOError::FilesystemLoop(),
-        // ErrorKind::StaleNetworkFileHandle => roc_app::IOError::StaleNetworkFileHandle(),
-        ErrorKind::InvalidInput => roc_app::IOError::InvalidInput(),
-        ErrorKind::InvalidData => roc_app::IOError::InvalidData(),
-        ErrorKind::TimedOut => roc_app::IOError::TimedOut(),
-        ErrorKind::WriteZero => roc_app::IOError::WriteZero(),
-        // ErrorKind::StorageFull => roc_app::IOError::StorageFull(),
-        // ErrorKind::NotSeekable => roc_app::IOError::NotSeekable(),
-        // ErrorKind::FilesystemQuotaExceeded => roc_app::IOError::FilesystemQuotaExceeded(),
-        // ErrorKind::FileTooLarge => roc_app::IOError::FileTooLarge(),
-        // ErrorKind::ResourceBusy => roc_app::IOError::ResourceBusy(),
-        // ErrorKind::ExecutableFileBusy => roc_app::IOError::ExecutableFileBusy(),
-        // ErrorKind::Deadlock => roc_app::IOError::Deadlock(),
-        // ErrorKind::CrossesDevices => roc_app::IOError::CrossesDevices(),
-        // ErrorKind::TooManyLinks => roc_app::IOError::TooManyLinks(),
-        // ErrorKind::InvalidFilename => roc_app::IOError::InvalidFilename(),
-        // ErrorKind::ArgumentListTooLong => roc_app::IOError::ArgumentListTooLong(),
-        ErrorKind::Interrupted => roc_app::IOError::Interrupted(),
-        ErrorKind::UnexpectedEof => roc_app::IOError::UnexpectedEof(),
-        ErrorKind::OutOfMemory => roc_app::IOError::OutOfMemory(),
-        ErrorKind::Other => roc_app::IOError::Other(),
-        _ => roc_app::IOError::Unsupported(),
+/// See docs in `platform/Stdout.roc` for descriptions
+fn handleDirError(io_err: std::io::Error) -> RocStr {
+    match io_err.kind() {
+        ErrorKind::NotFound => RocStr::from("ErrorKind::NotFound"),
+        ErrorKind::PermissionDenied => RocStr::from("ErrorKind::PermissionDenied"),
+        ErrorKind::AlreadyExists => RocStr::from("ErrorKind::AlreadyExists"),
+        // The below are unstable features see https://github.com/rust-lang/rust/issues/86442
+        // TODO add these when available
+        // ErrorKind::NotADirectory => RocStr::from("ErrorKind::NotADirectory"),
+        // ErrorKind::IsADirectory => RocStr::from("ErrorKind::IsADirectory"),
+        // ErrorKind::DirectoryNotEmpty => RocStr::from("ErrorKind::DirectoryNotEmpty"),
+        // ErrorKind::ReadOnlyFilesystem => RocStr::from("ErrorKind::ReadOnlyFilesystem"),
+        // ErrorKind::FilesystemLoop => RocStr::from("ErrorKind::FilesystemLoop"),
+        // ErrorKind::FilesystemQuotaExceeded => RocStr::from("ErrorKind::FilesystemQuotaExceeded"),
+        // ErrorKind::StorageFull => RocStr::from("ErrorKind::StorageFull"),
+        // ErrorKind::InvalidFilename => RocStr::from("ErrorKind::InvalidFilename"),
+        _ => RocStr::from(RocStr::from(format!("{:?}", io_err).as_str())),
     }
 }
