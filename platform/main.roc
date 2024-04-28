@@ -33,7 +33,7 @@ mainForHost =
                 if Str.isEmpty str then
                     Task.err code
                 else
-                    Stderr.line str
+                    line str
                     |> Task.onErr \_ -> Task.err code
                     |> Task.await \{} -> Task.err code
 
