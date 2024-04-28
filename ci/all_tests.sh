@@ -92,10 +92,10 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     if [ "$base_file" == "path.roc" ]; then
         absolute_roc=$(which $ROC | xargs realpath)
         cd $EXAMPLES_DIR
-        $absolute_roc dev $base_file
+        $absolute_roc dev $base_file $ROC_BUILD_FLAGS
         cd ..
     else
-        $ROC dev $roc_file
+        $ROC dev $roc_file $ROC_BUILD_FLAGS
     fi
 done
 
