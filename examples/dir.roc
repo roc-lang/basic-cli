@@ -27,9 +27,11 @@ main =
         Path.fromStr "dirExampleA"
         |> Dir.list
         |> Task.mapErr! FailedToListDir
+
+    pathsAsStr = List.map paths Path.display
     
     # Check the contents of the directory
-    expect (List.map paths Path.display) == ["b", "child"]
+    expect pathsAsStr == ["dirExampleA/b", "dirExampleA/child"]
 
     # Try to create a directory without a parent (should fail, ignore error)
     Dir.create (Path.fromStr "dirExampleD/child")

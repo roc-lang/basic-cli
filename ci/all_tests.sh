@@ -74,7 +74,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     # Skip argsBROKEN.roc
     #      countdown, echo, form, piping, stdin require user input
     #      dir.roc hits `index out of bounds: the len is...`
-    ignore_list=("argsBROKEN.roc" "countdown.roc" "echo.roc" "form.roc" "piping.roc" "stdin.roc" "dir.roc")
+    ignore_list=("argsBROKEN.roc" "countdown.roc" "echo.roc" "form.roc" "piping.roc" "stdin.roc")
 
     # check if base_file matches something from ignore_list
     for file in "${ignore_list[@]}"; do
