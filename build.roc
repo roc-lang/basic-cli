@@ -19,21 +19,22 @@ RocTarget : [
 ]
 
 mode : [DEBUG, RELEASE]
-mode = DEBUG
+mode = RELEASE
 
 main = 
     native = getNativeTarget!
     removePrebuiltBinary! native
     buildRustTarget! native
     copyBinaryToPlatform! native
-    Stdout.line! "COMPLETE"
+    preProcessPlatform!
+    printInfoLine! "COMPLETE"
 
     Task.ok {}
 
 getNativeTarget : Task RocTarget _
 getNativeTarget = 
 
-    Stdout.line! "Geting native target..."
+    printInfoLine! "Geting native target..."
 
     archFromStr = \bytes -> 
         when Str.fromUtf8 bytes is 
@@ -85,11 +86,9 @@ prebuiltBinaryPath = \target ->
 removePrebuiltBinary : RocTarget -> Task {} _
 removePrebuiltBinary = \target ->
 
-    Stdout.line! "Removing prebuilt binary $(Inspect.toStr target)..."
+    printInfoLine! "Removing prebuilt binary $(Inspect.toStr target)..."
 
-    Cmd.new "rm" 
-    |> Cmd.args ["-f", prebuiltBinaryPath target] 
-    |> Cmd.status
+    Cmd.exec "rm" ["-f", prebuiltBinaryPath target] 
     |> Task.mapErr! ErrRemovingPrebuiltBinary
         
 rustupTarget : RocTarget -> Str
@@ -105,16 +104,14 @@ rustupTarget = \target ->
 buildRustTarget : RocTarget -> Task {} _
 buildRustTarget = \target -> 
 
-    Stdout.line! "Building rust target $(Inspect.toStr target)..."
+    printInfoLine! "Building rust target $(Inspect.toStr target)..."
 
     args =
         when mode is 
             DEBUG -> ["build", "--target=$(rustupTarget target)"]
             RELEASE -> ["build", "--release", "--target=$(rustupTarget target)"]
 
-    Cmd.new "cargo"
-    |> Cmd.args args
-    |> Cmd.status
+    Cmd.exec "cargo" args
     |> Task.mapErr! ErrBuildingRustTarget
 
 cargoTargetPath : RocTarget -> Str
@@ -129,9 +126,22 @@ copyBinaryToPlatform = \target ->
     from = cargoTargetPath target
     to = prebuiltBinaryPath target
 
-    Stdout.line! "Copy prebuilt binary from $(from) to $(to)..."
+    printInfoLine! "Copy prebuilt binary from $(from) to $(to)..."
 
-    Cmd.new "cp"
-    |> Cmd.args ["-f", from, to]
-    |> Cmd.status
+    Cmd.exec "cp" ["-f", from, to]
     |> Task.mapErr! ErrCopyingPrebuiltBinary
+
+preProcessPlatform : Task {} _
+preProcessPlatform = 
+
+    printInfoLine! "Preprocessing host to prepare for surgical linking..."
+
+    Cmd.exec "roc" ["preprocess-host", "platform/"]
+    |> Task.mapErr! ErrCopyingPrebuiltBinary
+
+printInfoLine : Str -> Task {} _
+printInfoLine = \msg ->
+    Stdout.line! "\u(001b)[34mBUILD INFO:\u(001b)[0m $(msg)"
+
+
+

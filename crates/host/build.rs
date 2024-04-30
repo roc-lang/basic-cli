@@ -7,10 +7,10 @@ fn main() {
 
     println!("cargo:rustc-link-search=./platform");
 
-    // watch the platform and rebuild app stub it it changes
+    // watch the platform and rebuild app stub if it changes
     println!("cargo::rerun-if-changed=./platform/main.roc");
 
-    // build the app stub dynamic library "libapp"
+    // build the app stub dynamic library
     let app_stub_path = workspace_dir().join("platform").join("libapp.roc");
     std::process::Command::new("roc")
         .args(&[
