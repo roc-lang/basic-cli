@@ -8,8 +8,13 @@ concurrency:
     cancel-in-progress: true
 
 jobs:
-    build-and-test:
-        runs-on: [ubuntu-22.04]
+    build-and-test-nix:
+        strategy:
+            fail-fast: false
+            matrix:
+              # macos-11 uses x86-64 machine, macos-14 uses aarch64  
+              os: [ macos-11, macos-14, ubuntu-22.04 ]
+        runs-on: ${{ matrix.os }}
         steps:
             - uses: actions/checkout@v3
 
@@ -23,6 +28,9 @@ jobs:
                   name: enigmaticsunrise
                   authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
+            - name: print architecture
+              run: uname -m
+
             - name: Run all tests
               run: nix develop -c sh -c 'export ROC=roc && export EXAMPLES_DIR=./examples/ && ./ci/all_tests.sh'
             
@@ -31,6 +39,6 @@ jobs:
 
             # Workaround for https://github.com/roc-lang/roc/issues/6688
             - name: Check if crash occurred
-              run: grep -zqv "crashed" all_tests_output.log
+              run: grep -qv "crashed" all_tests_output.log
     
     

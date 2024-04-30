@@ -9,7 +9,7 @@ concurrency:
 
 jobs:
 
-  build-and-test:
+  build-and-test-native:
     runs-on: ${{ matrix.operating-system }}
     strategy:
       matrix:
