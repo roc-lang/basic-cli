@@ -9,7 +9,12 @@ concurrency:
 
 jobs:
     build-and-test:
-        runs-on: [ubuntu-22.04]
+        strategy:
+            fail-fast: false
+            matrix:
+              # macos-11 uses x86-64 machine, macos-14 uses aarch64  
+              os: [ macos-11, macos-14, ubuntu-22.04 ]
+        runs-on: ${{ matrix.os }}
         steps:
             - uses: actions/checkout@v3
 
@@ -22,6 +27,9 @@ jobs:
               with:
                   name: enigmaticsunrise
                   authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+            - name: print architecture
+              run: uname -m
 
             - name: Run all tests
               run: nix develop -c sh -c 'export ROC=roc && export EXAMPLES_DIR=./examples/ && ./ci/all_tests.sh'
