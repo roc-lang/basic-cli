@@ -262,7 +262,7 @@ pub fn init() {
 }
 
 #[no_mangle]
-pub extern "C" fn main() -> i32 {
+pub extern "C" fn rust_main() -> i32 {
     init();
     let size = unsafe { roc_main_size() } as usize;
     let layout = Layout::array::<u8>(size).unwrap();
