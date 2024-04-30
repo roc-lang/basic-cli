@@ -1,15 +1,15 @@
 app "build-platform-prebuilt-binaries"
     packages {
-        cli: "https://github.com/roc-lang/basic-cli/releases/download/0.9.1/y_Ww7a2_ZGjp0ZTt9Y_pNdSqqMRdMLzHMKfdN8LWidk.tar.br",
+        cli: "https://github.com/roc-lang/basic-cli/releases/download/0.10.0/vNe6s9hWzoTZtFmNkvEICPErI9ptji_ySjicO6CkucY.tar.br",
     }
     imports [
+        cli.Task.{Task},
         cli.Stdout,
         cli.Cmd,
-        cli.Task.{ Task },
     ]
     provides [main] to cli
 
-SupportedTarget : [
+RocTarget : [
     MacosArm64,
     MacosX64,
     LinuxArm64,
@@ -21,14 +21,7 @@ SupportedTarget : [
 mode : [DEBUG, RELEASE]
 mode = DEBUG
 
-main : Task {} I32
 main = 
-    Task.onErr run \err -> 
-        Stdout.line! (Inspect.toStr err)
-        Task.err -1
-
-run : Task {} _
-run = 
     native = getNativeTarget!
     removePrebuiltBinary! native
     buildRustTarget! native
@@ -37,7 +30,7 @@ run =
 
     Task.ok {}
 
-getNativeTarget : Task SupportedTarget _
+getNativeTarget : Task RocTarget _
 getNativeTarget = 
 
     Stdout.line! "Geting native target..."
@@ -79,7 +72,7 @@ getNativeTarget =
         (Linux, X64) -> Task.ok LinuxX64
         _ -> Task.err (UnsupportedNative os arch)
 
-prebuiltBinaryPath : SupportedTarget -> Str 
+prebuiltBinaryPath : RocTarget -> Str 
 prebuiltBinaryPath = \target ->
     when target is 
         MacosArm64 -> "platform/macos-arm64.a"
@@ -89,7 +82,7 @@ prebuiltBinaryPath = \target ->
         WindowsArm64 -> "platform/windows-arm64.a"
         WindowsX64 -> "platform/windows-x64"
 
-removePrebuiltBinary : SupportedTarget -> Task {} _
+removePrebuiltBinary : RocTarget -> Task {} _
 removePrebuiltBinary = \target ->
 
     Stdout.line! "Removing prebuilt binary $(Inspect.toStr target)..."
@@ -99,7 +92,7 @@ removePrebuiltBinary = \target ->
     |> Cmd.status
     |> Task.mapErr! ErrRemovingPrebuiltBinary
         
-rustupTarget : SupportedTarget -> Str
+rustupTarget : RocTarget -> Str
 rustupTarget = \target ->
     when target is
         MacosArm64 -> "aarch64-apple-darwin"
@@ -109,7 +102,7 @@ rustupTarget = \target ->
         WindowsArm64 -> "aarch64-pc-windows-msvc"
         WindowsX64 -> "x86_64-pc-windows-msvc"
 
-buildRustTarget : SupportedTarget -> Task {} _
+buildRustTarget : RocTarget -> Task {} _
 buildRustTarget = \target -> 
 
     Stdout.line! "Building rust target $(Inspect.toStr target)..."
@@ -124,13 +117,13 @@ buildRustTarget = \target ->
     |> Cmd.status
     |> Task.mapErr! ErrBuildingRustTarget
 
-cargoTargetPath : SupportedTarget -> Str
+cargoTargetPath : RocTarget -> Str
 cargoTargetPath = \target ->
     when mode is 
         DEBUG -> "target/$(rustupTarget target)/debug/libhost.a" 
         RELEASE -> "target/$(rustupTarget target)/release/libhost.a" 
 
-copyBinaryToPlatform : SupportedTarget -> Task {} _
+copyBinaryToPlatform : RocTarget -> Task {} _
 copyBinaryToPlatform = \target ->
 
     from = cargoTargetPath target
