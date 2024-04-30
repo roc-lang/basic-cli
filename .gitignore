@@ -68,3 +68,9 @@ all_tests_output.log
 platform/*.a
 
 ci/file-testBROKEN
+
+# glue generated files
+crates/roc_std
+
+# build script artifacts
+build

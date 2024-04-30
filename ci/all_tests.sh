@@ -5,7 +5,7 @@ set -exo pipefail
 
 if [ -z "${EXAMPLES_DIR}" ]; then
   echo "ERROR: The EXAMPLES_DIR environment variable is not set." >&2
-  
+
   exit 1
 fi
 
@@ -35,7 +35,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         continue
     fi
 
-    $ROC build $roc_file $ROC_BUILD_FLAGS
+    $ROC build --linker=legacy $roc_file $ROC_BUILD_FLAGS
 done
 
 # prep for next step
@@ -88,7 +88,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         $absolute_roc dev $base_file $ROC_BUILD_FLAGS
         cd ..
     else
-        $ROC dev $roc_file $ROC_BUILD_FLAGS
+        $ROC dev --linker=legacy $roc_file $ROC_BUILD_FLAGS
     fi
 done
 
