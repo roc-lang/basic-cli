@@ -26,11 +26,13 @@ main =
     
     cargoBuild! native
 
-    # prebuilt binaries for the legacy linker, e.g. `macos-arm64.a` 
+    # prebuilt binaries for the legacy linker, 
+    # e.g. `macos-arm64.a` 
     copyBinaryToPlatform! native
     
-    # prebuilt binaries for the surgical linker, e.g. `
-    # preProcessPlatform!
+    # prebuilt binaries for the surgical linker, 
+    # e.g. `macos-arm64.rh` and `metadata_macos-arm64.rm`
+    preProcessPlatform! native
 
     printInfoLine! "COMPLETE"
 
@@ -114,13 +116,13 @@ cargoBuild = \target ->
 cargoTargetPath : RocTarget -> Str
 cargoTargetPath = \target ->
     when mode is 
-        DEBUG -> "target/$(rustupTarget target)/debug/libhost.a" 
-        RELEASE -> "target/$(rustupTarget target)/release/libhost.a" 
+        DEBUG -> "target/$(rustupTarget target)/debug" 
+        RELEASE -> "target/$(rustupTarget target)/release" 
 
 copyBinaryToPlatform : RocTarget -> Task {} _
 copyBinaryToPlatform = \target ->
 
-    from = cargoTargetPath target
+    from = "$(cargoTargetPath target)/libhost.a"
     to = prebuiltBinaryPath target
 
     printInfoLine! "Copy prebuilt binary from $(from) to $(to)..."
@@ -128,13 +130,15 @@ copyBinaryToPlatform = \target ->
     Cmd.exec "cp" ["-f", from, to]
     |> Task.mapErr! ErrCopyingPrebuiltBinary
 
-# preProcessPlatform : Task {} _
-# preProcessPlatform = 
+preProcessPlatform : RocTarget -> Task {} _
+preProcessPlatform = \target ->
 
-#     printInfoLine! "Preprocessing host to prepare for surgical linking..."
+    printInfoLine! "Preprocessing host to prepare for surgical linking..."
 
-#     Cmd.exec "roc" ["preprocess-host", "platform/"]
-#     |> Task.mapErr! ErrCopyingPrebuiltBinary
+    hostExePath = "$(cargoTargetPath target)/host"
+
+    Cmd.exec "roc" ["preprocess-host", hostExePath, "platform/main.roc", "platform/libapp.dylib"]
+    |> Task.mapErr! ErrPreProcessingHost
 
 printInfoLine : Str -> Task {} _
 printInfoLine = \msg ->
