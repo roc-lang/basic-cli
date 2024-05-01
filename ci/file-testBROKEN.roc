@@ -4,7 +4,6 @@ app "file-test"
         pf.Stdout,
         pf.Task.{ Task },
         pf.File.{ WriteErr },
-        pf.Path.{ Path },
     ]
     provides [main] to pf
 
@@ -17,11 +16,10 @@ app "file-test"
 # Tests complete
 # ```
 main =
-    attemptWriteTaskShouldError! (File.writeUtf8 (Path.fromStr "/asdf/asdf/asdf/asdf.txt") "str") "NotFound"
-    attemptWriteTaskShouldError! (File.writeUtf8 (Path.fromStr "/System/asdf") "str") "PermissionDenied"
-
-    attemptReadTaskShouldError! (File.readUtf8 (Path.fromStr "/asdf/asdf/asdf/asdf.txt")) "NotFound"
-    attemptReadTaskShouldError! (File.readUtf8 (Path.fromStr "/etc/master.passwd")) "PermissionDenied"
+    attemptWriteTaskShouldError! (File.writeUtf8 "/asdf/asdf/asdf/asdf.txt" "str") "NotFound"
+    attemptWriteTaskShouldError! (File.writeUtf8 "/System/asdf" "str") "PermissionDenied"
+    attemptReadTaskShouldError! (File.readUtf8 "/asdf/asdf/asdf/asdf.txt") "NotFound"
+    attemptReadTaskShouldError! (File.readUtf8 "/etc/master.passwd") "PermissionDenied"
 
     Stdout.line "Tests complete"
 
@@ -33,7 +31,7 @@ attemptWriteTaskShouldError = \task, error ->
                 Stdout.line (Str.concat "Fail: expected " error)
 
             Err (FileWriteErr _ err) ->
-                got = File.writeErrToStr err
+                got = Inspect.toStr err
 
                 if got == error then
                     Stdout.line (Str.concat "Pass: expected " got)
@@ -50,7 +48,7 @@ attemptReadTaskShouldError = \task, error ->
                 Stdout.line (Str.concat "Fail: expected " error)
 
             Err (FileReadErr _ err) ->
-                got = File.readErrToStr err
+                got = Inspect.toStr err
 
                 if got == error then
                     Stdout.line (Str.concat "Pass: expected " got)

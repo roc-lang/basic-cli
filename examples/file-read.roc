@@ -4,7 +4,6 @@ app "file-read"
         pf.Stdout,
         pf.Task.{ Task, await },
         pf.File,
-        pf.Path,
     ]
     provides [main] to pf
 
@@ -24,10 +23,7 @@ main =
 
 run =
     fileName = "LICENSE"
-    path = Path.fromStr fileName
-    contents = File.readUtf8! path
+    contents = File.readUtf8! fileName
     lines = Str.split contents "\n"
 
     Stdout.line (Str.concat "First line of $(fileName): " (List.first lines |> Result.withDefault "err"))
-
-    

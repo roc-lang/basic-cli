@@ -20,7 +20,11 @@ platform "cli"
         Tty,
     ]
     packages {}
-    imports [Task.{ Task }, Stderr.{line}]
+    imports [
+        Task.{ Task },
+        # TODO: Use Stderr.line unqualified once that no longer (incorrectly) results in a "Stderr is not imported" error
+        Stderr.{ line },
+    ]
     provides [mainForHost]
 
 mainForHost : Task {} I32 as Fx
@@ -28,7 +32,6 @@ mainForHost =
     Task.attempt main \res ->
         when res is
             Ok {} -> Task.ok {}
-
             Err (Exit code str) ->
                 if Str.isEmpty str then
                     Task.err code
