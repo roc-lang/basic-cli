@@ -1,12 +1,33 @@
 interface File
-    exposes [ReadErr, WriteErr, write, writeUtf8, writeBytes, readUtf8, readBytes, delete, writeErrToStr, readErrToStr]
-    imports [Task.{ Task }, InternalTask, InternalFile, Path.{ Path }, InternalPath, Effect.{ Effect }]
+    exposes [
+        ReadErr,
+        WriteErr,
+        writeUtf8,
+        writeBytes,
+        write,
+        readUtf8,
+        readBytes,
+        # read, # TODO: investigate the problem with Decoding here
+        delete,
+        isDir,
+        isFile,
+        isSymLink,
+        type,
+    ]
+    imports [
+        Task.{ Task },
+        Path.{ Path, MetadataErr },
+    ]
 
 ## Tag union of possible errors when reading a file or directory.
-ReadErr : InternalFile.ReadErr
+##
+## > This is the same as [`Path.ReadErr`].
+ReadErr : Path.ReadErr
 
 ## Tag union of possible errors when writing a file or directory.
-WriteErr : InternalFile.WriteErr
+##
+## > This is the same as [`Path.WriteErr`].
+WriteErr : Path.WriteErr
 
 ## Write data to a file.
 ##
@@ -29,12 +50,11 @@ WriteErr : InternalFile.WriteErr
 ## If writing to the file fails, for example because of a file permissions issue, the task fails with [WriteErr].
 ##
 ## > To write unformatted bytes to a file, you can use [File.writeBytes] instead.
-write : Path, val, fmt -> Task {} [FileWriteErr Path WriteErr] where val implements Encoding, fmt implements EncoderFormatting
+## >
+## > [Path.write] does the same thing, except it takes a [Path] instead of a [Str].
+write : Str, val, fmt -> Task {} [FileWriteErr Path WriteErr] where val implements Encoding, fmt implements EncoderFormatting
 write = \path, val, fmt ->
-    bytes = Encode.toBytes val fmt
-
-    # TODO handle encoding errors here, once they exist
-    writeBytes path bytes
+    Path.write (Path.fromStr path) val fmt
 
 ## Writes bytes to a file.
 ##
@@ -46,9 +66,11 @@ write = \path, val, fmt ->
 ## This opens the file first and closes it after writing to it.
 ##
 ## > To format data before writing it to a file, you can use [File.write] instead.
-writeBytes : Path, List U8 -> Task {} [FileWriteErr Path WriteErr]
+## >
+## > [Path.writeBytes] does the same thing, except it takes a [Path] instead of a [Str].
+writeBytes : Str, List U8 -> Task {} [FileWriteErr Path WriteErr]
 writeBytes = \path, bytes ->
-    toWriteTask path \pathBytes -> Effect.fileWriteBytes pathBytes bytes
+    Path.writeBytes (Path.fromStr path) bytes
 
 ## Writes a [Str] to a file, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##
@@ -60,9 +82,11 @@ writeBytes = \path, bytes ->
 ## This opens the file first and closes it after writing to it.
 ##
 ## > To write unformatted bytes to a file, you can use [File.writeBytes] instead.
-writeUtf8 : Path, Str -> Task {} [FileWriteErr Path WriteErr]
+## >
+## > [Path.writeUtf8] does the same thing, except it takes a [Path] instead of a [Str].
+writeUtf8 : Str, Str -> Task {} [FileWriteErr Path WriteErr]
 writeUtf8 = \path, str ->
-    toWriteTask path \bytes -> Effect.fileWriteUtf8 bytes str
+    Path.writeUtf8 (Path.fromStr path) str
 
 ## Deletes a file from the filesystem.
 ##
@@ -82,10 +106,11 @@ writeUtf8 = \path, str ->
 ## system may not immediately mark the space as free; for example, on Windows it will wait until
 ## the last file handle to it is closed, and on UNIX, it will not remove it until the last
 ## [hard link](https://en.wikipedia.org/wiki/Hard_link) to it has been deleted.
-##
-delete : Path -> Task {} [FileWriteErr Path WriteErr]
+## >
+## > [Path.delete] does the same thing, except it takes a [Path] instead of a [Str].
+delete : Str -> Task {} [FileWriteErr Path WriteErr]
 delete = \path ->
-    toWriteTask path \bytes -> Effect.fileDelete bytes
+    Path.delete (Path.fromStr path)
 
 ## Reads all the bytes in a file.
 ##
@@ -97,9 +122,11 @@ delete = \path ->
 ## This opens the file first and closes it after reading its contents.
 ##
 ## > To read and decode data from a file, you can use `File.read` instead.
-readBytes : Path -> Task (List U8) [FileReadErr Path ReadErr]
+## >
+## > [Path.readBytes] does the same thing, except it takes a [Path] instead of a [Str].
+readBytes : Str -> Task (List U8) [FileReadErr Path ReadErr]
 readBytes = \path ->
-    toReadTask path \bytes -> Effect.fileReadBytes bytes
+    Path.readBytes (Path.fromStr path)
 
 ## Reads a [Str] from a file containing [UTF-8](https://en.wikipedia.org/wiki/UTF-8)-encoded text.
 ##
@@ -112,86 +139,43 @@ readBytes = \path ->
 ## The task will fail with `FileReadUtf8Err` if the given file contains invalid UTF-8.
 ##
 ## > To read unformatted bytes from a file, you can use [File.readBytes] instead.
-readUtf8 : Path -> Task Str [FileReadErr Path ReadErr, FileReadUtf8Err Path _]
+##
+## > [Path.readUtf8] does the same thing, except it takes a [Path] instead of a [Str].
+readUtf8 : Str -> Task Str [FileReadErr Path ReadErr, FileReadUtf8Err Path _]
 readUtf8 = \path ->
-    effect = Effect.map (Effect.fileReadBytes (InternalPath.toBytes path)) \result ->
-        when result is
-            Ok bytes ->
-                Str.fromUtf8 bytes
-                |> Result.mapErr \err -> FileReadUtf8Err path err
+    Path.readUtf8 (Path.fromStr path)
 
-            Err readErr -> Err (FileReadErr path readErr)
+## Returns true if the path exists on disk and is pointing at a directory.
+## Any error will return false.
+## This uses [rust's std::path::is_dir](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_dir).
+##
+## > [Path.isDir] does the same thing, except it takes a [Path] instead of a [Str].
+isDir : Str -> Task Bool [PathErr MetadataErr]
+isDir = \path ->
+    Path.isDir (Path.fromStr path)
 
-    InternalTask.fromEffect effect
+## Returns true if the path exists on disk and is pointing at a regular file.
+## Any error will return false.
+## This uses [rust's std::path::is_file](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_file).
+##
+## > [Path.isFile] does the same thing, except it takes a [Path] instead of a [Str].
+isFile : Str -> Task Bool [PathErr MetadataErr]
+isFile = \path ->
+    Path.isFile (Path.fromStr path)
 
-# read :
-#     Path,
-#     fmt
-#     -> Task
-#         Str
-#         [FileReadErr Path ReadErr, FileReadDecodeErr Path [Leftover (List U8)]Decode.DecodeError ]
-#         [Read [File]]
-#     where val implements Decoding, fmt implements DecoderFormatting
-# read = \path, fmt ->
-#     effect = Effect.map (Effect.fileReadBytes (InternalPath.toBytes path)) \result ->
-#         when result is
-#             Ok bytes ->
-#                 when Decode.fromBytes bytes fmt is
-#                     Ok val -> Ok val
-#                     Err decodingErr -> Err (FileReadDecodeErr decodingErr)
-#             Err readErr -> Err (FileReadErr readErr)
-#     InternalTask.fromEffect effect
-toWriteTask : Path, (List U8 -> Effect (Result ok err)) -> Task ok [FileWriteErr Path err]
-toWriteTask = \path, toEffect ->
-    InternalPath.toBytes path
-    |> toEffect
-    |> InternalTask.fromEffect
-    |> Task.mapErr \err -> FileWriteErr path err
+## Returns true if the path exists on disk and is pointing at a symbolic link.
+## Any error will return false.
+## This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
+##
+## > [Path.isSymLink] does the same thing, except it takes a [Path] instead of a [Str].
+isSymLink : Str -> Task Bool [PathErr MetadataErr]
+isSymLink = \path ->
+    Path.isSymLink (Path.fromStr path)
 
-toReadTask : Path, (List U8 -> Effect (Result ok err)) -> Task ok [FileReadErr Path err]
-toReadTask = \path, toEffect ->
-    InternalPath.toBytes path
-    |> toEffect
-    |> InternalTask.fromEffect
-    |> Task.mapErr \err -> FileReadErr path err
-
-## Converts a [WriteErr] to a [Str].
-writeErrToStr : WriteErr -> Str
-writeErrToStr = \err ->
-    when err is
-        NotFound -> "NotFound"
-        Interrupted -> "Interrupted"
-        InvalidFilename -> "InvalidFilename"
-        PermissionDenied -> "PermissionDenied"
-        TooManySymlinks -> "TooManySymlinks"
-        TooManyHardlinks -> "TooManyHardlinks"
-        TimedOut -> "TimedOut"
-        StaleNetworkFileHandle -> "StaleNetworkFileHandle"
-        ReadOnlyFilesystem -> "ReadOnlyFilesystem"
-        AlreadyExists -> "AlreadyExists"
-        WasADirectory -> "WasADirectory"
-        WriteZero -> "WriteZero"
-        StorageFull -> "StorageFull"
-        FilesystemQuotaExceeded -> "FilesystemQuotaExceeded"
-        FileTooLarge -> "FileTooLarge"
-        ResourceBusy -> "ResourceBusy"
-        ExecutableFileBusy -> "ExecutableFileBusy"
-        OutOfMemory -> "OutOfMemory"
-        Unsupported -> "Unsupported"
-        _ -> "Unrecognized"
-
-## Converts a [ReadErr] to a [Str].
-readErrToStr : ReadErr -> Str
-readErrToStr = \err ->
-    when err is
-        NotFound -> "NotFound"
-        Interrupted -> "Interrupted"
-        InvalidFilename -> "InvalidFilename"
-        PermissionDenied -> "PermissionDenied"
-        TooManySymlinks -> "TooManySymlinks"
-        TooManyHardlinks -> "TooManyHardlinks"
-        TimedOut -> "TimedOut"
-        StaleNetworkFileHandle -> "StaleNetworkFileHandle"
-        OutOfMemory -> "OutOfMemory"
-        Unsupported -> "Unsupported"
-        _ -> "Unrecognized"
+## Return the type of the path if the path exists on disk.
+## This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
+##
+## > [Path.type] does the same thing, except it takes a [Path] instead of a [Str].
+type : Str -> Task [IsFile, IsDir, IsSymLink] [PathErr MetadataErr]
+type = \path ->
+    Path.type (Path.fromStr path)
