@@ -23,10 +23,15 @@ mode = RELEASE
 
 main = 
     native = getNativeTarget!
-    removePrebuiltBinary! native
-    buildRustTarget! native
+    
+    cargoBuild! native
+
+    # prebuilt binaries for the legacy linker, e.g. `macos-arm64.a` 
     copyBinaryToPlatform! native
-    preProcessPlatform!
+    
+    # prebuilt binaries for the surgical linker, e.g. `
+    # preProcessPlatform!
+
     printInfoLine! "COMPLETE"
 
     Task.ok {}
@@ -82,14 +87,6 @@ prebuiltBinaryPath = \target ->
         LinuxX64 -> "platform/linux-x64.a"
         WindowsArm64 -> "platform/windows-arm64.a"
         WindowsX64 -> "platform/windows-x64"
-
-removePrebuiltBinary : RocTarget -> Task {} _
-removePrebuiltBinary = \target ->
-
-    printInfoLine! "Removing prebuilt binary $(Inspect.toStr target)..."
-
-    Cmd.exec "rm" ["-f", prebuiltBinaryPath target] 
-    |> Task.mapErr! ErrRemovingPrebuiltBinary
         
 rustupTarget : RocTarget -> Str
 rustupTarget = \target ->
@@ -101,10 +98,10 @@ rustupTarget = \target ->
         WindowsArm64 -> "aarch64-pc-windows-msvc"
         WindowsX64 -> "x86_64-pc-windows-msvc"
 
-buildRustTarget : RocTarget -> Task {} _
-buildRustTarget = \target -> 
+cargoBuild : RocTarget -> Task {} _
+cargoBuild = \target -> 
 
-    printInfoLine! "Building rust target $(Inspect.toStr target)..."
+    printInfoLine! "Building cargo; mode: $(Inspect.toStr mode) for target $(Inspect.toStr target)..."
 
     args =
         when mode is 
@@ -131,13 +128,13 @@ copyBinaryToPlatform = \target ->
     Cmd.exec "cp" ["-f", from, to]
     |> Task.mapErr! ErrCopyingPrebuiltBinary
 
-preProcessPlatform : Task {} _
-preProcessPlatform = 
+# preProcessPlatform : Task {} _
+# preProcessPlatform = 
 
-    printInfoLine! "Preprocessing host to prepare for surgical linking..."
+#     printInfoLine! "Preprocessing host to prepare for surgical linking..."
 
-    Cmd.exec "roc" ["preprocess-host", "platform/"]
-    |> Task.mapErr! ErrCopyingPrebuiltBinary
+#     Cmd.exec "roc" ["preprocess-host", "platform/"]
+#     |> Task.mapErr! ErrCopyingPrebuiltBinary
 
 printInfoLine : Str -> Task {} _
 printInfoLine = \msg ->

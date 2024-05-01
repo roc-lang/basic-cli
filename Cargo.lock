@@ -206,14 +206,7 @@ checksum = "4271d37baee1b8c7e4b708028c57d816cf9d2434acb33a549475f78c181f6253"
 name = "host"
 version = "0.0.1"
 dependencies = [
- "backtrace",
- "crossterm",
- "hyper",
- "hyper-rustls",
- "libc",
- "roc_app",
- "roc_std",
- "tokio",
+ "roc_host",
 ]
 
 [[package]]
@@ -525,6 +518,20 @@ name = "roc_app"
 version = "1.0.0"
 dependencies = [
  "roc_std",
+]
+
+[[package]]
+name = "roc_host"
+version = "0.0.1"
+dependencies = [
+ "backtrace",
+ "crossterm",
+ "hyper",
+ "hyper-rustls",
+ "libc",
+ "roc_app",
+ "roc_std",
+ "tokio",
 ]
 
 [[package]]

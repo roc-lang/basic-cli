@@ -1,5 +1,5 @@
 [package]
-name = "host"
+name = "roc_host"
 version = "0.0.1"
 authors = ["The Roc Contributors"]
 license = "UPL-1.0"
@@ -13,13 +13,14 @@ strip = "debuginfo"
 codegen-units = 1
 
 [lib]
-name = "host"
+name = "roc_host"
 path = "src/lib.rs"
-crate-type = ["staticlib", "lib"]
+crate-type = ["lib"]
 
 [[bin]]
 name = "host"
 path = "src/main.rs"
+
 [dependencies]
 roc_std = { path = "../roc_std" }
 roc_app = { path = "../roc_app" }

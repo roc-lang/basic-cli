@@ -1,7 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/host",
+    "crates/roc_host",
+    "crates/roc_host_lib",
     "crates/roc_app",
     "crates/roc_std",
 ]
