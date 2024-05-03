@@ -1,7 +1,7 @@
 app [main] { pf: platform "../platform/main.roc" }
 
 import pf.Stdout
-import pf.Dir exposing [MakeErr]
+import pf.Dir
 import pf.Path
 import pf.Task exposing [Task]
 
