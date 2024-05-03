@@ -1,6 +1,11 @@
-interface Env
-    exposes [cwd, dict, var, decode, exePath, setCwd]
-    imports [Task.{ Task }, Path.{ Path }, InternalPath, Effect, InternalTask, EnvDecoding]
+module [cwd, dict, var, decode, exePath, setCwd]
+
+import Task exposing [Task]
+import Path exposing [Path]
+import InternalPath
+import Effect
+import InternalTask
+import EnvDecoding
 
 ## Reads the [current working directory](https://en.wikipedia.org/wiki/Working_directory)
 ## from the environment. File operations on relative [Path]s are relative to this directory.

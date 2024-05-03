@@ -1,4 +1,4 @@
-interface EnvDecoding exposes [EnvFormat, format] imports []
+module [EnvFormat, format]
 
 EnvFormat := {} implements [
         DecoderFormatting {

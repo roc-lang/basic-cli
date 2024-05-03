@@ -1,19 +1,22 @@
-interface Tcp
-    exposes [
-        Stream,
-        withConnect,
-        readUpTo,
-        readExactly,
-        readUntil,
-        readLine,
-        write,
-        writeUtf8,
-        ConnectErr,
-        connectErrToStr,
-        StreamErr,
-        streamErrToStr,
-    ]
-    imports [Effect, Task.{ Task }, InternalTask, InternalTcp]
+module [
+    Stream,
+    withConnect,
+    readUpTo,
+    readExactly,
+    readUntil,
+    readLine,
+    write,
+    writeUtf8,
+    ConnectErr,
+    connectErrToStr,
+    StreamErr,
+    streamErrToStr,
+]
+
+import Effect
+import Task exposing [Task]
+import InternalTask
+import InternalTcp
 
 ## Represents a TCP stream.
 Stream : InternalTcp.Stream

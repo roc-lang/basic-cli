@@ -1,7 +1,8 @@
-app "http-get"
-    packages { pf: "../platform/main.roc" }
-    imports [pf.Http, pf.Task.{ Task }, pf.Stdout]
-    provides [main] to pf
+app [main] { pf: platform "../platform/main.roc" }
+
+import pf.Http
+import pf.Task exposing [Task]
+import pf.Stdout
 
 main =
     request = {
@@ -15,8 +16,9 @@ main =
 
     resp = Http.send! request
 
-    output = when resp |> Http.handleStringResponse is 
-        Err err -> crash (Http.errorToString err)
-        Ok body -> body
+    output =
+        when resp |> Http.handleStringResponse is
+            Err err -> crash (Http.errorToString err)
+            Ok body -> body
 
     Stdout.line output

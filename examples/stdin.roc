@@ -1,12 +1,9 @@
-app "stdin"
-    packages { pf: "../platform/main.roc" }
-    imports [
-        pf.Stdout,
-        pf.Stderr,
-        pf.Stdin,
-        pf.Task.{ Task },
-    ]
-    provides [main] to pf
+app [main] { pf: platform "../platform/main.roc" }
+
+import pf.Stdout
+import pf.Stderr
+import pf.Stdin
+import pf.Task exposing [Task]
 
 main =
     Stdout.line! "Enter a series of number characters (0-9):"

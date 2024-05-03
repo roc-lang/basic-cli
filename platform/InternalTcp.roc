@@ -1,17 +1,15 @@
-interface InternalTcp
-    exposes [
-        Stream,
-        ConnectErr,
-        StreamErr,
-        ConnectResult,
-        WriteResult,
-        ReadResult,
-        ReadExactlyResult,
-        fromConnectResult,
-        fromWriteResult,
-        fromReadResult,
-    ]
-    imports []
+module [
+    Stream,
+    ConnectErr,
+    StreamErr,
+    ConnectResult,
+    WriteResult,
+    ReadResult,
+    ReadExactlyResult,
+    fromConnectResult,
+    fromWriteResult,
+    fromReadResult,
+]
 
 Stream := U64
 

@@ -1,6 +1,6 @@
-interface InternalTask
-    exposes [Task, fromEffect, toEffect, ok, err]
-    imports [Effect.{ Effect }]
+module [Task, fromEffect, toEffect, ok, err]
+
+import Effect exposing [Effect]
 
 Task ok err := Effect (Result ok err)
 

@@ -1,11 +1,8 @@
-app "file-test"
-    packages { pf: "../platform/main.roc" }
-    imports [
-        pf.Stdout,
-        pf.Task.{ Task },
-        pf.File.{ WriteErr },
-    ]
-    provides [main] to pf
+app [main] { pf: platform "../platform/main.roc" }
+
+import pf.Stdout
+import pf.Task exposing [Task]
+import pf.File exposing [WriteErr]
 
 # Running should print the following to the terminal:
 # ```

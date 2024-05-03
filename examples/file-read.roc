@@ -1,11 +1,8 @@
-app "file-read"
-    packages { pf: "../platform/main.roc" }
-    imports [
-        pf.Stdout,
-        pf.Task.{ Task, await },
-        pf.File,
-    ]
-    provides [main] to pf
+app [main] { pf: platform "../platform/main.roc" }
+
+import pf.Stdout
+import pf.Task exposing [Task, await]
+import pf.File
 
 main =
     when run |> Task.result! is

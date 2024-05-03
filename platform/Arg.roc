@@ -1,23 +1,25 @@
-interface Arg
-    exposes [
-        Parser,
-        ParseError,
-        NamedParser,
-        parse,
-        toHelp,
-        parseFormatted,
-        succeed,
-        boolOption,
-        strOption,
-        i64Option,
-        str,
-        subCommand,
-        choice,
-        withParser,
-        program,
-        list,
-    ]
-    imports [Effect, InternalTask, Task.{ Task }]
+module [
+    Parser,
+    ParseError,
+    NamedParser,
+    parse,
+    toHelp,
+    parseFormatted,
+    succeed,
+    boolOption,
+    strOption,
+    i64Option,
+    str,
+    subCommand,
+    choice,
+    withParser,
+    program,
+    list,
+]
+
+import Effect
+import InternalTask
+import Task exposing [Task]
 
 ## Gives a list of the program's command-line arguments.
 list : Task (List Str) *

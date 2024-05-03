@@ -1,23 +1,21 @@
-interface File
-    exposes [
-        ReadErr,
-        WriteErr,
-        writeUtf8,
-        writeBytes,
-        write,
-        readUtf8,
-        readBytes,
-        # read, # TODO: investigate the problem with Decoding here
-        delete,
-        isDir,
-        isFile,
-        isSymLink,
-        type,
-    ]
-    imports [
-        Task.{ Task },
-        Path.{ Path, MetadataErr },
-    ]
+module [
+    ReadErr,
+    WriteErr,
+    writeUtf8,
+    writeBytes,
+    write,
+    readUtf8,
+    readBytes,
+    # read, # TODO: investigate the problem with Decoding here
+    delete,
+    isDir,
+    isFile,
+    isSymLink,
+    type,
+]
+
+import Task exposing [Task]
+import Path exposing [Path, MetadataErr]
 
 ## Tag union of possible errors when reading a file or directory.
 ##

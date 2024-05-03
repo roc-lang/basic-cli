@@ -1,15 +1,12 @@
-app "file-mixed"
-    packages { pf: "../platform/main.roc" }
-    imports [
-        # pf.Stdout,
-        # pf.Stderr,
-        pf.Task.{ Task },
-        # pf.File,
-        # pf.Path,
-        # pf.Env,
-        # pf.Dir,
-    ]
-    provides [main] to pf
+app [main] { pf: platform "../platform/main.roc" }
+
+# pf.Stdout,
+# pf.Stderr,
+import pf.Task exposing [Task]
+# pf.File,
+# pf.Path,
+# pf.Env,
+# pf.Dir,
 
 main =
     Task.ok {}

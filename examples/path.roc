@@ -1,11 +1,8 @@
-app "path-example"
-    packages { pf: "../platform/main.roc" }
-    imports [
-        pf.Stdout,
-        pf.Path,
-        pf.Task.{ Task },
-    ]
-    provides [main] to pf
+app [main] { pf: platform "../platform/main.roc" }
+
+import pf.Stdout
+import pf.Path
+import pf.Task exposing [Task]
 
 main = run |> Task.onErr \err -> crash "ERROR: $(Inspect.toStr err)"
 
@@ -16,5 +13,5 @@ run =
     c = Path.isSymLink! path
     d = Path.type! path
 
-    Stdout.line "isFile: \(Inspect.toStr a) isDir: \(Inspect.toStr b) isSymLink: \(Inspect.toStr c) type: \(Inspect.toStr d)"
+    Stdout.line "isFile: $(Inspect.toStr a) isDir: $(Inspect.toStr b) isSymLink: $(Inspect.toStr c) type: $(Inspect.toStr d)"
 

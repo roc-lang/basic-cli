@@ -1,48 +1,46 @@
-interface Path
-    exposes [
-        Path,
-        ReadErr,
-        WriteErr,
-        DirEntry,
-        DirErr,
-        MetadataErr,
-        # PathComponent,
-        # CanonicalizeErr,
-        # WindowsRoot,
-        # toComponents,
-        # walkComponents,
-        display,
-        fromStr,
-        fromBytes,
-        withExtension,
-        # These can all be found in File as well
-        isDir,
-        isFile,
-        isSymLink,
-        type,
-        writeUtf8,
-        writeBytes,
-        write,
-        readUtf8,
-        readBytes,
-        # read, # TODO: investigate the problem with Decoding here
-        delete,
-        # These can all be found in Dir as well
-        listDir,
-        createDir,
-        createAll,
-        deleteEmpty,
-        deleteAll,
-    ]
-    imports [
-        InternalPath,
-        InternalFile,
-        Effect,
-        InternalTask,
-        Task.{ Task },
-        Effect.{ Effect },
-        FileMetadata.{ FileMetadata },
-    ]
+module [
+    Path,
+    ReadErr,
+    WriteErr,
+    DirEntry,
+    DirErr,
+    MetadataErr,
+    # PathComponent,
+    # CanonicalizeErr,
+    # WindowsRoot,
+    # toComponents,
+    # walkComponents,
+    display,
+    fromStr,
+    fromBytes,
+    withExtension,
+    # These can all be found in File as well
+    isDir,
+    isFile,
+    isSymLink,
+    type,
+    writeUtf8,
+    writeBytes,
+    write,
+    readUtf8,
+    readBytes,
+    # read, # TODO: investigate the problem with Decoding here
+    delete,
+    # These can all be found in Dir as well
+    listDir,
+    createDir,
+    createAll,
+    deleteEmpty,
+    deleteAll,
+]
+
+import InternalPath
+import InternalFile
+import Effect
+import InternalTask
+import Task exposing [Task]
+import Effect exposing [Effect]
+import FileMetadata exposing [FileMetadata]
 
 ## An error when reading a path's file metadata from disk.
 MetadataErr : InternalPath.GetMetadataErr

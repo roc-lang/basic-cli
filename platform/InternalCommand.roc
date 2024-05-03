@@ -1,10 +1,8 @@
-interface InternalCommand
-    exposes [
-        Command,
-        Output,
-        CommandErr,
-    ]
-    imports []
+module [
+    Command,
+    Output,
+    CommandErr,
+]
 
 CommandErr : [
     ExitCode I32,
