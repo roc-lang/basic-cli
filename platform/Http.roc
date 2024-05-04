@@ -126,10 +126,10 @@ send = \req ->
                 }
     |> Task.mapErr HttpErr
 
-get : Str, fmt -> Task body [HttpErr Http.Err, DecodingFailed] where body implements Decoding, fmt implements DecoderFormatting
+get : Str, fmt -> Task body [HttpErr Http.Err, HttpDecodingFailed] where body implements Decoding, fmt implements DecoderFormatting
 get = \url, fmt ->
     response = send! { defaultRequest & url }
 
     Decode.fromBytes response.body fmt
-    |> Result.mapErr \_ -> DecodingFailed
+    |> Result.mapErr \_ -> HttpDecodingFailed
     |> Task.fromResult
