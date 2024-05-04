@@ -1,16 +1,14 @@
-interface InternalPath
-    exposes [
-        UnwrappedPath,
-        InternalPath,
-        GetMetadataErr,
-        InternalPathType,
-        wrap,
-        unwrap,
-        toBytes,
-        fromArbitraryBytes,
-        fromOsBytes,
-    ]
-    imports []
+module [
+    UnwrappedPath,
+    InternalPath,
+    GetMetadataErr,
+    InternalPathType,
+    wrap,
+    unwrap,
+    toBytes,
+    fromArbitraryBytes,
+    fromOsBytes,
+]
 
 InternalPath := UnwrappedPath implements [Inspect]
 
@@ -50,7 +48,7 @@ UnwrappedPath : [
     FromStr Str,
 ]
 
-InternalPathType : { isFile: Bool, isSymLink: Bool, isDir: Bool }
+InternalPathType : { isFile : Bool, isSymLink : Bool, isDir : Bool }
 
 GetMetadataErr : [
     PermissionDenied,

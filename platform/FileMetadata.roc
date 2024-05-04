@@ -1,6 +1,4 @@
-interface FileMetadata
-    exposes [FileMetadata, bytes, type, isReadonly, mode]
-    imports []
+module [FileMetadata, bytes, type, isReadonly, mode]
 
 # Design note: this is an opaque type rather than a type alias so that
 # we can add new operating system info if new OS releases introduce them,

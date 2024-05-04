@@ -1,12 +1,8 @@
-app "file-read"
-    packages { pf: "../platform/main.roc" }
-    imports [
-        pf.Stdout,
-        pf.Task.{ Task, await },
-        pf.File,
-        pf.Path,
-    ]
-    provides [main] to pf
+app [main] { pf: platform "../platform/main.roc" }
+
+import pf.Stdout
+import pf.Task exposing [Task, await]
+import pf.File
 
 main =
     when run |> Task.result! is
@@ -24,10 +20,7 @@ main =
 
 run =
     fileName = "LICENSE"
-    path = Path.fromStr fileName
-    contents = File.readUtf8! path
+    contents = File.readUtf8! fileName
     lines = Str.split contents "\n"
 
     Stdout.line (Str.concat "First line of $(fileName): " (List.first lines |> Result.withDefault "err"))
-
-    

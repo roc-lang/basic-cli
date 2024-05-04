@@ -1,18 +1,21 @@
-interface Http
-    exposes [
-        Request,
-        Method,
-        Header,
-        TimeoutConfig,
-        Response,
-        Err,
-        header,
-        handleStringResponse,
-        defaultRequest,
-        errorToString,
-        send,
-    ]
-    imports [Effect, InternalTask, Task.{ Task }, InternalHttp]
+module [
+    Request,
+    Method,
+    Header,
+    TimeoutConfig,
+    Response,
+    Err,
+    header,
+    handleStringResponse,
+    defaultRequest,
+    errorToString,
+    send,
+]
+
+import Effect
+import InternalTask
+import Task exposing [Task]
+import InternalHttp
 
 ## Represents an HTTP request.
 Request : InternalHttp.Request
@@ -68,8 +71,8 @@ header =
 ## Map a [Response] body to a [Str] or return an [Err].
 handleStringResponse : Response -> Result Str Err
 handleStringResponse = \response ->
-    response.body    
-    |> Str.fromUtf8 
+    response.body
+    |> Str.fromUtf8
     |> Result.mapErr \BadUtf8 _ pos ->
         position = Num.toStr pos
 
@@ -94,9 +97,9 @@ errorToString = \err ->
 ##     { Http.defaultRequest & url: "https://www.roc-lang.org" }
 ##     |> Http.send
 ##     |> Task.await
-## 
-## response.body 
-## |> Str.fromUtf8 
+##
+## response.body
+## |> Str.fromUtf8
 ## |> Result.withDefault "Invalid UTF-8"
 ## |> Stdout.line
 ## ```
@@ -109,15 +112,15 @@ send = \req ->
     |> Task.await \internalResponse ->
         when internalResponse is
             BadRequest str -> Task.err (BadRequest str)
-            Timeout u64 -> Task.err (Timeout u64) 
+            Timeout u64 -> Task.err (Timeout u64)
             NetworkError -> Task.err NetworkError
             BadStatus meta _ -> Task.err (BadStatus meta.statusCode)
-            GoodStatus meta body -> 
+            GoodStatus meta body ->
                 Task.ok {
-                    url : meta.url,
-                    statusCode : meta.statusCode,
-                    statusText : meta.statusText,
-                    headers : meta.headers,
+                    url: meta.url,
+                    statusCode: meta.statusCode,
+                    statusText: meta.statusText,
+                    headers: meta.headers,
                     body,
                 }
     |> Task.mapErr HttpError

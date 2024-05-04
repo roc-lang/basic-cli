@@ -1,7 +1,7 @@
-app "result"
-    packages { pf: "../platform/main.roc" }
-    imports [pf.Stdout, pf.Task.{ Task }]
-    provides [main] to pf
+app [main] { pf: platform "../platform/main.roc" }
+
+import pf.Stdout
+import pf.Task exposing [Task]
 
 # This example demonstrates the use of `Task.result`.
 # It transforms a task that can either succeed with `ok`, or fail with `err`, into
@@ -14,9 +14,9 @@ main =
 
 checkFile : Str -> Task [Good, Bad] [IOError]
 checkFile = \str ->
-    if str == "good" then 
-        Task.ok Good 
-    else if str == "bad" then 
-        Task.ok Bad 
-    else 
+    if str == "good" then
+        Task.ok Good
+    else if str == "bad" then
+        Task.ok Bad
+    else
         Task.err IOError

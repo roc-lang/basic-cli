@@ -1,8 +1,10 @@
-interface Sleep
-    exposes [
-        millis,
-    ]
-    imports [Effect, InternalTask, Task.{ Task }]
+module [
+    millis,
+]
+
+import Effect
+import InternalTask
+import Task exposing [Task]
 
 ## Sleep for at least the given number of milliseconds.
 ## This uses [rust's std::thread::sleep](https://doc.rust-lang.org/std/thread/fn.sleep.html).

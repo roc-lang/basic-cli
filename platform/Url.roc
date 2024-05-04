@@ -1,19 +1,17 @@
-interface Url
-    exposes [
-        Url,
-        append,
-        fromStr,
-        toStr,
-        appendParam,
-        hasQuery,
-        hasFragment,
-        query,
-        fragment,
-        reserve,
-        withQuery,
-        withFragment,
-    ]
-    imports []
+module [
+    Url,
+    append,
+    fromStr,
+    toStr,
+    appendParam,
+    hasQuery,
+    hasFragment,
+    query,
+    fragment,
+    reserve,
+    withQuery,
+    withFragment,
+]
 
 ## A [Uniform Resource Locator](https://en.wikipedia.org/wiki/URL).
 ##

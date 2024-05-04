@@ -1,23 +1,49 @@
-interface Path
-    exposes [
-        Path,
-        PathComponent,
-        CanonicalizeErr,
-        WindowsRoot,
-        # toComponents,
-        # walkComponents,
-        display,
-        fromStr,
-        fromBytes,
-        withExtension,
-        isDir,
-        isFile,
-        isSymLink,
-        type,
-    ]
-    imports [InternalPath, Effect, InternalTask, Task.{ Task }]
+module [
+    Path,
+    ReadErr,
+    WriteErr,
+    DirEntry,
+    DirErr,
+    MetadataErr,
+    # PathComponent,
+    # CanonicalizeErr,
+    # WindowsRoot,
+    # toComponents,
+    # walkComponents,
+    display,
+    fromStr,
+    fromBytes,
+    withExtension,
+    # These can all be found in File as well
+    isDir,
+    isFile,
+    isSymLink,
+    type,
+    writeUtf8,
+    writeBytes,
+    write,
+    readUtf8,
+    readBytes,
+    # read, # TODO: investigate the problem with Decoding here
+    delete,
+    # These can all be found in Dir as well
+    listDir,
+    createDir,
+    createAll,
+    deleteEmpty,
+    deleteAll,
+]
 
-Err : InternalPath.GetMetadataErr
+import InternalPath
+import InternalFile
+import Effect
+import InternalTask
+import Task exposing [Task]
+import Effect exposing [Effect]
+import FileMetadata exposing [FileMetadata]
+
+## An error when reading a path's file metadata from disk.
+MetadataErr : InternalPath.GetMetadataErr
 
 # You can canonicalize a [Path] using `Path.canonicalize`.
 #
@@ -47,10 +73,104 @@ Err : InternalPath.GetMetadataErr
 ## Represents a path to a file or directory on the filesystem.
 Path : InternalPath.InternalPath
 
+## Record which represents a directory
+##
+## > This is the same as [`Dir.DirEntry`](Dir#DirEntry).
+DirEntry : {
+    path : Path,
+    type : [File, Dir, Symlink],
+    metadata : FileMetadata,
+}
+
+## Tag union of possible errors when reading a file or directory.
+##
+## > This is the same as [`File.ReadErr`](File#ReadErr).
+ReadErr : InternalFile.ReadErr
+
+## Tag union of possible errors when writing a file or directory.
+##
+## > This is the same as [`File.WriteErr`](File#WriteErr).
+WriteErr : InternalFile.WriteErr
+
+## **NotFound** - This error is raised when the specified directory does not exist, typically during attempts to access or manipulate it.
+##
+## **PermissionDenied** - Occurs when the user lacks the necessary permissions to perform an action on a directory, such as reading, writing, or executing.
+##
+## **AlreadyExists** - This error is thrown when trying to create a directory that already exists.
+##
+## **NotADirectory** - Raised when an operation that requires a directory (e.g., listing contents) is attempted on a file instead.
+##
+## **Other** - A catch-all for any other types of errors not explicitly listed above.
+##
+## > This is the same as [`Dir.Err`](Dir#Err).
+DirErr : [
+    NotFound,
+    PermissionDenied,
+    AlreadyExists,
+    NotADirectory,
+    Other Str,
+]
+
+## Write data to a file.
+##
+## First encode a `val` using a given `fmt` which implements the ability [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
+##
+## For example, suppose you have a `Json.toCompactUtf8` which implements
+## [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
+## You can use this to write [JSON](https://en.wikipedia.org/wiki/JSON)
+## data to a file like this:
+##
+## ```
+## # Writes `{"some":"json stuff"}` to the file `output.json`:
+## Path.write
+##     (Path.fromStr "output.json")
+##     { some: "json stuff" }
+##     Json.toCompactUtf8
+## ```
+##
+## This opens the file first and closes it after writing to it.
+## If writing to the file fails, for example because of a file permissions issue, the task fails with [WriteErr].
+##
+## > To write unformatted bytes to a file, you can use [Path.writeBytes] instead.
+write : Path, val, fmt -> Task {} [FileWriteErr Path WriteErr] where val implements Encoding, fmt implements EncoderFormatting
+write = \path, val, fmt ->
+    bytes = Encode.toBytes val fmt
+
+    # TODO handle encoding errors here, once they exist
+    writeBytes path bytes
+
+## Writes bytes to a file.
+##
+## ```
+## # Writes the bytes 1, 2, 3 to the file `myfile.dat`.
+## Path.writeBytes (Path.fromStr "myfile.dat") [1, 2, 3]
+## ```
+##
+## This opens the file first and closes it after writing to it.
+##
+## > To format data before writing it to a file, you can use [Path.write] instead.
+writeBytes : Path, List U8 -> Task {} [FileWriteErr Path WriteErr]
+writeBytes = \path, bytes ->
+    toWriteTask path \pathBytes -> Effect.fileWriteBytes pathBytes bytes
+
+## Writes a [Str] to a file, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
+##
+## ```
+## # Writes "Hello!" encoded as UTF-8 to the file `myfile.txt`.
+## Path.writeUtf8 (Path.fromStr "myfile.txt") "Hello!"
+## ```
+##
+## This opens the file first and closes it after writing to it.
+##
+## > To write unformatted bytes to a file, you can use [Path.writeBytes] instead.
+writeUtf8 : Path, Str -> Task {} [FileWriteErr Path WriteErr]
+writeUtf8 = \path, str ->
+    toWriteTask path \bytes -> Effect.fileWriteUtf8 bytes str
+
 ## Represents an error that can happen when canonicalizing a path.
-CanonicalizeErr a : [
-    PathCanonicalizeErr {},
-]a
+# CanonicalizeErr a : [
+#    PathCanonicalizeErr {},
+# ]a
 
 ## Note that the path may not be valid depending on the filesystem where it is used.
 ## For example, paths containing `:` are valid on ext4 and NTFS filesystems, but not
@@ -70,7 +190,7 @@ fromStr = \str ->
 ## is not valid Unicode (like a [Str] is), but which is valid for a particular filesystem.
 ##
 ## Note that if the list contains any `0` bytes, sending this path to any file operations
-## (e.g. `File.read` or `WriteStream.openPath`) will fail.
+## (e.g. `Path.readBytes` or `WriteStream.openPath`) will fail.
 fromBytes : List U8 -> Path
 fromBytes = \bytes ->
     ArbitraryBytes bytes
@@ -159,16 +279,16 @@ display = \path ->
 
 ## Represents a attributes of a path such as a parent directory, the current
 ## directory for use when transforming a path.
-PathComponent : [
-    ParentDir, # e.g. ".." on UNIX or Windows
-    CurrentDir, # e.g. "." on UNIX
-    Named Str, # e.g. "stuff" on UNIX
-    DirSep Str, # e.g. "/" on UNIX, "\" or "/" on Windows. Or, sometimes, "¥" on Windows - see
-    # https://docs.microsoft.com/en-us/windows/win32/intl/character-sets-used-in-file-names
-    #
-    # This is included as an option so if you're transforming part of a path,
-    # you can write back whatever separator was originally used.
-]
+# PathComponent : [
+#    ParentDir, # e.g. ".." on UNIX or Windows
+#    CurrentDir, # e.g. "." on UNIX
+#    Named Str, # e.g. "stuff" on UNIX
+#    DirSep Str, # e.g. "/" on UNIX, "\" or "/" on Windows. Or, sometimes, "¥" on Windows - see
+#    # https://docs.microsoft.com/en-us/windows/win32/intl/character-sets-used-in-file-names
+#    #
+#    # This is included as an option so if you're transforming part of a path,
+#    # you can write back whatever separator was originally used.
+# ]
 
 # Note that a root of Slash (`/`) has different meanings on UNIX and on Windows.
 # * On UNIX, `/` at the beginning of the path refers to the filesystem root, and means the path is absolute.
@@ -181,7 +301,7 @@ PathComponent : [
 # TODO see https://doc.rust-lang.org/std/path/enum.Prefix.html
 ## Represents the root path on Windows operating system, which refers to the
 ## current disk drive.
-WindowsRoot : []
+# WindowsRoot : []
 
 ## Returns the root of the path.
 # root : Path -> PathRoot
@@ -293,14 +413,14 @@ WindowsRoot : []
 #                 FromStr suffixStr ->
 #                     Str.endsWith pathStr suffixStr
 # TODO https://doc.rust-lang.org/std/path/struct.Path.html#method.strip_prefix
-# TODO idea: what if it's File.openRead and File.openWrite? And then e.g. File.metadata,
-# File.isDir, etc.
+# TODO idea: what if it's Path.openRead and Path.openWrite? And then e.g. Path.metadata,
+# Path.isDir, etc.
 
 ## Returns true if the path exists on disk and is pointing at a directory.
 ## Any error will return false.
-## This uses [rust's std::path::is_dir](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_dir).
 ##
-isDir : Path -> Task Bool [PathErr Err]
+## > [`File.isDir`](File#isDir) does the same thing, except it takes a [Str] instead of a [Path].
+isDir : Path -> Task Bool [PathErr MetadataErr]
 isDir = \path ->
     res <- type path |> Task.await
     Task.ok (res == IsDir)
@@ -309,24 +429,25 @@ isDir = \path ->
 ## Any error will return false.
 ## This uses [rust's std::path::is_file](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_file).
 ##
-isFile : Path -> Task Bool [PathErr Err]
+## > [`File.isFile`](File#isFile) does the same thing, except it takes a [Str] instead of a [Path].
+isFile : Path -> Task Bool [PathErr MetadataErr]
 isFile = \path ->
     res <- type path |> Task.await
     Task.ok (res == IsFile)
 
 ## Returns true if the path exists on disk and is pointing at a symbolic link.
 ## Any error will return false.
-## This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
 ##
-isSymLink : Path -> Task Bool [PathErr Err]
+## > [`File.isSymLink`](File#isSymLink) does the same thing, except it takes a [Str] instead of a [Path].
+isSymLink : Path -> Task Bool [PathErr MetadataErr]
 isSymLink = \path ->
     res <- type path |> Task.await
     Task.ok (res == IsSymLink)
 
 ## Return the type of the path if the path exists on disk.
-## This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
 ##
-type : Path -> Task [IsFile, IsDir, IsSymLink] [PathErr Err]
+## > [`File.type`](File#type) does the same thing, except it takes a [Str] instead of a [Path].
+type : Path -> Task [IsFile, IsDir, IsSymLink] [PathErr MetadataErr]
 type = \path ->
     InternalPath.toBytes path
     |> Effect.pathType
@@ -383,4 +504,195 @@ withExtension = \path, extension ->
             |> InternalPath.wrap
 
 # NOTE: no withExtensionBytes because it's too narrow. If you really need to get some
-# non-Unicode in there, do it with
+# non-Unicode in there, do it with Path.fromBytes.
+
+## Deletes a file from the filesystem.
+##
+## Performs a [`DeleteFile`](https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-deletefile)
+## on Windows and [`unlink`](https://en.wikipedia.org/wiki/Unlink_(Unix)) on
+## UNIX systems. On Windows, this will fail when attempting to delete a readonly
+## file; the file's readonly permission must be disabled before it can be
+## successfully deleted.
+##
+## ```
+## # Deletes the file named
+## Path.delete (Path.fromStr "myfile.dat") [1, 2, 3]
+## ```
+##
+## > This does not securely erase the file's contents from disk; instead, the operating
+## system marks the space it was occupying as safe to write over in the future. Also, the operating
+## system may not immediately mark the space as free; for example, on Windows it will wait until
+## the last file handle to it is closed, and on UNIX, it will not remove it until the last
+## [hard link](https://en.wikipedia.org/wiki/Hard_link) to it has been deleted.
+##
+## > [`File.delete`](File#delete) does the same thing, except it takes a [Str] instead of a [Path].
+delete : Path -> Task {} [FileWriteErr Path WriteErr]
+delete = \path ->
+    toWriteTask path \bytes -> Effect.fileDelete bytes
+
+# read :
+#     Path,
+#     fmt
+#     -> Task
+#         Str
+#         [FileReadErr Path ReadErr, FileReadDecodeErr Path [Leftover (List U8)]Decode.DecodeError ]
+#         [Read [File]]
+#     where val implements Decoding, fmt implements DecoderFormatting
+# read = \path, fmt ->
+#     effect = Effect.map (Effect.fileReadBytes (InternalPath.toBytes path)) \result ->
+#         when result is
+#             Ok bytes ->
+#                 when Decode.fromBytes bytes fmt is
+#                     Ok val -> Ok val
+#                     Err decodingErr -> Err (FileReadDecodeErr decodingErr)
+#             Err readErr -> Err (FileReadErr readErr)
+#     InternalTask.fromEffect effect
+
+## Reads a [Str] from a file containing [UTF-8](https://en.wikipedia.org/wiki/UTF-8)-encoded text.
+##
+## ```
+## # Reads UTF-8 encoded text into a Str from the file "myfile.txt"
+## Path.readUtf8 (Path.fromStr "myfile.txt")
+## ```
+##
+## This opens the file first and closes it after writing to it.
+## The task will fail with `FileReadUtf8Err` if the given file contains invalid UTF-8.
+##
+## > To read unformatted bytes from a file, you can use [Path.readBytes] instead.
+## >
+## > [`File.readUtf8`](File#readUtf8) does the same thing, except it takes a [Str] instead of a [Path].
+readUtf8 : Path -> Task Str [FileReadErr Path ReadErr, FileReadUtf8Err Path _]
+readUtf8 = \path ->
+    effect = Effect.map (Effect.fileReadBytes (InternalPath.toBytes path)) \result ->
+        when result is
+            Ok bytes ->
+                Str.fromUtf8 bytes
+                |> Result.mapErr \err -> FileReadUtf8Err path err
+
+            Err readErr -> Err (FileReadErr path readErr)
+
+    InternalTask.fromEffect effect
+
+## Reads all the bytes in a file.
+##
+## ```
+## # Read all the bytes in `myfile.txt`.
+## Path.readBytes (Path.fromStr "myfile.txt")
+## ```
+##
+## This opens the file first and closes it after reading its contents.
+##
+## > To read and decode data from a file, you can use `Path.read` instead.
+## >
+## > [`File.readBytes`](File#readBytes) does the same thing, except it takes a [Str] instead of a [Path].
+readBytes : Path -> Task (List U8) [FileReadErr Path ReadErr]
+readBytes = \path ->
+    toReadTask path \bytes -> Effect.fileReadBytes bytes
+
+## Lists the files and directories inside the directory.
+##
+## > [`Dir.list`](Dir#list) does the same thing, except it takes a [Str] instead of a [Path].
+listDir : Path -> Task (List Path) [DirErr DirErr]
+listDir = \path ->
+    InternalPath.toBytes path
+    |> Effect.dirList
+    |> Effect.map \result ->
+        when result is
+            Ok entries -> Ok (List.map entries InternalPath.fromOsBytes)
+            Err err -> Err (handleErr err)
+    |> InternalTask.fromEffect
+
+## Deletes a directory if it's empty
+##
+## This may fail if:
+##   - the path doesn't exist
+##   - the path is not a directory
+##   - the directory is not empty
+##   - the user lacks permission to remove the directory.
+##
+## > [`Dir.deleteEmpty`](Dir#deleteEmpty) does the same thing, except it takes a [Str] instead of a [Path].
+deleteEmpty : Path -> Task {} [DirErr DirErr]
+deleteEmpty = \path ->
+    InternalPath.toBytes path
+    |> Effect.dirDeleteEmpty
+    |> Effect.map \res -> Result.mapErr res handleErr
+    |> InternalTask.fromEffect
+
+## Recursively deletes a directory as well as all files and directories
+## inside it.
+##
+## This may fail if:
+##   - the path doesn't exist
+##   - the path is not a directory
+##   - the directory is not empty
+##   - the user lacks permission to remove the directory.
+##
+## > [`Dir.deleteAll`](Dir#deleteAll) does the same thing, except it takes a [Str] instead of a [Path].
+deleteAll : Path -> Task {} [DirErr DirErr]
+deleteAll = \path ->
+    InternalPath.toBytes path
+    |> Effect.dirDeleteAll
+    |> Effect.map \res -> Result.mapErr res handleErr
+    |> InternalTask.fromEffect
+
+## Creates a directory
+##
+## This may fail if:
+##   - a parent directory does not exist
+##   - the user lacks permission to create a directory there
+##   - the path already exists.
+##
+## > [`Dir.create`](Dir#create) does the same thing, except it takes a [Str] instead of a [Path].
+createDir : Path -> Task {} [DirErr DirErr]
+createDir = \path ->
+    InternalPath.toBytes path
+    |> Effect.dirCreate
+    |> Effect.map \res -> Result.mapErr res handleErr
+    |> InternalTask.fromEffect
+
+## Creates a directory recursively adding any missing parent directories.
+##
+## This may fail if:
+##   - the user lacks permission to create a directory there
+##   - the path already exists
+##
+## > [`Dir.createAll`](Dir#createAll) does the same thing, except it takes a [Str] instead of a [Path].
+createAll : Path -> Task {} [DirErr DirErr]
+createAll = \path ->
+    InternalPath.toBytes path
+    |> Effect.dirCreateAll
+    |> Effect.map \res -> Result.mapErr res handleErr
+    |> InternalTask.fromEffect
+
+toWriteTask : Path, (List U8 -> Effect (Result ok err)) -> Task ok [FileWriteErr Path err]
+toWriteTask = \path, toEffect ->
+    InternalPath.toBytes path
+    |> toEffect
+    |> InternalTask.fromEffect
+    |> Task.mapErr \err -> FileWriteErr path err
+
+toReadTask : Path, (List U8 -> Effect (Result ok err)) -> Task ok [FileReadErr Path err]
+toReadTask = \path, toEffect ->
+    InternalPath.toBytes path
+    |> toEffect
+    |> InternalTask.fromEffect
+    |> Task.mapErr \err -> FileReadErr path err
+
+# There are othe errors which may be useful, however they are currently unstable
+# features see https://github.com/rust-lang/rust/issues/86442
+# TODO add these when available
+# ErrorKind::NotADirectory => RocStr::from("ErrorKind::NotADirectory"),
+# ErrorKind::IsADirectory => RocStr::from("ErrorKind::IsADirectory"),
+# ErrorKind::DirectoryNotEmpty => RocStr::from("ErrorKind::DirectoryNotEmpty"),
+# ErrorKind::ReadOnlyFilesystem => RocStr::from("ErrorKind::ReadOnlyFilesystem"),
+# ErrorKind::FilesystemLoop => RocStr::from("ErrorKind::FilesystemLoop"),
+# ErrorKind::FilesystemQuotaExceeded => RocStr::from("ErrorKind::FilesystemQuotaExceeded"),
+# ErrorKind::StorageFull => RocStr::from("ErrorKind::StorageFull"),
+# ErrorKind::InvalidFilename => RocStr::from("ErrorKind::InvalidFilename"),
+handleErr = \err ->
+    when err is
+        e if e == "ErrorKind::NotFound" -> DirErr NotFound
+        e if e == "ErrorKind::PermissionDenied" -> DirErr PermissionDenied
+        e if e == "ErrorKind::AlreadyExists" -> DirErr AlreadyExists
+        e if e == "ErrorKind::NotADirectory" -> DirErr NotADirectory
+        str -> DirErr (Other str)

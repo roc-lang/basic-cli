@@ -1,15 +1,17 @@
-interface Utc
-    exposes [
-        Utc,
-        now,
-        toMillisSinceEpoch,
-        fromMillisSinceEpoch,
-        toNanosSinceEpoch,
-        fromNanosSinceEpoch,
-        deltaAsMillis,
-        deltaAsNanos,
-    ]
-    imports [Effect, InternalTask, Task.{ Task }]
+module [
+    Utc,
+    now,
+    toMillisSinceEpoch,
+    fromMillisSinceEpoch,
+    toNanosSinceEpoch,
+    fromNanosSinceEpoch,
+    deltaAsMillis,
+    deltaAsNanos,
+]
+
+import Effect
+import InternalTask
+import Task exposing [Task]
 
 ## Stores a timestamp as nanoseconds since UNIX EPOCH
 Utc := I128 implements [Inspect]

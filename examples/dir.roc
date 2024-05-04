@@ -1,48 +1,39 @@
-app "dir"
-    packages { pf: "../platform/main.roc" }
-    imports [
-        pf.Stdout,
-        pf.Dir.{ MakeErr },
-        pf.Path,
-        pf.Task.{ Task },
-    ]
-    provides [main] to pf
+app [main] { pf: platform "../platform/main.roc" }
+
+import pf.Stdout
+import pf.Dir
+import pf.Path
+import pf.Task exposing [Task]
 
 main =
 
     # Create a directory
-    Dir.create (Path.fromStr "dirExampleE") 
-    |> Task.mapErr! UnableToCreateFirstDir
-    
+    Dir.create "dirExampleE"
+        |> Task.mapErr! UnableToCreateFirstDir
     # Create a directory and its parents
-    Dir.createAll (Path.fromStr "dirExampleA/b/c/child") 
-    |> Task.mapErr! UnableToCreateSubDirs
-
+    Dir.createAll "dirExampleA/b/c/child"
+        |> Task.mapErr! UnableToCreateSubDirs
     # Create a child directory
-    Dir.create (Path.fromStr "dirExampleA/child") 
-    |> Task.mapErr! UnableToCreateChildDir
+    Dir.create "dirExampleA/child"
+        |> Task.mapErr! UnableToCreateChildDir
 
     # List the contents of a directory
     paths =
-        Path.fromStr "dirExampleA"
-        |> Dir.list
-        |> Task.mapErr! FailedToListDir
+        "dirExampleA"
+            |> Dir.list
+            |> Task.mapErr! FailedToListDir
 
     pathsAsStr = List.map paths Path.display
-    
+
     # Check the contents of the directory
     expect pathsAsStr == ["dirExampleA/b", "dirExampleA/child"]
-
     # Try to create a directory without a parent (should fail, ignore error)
-    Dir.create (Path.fromStr "dirExampleD/child")
-    |> Task.onErr! \_ -> Task.ok {}
-
+    Dir.create "dirExampleD/child"
+        |> Task.onErr! \_ -> Task.ok {}
     # Delete an empty directory
-    Dir.deleteEmpty (Path.fromStr "dirExampleE")
-    |> Task.mapErr! UnableToDeleteEmptyDirectory
-    
+    Dir.deleteEmpty "dirExampleE"
+        |> Task.mapErr! UnableToDeleteEmptyDirectory
     # Delete all directories recursively
-    Dir.deleteAll (Path.fromStr "dirExampleA")
-    |> Task.mapErr! UnableToDeleteRecursively
-
+    Dir.deleteAll "dirExampleA"
+        |> Task.mapErr! UnableToDeleteRecursively
     Stdout.line! "Success!"

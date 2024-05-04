@@ -1,25 +1,23 @@
-interface Cmd
-    exposes [
-        Cmd,
-        Output,
-        Err,
-        outputErrToStr,
-        new,
-        arg,
-        args,
-        env,
-        envs,
-        clearEnvs,
-        status,
-        output,
-        exec,
-    ]
-    imports [
-        Task.{ Task },
-        InternalTask,
-        InternalCommand,
-        Effect,
-    ]
+module [
+    Cmd,
+    Output,
+    Err,
+    outputErrToStr,
+    new,
+    arg,
+    args,
+    env,
+    envs,
+    clearEnvs,
+    status,
+    output,
+    exec,
+]
+
+import Task exposing [Task]
+import InternalTask
+import InternalCommand
+import Effect
 
 ## Represents a command to be executed in a child process.
 Cmd := InternalCommand.Command implements [Inspect]
@@ -164,7 +162,7 @@ status = \@Cmd cmd ->
 exec : Str, List Str -> Task {} [CmdError Err]
 exec = \program, arguments ->
 
-    @Cmd cmd = new program |> args arguments
+    (@Cmd cmd) = new program |> args arguments
 
     Effect.commandStatus (Box.box cmd)
     |> InternalTask.fromEffect

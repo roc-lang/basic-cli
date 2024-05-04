@@ -1,8 +1,10 @@
-interface Stdout
-    exposes [line, write, Err]
-    imports [Effect, Task.{ Task }, InternalTask]
+module [line, write, Err]
 
-## **BrokenPipe** - This error can occur when writing to a stdout that is no longer connected 
+import Effect
+import Task exposing [Task]
+import InternalTask
+
+## **BrokenPipe** - This error can occur when writing to a stdout that is no longer connected
 ## to a valid input. For example, if the process on the receiving end of a pipe closes its
 ## end, any write to that pipe could lead to a BrokenPipe error.
 ##
@@ -20,7 +22,7 @@ interface Stdout
 ## **OutOfMemory** - This could occur if there is not enough memory available to buffer the data being
 ## written to stdout.
 ##
-## **Other** - This is a catch-all for any error not specifically categorized by the other ErrorKind 
+## **Other** - This is a catch-all for any error not specifically categorized by the other ErrorKind
 ## variants.
 Err : [
     BrokenPipe,
@@ -32,8 +34,8 @@ Err : [
     Other Str,
 ]
 
-handleErr = \err ->    
-    when err is 
+handleErr = \err ->
+    when err is
         e if e == "ErrorKind::BrokenPipe" -> StdoutErr BrokenPipe
         e if e == "ErrorKind::WouldBlock" -> StdoutErr WouldBlock
         e if e == "ErrorKind::WriteZero" -> StdoutErr WriteZero
