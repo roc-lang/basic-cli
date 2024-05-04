@@ -2,12 +2,14 @@
 ##
 ## Note: we plan on moving this file away from basic-cli in the future, see github.com/roc-lang/basic-cli/issues/73
 ##
-interface Tty
-    exposes [
-        disableRawMode,
-        enableRawMode,
-    ]
-    imports [Effect, Task.{ Task }, InternalTask]
+module [
+    disableRawMode,
+    enableRawMode,
+]
+
+import Effect
+import Task exposing [Task]
+import InternalTask
 
 ## Enable terminal raw mode which disables some default terminal bevahiour.
 ##

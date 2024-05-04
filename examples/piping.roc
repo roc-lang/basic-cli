@@ -1,11 +1,8 @@
-app "piping"
-    packages { pf: "../platform/main.roc" }
-    imports [
-        pf.Stdout,
-        pf.Stdin,
-        pf.Task.{ Task },
-    ]
-    provides [main] to pf
+app [main] { pf: platform "../platform/main.roc" }
+
+import pf.Stdout
+import pf.Stdin
+import pf.Task exposing [Task]
 
 # Try piping in some text like this: `echo -e "test\n123" | roc piping.roc`
 main =

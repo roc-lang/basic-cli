@@ -1,7 +1,8 @@
-app "countdown"
-    packages { pf: "../platform/main.roc" }
-    imports [pf.Stdin, pf.Stdout, pf.Task.{ await, loop }]
-    provides [main] to pf
+app [main] { pf: platform "../platform/main.roc" }
+
+import pf.Stdin
+import pf.Stdout
+import pf.Task exposing [await, loop]
 
 main =
     Stdout.line! "\nLet's count down from 3 together - all you have to do is press <ENTER>."

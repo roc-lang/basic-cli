@@ -1,6 +1,4 @@
-interface InternalHttp
-    exposes [Request, Method, Header, TimeoutConfig, Part, InternalResponse, Error]
-    imports []
+module [Request, Method, Header, TimeoutConfig, Part, InternalResponse, Error]
 
 Request : {
     method : Method,

@@ -1,7 +1,8 @@
-app "echo"
-    packages { pf: "../platform/main.roc" }
-    imports [pf.Stdin, pf.Stdout, pf.Task.{ Task }]
-    provides [main] to pf
+app [main] { pf: platform "../platform/main.roc" }
+
+import pf.Stdin
+import pf.Stdout
+import pf.Task exposing [Task]
 
 main =
     Stdout.line! "Shout into this cave and hear the echo!"
@@ -18,7 +19,7 @@ tick = \{} ->
 echo : Str -> Str
 echo = \shout ->
     silence = \length ->
-        List.repeat '\n' length
+        List.repeat ' ' length
 
     shout
     |> Str.toUtf8

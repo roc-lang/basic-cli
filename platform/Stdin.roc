@@ -1,8 +1,10 @@
-interface Stdin
-    exposes [line,bytes,Err]
-    imports [Effect, Task.{ Task }, InternalTask]
+module [line, bytes, Err]
 
-## **EndOfFile** - This error occurs when an end-of-file (EOF) condition is met unexpectedly 
+import Effect
+import Task exposing [Task]
+import InternalTask
+
+## **EndOfFile** - This error occurs when an end-of-file (EOF) condition is met unexpectedly
 ## during input operations. Typically indicates that no more data is available for reading.
 ##
 ## **BrokenPipe** - This error happens when an attempt to write to a pipe cannot proceed because
@@ -11,16 +13,16 @@ interface Stdin
 ## **UnexpectedEof** - Similar to EndOfFile but specifically refers to cases where the EOF occurs
 ## unexpectedly, possibly indicating truncated or corrupted data streams.
 ##
-## **InvalidInput** - This error is raised when an input operation receives data that is not in a 
+## **InvalidInput** - This error is raised when an input operation receives data that is not in a
 ## valid format, suggesting possible data corruption or a mismatch in expected data format.
 ##
-## **OutOfMemory** - Occurs when an operation fails due to insufficient memory available to 
+## **OutOfMemory** - Occurs when an operation fails due to insufficient memory available to
 ## complete the operation. This can affect data reading, buffering, or processing.
 ##
-## **Interrupted** - This error can happen if an input operation is interrupted by a system 
+## **Interrupted** - This error can happen if an input operation is interrupted by a system
 ## signal before it could complete, often needing a retry or causing the operation to fail.
 ##
-## **Unsupported** - Raised when an operation involves a feature or operation mode that is not 
+## **Unsupported** - Raised when an operation involves a feature or operation mode that is not
 ## supported. This might involve character encodings, data compression formats, etc.
 ##
 ## **Other** - A catch-all category for errors that do not fall into the specified categories.
@@ -36,8 +38,8 @@ Err : [
     Other Str,
 ]
 
-handleErr = \err ->    
-    when err is 
+handleErr = \err ->
+    when err is
         e if e == "EOF" -> StdinErr EndOfFile
         e if e == "ErrorKind::BrokenPipe" -> StdinErr BrokenPipe
         e if e == "ErrorKind::UnexpectedEof" -> StdinErr UnexpectedEof

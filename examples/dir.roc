@@ -1,12 +1,9 @@
-app "dir"
-    packages { pf: "../platform/main.roc" }
-    imports [
-        pf.Stdout,
-        pf.Dir.{ MakeErr },
-        pf.Path,
-        pf.Task.{ Task },
-    ]
-    provides [main] to pf
+app [main] { pf: platform "../platform/main.roc" }
+
+import pf.Stdout
+import pf.Dir
+import pf.Path
+import pf.Task exposing [Task]
 
 main =
 

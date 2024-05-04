@@ -1,6 +1,4 @@
-interface InternalFile
-    exposes [ReadErr, WriteErr]
-    imports []
+module [ReadErr, WriteErr]
 
 ReadErr : [
     NotFound,
