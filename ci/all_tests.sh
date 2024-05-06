@@ -30,11 +30,6 @@ architecture=$(uname -m)
 for roc_file in $EXAMPLES_DIR*.roc; do
     base_file=$(basename "$roc_file")
 
-    # Skip argsBROKEN.roc
-    if [ "$base_file" == "argsBROKEN.roc" ]; then
-        continue
-    fi
-
     # Skip env.roc when on aarch64
     if [ "$architecture" == "aarch64" ] && [ "$base_file" == "env.roc" ]; then
         continue
@@ -46,11 +41,6 @@ done
 # check output
 for roc_file in $EXAMPLES_DIR*.roc; do
     base_file=$(basename "$roc_file")
-
-    # Skip argsBROKEN.roc
-    if [ "$base_file" == "argsBROKEN.roc" ]; then
-        continue
-    fi
 
     # Skip env.roc when on aarch64
     if [ "$architecture" == "aarch64" ] && [ "$base_file" == "env.roc" ]; then
@@ -71,10 +61,9 @@ rm -rf dirExampleD
 for roc_file in $EXAMPLES_DIR*.roc; do
     base_file=$(basename "$roc_file")
 
-    # Skip argsBROKEN.roc
     #      countdown, echo, form, piping, stdin require user input
     #      dir.roc hits `index out of bounds: the len is...`
-    ignore_list=("argsBROKEN.roc" "countdown.roc" "echo.roc" "form.roc" "piping.roc" "stdin.roc")
+    ignore_list=("countdown.roc" "echo.roc" "form.roc" "piping.roc" "stdin.roc")
 
     # check if base_file matches something from ignore_list
     for file in "${ignore_list[@]}"; do
