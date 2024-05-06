@@ -5,12 +5,12 @@
 
 set timeout 7
 
-spawn $env(EXAMPLES_DIR)/args log -b 3 --num 81
+spawn $env(EXAMPLES_DIR)/args div -n 5 -d 20
 
 source ./ci/expect_scripts/shared-code.exp
 
 
-expect "4.000000000000001\r\n" {
+expect "0.25\r\n" {
     expect eof {
         check_exit_and_segfault
     }
