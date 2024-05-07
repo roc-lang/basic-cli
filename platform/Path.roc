@@ -24,7 +24,7 @@ module [
     write,
     readUtf8,
     readBytes,
-    # read, # TODO: investigate the problem with Decoding here
+    # read, TODO fix "Ability specialization is unknown - code generation cannot proceed!: DeriveError(UnboundVar)"
     delete,
     # These can all be found in Dir as well
     listDir,
@@ -530,14 +530,14 @@ delete : Path -> Task {} [FileWriteErr Path WriteErr]
 delete = \path ->
     toWriteTask path \bytes -> Effect.fileDelete bytes
 
-# read :
-#     Path,
-#     fmt
-#     -> Task
-#         Str
-#         [FileReadErr Path ReadErr, FileReadDecodeErr Path [Leftover (List U8)]Decode.DecodeError ]
-#         [Read [File]]
-#     where val implements Decoding, fmt implements DecoderFormatting
+# read : Path, fmt -> Task contents [FileReadErr Path ReadErr, FileReadDecodingFailed] where contents implements Decoding, fmt implements DecoderFormatting
+# read = \path, fmt ->
+#    contents = readBytes! path
+
+#    Decode.fromBytes contents fmt
+#    |> Result.mapErr \_ -> FileReadDecodingFailed
+#    |> Task.fromResult
+
 # read = \path, fmt ->
 #     effect = Effect.map (Effect.fileReadBytes (InternalPath.toBytes path)) \result ->
 #         when result is
