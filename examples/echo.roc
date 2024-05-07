@@ -19,7 +19,7 @@ tick = \{} ->
 echo : Str -> Str
 echo = \shout ->
     silence = \length ->
-        List.repeat '\n' length
+        List.repeat ' ' length
 
     shout
     |> Str.toUtf8
