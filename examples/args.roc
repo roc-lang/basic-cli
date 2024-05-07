@@ -4,7 +4,7 @@ app [main] {
 }
 
 import pf.Stdout
-import pf.Arg
+import pf.Env
 import pf.Task exposing [Task]
 import weaver.Cli
 import weaver.Subcommand
@@ -12,7 +12,7 @@ import weaver.Opt
 import weaver.Param
 
 main =
-    when Cli.parseOrDisplayMessage cli Arg.list! is
+    when Cli.parseOrDisplayMessage cli Env.args! is
         Ok { command: subcommand } ->
             runCommand subcommand
             |> Num.toStr

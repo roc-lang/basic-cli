@@ -1,4 +1,4 @@
-module [cwd, dict, var, decode, exePath, setCwd]
+module [cwd, dict, var, decode, exePath, setCwd, args]
 
 import Task exposing [Task]
 import Path exposing [Path]
@@ -38,6 +38,13 @@ exePath =
                 Err {} -> Err ExePathUnavailable
 
     InternalTask.fromEffect effect
+
+## Gives a list of the program's command-line arguments.
+args : Task (List Str) *
+args =
+    Effect.args
+    |> Effect.map Ok
+    |> InternalTask.fromEffect
 
 ## Reads the given environment variable.
 ##

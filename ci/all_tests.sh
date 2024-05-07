@@ -95,20 +95,16 @@ rm -rf dirExampleD
 
 # `roc test` every roc file if it contains a test, skip roc_nightly folder
 find . -type d -name "roc_nightly" -prune -o -type f -name "*.roc" -print | while read file; do
-    # Arg.roc hits github.com/roc-lang/roc/issues/5701
-    if [[ $file != *"Arg.roc" ]]; then
-    
-        if grep -qE '^\s*expect(\s+|$)' "$file"; then
+    if grep -qE '^\s*expect(\s+|$)' "$file"; then
 
-            # don't exit script if test_command fails
-            set +e
-            test_command=$($ROC test "$file")
-            test_exit_code=$?
-            set -e
+        # don't exit script if test_command fails
+        set +e
+        test_command=$($ROC test "$file")
+        test_exit_code=$?
+        set -e
 
-            if [[ $test_exit_code -ne 0 && $test_exit_code -ne 2 ]]; then
-                exit $test_exit_code
-            fi
+        if [[ $test_exit_code -ne 0 && $test_exit_code -ne 2 ]]; then
+            exit $test_exit_code
         fi
     fi
 done
