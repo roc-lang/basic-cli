@@ -12,6 +12,10 @@ module [
     isFile,
     isSymLink,
     type,
+
+    FD,
+    openBuffered,
+    readLine,
 ]
 
 import Task exposing [Task]
@@ -181,3 +185,32 @@ isSymLink = \path ->
 type : Str -> Task [IsFile, IsDir, IsSymLink] [PathErr MetadataErr]
 type = \path ->
     Path.type (Path.fromStr path)
+
+
+FD := {index: U64, path: Path}
+
+openBuffered : Str -> Task FD [FileReadErr Path ReadErr]
+openBuffered = \pathStr ->
+    import Effect
+    import InternalTask
+
+    path = Path.fromStr pathStr
+
+    Effect.fileOpenBuffered (Str.toUtf8 pathStr)
+    |> Effect.map \result -> 
+        when result is 
+            Ok index -> Ok (@FD {index, path})
+            Err err -> Err (FileReadErr path err)
+    |> InternalTask.fromEffect
+
+readLine : FD -> Task (List U8) [FileReadErr Path Str]
+readLine = \@FD {index, path} ->
+    import Effect
+    import InternalTask
+
+    Effect.fileReadLine index
+    |> Effect.map \result -> 
+        when result is 
+            Ok bytes -> Ok bytes
+            Err err -> Err (FileReadErr path err)
+    |> InternalTask.fromEffect

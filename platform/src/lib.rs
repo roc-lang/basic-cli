@@ -5,12 +5,18 @@ use core::ffi::c_void;
 use core::mem::MaybeUninit;
 use roc_std::{RocDict, RocList, RocResult, RocStr};
 use std::borrow::{Borrow, Cow};
+use std::cell::RefCell;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
 use std::net::TcpStream;
 use std::path::Path;
+use std::rc::Rc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+thread_local! {
+    static READERS: RefCell<Vec<Rc<RefCell<BufReader<File>>>>> = RefCell::new(Vec::new());
+}
 
 extern "C" {
     #[link_name = "roc__mainForHost_1_exposed_generic"]
@@ -543,6 +549,51 @@ pub extern "C" fn roc_fx_fileReadBytes(
         },
         Err(err) => RocResult::err(toRocReadError(err)),
     }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_fileOpenBuffered(
+    roc_path: &RocList<u8>,
+) -> RocResult<u64, roc_app::ReadErr> {
+    match File::open(path_from_roc_path(roc_path)) {
+        Ok(file) => READERS.with(|reader_thread_local| {
+            let mut readers = reader_thread_local.borrow_mut();
+
+            let new_index = readers.len();
+
+            let buf_reader = BufReader::new(file);
+
+            readers.push(Rc::new(RefCell::new(buf_reader)));
+
+            RocResult::ok(new_index as u64)
+        }),
+        Err(err) => RocResult::err(toRocReadError(err)),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_fileReadLine(index: u64) -> RocResult<RocList<u8>, RocStr> {
+    READERS.with(|reader_thread_local| {
+        let readers = reader_thread_local.borrow_mut();
+
+        let file_rc = readers.get(index as usize).unwrap();
+
+        let mut string = String::new();
+
+        let mut file = file_rc.borrow_mut();
+
+        match file.read_line(&mut string) {
+            Ok(bytes_read) => {
+                // return EOF when no bytes read
+                if bytes_read == 0 {
+                    return RocResult::err(RocStr::from("EOF"));
+                }
+
+                RocResult::ok(RocList::from(string.as_bytes()))
+            }
+            Err(err) => RocResult::err(err.to_string().as_str().into()),
+        }
+    })
 }
 
 #[no_mangle]
