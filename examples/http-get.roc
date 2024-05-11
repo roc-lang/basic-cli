@@ -3,6 +3,9 @@ app [main] { pf: platform "../platform/main.roc" }
 import pf.Http
 import pf.Task exposing [Task]
 import pf.Stdout
+import pf.Stderr
+
+# Basic HTTP GET request
 
 main =
     request = {
@@ -14,11 +17,16 @@ main =
         timeout: TimeoutMilliseconds 5000,
     }
 
-    resp = Http.send! request
+    sendResult =
+        Http.send request
+            |> Task.result!
 
-    output =
-        when resp |> Http.handleStringResponse is
-            Err err -> crash (Http.errorToString err)
-            Ok body -> body
+    processedSendResult =
+        Result.try sendResult Http.handleStringResponse
 
-    Stdout.line output
+    when processedSendResult is
+        Ok body ->
+            Stdout.line "Response body:\n\t$(body)."
+
+        Err err ->
+            Stderr.line (Inspect.toStr err)

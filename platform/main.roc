@@ -41,6 +41,13 @@ mainForHost =
                     |> Task.await \{} -> Task.err code
 
             Err err ->
-                line "Program exited early with error: $(Inspect.toStr err)"
+                line
+                    """
+                    Program exited early with error:
+                        $(Inspect.toStr err)
+
+                    Tip: If you do not want an early exit, use `Task.onErr` to "catch" the error.
+                    For an example: <https://github.com/roc-lang/basic-cli/blob/main/examples/http-get.roc>
+                    """
                 |> Task.onErr \_ -> Task.err 1
                 |> Task.await \_ -> Task.err 1
