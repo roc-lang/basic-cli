@@ -2,6 +2,7 @@ platform "cli"
     requires {} { main : Task {} [Exit I32 Str]_ }
     exposes [
         Path,
+        Arg,
         Dir,
         Env,
         File,
