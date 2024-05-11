@@ -66,7 +66,7 @@ rm -rf dirExampleD
 for roc_file in $EXAMPLES_DIR*.roc; do
     base_file=$(basename "$roc_file")
 
-    # countdown, echo, form, piping, stdin all require user input
+    # countdown, echo, form, piping and stdin all require user input
     ignore_list=("countdown.roc" "echo.roc" "form.roc" "piping.roc" "stdin.roc")
 
     # check if base_file matches something from ignore_list
