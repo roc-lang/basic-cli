@@ -10,6 +10,7 @@ module [
     defaultRequest,
     errorToString,
     send,
+    get,
 ]
 
 import Effect
@@ -103,7 +104,7 @@ errorToString = \err ->
 ## |> Result.withDefault "Invalid UTF-8"
 ## |> Stdout.line
 ## ```
-send : Request -> Task Response [HttpError Err]
+send : Request -> Task Response [HttpErr Err]
 send = \req ->
     # TODO: Fix our C ABI codegen so that we don't this Box.box heap allocation
     Effect.sendRequest (Box.box req)
@@ -123,4 +124,12 @@ send = \req ->
                     headers: meta.headers,
                     body,
                 }
-    |> Task.mapErr HttpError
+    |> Task.mapErr HttpErr
+
+get : Str, fmt -> Task body [HttpErr Http.Err, HttpDecodingFailed] where body implements Decoding, fmt implements DecoderFormatting
+get = \url, fmt ->
+    response = send! { defaultRequest & url }
+
+    Decode.fromBytes response.body fmt
+    |> Result.mapErr \_ -> HttpDecodingFailed
+    |> Task.fromResult

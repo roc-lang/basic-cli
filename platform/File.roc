@@ -6,7 +6,7 @@ module [
     write,
     readUtf8,
     readBytes,
-    # read, # TODO: investigate the problem with Decoding here
+    # read, TODO fix "Ability specialization is unknown - code generation cannot proceed!: DeriveError(UnboundVar)"
     delete,
     isDir,
     isFile,
@@ -142,6 +142,10 @@ readBytes = \path ->
 readUtf8 : Str -> Task Str [FileReadErr Path ReadErr, FileReadUtf8Err Path _]
 readUtf8 = \path ->
     Path.readUtf8 (Path.fromStr path)
+
+# read : Str, fmt -> Task contents [FileReadErr Path ReadErr, FileReadDecodingFailed] where contents implements Decoding, fmt implements DecoderFormatting
+# read = \path, fmt ->
+#    Path.read (Path.fromStr path) fmt
 
 ## Returns true if the path exists on disk and is pointing at a directory.
 ## Any error will return false.
