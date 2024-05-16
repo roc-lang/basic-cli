@@ -86,7 +86,11 @@ errorToString = \err ->
         BadRequest e -> "Invalid Request: $(e)"
         Timeout ms -> "Request timed out after $(Num.toStr ms) ms."
         NetworkError -> "Network error."
-        BadStatus code -> "Request failed with status $(Num.toStr code)."
+        BadStatus {code, body} ->
+            # when body |> InternalHttp.responseBodyToUtf8 |> Str.fromUtf8 is
+            when body |> List.takeFirst 50 |> Str.fromUtf8 is
+                Ok bodyStr -> "Request failed with status $(Num.toStr code): $(bodyStr)"
+                Err _ -> "Request failed with status $(Num.toStr code)."
         BadBody details -> "Request failed: Invalid body: $(details)"
 
 ## Task to send an HTTP request, succeeds with a value of [Str] or fails with an
@@ -115,7 +119,11 @@ send = \req ->
             BadRequest str -> Task.err (BadRequest str)
             Timeout u64 -> Task.err (Timeout u64)
             NetworkError -> Task.err NetworkError
-            BadStatus meta _ -> Task.err (BadStatus meta.statusCode)
+            BadStatus meta body -> 
+                Task.err (BadStatus {
+                    code: meta.statusCode,
+                    body,
+                })
             GoodStatus meta body ->
                 Task.ok {
                     url: meta.url,

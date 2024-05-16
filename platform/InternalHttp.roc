@@ -37,6 +37,6 @@ Error : [
     BadRequest Str,
     Timeout U64,
     NetworkError,
-    BadStatus U16,
+    BadStatus { code: U16, body: List U8 },
     BadBody Str,
 ]
