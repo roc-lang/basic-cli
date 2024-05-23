@@ -1,4 +1,4 @@
-module [Request, Method, Header, TimeoutConfig, Part, InternalResponse, Error]
+module [Request, Method, Header, TimeoutConfig, Part, InternalResponse, Error, ErrorBody, errorBodyToUtf8, errorBodyFromUtf8]
 
 Request : {
     method : Method,
@@ -37,6 +37,25 @@ Error : [
     BadRequest Str,
     Timeout U64,
     NetworkError,
-    BadStatus { code: U16, body: List U8 },
+    BadStatus { code : U16, body : ErrorBody },
     BadBody Str,
 ]
+
+ErrorBody := List U8 implements [
+        Inspect {
+            toInspector: errorBodyToInspector,
+        },
+    ]
+
+errorBodyToInspector : ErrorBody -> _
+errorBodyToInspector = \@ErrorBody val ->
+    fmt <- Inspect.custom
+    when val |> List.takeFirst 50 |> Str.fromUtf8 is
+        Ok str -> Inspect.apply (Inspect.str str) fmt
+        Err _ -> Inspect.apply (Inspect.str "Invalid UTF-8 data") fmt
+
+errorBodyToUtf8 : ErrorBody -> List U8
+errorBodyToUtf8 = \@ErrorBody body -> body
+
+errorBodyFromUtf8 : List U8 -> ErrorBody
+errorBodyFromUtf8 = \body -> @ErrorBody body

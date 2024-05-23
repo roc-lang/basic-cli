@@ -9,6 +9,7 @@ module [
     handleStringResponse,
     defaultRequest,
     errorToString,
+    errorBodyToBytes,
     send,
     get,
 ]
@@ -16,7 +17,7 @@ module [
 import Effect
 import InternalTask
 import Task exposing [Task]
-import InternalHttp
+import InternalHttp exposing [errorBodyToUtf8, errorBodyFromUtf8]
 
 ## Represents an HTTP request.
 Request : InternalHttp.Request
@@ -41,6 +42,9 @@ Response : {
 
 ## Represents an HTTP error.
 Err : InternalHttp.Error
+
+## Convert the ErrorBody of a BadStatus error to List U8.
+errorBodyToBytes = errorBodyFromUtf8
 
 ## A default [Request] value.
 ##
@@ -86,11 +90,11 @@ errorToString = \err ->
         BadRequest e -> "Invalid Request: $(e)"
         Timeout ms -> "Request timed out after $(Num.toStr ms) ms."
         NetworkError -> "Network error."
-        BadStatus {code, body} ->
-            # when body |> InternalHttp.responseBodyToUtf8 |> Str.fromUtf8 is
-            when body |> List.takeFirst 50 |> Str.fromUtf8 is
+        BadStatus { code, body } ->
+            when body |> errorBodyToUtf8 |> Str.fromUtf8 is
                 Ok bodyStr -> "Request failed with status $(Num.toStr code): $(bodyStr)"
                 Err _ -> "Request failed with status $(Num.toStr code)."
+
         BadBody details -> "Request failed: Invalid body: $(details)"
 
 ## Task to send an HTTP request, succeeds with a value of [Str] or fails with an
@@ -119,11 +123,15 @@ send = \req ->
             BadRequest str -> Task.err (BadRequest str)
             Timeout u64 -> Task.err (Timeout u64)
             NetworkError -> Task.err NetworkError
-            BadStatus meta body -> 
-                Task.err (BadStatus {
-                    code: meta.statusCode,
-                    body,
-                })
+            BadStatus meta body ->
+                Task.err
+                    (
+                        BadStatus {
+                            code: meta.statusCode,
+                            body: errorBodyFromUtf8 body,
+                        }
+                    )
+
             GoodStatus meta body ->
                 Task.ok {
                     url: meta.url,
