@@ -1,40 +1,32 @@
 app [main] {
     pf: platform "../platform/main.roc",
-    weaver: "https://github.com/smores56/weaver/releases/download/0.2.0/BBDPvzgGrYp-AhIDw0qmwxT0pWZIQP_7KOrUrZfp_xw.tar.br",
 }
 
 import pf.Stdout
-import pf.Arg
 import pf.Task exposing [Task]
-import weaver.Cli
-import weaver.Subcommand
-import weaver.Opt
-import weaver.Param
+import pf.Arg.Cli as Cli
+import pf.Arg.Subcommand as Subcommand
+import pf.Arg.Opt as Opt
+import pf.Arg.Param as Param
+import pf.Arg
 
 main =
-    when Cli.parseOrDisplayMessage cli Arg.list! is
-        Ok { command: subcommand } ->
-            runCommand subcommand
-            |> Num.toStr
-            |> Stdout.line
+    { command: subcommand } = Arg.parse! cli
 
-        Err usage ->
-            Stdout.line! usage
+    result =
+        when subcommand is
+            Max { first, rest } ->
+                rest
+                |> List.walk first \max, n ->
+                    Num.max max n
 
-            Task.err (Exit 1 "") # 1 is an exit code to indicate failure
+            Div { dividend, divisor } ->
+                dividend / divisor
 
-runCommand = \command ->
-    when command is
-        Max { first, rest } ->
-            rest
-            |> List.walk first \max, n ->
-                Num.max max n
-
-        Div { dividend, divisor } ->
-            dividend / divisor
+    Stdout.line (Num.toStr result)
 
 cli =
-    Cli.weave {
+    Cli.build {
         command: <- Subcommand.required [maxSubcommand, divideSubcommand],
     }
     |> Cli.finish {
@@ -45,7 +37,7 @@ cli =
     |> Cli.assertValid
 
 maxSubcommand =
-    Cli.weave {
+    Cli.build {
         # ensure there's at least one parameter provided
         first: <- Param.dec { name: "first", help: "the first number to compare." },
         rest: <- Param.decList { name: "rest", help: "the other numbers to compare." },
@@ -57,7 +49,7 @@ maxSubcommand =
     }
 
 divideSubcommand =
-    Cli.weave {
+    Cli.build {
         dividend: <-
             Opt.dec {
                 short: "n",

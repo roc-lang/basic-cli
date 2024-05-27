@@ -95,9 +95,9 @@ rm -rf dirExampleD
 
 # `roc test` every roc file if it contains a test, skip roc_nightly folder
 find . -type d -name "roc_nightly" -prune -o -type f -name "*.roc" -print | while read file; do
-    # Arg.roc hits github.com/roc-lang/roc/issues/5701
-    if [[ $file != *"Arg.roc" ]]; then
-    
+    # Arg/*.roc hits github.com/roc-lang/roc/issues/5701
+    if ! [[ "$file" =~ Arg/[A-Z][a-zA-Z0-9]*.roc ]]; then
+
         if grep -qE '^\s*expect(\s+|$)' "$file"; then
 
             # don't exit script if test_command fails
