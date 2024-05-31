@@ -16,7 +16,6 @@
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::incorrect_partial_ord_impl_on_ord_type)]
 
-
 #[cfg(target_arch = "aarch64")]
 mod aarch64;
 #[cfg(target_arch = "aarch64")]

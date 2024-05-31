@@ -5,21 +5,10 @@ authors = ["The Roc Contributors"]
 license = "UPL-1.0"
 edition = "2021"
 
-links = "app"
-
-[profile.release]
-lto = true
-strip = "debuginfo"
-codegen-units = 1
-
 [lib]
 name = "roc_host"
 path = "src/lib.rs"
 crate-type = ["lib"]
-
-[[bin]]
-name = "host"
-path = "src/main.rs"
 
 [dependencies]
 roc_std = { path = "../roc_std" }

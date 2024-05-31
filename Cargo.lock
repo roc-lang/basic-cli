@@ -535,6 +535,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "roc_host_bin"
+version = "0.0.1"
+dependencies = [
+ "roc_host",
+]
+
+[[package]]
 name = "roc_std"
 version = "0.0.1"
 dependencies = [

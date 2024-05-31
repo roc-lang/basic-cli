@@ -1,14 +1,15 @@
 [package]
-name = "host"
+name = "roc_host_bin"
 version = "0.0.1"
 authors = ["The Roc Contributors"]
 license = "UPL-1.0"
 edition = "2021"
 
-[lib]
+links = "app"
+
+[[bin]]
 name = "host"
-path = "src/lib.rs"
-crate-type = ["staticlib"]
+path = "src/main.rs"
 
 [dependencies]
 roc_host = { path = "../roc_host" }

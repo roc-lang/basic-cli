@@ -16,8 +16,7 @@
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::incorrect_partial_ord_impl_on_ord_type)]
 
-
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum discriminant_TimeoutConfig {
     NoTimeout = 0,
@@ -28,7 +27,9 @@ impl core::fmt::Debug for discriminant_TimeoutConfig {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::NoTimeout => f.write_str("discriminant_TimeoutConfig::NoTimeout"),
-            Self::TimeoutMilliseconds => f.write_str("discriminant_TimeoutConfig::TimeoutMilliseconds"),
+            Self::TimeoutMilliseconds => {
+                f.write_str("discriminant_TimeoutConfig::TimeoutMilliseconds")
+            }
         }
     }
 }
@@ -39,8 +40,10 @@ pub union union_TimeoutConfig {
     TimeoutMilliseconds: u64,
 }
 
-const _SIZE_CHECK_union_TimeoutConfig: () = assert!(core::mem::size_of::<union_TimeoutConfig>() == 8);
-const _ALIGN_CHECK_union_TimeoutConfig: () = assert!(core::mem::align_of::<union_TimeoutConfig>() == 8);
+const _SIZE_CHECK_union_TimeoutConfig: () =
+    assert!(core::mem::size_of::<union_TimeoutConfig>() == 8);
+const _ALIGN_CHECK_union_TimeoutConfig: () =
+    assert!(core::mem::align_of::<union_TimeoutConfig>() == 8);
 
 const _SIZE_CHECK_TimeoutConfig: () = assert!(core::mem::size_of::<TimeoutConfig>() == 16);
 const _ALIGN_CHECK_TimeoutConfig: () = assert!(core::mem::align_of::<TimeoutConfig>() == 8);
@@ -101,12 +104,16 @@ impl core::fmt::Debug for TimeoutConfig {
             match self.discriminant {
                 NoTimeout => {
                     let field: &() = &self.payload.NoTimeout;
-                    f.debug_tuple("TimeoutConfig::NoTimeout").field(field).finish()
-                },
+                    f.debug_tuple("TimeoutConfig::NoTimeout")
+                        .field(field)
+                        .finish()
+                }
                 TimeoutMilliseconds => {
                     let field: &u64 = &self.payload.TimeoutMilliseconds;
-                    f.debug_tuple("TimeoutConfig::TimeoutMilliseconds").field(field).finish()
-                },
+                    f.debug_tuple("TimeoutConfig::TimeoutMilliseconds")
+                        .field(field)
+                        .finish()
+                }
             }
         }
     }
@@ -125,7 +132,9 @@ impl PartialEq for TimeoutConfig {
         unsafe {
             match self.discriminant {
                 NoTimeout => self.payload.NoTimeout == other.payload.NoTimeout,
-                TimeoutMilliseconds => self.payload.TimeoutMilliseconds == other.payload.TimeoutMilliseconds,
+                TimeoutMilliseconds => {
+                    self.payload.TimeoutMilliseconds == other.payload.TimeoutMilliseconds
+                }
             }
         }
     }
@@ -149,7 +158,10 @@ impl PartialOrd for TimeoutConfig {
             Equal => unsafe {
                 match self.discriminant {
                     NoTimeout => self.payload.NoTimeout.partial_cmp(&other.payload.NoTimeout),
-                    TimeoutMilliseconds => self.payload.TimeoutMilliseconds.partial_cmp(&other.payload.TimeoutMilliseconds),
+                    TimeoutMilliseconds => self
+                        .payload
+                        .TimeoutMilliseconds
+                        .partial_cmp(&other.payload.TimeoutMilliseconds),
                 }
             },
         }
@@ -170,31 +182,31 @@ impl core::hash::Hash for TimeoutConfig {
 }
 
 impl TimeoutConfig {
-
     pub fn is_NoTimeout(&self) -> bool {
         matches!(self.discriminant, discriminant_TimeoutConfig::NoTimeout)
     }
 
     pub fn unwrap_TimeoutMilliseconds(mut self) -> u64 {
-        debug_assert_eq!(self.discriminant, discriminant_TimeoutConfig::TimeoutMilliseconds);
+        debug_assert_eq!(
+            self.discriminant,
+            discriminant_TimeoutConfig::TimeoutMilliseconds
+        );
         unsafe { self.payload.TimeoutMilliseconds }
     }
 
     pub fn is_TimeoutMilliseconds(&self) -> bool {
-        matches!(self.discriminant, discriminant_TimeoutConfig::TimeoutMilliseconds)
+        matches!(
+            self.discriminant,
+            discriminant_TimeoutConfig::TimeoutMilliseconds
+        )
     }
 }
 
-
-
 impl TimeoutConfig {
-
     pub fn NoTimeout() -> Self {
         Self {
             discriminant: discriminant_TimeoutConfig::NoTimeout,
-            payload: union_TimeoutConfig {
-                NoTimeout: (),
-            }
+            payload: union_TimeoutConfig { NoTimeout: () },
         }
     }
 
@@ -203,25 +215,22 @@ impl TimeoutConfig {
             discriminant: discriminant_TimeoutConfig::TimeoutMilliseconds,
             payload: union_TimeoutConfig {
                 TimeoutMilliseconds: payload,
-            }
+            },
         }
     }
 }
 
-#[derive(Clone, Default, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Default, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct Header {
-     f0: roc_std::RocStr,
-     f1: roc_std::RocStr,
+    f0: roc_std::RocStr,
+    f1: roc_std::RocStr,
 }
 
 impl Header {
     /// A tag named ``Header``, with the given payload.
     pub fn Header(f0: roc_std::RocStr, f1: roc_std::RocStr) -> Self {
-        Self {
-            f0,
-            f1
-        }
+        Self { f0, f1 }
     }
 
     /// Since `Header` only has one tag (namely, `Header`),
@@ -237,17 +246,16 @@ impl Header {
     }
 }
 
-
 impl core::fmt::Debug for Header {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_tuple("Header::Header")
-                .field(&self.f0)
-                .field(&self.f1)
-                .finish()
+            .field(&self.f0)
+            .field(&self.f1)
+            .finish()
     }
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum Method {
     Connect = 0,
@@ -277,7 +285,7 @@ impl core::fmt::Debug for Method {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct Request {
     pub timeout: TimeoutConfig,
@@ -288,7 +296,7 @@ pub struct Request {
     pub method: Method,
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct Metadata {
     pub headers: roc_std::RocList<Header>,
@@ -297,14 +305,14 @@ pub struct Metadata {
     pub statusCode: u16,
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct InternalResponse_BadStatus {
     pub f0: Metadata,
     pub f1: roc_std::RocList<u8>,
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum discriminant_InternalResponse {
     BadRequest = 0,
@@ -336,7 +344,8 @@ pub union union_InternalResponse {
 }
 
 // const _SIZE_CHECK_union_InternalResponse: () = assert!(core::mem::size_of::<union_InternalResponse>() == 64);
-const _ALIGN_CHECK_union_InternalResponse: () = assert!(core::mem::align_of::<union_InternalResponse>() == 8);
+const _ALIGN_CHECK_union_InternalResponse: () =
+    assert!(core::mem::align_of::<union_InternalResponse>() == 8);
 
 const _SIZE_CHECK_InternalResponse: () = assert!(core::mem::size_of::<InternalResponse>() == 64);
 const _ALIGN_CHECK_InternalResponse: () = assert!(core::mem::align_of::<InternalResponse>() == 8);
@@ -353,7 +362,8 @@ impl InternalResponse {
 
     /// Internal helper
     fn set_discriminant(&mut self, discriminant: discriminant_InternalResponse) {
-        let discriminant_ptr: *mut discriminant_InternalResponse = (self as *mut InternalResponse).cast();
+        let discriminant_ptr: *mut discriminant_InternalResponse =
+            (self as *mut InternalResponse).cast();
 
         unsafe {
             *(discriminant_ptr.add(56)) = discriminant;
@@ -406,24 +416,34 @@ impl core::fmt::Debug for InternalResponse {
             match self.discriminant {
                 BadRequest => {
                     let field: &roc_std::RocStr = &self.payload.BadRequest;
-                    f.debug_tuple("InternalResponse::BadRequest").field(field).finish()
-                },
+                    f.debug_tuple("InternalResponse::BadRequest")
+                        .field(field)
+                        .finish()
+                }
                 BadStatus => {
                     let field: &InternalResponse_BadStatus = &self.payload.BadStatus;
-                    f.debug_tuple("InternalResponse::BadStatus").field(field).finish()
-                },
+                    f.debug_tuple("InternalResponse::BadStatus")
+                        .field(field)
+                        .finish()
+                }
                 GoodStatus => {
                     let field: &InternalResponse_BadStatus = &self.payload.GoodStatus;
-                    f.debug_tuple("InternalResponse::GoodStatus").field(field).finish()
-                },
+                    f.debug_tuple("InternalResponse::GoodStatus")
+                        .field(field)
+                        .finish()
+                }
                 NetworkError => {
                     let field: &() = &self.payload.NetworkError;
-                    f.debug_tuple("InternalResponse::NetworkError").field(field).finish()
-                },
+                    f.debug_tuple("InternalResponse::NetworkError")
+                        .field(field)
+                        .finish()
+                }
                 Timeout => {
                     let field: &u64 = &self.payload.Timeout;
-                    f.debug_tuple("InternalResponse::Timeout").field(field).finish()
-                },
+                    f.debug_tuple("InternalResponse::Timeout")
+                        .field(field)
+                        .finish()
+                }
             }
         }
     }
@@ -468,10 +488,19 @@ impl PartialOrd for InternalResponse {
             Greater => Option::Some(Greater),
             Equal => unsafe {
                 match self.discriminant {
-                    BadRequest => self.payload.BadRequest.partial_cmp(&other.payload.BadRequest),
+                    BadRequest => self
+                        .payload
+                        .BadRequest
+                        .partial_cmp(&other.payload.BadRequest),
                     BadStatus => self.payload.BadStatus.partial_cmp(&other.payload.BadStatus),
-                    GoodStatus => self.payload.GoodStatus.partial_cmp(&other.payload.GoodStatus),
-                    NetworkError => self.payload.NetworkError.partial_cmp(&other.payload.NetworkError),
+                    GoodStatus => self
+                        .payload
+                        .GoodStatus
+                        .partial_cmp(&other.payload.GoodStatus),
+                    NetworkError => self
+                        .payload
+                        .NetworkError
+                        .partial_cmp(&other.payload.NetworkError),
                     Timeout => self.payload.Timeout.partial_cmp(&other.payload.Timeout),
                 }
             },
@@ -496,7 +525,6 @@ impl core::hash::Hash for InternalResponse {
 }
 
 impl InternalResponse {
-
     pub fn unwrap_BadRequest(mut self) -> roc_std::RocStr {
         debug_assert_eq!(self.discriminant, discriminant_InternalResponse::BadRequest);
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.BadRequest) }
@@ -525,7 +553,10 @@ impl InternalResponse {
     }
 
     pub fn is_NetworkError(&self) -> bool {
-        matches!(self.discriminant, discriminant_InternalResponse::NetworkError)
+        matches!(
+            self.discriminant,
+            discriminant_InternalResponse::NetworkError
+        )
     }
 
     pub fn unwrap_Timeout(mut self) -> u64 {
@@ -538,16 +569,13 @@ impl InternalResponse {
     }
 }
 
-
-
 impl InternalResponse {
-
     pub fn BadRequest(payload: roc_std::RocStr) -> Self {
         Self {
             discriminant: discriminant_InternalResponse::BadRequest,
             payload: union_InternalResponse {
                 BadRequest: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
@@ -556,7 +584,7 @@ impl InternalResponse {
             discriminant: discriminant_InternalResponse::BadStatus,
             payload: union_InternalResponse {
                 BadStatus: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
@@ -565,25 +593,21 @@ impl InternalResponse {
             discriminant: discriminant_InternalResponse::GoodStatus,
             payload: union_InternalResponse {
                 GoodStatus: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
     pub fn NetworkError() -> Self {
         Self {
             discriminant: discriminant_InternalResponse::NetworkError,
-            payload: union_InternalResponse {
-                NetworkError: (),
-            }
+            payload: union_InternalResponse { NetworkError: () },
         }
     }
 
     pub fn Timeout(payload: u64) -> Self {
         Self {
             discriminant: discriminant_InternalResponse::Timeout,
-            payload: union_InternalResponse {
-                Timeout: payload,
-            }
+            payload: union_InternalResponse { Timeout: payload },
         }
     }
 }
@@ -592,16 +616,22 @@ impl Drop for InternalResponse {
     fn drop(&mut self) {
         // Drop the payloads
         match self.discriminant() {
-            discriminant_InternalResponse::BadRequest => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.BadRequest) },
-            discriminant_InternalResponse::BadStatus => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.BadStatus) },
-            discriminant_InternalResponse::GoodStatus => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.GoodStatus) },
+            discriminant_InternalResponse::BadRequest => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.BadRequest)
+            },
+            discriminant_InternalResponse::BadStatus => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.BadStatus)
+            },
+            discriminant_InternalResponse::GoodStatus => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.GoodStatus)
+            },
             discriminant_InternalResponse::NetworkError => {}
             discriminant_InternalResponse::Timeout => {}
         }
     }
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum discriminant_Error {
     BadBody = 0,
@@ -704,23 +734,23 @@ impl core::fmt::Debug for Error {
                 BadBody => {
                     let field: &roc_std::RocStr = &self.payload.BadBody;
                     f.debug_tuple("Error::BadBody").field(field).finish()
-                },
+                }
                 BadRequest => {
                     let field: &roc_std::RocStr = &self.payload.BadRequest;
                     f.debug_tuple("Error::BadRequest").field(field).finish()
-                },
+                }
                 BadStatus => {
                     let field: &u16 = &self.payload.BadStatus;
                     f.debug_tuple("Error::BadStatus").field(field).finish()
-                },
+                }
                 NetworkError => {
                     let field: &() = &self.payload.NetworkError;
                     f.debug_tuple("Error::NetworkError").field(field).finish()
-                },
+                }
                 Timeout => {
                     let field: &u64 = &self.payload.Timeout;
                     f.debug_tuple("Error::Timeout").field(field).finish()
-                },
+                }
             }
         }
     }
@@ -766,9 +796,15 @@ impl PartialOrd for Error {
             Equal => unsafe {
                 match self.discriminant {
                     BadBody => self.payload.BadBody.partial_cmp(&other.payload.BadBody),
-                    BadRequest => self.payload.BadRequest.partial_cmp(&other.payload.BadRequest),
+                    BadRequest => self
+                        .payload
+                        .BadRequest
+                        .partial_cmp(&other.payload.BadRequest),
                     BadStatus => self.payload.BadStatus.partial_cmp(&other.payload.BadStatus),
-                    NetworkError => self.payload.NetworkError.partial_cmp(&other.payload.NetworkError),
+                    NetworkError => self
+                        .payload
+                        .NetworkError
+                        .partial_cmp(&other.payload.NetworkError),
                     Timeout => self.payload.Timeout.partial_cmp(&other.payload.Timeout),
                 }
             },
@@ -793,7 +829,6 @@ impl core::hash::Hash for Error {
 }
 
 impl Error {
-
     pub fn unwrap_BadBody(mut self) -> roc_std::RocStr {
         debug_assert_eq!(self.discriminant, discriminant_Error::BadBody);
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.BadBody) }
@@ -835,16 +870,13 @@ impl Error {
     }
 }
 
-
-
 impl Error {
-
     pub fn BadBody(payload: roc_std::RocStr) -> Self {
         Self {
             discriminant: discriminant_Error::BadBody,
             payload: union_Error {
                 BadBody: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
@@ -853,34 +885,28 @@ impl Error {
             discriminant: discriminant_Error::BadRequest,
             payload: union_Error {
                 BadRequest: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
     pub fn BadStatus(payload: u16) -> Self {
         Self {
             discriminant: discriminant_Error::BadStatus,
-            payload: union_Error {
-                BadStatus: payload,
-            }
+            payload: union_Error { BadStatus: payload },
         }
     }
 
     pub fn NetworkError() -> Self {
         Self {
             discriminant: discriminant_Error::NetworkError,
-            payload: union_Error {
-                NetworkError: (),
-            }
+            payload: union_Error { NetworkError: () },
         }
     }
 
     pub fn Timeout(payload: u64) -> Self {
         Self {
             discriminant: discriminant_Error::Timeout,
-            payload: union_Error {
-                Timeout: payload,
-            }
+            payload: union_Error { Timeout: payload },
         }
     }
 }
@@ -889,8 +915,12 @@ impl Drop for Error {
     fn drop(&mut self) {
         // Drop the payloads
         match self.discriminant() {
-            discriminant_Error::BadBody => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.BadBody) },
-            discriminant_Error::BadRequest => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.BadRequest) },
+            discriminant_Error::BadBody => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.BadBody)
+            },
+            discriminant_Error::BadRequest => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.BadRequest)
+            },
             discriminant_Error::BadStatus => {}
             discriminant_Error::NetworkError => {}
             discriminant_Error::Timeout => {}
@@ -898,14 +928,14 @@ impl Drop for Error {
     }
 }
 
-#[derive(Clone, Default, Debug, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Default, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct ConnectErr_Unrecognized {
     pub f0: i32,
     pub f1: roc_std::RocStr,
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum discriminant_ConnectErr {
     AddrInUse = 0,
@@ -1026,35 +1056,47 @@ impl core::fmt::Debug for ConnectErr {
                 AddrInUse => {
                     let field: &() = &self.payload.AddrInUse;
                     f.debug_tuple("ConnectErr::AddrInUse").field(field).finish()
-                },
+                }
                 AddrNotAvailable => {
                     let field: &() = &self.payload.AddrNotAvailable;
-                    f.debug_tuple("ConnectErr::AddrNotAvailable").field(field).finish()
-                },
+                    f.debug_tuple("ConnectErr::AddrNotAvailable")
+                        .field(field)
+                        .finish()
+                }
                 ConnectionRefused => {
                     let field: &() = &self.payload.ConnectionRefused;
-                    f.debug_tuple("ConnectErr::ConnectionRefused").field(field).finish()
-                },
+                    f.debug_tuple("ConnectErr::ConnectionRefused")
+                        .field(field)
+                        .finish()
+                }
                 Interrupted => {
                     let field: &() = &self.payload.Interrupted;
-                    f.debug_tuple("ConnectErr::Interrupted").field(field).finish()
-                },
+                    f.debug_tuple("ConnectErr::Interrupted")
+                        .field(field)
+                        .finish()
+                }
                 PermissionDenied => {
                     let field: &() = &self.payload.PermissionDenied;
-                    f.debug_tuple("ConnectErr::PermissionDenied").field(field).finish()
-                },
+                    f.debug_tuple("ConnectErr::PermissionDenied")
+                        .field(field)
+                        .finish()
+                }
                 TimedOut => {
                     let field: &() = &self.payload.TimedOut;
                     f.debug_tuple("ConnectErr::TimedOut").field(field).finish()
-                },
+                }
                 Unrecognized => {
                     let field: &ConnectErr_Unrecognized = &self.payload.Unrecognized;
-                    f.debug_tuple("ConnectErr::Unrecognized").field(field).finish()
-                },
+                    f.debug_tuple("ConnectErr::Unrecognized")
+                        .field(field)
+                        .finish()
+                }
                 Unsupported => {
                     let field: &() = &self.payload.Unsupported;
-                    f.debug_tuple("ConnectErr::Unsupported").field(field).finish()
-                },
+                    f.debug_tuple("ConnectErr::Unsupported")
+                        .field(field)
+                        .finish()
+                }
             }
         }
     }
@@ -1074,7 +1116,9 @@ impl PartialEq for ConnectErr {
             match self.discriminant {
                 AddrInUse => self.payload.AddrInUse == other.payload.AddrInUse,
                 AddrNotAvailable => self.payload.AddrNotAvailable == other.payload.AddrNotAvailable,
-                ConnectionRefused => self.payload.ConnectionRefused == other.payload.ConnectionRefused,
+                ConnectionRefused => {
+                    self.payload.ConnectionRefused == other.payload.ConnectionRefused
+                }
                 Interrupted => self.payload.Interrupted == other.payload.Interrupted,
                 PermissionDenied => self.payload.PermissionDenied == other.payload.PermissionDenied,
                 TimedOut => self.payload.TimedOut == other.payload.TimedOut,
@@ -1103,13 +1147,31 @@ impl PartialOrd for ConnectErr {
             Equal => unsafe {
                 match self.discriminant {
                     AddrInUse => self.payload.AddrInUse.partial_cmp(&other.payload.AddrInUse),
-                    AddrNotAvailable => self.payload.AddrNotAvailable.partial_cmp(&other.payload.AddrNotAvailable),
-                    ConnectionRefused => self.payload.ConnectionRefused.partial_cmp(&other.payload.ConnectionRefused),
-                    Interrupted => self.payload.Interrupted.partial_cmp(&other.payload.Interrupted),
-                    PermissionDenied => self.payload.PermissionDenied.partial_cmp(&other.payload.PermissionDenied),
+                    AddrNotAvailable => self
+                        .payload
+                        .AddrNotAvailable
+                        .partial_cmp(&other.payload.AddrNotAvailable),
+                    ConnectionRefused => self
+                        .payload
+                        .ConnectionRefused
+                        .partial_cmp(&other.payload.ConnectionRefused),
+                    Interrupted => self
+                        .payload
+                        .Interrupted
+                        .partial_cmp(&other.payload.Interrupted),
+                    PermissionDenied => self
+                        .payload
+                        .PermissionDenied
+                        .partial_cmp(&other.payload.PermissionDenied),
                     TimedOut => self.payload.TimedOut.partial_cmp(&other.payload.TimedOut),
-                    Unrecognized => self.payload.Unrecognized.partial_cmp(&other.payload.Unrecognized),
-                    Unsupported => self.payload.Unsupported.partial_cmp(&other.payload.Unsupported),
+                    Unrecognized => self
+                        .payload
+                        .Unrecognized
+                        .partial_cmp(&other.payload.Unrecognized),
+                    Unsupported => self
+                        .payload
+                        .Unsupported
+                        .partial_cmp(&other.payload.Unsupported),
                 }
             },
         }
@@ -1136,7 +1198,6 @@ impl core::hash::Hash for ConnectErr {
 }
 
 impl ConnectErr {
-
     pub fn is_AddrInUse(&self) -> bool {
         matches!(self.discriminant, discriminant_ConnectErr::AddrInUse)
     }
@@ -1146,7 +1207,10 @@ impl ConnectErr {
     }
 
     pub fn is_ConnectionRefused(&self) -> bool {
-        matches!(self.discriminant, discriminant_ConnectErr::ConnectionRefused)
+        matches!(
+            self.discriminant,
+            discriminant_ConnectErr::ConnectionRefused
+        )
     }
 
     pub fn is_Interrupted(&self) -> bool {
@@ -1175,16 +1239,11 @@ impl ConnectErr {
     }
 }
 
-
-
 impl ConnectErr {
-
     pub fn AddrInUse() -> Self {
         Self {
             discriminant: discriminant_ConnectErr::AddrInUse,
-            payload: union_ConnectErr {
-                AddrInUse: (),
-            }
+            payload: union_ConnectErr { AddrInUse: () },
         }
     }
 
@@ -1193,7 +1252,7 @@ impl ConnectErr {
             discriminant: discriminant_ConnectErr::AddrNotAvailable,
             payload: union_ConnectErr {
                 AddrNotAvailable: (),
-            }
+            },
         }
     }
 
@@ -1202,16 +1261,14 @@ impl ConnectErr {
             discriminant: discriminant_ConnectErr::ConnectionRefused,
             payload: union_ConnectErr {
                 ConnectionRefused: (),
-            }
+            },
         }
     }
 
     pub fn Interrupted() -> Self {
         Self {
             discriminant: discriminant_ConnectErr::Interrupted,
-            payload: union_ConnectErr {
-                Interrupted: (),
-            }
+            payload: union_ConnectErr { Interrupted: () },
         }
     }
 
@@ -1220,16 +1277,14 @@ impl ConnectErr {
             discriminant: discriminant_ConnectErr::PermissionDenied,
             payload: union_ConnectErr {
                 PermissionDenied: (),
-            }
+            },
         }
     }
 
     pub fn TimedOut() -> Self {
         Self {
             discriminant: discriminant_ConnectErr::TimedOut,
-            payload: union_ConnectErr {
-                TimedOut: (),
-            }
+            payload: union_ConnectErr { TimedOut: () },
         }
     }
 
@@ -1238,16 +1293,14 @@ impl ConnectErr {
             discriminant: discriminant_ConnectErr::Unrecognized,
             payload: union_ConnectErr {
                 Unrecognized: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
     pub fn Unsupported() -> Self {
         Self {
             discriminant: discriminant_ConnectErr::Unsupported,
-            payload: union_ConnectErr {
-                Unsupported: (),
-            }
+            payload: union_ConnectErr { Unsupported: () },
         }
     }
 }
@@ -1262,13 +1315,15 @@ impl Drop for ConnectErr {
             discriminant_ConnectErr::Interrupted => {}
             discriminant_ConnectErr::PermissionDenied => {}
             discriminant_ConnectErr::TimedOut => {}
-            discriminant_ConnectErr::Unrecognized => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.Unrecognized) },
+            discriminant_ConnectErr::Unrecognized => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.Unrecognized)
+            },
             discriminant_ConnectErr::Unsupported => {}
         }
     }
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum discriminant_ConnectResult {
     Connected = 0,
@@ -1290,8 +1345,10 @@ pub union union_ConnectResult {
     Error: core::mem::ManuallyDrop<ConnectErr>,
 }
 
-const _SIZE_CHECK_union_ConnectResult: () = assert!(core::mem::size_of::<union_ConnectResult>() == 24);
-const _ALIGN_CHECK_union_ConnectResult: () = assert!(core::mem::align_of::<union_ConnectResult>() == 8);
+const _SIZE_CHECK_union_ConnectResult: () =
+    assert!(core::mem::size_of::<union_ConnectResult>() == 24);
+const _ALIGN_CHECK_union_ConnectResult: () =
+    assert!(core::mem::align_of::<union_ConnectResult>() == 8);
 
 const _SIZE_CHECK_ConnectResult: () = assert!(core::mem::size_of::<ConnectResult>() == 32);
 const _ALIGN_CHECK_ConnectResult: () = assert!(core::mem::align_of::<ConnectResult>() == 8);
@@ -1352,12 +1409,14 @@ impl core::fmt::Debug for ConnectResult {
             match self.discriminant {
                 Connected => {
                     let field: &u64 = &self.payload.Connected;
-                    f.debug_tuple("ConnectResult::Connected").field(field).finish()
-                },
+                    f.debug_tuple("ConnectResult::Connected")
+                        .field(field)
+                        .finish()
+                }
                 Error => {
                     let field: &ConnectErr = &self.payload.Error;
                     f.debug_tuple("ConnectResult::Error").field(field).finish()
-                },
+                }
             }
         }
     }
@@ -1421,7 +1480,6 @@ impl core::hash::Hash for ConnectResult {
 }
 
 impl ConnectResult {
-
     pub fn unwrap_Connected(mut self) -> u64 {
         debug_assert_eq!(self.discriminant, discriminant_ConnectResult::Connected);
         unsafe { self.payload.Connected }
@@ -1441,16 +1499,11 @@ impl ConnectResult {
     }
 }
 
-
-
 impl ConnectResult {
-
     pub fn Connected(payload: u64) -> Self {
         Self {
             discriminant: discriminant_ConnectResult::Connected,
-            payload: union_ConnectResult {
-                Connected: payload,
-            }
+            payload: union_ConnectResult { Connected: payload },
         }
     }
 
@@ -1459,7 +1512,7 @@ impl ConnectResult {
             discriminant: discriminant_ConnectResult::Error,
             payload: union_ConnectResult {
                 Error: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 }
@@ -1469,12 +1522,14 @@ impl Drop for ConnectResult {
         // Drop the payloads
         match self.discriminant() {
             discriminant_ConnectResult::Connected => {}
-            discriminant_ConnectResult::Error => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.Error) },
+            discriminant_ConnectResult::Error => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.Error)
+            },
         }
     }
 }
 
-#[derive(Clone, Default, Debug, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Default, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct Command {
     pub args: roc_std::RocList<roc_std::RocStr>,
@@ -1483,7 +1538,7 @@ pub struct Command {
     pub clearEnvs: bool,
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum discriminant_CommandErr {
     ExitCode = 0,
@@ -1574,15 +1629,17 @@ impl core::fmt::Debug for CommandErr {
                 ExitCode => {
                     let field: &i32 = &self.payload.ExitCode;
                     f.debug_tuple("CommandErr::ExitCode").field(field).finish()
-                },
+                }
                 IOError => {
                     let field: &roc_std::RocStr = &self.payload.IOError;
                     f.debug_tuple("CommandErr::IOError").field(field).finish()
-                },
+                }
                 KilledBySignal => {
                     let field: &() = &self.payload.KilledBySignal;
-                    f.debug_tuple("CommandErr::KilledBySignal").field(field).finish()
-                },
+                    f.debug_tuple("CommandErr::KilledBySignal")
+                        .field(field)
+                        .finish()
+                }
             }
         }
     }
@@ -1627,7 +1684,10 @@ impl PartialOrd for CommandErr {
                 match self.discriminant {
                     ExitCode => self.payload.ExitCode.partial_cmp(&other.payload.ExitCode),
                     IOError => self.payload.IOError.partial_cmp(&other.payload.IOError),
-                    KilledBySignal => self.payload.KilledBySignal.partial_cmp(&other.payload.KilledBySignal),
+                    KilledBySignal => self
+                        .payload
+                        .KilledBySignal
+                        .partial_cmp(&other.payload.KilledBySignal),
                 }
             },
         }
@@ -1649,7 +1709,6 @@ impl core::hash::Hash for CommandErr {
 }
 
 impl CommandErr {
-
     pub fn unwrap_ExitCode(mut self) -> i32 {
         debug_assert_eq!(self.discriminant, discriminant_CommandErr::ExitCode);
         unsafe { self.payload.ExitCode }
@@ -1673,16 +1732,11 @@ impl CommandErr {
     }
 }
 
-
-
 impl CommandErr {
-
     pub fn ExitCode(payload: i32) -> Self {
         Self {
             discriminant: discriminant_CommandErr::ExitCode,
-            payload: union_CommandErr {
-                ExitCode: payload,
-            }
+            payload: union_CommandErr { ExitCode: payload },
         }
     }
 
@@ -1691,16 +1745,14 @@ impl CommandErr {
             discriminant: discriminant_CommandErr::IOError,
             payload: union_CommandErr {
                 IOError: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
     pub fn KilledBySignal() -> Self {
         Self {
             discriminant: discriminant_CommandErr::KilledBySignal,
-            payload: union_CommandErr {
-                KilledBySignal: (),
-            }
+            payload: union_CommandErr { KilledBySignal: () },
         }
     }
 }
@@ -1710,13 +1762,15 @@ impl Drop for CommandErr {
         // Drop the payloads
         match self.discriminant() {
             discriminant_CommandErr::ExitCode => {}
-            discriminant_CommandErr::IOError => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.IOError) },
+            discriminant_CommandErr::IOError => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.IOError)
+            },
             discriminant_CommandErr::KilledBySignal => {}
         }
     }
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct Output {
     pub status: roc_std::RocResult<(), CommandErr>,
@@ -1724,7 +1778,7 @@ pub struct Output {
     pub stdout: roc_std::RocList<u8>,
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum discriminant_ReadErr {
     Interrupted = 0,
@@ -1748,7 +1802,9 @@ impl core::fmt::Debug for discriminant_ReadErr {
             Self::NotFound => f.write_str("discriminant_ReadErr::NotFound"),
             Self::OutOfMemory => f.write_str("discriminant_ReadErr::OutOfMemory"),
             Self::PermissionDenied => f.write_str("discriminant_ReadErr::PermissionDenied"),
-            Self::StaleNetworkFileHandle => f.write_str("discriminant_ReadErr::StaleNetworkFileHandle"),
+            Self::StaleNetworkFileHandle => {
+                f.write_str("discriminant_ReadErr::StaleNetworkFileHandle")
+            }
             Self::TimedOut => f.write_str("discriminant_ReadErr::TimedOut"),
             Self::TooManyHardlinks => f.write_str("discriminant_ReadErr::TooManyHardlinks"),
             Self::TooManySymlinks => f.write_str("discriminant_ReadErr::TooManySymlinks"),
@@ -1863,47 +1919,57 @@ impl core::fmt::Debug for ReadErr {
                 Interrupted => {
                     let field: &() = &self.payload.Interrupted;
                     f.debug_tuple("ReadErr::Interrupted").field(field).finish()
-                },
+                }
                 InvalidFilename => {
                     let field: &() = &self.payload.InvalidFilename;
-                    f.debug_tuple("ReadErr::InvalidFilename").field(field).finish()
-                },
+                    f.debug_tuple("ReadErr::InvalidFilename")
+                        .field(field)
+                        .finish()
+                }
                 NotFound => {
                     let field: &() = &self.payload.NotFound;
                     f.debug_tuple("ReadErr::NotFound").field(field).finish()
-                },
+                }
                 OutOfMemory => {
                     let field: &() = &self.payload.OutOfMemory;
                     f.debug_tuple("ReadErr::OutOfMemory").field(field).finish()
-                },
+                }
                 PermissionDenied => {
                     let field: &() = &self.payload.PermissionDenied;
-                    f.debug_tuple("ReadErr::PermissionDenied").field(field).finish()
-                },
+                    f.debug_tuple("ReadErr::PermissionDenied")
+                        .field(field)
+                        .finish()
+                }
                 StaleNetworkFileHandle => {
                     let field: &() = &self.payload.StaleNetworkFileHandle;
-                    f.debug_tuple("ReadErr::StaleNetworkFileHandle").field(field).finish()
-                },
+                    f.debug_tuple("ReadErr::StaleNetworkFileHandle")
+                        .field(field)
+                        .finish()
+                }
                 TimedOut => {
                     let field: &() = &self.payload.TimedOut;
                     f.debug_tuple("ReadErr::TimedOut").field(field).finish()
-                },
+                }
                 TooManyHardlinks => {
                     let field: &() = &self.payload.TooManyHardlinks;
-                    f.debug_tuple("ReadErr::TooManyHardlinks").field(field).finish()
-                },
+                    f.debug_tuple("ReadErr::TooManyHardlinks")
+                        .field(field)
+                        .finish()
+                }
                 TooManySymlinks => {
                     let field: &() = &self.payload.TooManySymlinks;
-                    f.debug_tuple("ReadErr::TooManySymlinks").field(field).finish()
-                },
+                    f.debug_tuple("ReadErr::TooManySymlinks")
+                        .field(field)
+                        .finish()
+                }
                 Unrecognized => {
                     let field: &ConnectErr_Unrecognized = &self.payload.Unrecognized;
                     f.debug_tuple("ReadErr::Unrecognized").field(field).finish()
-                },
+                }
                 Unsupported => {
                     let field: &() = &self.payload.Unsupported;
                     f.debug_tuple("ReadErr::Unsupported").field(field).finish()
-                },
+                }
             }
         }
     }
@@ -1926,7 +1992,9 @@ impl PartialEq for ReadErr {
                 NotFound => self.payload.NotFound == other.payload.NotFound,
                 OutOfMemory => self.payload.OutOfMemory == other.payload.OutOfMemory,
                 PermissionDenied => self.payload.PermissionDenied == other.payload.PermissionDenied,
-                StaleNetworkFileHandle => self.payload.StaleNetworkFileHandle == other.payload.StaleNetworkFileHandle,
+                StaleNetworkFileHandle => {
+                    self.payload.StaleNetworkFileHandle == other.payload.StaleNetworkFileHandle
+                }
                 TimedOut => self.payload.TimedOut == other.payload.TimedOut,
                 TooManyHardlinks => self.payload.TooManyHardlinks == other.payload.TooManyHardlinks,
                 TooManySymlinks => self.payload.TooManySymlinks == other.payload.TooManySymlinks,
@@ -1954,17 +2022,44 @@ impl PartialOrd for ReadErr {
             Greater => Option::Some(Greater),
             Equal => unsafe {
                 match self.discriminant {
-                    Interrupted => self.payload.Interrupted.partial_cmp(&other.payload.Interrupted),
-                    InvalidFilename => self.payload.InvalidFilename.partial_cmp(&other.payload.InvalidFilename),
+                    Interrupted => self
+                        .payload
+                        .Interrupted
+                        .partial_cmp(&other.payload.Interrupted),
+                    InvalidFilename => self
+                        .payload
+                        .InvalidFilename
+                        .partial_cmp(&other.payload.InvalidFilename),
                     NotFound => self.payload.NotFound.partial_cmp(&other.payload.NotFound),
-                    OutOfMemory => self.payload.OutOfMemory.partial_cmp(&other.payload.OutOfMemory),
-                    PermissionDenied => self.payload.PermissionDenied.partial_cmp(&other.payload.PermissionDenied),
-                    StaleNetworkFileHandle => self.payload.StaleNetworkFileHandle.partial_cmp(&other.payload.StaleNetworkFileHandle),
+                    OutOfMemory => self
+                        .payload
+                        .OutOfMemory
+                        .partial_cmp(&other.payload.OutOfMemory),
+                    PermissionDenied => self
+                        .payload
+                        .PermissionDenied
+                        .partial_cmp(&other.payload.PermissionDenied),
+                    StaleNetworkFileHandle => self
+                        .payload
+                        .StaleNetworkFileHandle
+                        .partial_cmp(&other.payload.StaleNetworkFileHandle),
                     TimedOut => self.payload.TimedOut.partial_cmp(&other.payload.TimedOut),
-                    TooManyHardlinks => self.payload.TooManyHardlinks.partial_cmp(&other.payload.TooManyHardlinks),
-                    TooManySymlinks => self.payload.TooManySymlinks.partial_cmp(&other.payload.TooManySymlinks),
-                    Unrecognized => self.payload.Unrecognized.partial_cmp(&other.payload.Unrecognized),
-                    Unsupported => self.payload.Unsupported.partial_cmp(&other.payload.Unsupported),
+                    TooManyHardlinks => self
+                        .payload
+                        .TooManyHardlinks
+                        .partial_cmp(&other.payload.TooManyHardlinks),
+                    TooManySymlinks => self
+                        .payload
+                        .TooManySymlinks
+                        .partial_cmp(&other.payload.TooManySymlinks),
+                    Unrecognized => self
+                        .payload
+                        .Unrecognized
+                        .partial_cmp(&other.payload.Unrecognized),
+                    Unsupported => self
+                        .payload
+                        .Unsupported
+                        .partial_cmp(&other.payload.Unsupported),
                 }
             },
         }
@@ -1994,7 +2089,6 @@ impl core::hash::Hash for ReadErr {
 }
 
 impl ReadErr {
-
     pub fn is_Interrupted(&self) -> bool {
         matches!(self.discriminant, discriminant_ReadErr::Interrupted)
     }
@@ -2016,7 +2110,10 @@ impl ReadErr {
     }
 
     pub fn is_StaleNetworkFileHandle(&self) -> bool {
-        matches!(self.discriminant, discriminant_ReadErr::StaleNetworkFileHandle)
+        matches!(
+            self.discriminant,
+            discriminant_ReadErr::StaleNetworkFileHandle
+        )
     }
 
     pub fn is_TimedOut(&self) -> bool {
@@ -2045,16 +2142,11 @@ impl ReadErr {
     }
 }
 
-
-
 impl ReadErr {
-
     pub fn Interrupted() -> Self {
         Self {
             discriminant: discriminant_ReadErr::Interrupted,
-            payload: union_ReadErr {
-                Interrupted: (),
-            }
+            payload: union_ReadErr { Interrupted: () },
         }
     }
 
@@ -2063,25 +2155,21 @@ impl ReadErr {
             discriminant: discriminant_ReadErr::InvalidFilename,
             payload: union_ReadErr {
                 InvalidFilename: (),
-            }
+            },
         }
     }
 
     pub fn NotFound() -> Self {
         Self {
             discriminant: discriminant_ReadErr::NotFound,
-            payload: union_ReadErr {
-                NotFound: (),
-            }
+            payload: union_ReadErr { NotFound: () },
         }
     }
 
     pub fn OutOfMemory() -> Self {
         Self {
             discriminant: discriminant_ReadErr::OutOfMemory,
-            payload: union_ReadErr {
-                OutOfMemory: (),
-            }
+            payload: union_ReadErr { OutOfMemory: () },
         }
     }
 
@@ -2090,7 +2178,7 @@ impl ReadErr {
             discriminant: discriminant_ReadErr::PermissionDenied,
             payload: union_ReadErr {
                 PermissionDenied: (),
-            }
+            },
         }
     }
 
@@ -2099,16 +2187,14 @@ impl ReadErr {
             discriminant: discriminant_ReadErr::StaleNetworkFileHandle,
             payload: union_ReadErr {
                 StaleNetworkFileHandle: (),
-            }
+            },
         }
     }
 
     pub fn TimedOut() -> Self {
         Self {
             discriminant: discriminant_ReadErr::TimedOut,
-            payload: union_ReadErr {
-                TimedOut: (),
-            }
+            payload: union_ReadErr { TimedOut: () },
         }
     }
 
@@ -2117,7 +2203,7 @@ impl ReadErr {
             discriminant: discriminant_ReadErr::TooManyHardlinks,
             payload: union_ReadErr {
                 TooManyHardlinks: (),
-            }
+            },
         }
     }
 
@@ -2126,7 +2212,7 @@ impl ReadErr {
             discriminant: discriminant_ReadErr::TooManySymlinks,
             payload: union_ReadErr {
                 TooManySymlinks: (),
-            }
+            },
         }
     }
 
@@ -2135,16 +2221,14 @@ impl ReadErr {
             discriminant: discriminant_ReadErr::Unrecognized,
             payload: union_ReadErr {
                 Unrecognized: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
     pub fn Unsupported() -> Self {
         Self {
             discriminant: discriminant_ReadErr::Unsupported,
-            payload: union_ReadErr {
-                Unsupported: (),
-            }
+            payload: union_ReadErr { Unsupported: () },
         }
     }
 }
@@ -2162,13 +2246,15 @@ impl Drop for ReadErr {
             discriminant_ReadErr::TimedOut => {}
             discriminant_ReadErr::TooManyHardlinks => {}
             discriminant_ReadErr::TooManySymlinks => {}
-            discriminant_ReadErr::Unrecognized => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.Unrecognized) },
+            discriminant_ReadErr::Unrecognized => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.Unrecognized)
+            },
             discriminant_ReadErr::Unsupported => {}
         }
     }
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum discriminant_WriteErr {
     AlreadyExists = 0,
@@ -2199,7 +2285,9 @@ impl core::fmt::Debug for discriminant_WriteErr {
             Self::AlreadyExists => f.write_str("discriminant_WriteErr::AlreadyExists"),
             Self::ExecutableFileBusy => f.write_str("discriminant_WriteErr::ExecutableFileBusy"),
             Self::FileTooLarge => f.write_str("discriminant_WriteErr::FileTooLarge"),
-            Self::FilesystemQuotaExceeded => f.write_str("discriminant_WriteErr::FilesystemQuotaExceeded"),
+            Self::FilesystemQuotaExceeded => {
+                f.write_str("discriminant_WriteErr::FilesystemQuotaExceeded")
+            }
             Self::Interrupted => f.write_str("discriminant_WriteErr::Interrupted"),
             Self::InvalidFilename => f.write_str("discriminant_WriteErr::InvalidFilename"),
             Self::NotFound => f.write_str("discriminant_WriteErr::NotFound"),
@@ -2207,7 +2295,9 @@ impl core::fmt::Debug for discriminant_WriteErr {
             Self::PermissionDenied => f.write_str("discriminant_WriteErr::PermissionDenied"),
             Self::ReadOnlyFilesystem => f.write_str("discriminant_WriteErr::ReadOnlyFilesystem"),
             Self::ResourceBusy => f.write_str("discriminant_WriteErr::ResourceBusy"),
-            Self::StaleNetworkFileHandle => f.write_str("discriminant_WriteErr::StaleNetworkFileHandle"),
+            Self::StaleNetworkFileHandle => {
+                f.write_str("discriminant_WriteErr::StaleNetworkFileHandle")
+            }
             Self::StorageFull => f.write_str("discriminant_WriteErr::StorageFull"),
             Self::TimedOut => f.write_str("discriminant_WriteErr::TimedOut"),
             Self::TooManyHardlinks => f.write_str("discriminant_WriteErr::TooManyHardlinks"),
@@ -2360,84 +2450,110 @@ impl core::fmt::Debug for WriteErr {
             match self.discriminant {
                 AlreadyExists => {
                     let field: &() = &self.payload.AlreadyExists;
-                    f.debug_tuple("WriteErr::AlreadyExists").field(field).finish()
-                },
+                    f.debug_tuple("WriteErr::AlreadyExists")
+                        .field(field)
+                        .finish()
+                }
                 ExecutableFileBusy => {
                     let field: &() = &self.payload.ExecutableFileBusy;
-                    f.debug_tuple("WriteErr::ExecutableFileBusy").field(field).finish()
-                },
+                    f.debug_tuple("WriteErr::ExecutableFileBusy")
+                        .field(field)
+                        .finish()
+                }
                 FileTooLarge => {
                     let field: &() = &self.payload.FileTooLarge;
-                    f.debug_tuple("WriteErr::FileTooLarge").field(field).finish()
-                },
+                    f.debug_tuple("WriteErr::FileTooLarge")
+                        .field(field)
+                        .finish()
+                }
                 FilesystemQuotaExceeded => {
                     let field: &() = &self.payload.FilesystemQuotaExceeded;
-                    f.debug_tuple("WriteErr::FilesystemQuotaExceeded").field(field).finish()
-                },
+                    f.debug_tuple("WriteErr::FilesystemQuotaExceeded")
+                        .field(field)
+                        .finish()
+                }
                 Interrupted => {
                     let field: &() = &self.payload.Interrupted;
                     f.debug_tuple("WriteErr::Interrupted").field(field).finish()
-                },
+                }
                 InvalidFilename => {
                     let field: &() = &self.payload.InvalidFilename;
-                    f.debug_tuple("WriteErr::InvalidFilename").field(field).finish()
-                },
+                    f.debug_tuple("WriteErr::InvalidFilename")
+                        .field(field)
+                        .finish()
+                }
                 NotFound => {
                     let field: &() = &self.payload.NotFound;
                     f.debug_tuple("WriteErr::NotFound").field(field).finish()
-                },
+                }
                 OutOfMemory => {
                     let field: &() = &self.payload.OutOfMemory;
                     f.debug_tuple("WriteErr::OutOfMemory").field(field).finish()
-                },
+                }
                 PermissionDenied => {
                     let field: &() = &self.payload.PermissionDenied;
-                    f.debug_tuple("WriteErr::PermissionDenied").field(field).finish()
-                },
+                    f.debug_tuple("WriteErr::PermissionDenied")
+                        .field(field)
+                        .finish()
+                }
                 ReadOnlyFilesystem => {
                     let field: &() = &self.payload.ReadOnlyFilesystem;
-                    f.debug_tuple("WriteErr::ReadOnlyFilesystem").field(field).finish()
-                },
+                    f.debug_tuple("WriteErr::ReadOnlyFilesystem")
+                        .field(field)
+                        .finish()
+                }
                 ResourceBusy => {
                     let field: &() = &self.payload.ResourceBusy;
-                    f.debug_tuple("WriteErr::ResourceBusy").field(field).finish()
-                },
+                    f.debug_tuple("WriteErr::ResourceBusy")
+                        .field(field)
+                        .finish()
+                }
                 StaleNetworkFileHandle => {
                     let field: &() = &self.payload.StaleNetworkFileHandle;
-                    f.debug_tuple("WriteErr::StaleNetworkFileHandle").field(field).finish()
-                },
+                    f.debug_tuple("WriteErr::StaleNetworkFileHandle")
+                        .field(field)
+                        .finish()
+                }
                 StorageFull => {
                     let field: &() = &self.payload.StorageFull;
                     f.debug_tuple("WriteErr::StorageFull").field(field).finish()
-                },
+                }
                 TimedOut => {
                     let field: &() = &self.payload.TimedOut;
                     f.debug_tuple("WriteErr::TimedOut").field(field).finish()
-                },
+                }
                 TooManyHardlinks => {
                     let field: &() = &self.payload.TooManyHardlinks;
-                    f.debug_tuple("WriteErr::TooManyHardlinks").field(field).finish()
-                },
+                    f.debug_tuple("WriteErr::TooManyHardlinks")
+                        .field(field)
+                        .finish()
+                }
                 TooManySymlinks => {
                     let field: &() = &self.payload.TooManySymlinks;
-                    f.debug_tuple("WriteErr::TooManySymlinks").field(field).finish()
-                },
+                    f.debug_tuple("WriteErr::TooManySymlinks")
+                        .field(field)
+                        .finish()
+                }
                 Unrecognized => {
                     let field: &ConnectErr_Unrecognized = &self.payload.Unrecognized;
-                    f.debug_tuple("WriteErr::Unrecognized").field(field).finish()
-                },
+                    f.debug_tuple("WriteErr::Unrecognized")
+                        .field(field)
+                        .finish()
+                }
                 Unsupported => {
                     let field: &() = &self.payload.Unsupported;
                     f.debug_tuple("WriteErr::Unsupported").field(field).finish()
-                },
+                }
                 WasADirectory => {
                     let field: &() = &self.payload.WasADirectory;
-                    f.debug_tuple("WriteErr::WasADirectory").field(field).finish()
-                },
+                    f.debug_tuple("WriteErr::WasADirectory")
+                        .field(field)
+                        .finish()
+                }
                 WriteZero => {
                     let field: &() = &self.payload.WriteZero;
                     f.debug_tuple("WriteErr::WriteZero").field(field).finish()
-                },
+                }
             }
         }
     }
@@ -2456,17 +2572,25 @@ impl PartialEq for WriteErr {
         unsafe {
             match self.discriminant {
                 AlreadyExists => self.payload.AlreadyExists == other.payload.AlreadyExists,
-                ExecutableFileBusy => self.payload.ExecutableFileBusy == other.payload.ExecutableFileBusy,
+                ExecutableFileBusy => {
+                    self.payload.ExecutableFileBusy == other.payload.ExecutableFileBusy
+                }
                 FileTooLarge => self.payload.FileTooLarge == other.payload.FileTooLarge,
-                FilesystemQuotaExceeded => self.payload.FilesystemQuotaExceeded == other.payload.FilesystemQuotaExceeded,
+                FilesystemQuotaExceeded => {
+                    self.payload.FilesystemQuotaExceeded == other.payload.FilesystemQuotaExceeded
+                }
                 Interrupted => self.payload.Interrupted == other.payload.Interrupted,
                 InvalidFilename => self.payload.InvalidFilename == other.payload.InvalidFilename,
                 NotFound => self.payload.NotFound == other.payload.NotFound,
                 OutOfMemory => self.payload.OutOfMemory == other.payload.OutOfMemory,
                 PermissionDenied => self.payload.PermissionDenied == other.payload.PermissionDenied,
-                ReadOnlyFilesystem => self.payload.ReadOnlyFilesystem == other.payload.ReadOnlyFilesystem,
+                ReadOnlyFilesystem => {
+                    self.payload.ReadOnlyFilesystem == other.payload.ReadOnlyFilesystem
+                }
                 ResourceBusy => self.payload.ResourceBusy == other.payload.ResourceBusy,
-                StaleNetworkFileHandle => self.payload.StaleNetworkFileHandle == other.payload.StaleNetworkFileHandle,
+                StaleNetworkFileHandle => {
+                    self.payload.StaleNetworkFileHandle == other.payload.StaleNetworkFileHandle
+                }
                 StorageFull => self.payload.StorageFull == other.payload.StorageFull,
                 TimedOut => self.payload.TimedOut == other.payload.TimedOut,
                 TooManyHardlinks => self.payload.TooManyHardlinks == other.payload.TooManyHardlinks,
@@ -2497,25 +2621,76 @@ impl PartialOrd for WriteErr {
             Greater => Option::Some(Greater),
             Equal => unsafe {
                 match self.discriminant {
-                    AlreadyExists => self.payload.AlreadyExists.partial_cmp(&other.payload.AlreadyExists),
-                    ExecutableFileBusy => self.payload.ExecutableFileBusy.partial_cmp(&other.payload.ExecutableFileBusy),
-                    FileTooLarge => self.payload.FileTooLarge.partial_cmp(&other.payload.FileTooLarge),
-                    FilesystemQuotaExceeded => self.payload.FilesystemQuotaExceeded.partial_cmp(&other.payload.FilesystemQuotaExceeded),
-                    Interrupted => self.payload.Interrupted.partial_cmp(&other.payload.Interrupted),
-                    InvalidFilename => self.payload.InvalidFilename.partial_cmp(&other.payload.InvalidFilename),
+                    AlreadyExists => self
+                        .payload
+                        .AlreadyExists
+                        .partial_cmp(&other.payload.AlreadyExists),
+                    ExecutableFileBusy => self
+                        .payload
+                        .ExecutableFileBusy
+                        .partial_cmp(&other.payload.ExecutableFileBusy),
+                    FileTooLarge => self
+                        .payload
+                        .FileTooLarge
+                        .partial_cmp(&other.payload.FileTooLarge),
+                    FilesystemQuotaExceeded => self
+                        .payload
+                        .FilesystemQuotaExceeded
+                        .partial_cmp(&other.payload.FilesystemQuotaExceeded),
+                    Interrupted => self
+                        .payload
+                        .Interrupted
+                        .partial_cmp(&other.payload.Interrupted),
+                    InvalidFilename => self
+                        .payload
+                        .InvalidFilename
+                        .partial_cmp(&other.payload.InvalidFilename),
                     NotFound => self.payload.NotFound.partial_cmp(&other.payload.NotFound),
-                    OutOfMemory => self.payload.OutOfMemory.partial_cmp(&other.payload.OutOfMemory),
-                    PermissionDenied => self.payload.PermissionDenied.partial_cmp(&other.payload.PermissionDenied),
-                    ReadOnlyFilesystem => self.payload.ReadOnlyFilesystem.partial_cmp(&other.payload.ReadOnlyFilesystem),
-                    ResourceBusy => self.payload.ResourceBusy.partial_cmp(&other.payload.ResourceBusy),
-                    StaleNetworkFileHandle => self.payload.StaleNetworkFileHandle.partial_cmp(&other.payload.StaleNetworkFileHandle),
-                    StorageFull => self.payload.StorageFull.partial_cmp(&other.payload.StorageFull),
+                    OutOfMemory => self
+                        .payload
+                        .OutOfMemory
+                        .partial_cmp(&other.payload.OutOfMemory),
+                    PermissionDenied => self
+                        .payload
+                        .PermissionDenied
+                        .partial_cmp(&other.payload.PermissionDenied),
+                    ReadOnlyFilesystem => self
+                        .payload
+                        .ReadOnlyFilesystem
+                        .partial_cmp(&other.payload.ReadOnlyFilesystem),
+                    ResourceBusy => self
+                        .payload
+                        .ResourceBusy
+                        .partial_cmp(&other.payload.ResourceBusy),
+                    StaleNetworkFileHandle => self
+                        .payload
+                        .StaleNetworkFileHandle
+                        .partial_cmp(&other.payload.StaleNetworkFileHandle),
+                    StorageFull => self
+                        .payload
+                        .StorageFull
+                        .partial_cmp(&other.payload.StorageFull),
                     TimedOut => self.payload.TimedOut.partial_cmp(&other.payload.TimedOut),
-                    TooManyHardlinks => self.payload.TooManyHardlinks.partial_cmp(&other.payload.TooManyHardlinks),
-                    TooManySymlinks => self.payload.TooManySymlinks.partial_cmp(&other.payload.TooManySymlinks),
-                    Unrecognized => self.payload.Unrecognized.partial_cmp(&other.payload.Unrecognized),
-                    Unsupported => self.payload.Unsupported.partial_cmp(&other.payload.Unsupported),
-                    WasADirectory => self.payload.WasADirectory.partial_cmp(&other.payload.WasADirectory),
+                    TooManyHardlinks => self
+                        .payload
+                        .TooManyHardlinks
+                        .partial_cmp(&other.payload.TooManyHardlinks),
+                    TooManySymlinks => self
+                        .payload
+                        .TooManySymlinks
+                        .partial_cmp(&other.payload.TooManySymlinks),
+                    Unrecognized => self
+                        .payload
+                        .Unrecognized
+                        .partial_cmp(&other.payload.Unrecognized),
+                    Unsupported => self
+                        .payload
+                        .Unsupported
+                        .partial_cmp(&other.payload.Unsupported),
+                    WasADirectory => self
+                        .payload
+                        .WasADirectory
+                        .partial_cmp(&other.payload.WasADirectory),
                     WriteZero => self.payload.WriteZero.partial_cmp(&other.payload.WriteZero),
                 }
             },
@@ -2555,7 +2730,6 @@ impl core::hash::Hash for WriteErr {
 }
 
 impl WriteErr {
-
     pub fn is_AlreadyExists(&self) -> bool {
         matches!(self.discriminant, discriminant_WriteErr::AlreadyExists)
     }
@@ -2569,7 +2743,10 @@ impl WriteErr {
     }
 
     pub fn is_FilesystemQuotaExceeded(&self) -> bool {
-        matches!(self.discriminant, discriminant_WriteErr::FilesystemQuotaExceeded)
+        matches!(
+            self.discriminant,
+            discriminant_WriteErr::FilesystemQuotaExceeded
+        )
     }
 
     pub fn is_Interrupted(&self) -> bool {
@@ -2601,7 +2778,10 @@ impl WriteErr {
     }
 
     pub fn is_StaleNetworkFileHandle(&self) -> bool {
-        matches!(self.discriminant, discriminant_WriteErr::StaleNetworkFileHandle)
+        matches!(
+            self.discriminant,
+            discriminant_WriteErr::StaleNetworkFileHandle
+        )
     }
 
     pub fn is_StorageFull(&self) -> bool {
@@ -2642,16 +2822,11 @@ impl WriteErr {
     }
 }
 
-
-
 impl WriteErr {
-
     pub fn AlreadyExists() -> Self {
         Self {
             discriminant: discriminant_WriteErr::AlreadyExists,
-            payload: union_WriteErr {
-                AlreadyExists: (),
-            }
+            payload: union_WriteErr { AlreadyExists: () },
         }
     }
 
@@ -2660,16 +2835,14 @@ impl WriteErr {
             discriminant: discriminant_WriteErr::ExecutableFileBusy,
             payload: union_WriteErr {
                 ExecutableFileBusy: (),
-            }
+            },
         }
     }
 
     pub fn FileTooLarge() -> Self {
         Self {
             discriminant: discriminant_WriteErr::FileTooLarge,
-            payload: union_WriteErr {
-                FileTooLarge: (),
-            }
+            payload: union_WriteErr { FileTooLarge: () },
         }
     }
 
@@ -2678,16 +2851,14 @@ impl WriteErr {
             discriminant: discriminant_WriteErr::FilesystemQuotaExceeded,
             payload: union_WriteErr {
                 FilesystemQuotaExceeded: (),
-            }
+            },
         }
     }
 
     pub fn Interrupted() -> Self {
         Self {
             discriminant: discriminant_WriteErr::Interrupted,
-            payload: union_WriteErr {
-                Interrupted: (),
-            }
+            payload: union_WriteErr { Interrupted: () },
         }
     }
 
@@ -2696,25 +2867,21 @@ impl WriteErr {
             discriminant: discriminant_WriteErr::InvalidFilename,
             payload: union_WriteErr {
                 InvalidFilename: (),
-            }
+            },
         }
     }
 
     pub fn NotFound() -> Self {
         Self {
             discriminant: discriminant_WriteErr::NotFound,
-            payload: union_WriteErr {
-                NotFound: (),
-            }
+            payload: union_WriteErr { NotFound: () },
         }
     }
 
     pub fn OutOfMemory() -> Self {
         Self {
             discriminant: discriminant_WriteErr::OutOfMemory,
-            payload: union_WriteErr {
-                OutOfMemory: (),
-            }
+            payload: union_WriteErr { OutOfMemory: () },
         }
     }
 
@@ -2723,7 +2890,7 @@ impl WriteErr {
             discriminant: discriminant_WriteErr::PermissionDenied,
             payload: union_WriteErr {
                 PermissionDenied: (),
-            }
+            },
         }
     }
 
@@ -2732,16 +2899,14 @@ impl WriteErr {
             discriminant: discriminant_WriteErr::ReadOnlyFilesystem,
             payload: union_WriteErr {
                 ReadOnlyFilesystem: (),
-            }
+            },
         }
     }
 
     pub fn ResourceBusy() -> Self {
         Self {
             discriminant: discriminant_WriteErr::ResourceBusy,
-            payload: union_WriteErr {
-                ResourceBusy: (),
-            }
+            payload: union_WriteErr { ResourceBusy: () },
         }
     }
 
@@ -2750,25 +2915,21 @@ impl WriteErr {
             discriminant: discriminant_WriteErr::StaleNetworkFileHandle,
             payload: union_WriteErr {
                 StaleNetworkFileHandle: (),
-            }
+            },
         }
     }
 
     pub fn StorageFull() -> Self {
         Self {
             discriminant: discriminant_WriteErr::StorageFull,
-            payload: union_WriteErr {
-                StorageFull: (),
-            }
+            payload: union_WriteErr { StorageFull: () },
         }
     }
 
     pub fn TimedOut() -> Self {
         Self {
             discriminant: discriminant_WriteErr::TimedOut,
-            payload: union_WriteErr {
-                TimedOut: (),
-            }
+            payload: union_WriteErr { TimedOut: () },
         }
     }
 
@@ -2777,7 +2938,7 @@ impl WriteErr {
             discriminant: discriminant_WriteErr::TooManyHardlinks,
             payload: union_WriteErr {
                 TooManyHardlinks: (),
-            }
+            },
         }
     }
 
@@ -2786,7 +2947,7 @@ impl WriteErr {
             discriminant: discriminant_WriteErr::TooManySymlinks,
             payload: union_WriteErr {
                 TooManySymlinks: (),
-            }
+            },
         }
     }
 
@@ -2795,34 +2956,28 @@ impl WriteErr {
             discriminant: discriminant_WriteErr::Unrecognized,
             payload: union_WriteErr {
                 Unrecognized: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
     pub fn Unsupported() -> Self {
         Self {
             discriminant: discriminant_WriteErr::Unsupported,
-            payload: union_WriteErr {
-                Unsupported: (),
-            }
+            payload: union_WriteErr { Unsupported: () },
         }
     }
 
     pub fn WasADirectory() -> Self {
         Self {
             discriminant: discriminant_WriteErr::WasADirectory,
-            payload: union_WriteErr {
-                WasADirectory: (),
-            }
+            payload: union_WriteErr { WasADirectory: () },
         }
     }
 
     pub fn WriteZero() -> Self {
         Self {
             discriminant: discriminant_WriteErr::WriteZero,
-            payload: union_WriteErr {
-                WriteZero: (),
-            }
+            payload: union_WriteErr { WriteZero: () },
         }
     }
 }
@@ -2847,7 +3002,9 @@ impl Drop for WriteErr {
             discriminant_WriteErr::TimedOut => {}
             discriminant_WriteErr::TooManyHardlinks => {}
             discriminant_WriteErr::TooManySymlinks => {}
-            discriminant_WriteErr::Unrecognized => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.Unrecognized) },
+            discriminant_WriteErr::Unrecognized => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.Unrecognized)
+            },
             discriminant_WriteErr::Unsupported => {}
             discriminant_WriteErr::WasADirectory => {}
             discriminant_WriteErr::WriteZero => {}
@@ -2855,20 +3012,17 @@ impl Drop for WriteErr {
     }
 }
 
-#[derive(Clone, Default, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Default, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct Part {
-     f0: roc_std::RocStr,
-     f1: roc_std::RocList<u8>,
+    f0: roc_std::RocStr,
+    f1: roc_std::RocList<u8>,
 }
 
 impl Part {
     /// A tag named ``Part``, with the given payload.
     pub fn Part(f0: roc_std::RocStr, f1: roc_std::RocList<u8>) -> Self {
-        Self {
-            f0,
-            f1
-        }
+        Self { f0, f1 }
     }
 
     /// Since `Part` only has one tag (namely, `Part`),
@@ -2884,17 +3038,16 @@ impl Part {
     }
 }
 
-
 impl core::fmt::Debug for Part {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_tuple("Part::Part")
-                .field(&self.f0)
-                .field(&self.f1)
-                .finish()
+            .field(&self.f0)
+            .field(&self.f1)
+            .finish()
     }
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum discriminant_UnwrappedPath {
     ArbitraryBytes = 0,
@@ -2906,7 +3059,9 @@ impl core::fmt::Debug for discriminant_UnwrappedPath {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::ArbitraryBytes => f.write_str("discriminant_UnwrappedPath::ArbitraryBytes"),
-            Self::FromOperatingSystem => f.write_str("discriminant_UnwrappedPath::FromOperatingSystem"),
+            Self::FromOperatingSystem => {
+                f.write_str("discriminant_UnwrappedPath::FromOperatingSystem")
+            }
             Self::FromStr => f.write_str("discriminant_UnwrappedPath::FromStr"),
         }
     }
@@ -2919,8 +3074,10 @@ pub union union_UnwrappedPath {
     FromStr: core::mem::ManuallyDrop<roc_std::RocStr>,
 }
 
-const _SIZE_CHECK_union_UnwrappedPath: () = assert!(core::mem::size_of::<union_UnwrappedPath>() == 12);
-const _ALIGN_CHECK_union_UnwrappedPath: () = assert!(core::mem::align_of::<union_UnwrappedPath>() == 4);
+const _SIZE_CHECK_union_UnwrappedPath: () =
+    assert!(core::mem::size_of::<union_UnwrappedPath>() == 12);
+const _ALIGN_CHECK_union_UnwrappedPath: () =
+    assert!(core::mem::align_of::<union_UnwrappedPath>() == 4);
 
 const _SIZE_CHECK_UnwrappedPath: () = assert!(core::mem::size_of::<UnwrappedPath>() == 16);
 const _ALIGN_CHECK_UnwrappedPath: () = assert!(core::mem::align_of::<UnwrappedPath>() == 4);
@@ -2984,16 +3141,22 @@ impl core::fmt::Debug for UnwrappedPath {
             match self.discriminant {
                 ArbitraryBytes => {
                     let field: &roc_std::RocList<u8> = &self.payload.ArbitraryBytes;
-                    f.debug_tuple("UnwrappedPath::ArbitraryBytes").field(field).finish()
-                },
+                    f.debug_tuple("UnwrappedPath::ArbitraryBytes")
+                        .field(field)
+                        .finish()
+                }
                 FromOperatingSystem => {
                     let field: &roc_std::RocList<u8> = &self.payload.FromOperatingSystem;
-                    f.debug_tuple("UnwrappedPath::FromOperatingSystem").field(field).finish()
-                },
+                    f.debug_tuple("UnwrappedPath::FromOperatingSystem")
+                        .field(field)
+                        .finish()
+                }
                 FromStr => {
                     let field: &roc_std::RocStr = &self.payload.FromStr;
-                    f.debug_tuple("UnwrappedPath::FromStr").field(field).finish()
-                },
+                    f.debug_tuple("UnwrappedPath::FromStr")
+                        .field(field)
+                        .finish()
+                }
             }
         }
     }
@@ -3012,7 +3175,9 @@ impl PartialEq for UnwrappedPath {
         unsafe {
             match self.discriminant {
                 ArbitraryBytes => self.payload.ArbitraryBytes == other.payload.ArbitraryBytes,
-                FromOperatingSystem => self.payload.FromOperatingSystem == other.payload.FromOperatingSystem,
+                FromOperatingSystem => {
+                    self.payload.FromOperatingSystem == other.payload.FromOperatingSystem
+                }
                 FromStr => self.payload.FromStr == other.payload.FromStr,
             }
         }
@@ -3036,8 +3201,14 @@ impl PartialOrd for UnwrappedPath {
             Greater => Option::Some(Greater),
             Equal => unsafe {
                 match self.discriminant {
-                    ArbitraryBytes => self.payload.ArbitraryBytes.partial_cmp(&other.payload.ArbitraryBytes),
-                    FromOperatingSystem => self.payload.FromOperatingSystem.partial_cmp(&other.payload.FromOperatingSystem),
+                    ArbitraryBytes => self
+                        .payload
+                        .ArbitraryBytes
+                        .partial_cmp(&other.payload.ArbitraryBytes),
+                    FromOperatingSystem => self
+                        .payload
+                        .FromOperatingSystem
+                        .partial_cmp(&other.payload.FromOperatingSystem),
                     FromStr => self.payload.FromStr.partial_cmp(&other.payload.FromStr),
                 }
             },
@@ -3060,23 +3231,34 @@ impl core::hash::Hash for UnwrappedPath {
 }
 
 impl UnwrappedPath {
-
     pub fn unwrap_ArbitraryBytes(mut self) -> roc_std::RocList<u8> {
-        debug_assert_eq!(self.discriminant, discriminant_UnwrappedPath::ArbitraryBytes);
+        debug_assert_eq!(
+            self.discriminant,
+            discriminant_UnwrappedPath::ArbitraryBytes
+        );
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.ArbitraryBytes) }
     }
 
     pub fn is_ArbitraryBytes(&self) -> bool {
-        matches!(self.discriminant, discriminant_UnwrappedPath::ArbitraryBytes)
+        matches!(
+            self.discriminant,
+            discriminant_UnwrappedPath::ArbitraryBytes
+        )
     }
 
     pub fn unwrap_FromOperatingSystem(mut self) -> roc_std::RocList<u8> {
-        debug_assert_eq!(self.discriminant, discriminant_UnwrappedPath::FromOperatingSystem);
+        debug_assert_eq!(
+            self.discriminant,
+            discriminant_UnwrappedPath::FromOperatingSystem
+        );
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.FromOperatingSystem) }
     }
 
     pub fn is_FromOperatingSystem(&self) -> bool {
-        matches!(self.discriminant, discriminant_UnwrappedPath::FromOperatingSystem)
+        matches!(
+            self.discriminant,
+            discriminant_UnwrappedPath::FromOperatingSystem
+        )
     }
 
     pub fn unwrap_FromStr(mut self) -> roc_std::RocStr {
@@ -3089,16 +3271,13 @@ impl UnwrappedPath {
     }
 }
 
-
-
 impl UnwrappedPath {
-
     pub fn ArbitraryBytes(payload: roc_std::RocList<u8>) -> Self {
         Self {
             discriminant: discriminant_UnwrappedPath::ArbitraryBytes,
             payload: union_UnwrappedPath {
                 ArbitraryBytes: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
@@ -3107,7 +3286,7 @@ impl UnwrappedPath {
             discriminant: discriminant_UnwrappedPath::FromOperatingSystem,
             payload: union_UnwrappedPath {
                 FromOperatingSystem: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
@@ -3116,7 +3295,7 @@ impl UnwrappedPath {
             discriminant: discriminant_UnwrappedPath::FromStr,
             payload: union_UnwrappedPath {
                 FromStr: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 }
@@ -3125,14 +3304,20 @@ impl Drop for UnwrappedPath {
     fn drop(&mut self) {
         // Drop the payloads
         match self.discriminant() {
-            discriminant_UnwrappedPath::ArbitraryBytes => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.ArbitraryBytes) },
-            discriminant_UnwrappedPath::FromOperatingSystem => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.FromOperatingSystem) },
-            discriminant_UnwrappedPath::FromStr => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.FromStr) },
+            discriminant_UnwrappedPath::ArbitraryBytes => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.ArbitraryBytes)
+            },
+            discriminant_UnwrappedPath::FromOperatingSystem => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.FromOperatingSystem)
+            },
+            discriminant_UnwrappedPath::FromStr => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.FromStr)
+            },
         }
     }
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum discriminant_GetMetadataErr {
     PathDoesNotExist = 0,
@@ -3158,7 +3343,8 @@ pub union union_GetMetadataErr {
 }
 
 // const _SIZE_CHECK_union_GetMetadataErr: () = assert!(core::mem::size_of::<union_GetMetadataErr>() == 20);
-const _ALIGN_CHECK_union_GetMetadataErr: () = assert!(core::mem::align_of::<union_GetMetadataErr>() == 4);
+const _ALIGN_CHECK_union_GetMetadataErr: () =
+    assert!(core::mem::align_of::<union_GetMetadataErr>() == 4);
 
 const _SIZE_CHECK_GetMetadataErr: () = assert!(core::mem::size_of::<GetMetadataErr>() == 20);
 const _ALIGN_CHECK_GetMetadataErr: () = assert!(core::mem::align_of::<GetMetadataErr>() == 4);
@@ -3175,7 +3361,8 @@ impl GetMetadataErr {
 
     /// Internal helper
     fn set_discriminant(&mut self, discriminant: discriminant_GetMetadataErr) {
-        let discriminant_ptr: *mut discriminant_GetMetadataErr = (self as *mut GetMetadataErr).cast();
+        let discriminant_ptr: *mut discriminant_GetMetadataErr =
+            (self as *mut GetMetadataErr).cast();
 
         unsafe {
             *(discriminant_ptr.add(16)) = discriminant;
@@ -3222,16 +3409,22 @@ impl core::fmt::Debug for GetMetadataErr {
             match self.discriminant {
                 PathDoesNotExist => {
                     let field: &() = &self.payload.PathDoesNotExist;
-                    f.debug_tuple("GetMetadataErr::PathDoesNotExist").field(field).finish()
-                },
+                    f.debug_tuple("GetMetadataErr::PathDoesNotExist")
+                        .field(field)
+                        .finish()
+                }
                 PermissionDenied => {
                     let field: &() = &self.payload.PermissionDenied;
-                    f.debug_tuple("GetMetadataErr::PermissionDenied").field(field).finish()
-                },
+                    f.debug_tuple("GetMetadataErr::PermissionDenied")
+                        .field(field)
+                        .finish()
+                }
                 Unrecognized => {
                     let field: &ConnectErr_Unrecognized = &self.payload.Unrecognized;
-                    f.debug_tuple("GetMetadataErr::Unrecognized").field(field).finish()
-                },
+                    f.debug_tuple("GetMetadataErr::Unrecognized")
+                        .field(field)
+                        .finish()
+                }
             }
         }
     }
@@ -3274,9 +3467,18 @@ impl PartialOrd for GetMetadataErr {
             Greater => Option::Some(Greater),
             Equal => unsafe {
                 match self.discriminant {
-                    PathDoesNotExist => self.payload.PathDoesNotExist.partial_cmp(&other.payload.PathDoesNotExist),
-                    PermissionDenied => self.payload.PermissionDenied.partial_cmp(&other.payload.PermissionDenied),
-                    Unrecognized => self.payload.Unrecognized.partial_cmp(&other.payload.Unrecognized),
+                    PathDoesNotExist => self
+                        .payload
+                        .PathDoesNotExist
+                        .partial_cmp(&other.payload.PathDoesNotExist),
+                    PermissionDenied => self
+                        .payload
+                        .PermissionDenied
+                        .partial_cmp(&other.payload.PermissionDenied),
+                    Unrecognized => self
+                        .payload
+                        .Unrecognized
+                        .partial_cmp(&other.payload.Unrecognized),
                 }
             },
         }
@@ -3298,13 +3500,18 @@ impl core::hash::Hash for GetMetadataErr {
 }
 
 impl GetMetadataErr {
-
     pub fn is_PathDoesNotExist(&self) -> bool {
-        matches!(self.discriminant, discriminant_GetMetadataErr::PathDoesNotExist)
+        matches!(
+            self.discriminant,
+            discriminant_GetMetadataErr::PathDoesNotExist
+        )
     }
 
     pub fn is_PermissionDenied(&self) -> bool {
-        matches!(self.discriminant, discriminant_GetMetadataErr::PermissionDenied)
+        matches!(
+            self.discriminant,
+            discriminant_GetMetadataErr::PermissionDenied
+        )
     }
 
     pub fn unwrap_Unrecognized(mut self) -> ConnectErr_Unrecognized {
@@ -3317,16 +3524,13 @@ impl GetMetadataErr {
     }
 }
 
-
-
 impl GetMetadataErr {
-
     pub fn PathDoesNotExist() -> Self {
         Self {
             discriminant: discriminant_GetMetadataErr::PathDoesNotExist,
             payload: union_GetMetadataErr {
                 PathDoesNotExist: (),
-            }
+            },
         }
     }
 
@@ -3335,7 +3539,7 @@ impl GetMetadataErr {
             discriminant: discriminant_GetMetadataErr::PermissionDenied,
             payload: union_GetMetadataErr {
                 PermissionDenied: (),
-            }
+            },
         }
     }
 
@@ -3344,7 +3548,7 @@ impl GetMetadataErr {
             discriminant: discriminant_GetMetadataErr::Unrecognized,
             payload: union_GetMetadataErr {
                 Unrecognized: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 }
@@ -3355,12 +3559,14 @@ impl Drop for GetMetadataErr {
         match self.discriminant() {
             discriminant_GetMetadataErr::PathDoesNotExist => {}
             discriminant_GetMetadataErr::PermissionDenied => {}
-            discriminant_GetMetadataErr::Unrecognized => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.Unrecognized) },
+            discriminant_GetMetadataErr::Unrecognized => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.Unrecognized)
+            },
         }
     }
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum discriminant_StreamErr {
     BrokenPipe = 0,
@@ -3475,31 +3681,43 @@ impl core::fmt::Debug for StreamErr {
                 BrokenPipe => {
                     let field: &() = &self.payload.BrokenPipe;
                     f.debug_tuple("StreamErr::BrokenPipe").field(field).finish()
-                },
+                }
                 ConnectionRefused => {
                     let field: &() = &self.payload.ConnectionRefused;
-                    f.debug_tuple("StreamErr::ConnectionRefused").field(field).finish()
-                },
+                    f.debug_tuple("StreamErr::ConnectionRefused")
+                        .field(field)
+                        .finish()
+                }
                 ConnectionReset => {
                     let field: &() = &self.payload.ConnectionReset;
-                    f.debug_tuple("StreamErr::ConnectionReset").field(field).finish()
-                },
+                    f.debug_tuple("StreamErr::ConnectionReset")
+                        .field(field)
+                        .finish()
+                }
                 Interrupted => {
                     let field: &() = &self.payload.Interrupted;
-                    f.debug_tuple("StreamErr::Interrupted").field(field).finish()
-                },
+                    f.debug_tuple("StreamErr::Interrupted")
+                        .field(field)
+                        .finish()
+                }
                 OutOfMemory => {
                     let field: &() = &self.payload.OutOfMemory;
-                    f.debug_tuple("StreamErr::OutOfMemory").field(field).finish()
-                },
+                    f.debug_tuple("StreamErr::OutOfMemory")
+                        .field(field)
+                        .finish()
+                }
                 PermissionDenied => {
                     let field: &() = &self.payload.PermissionDenied;
-                    f.debug_tuple("StreamErr::PermissionDenied").field(field).finish()
-                },
+                    f.debug_tuple("StreamErr::PermissionDenied")
+                        .field(field)
+                        .finish()
+                }
                 Unrecognized => {
                     let field: &ConnectErr_Unrecognized = &self.payload.Unrecognized;
-                    f.debug_tuple("StreamErr::Unrecognized").field(field).finish()
-                },
+                    f.debug_tuple("StreamErr::Unrecognized")
+                        .field(field)
+                        .finish()
+                }
             }
         }
     }
@@ -3518,7 +3736,9 @@ impl PartialEq for StreamErr {
         unsafe {
             match self.discriminant {
                 BrokenPipe => self.payload.BrokenPipe == other.payload.BrokenPipe,
-                ConnectionRefused => self.payload.ConnectionRefused == other.payload.ConnectionRefused,
+                ConnectionRefused => {
+                    self.payload.ConnectionRefused == other.payload.ConnectionRefused
+                }
                 ConnectionReset => self.payload.ConnectionReset == other.payload.ConnectionReset,
                 Interrupted => self.payload.Interrupted == other.payload.Interrupted,
                 OutOfMemory => self.payload.OutOfMemory == other.payload.OutOfMemory,
@@ -3546,13 +3766,34 @@ impl PartialOrd for StreamErr {
             Greater => Option::Some(Greater),
             Equal => unsafe {
                 match self.discriminant {
-                    BrokenPipe => self.payload.BrokenPipe.partial_cmp(&other.payload.BrokenPipe),
-                    ConnectionRefused => self.payload.ConnectionRefused.partial_cmp(&other.payload.ConnectionRefused),
-                    ConnectionReset => self.payload.ConnectionReset.partial_cmp(&other.payload.ConnectionReset),
-                    Interrupted => self.payload.Interrupted.partial_cmp(&other.payload.Interrupted),
-                    OutOfMemory => self.payload.OutOfMemory.partial_cmp(&other.payload.OutOfMemory),
-                    PermissionDenied => self.payload.PermissionDenied.partial_cmp(&other.payload.PermissionDenied),
-                    Unrecognized => self.payload.Unrecognized.partial_cmp(&other.payload.Unrecognized),
+                    BrokenPipe => self
+                        .payload
+                        .BrokenPipe
+                        .partial_cmp(&other.payload.BrokenPipe),
+                    ConnectionRefused => self
+                        .payload
+                        .ConnectionRefused
+                        .partial_cmp(&other.payload.ConnectionRefused),
+                    ConnectionReset => self
+                        .payload
+                        .ConnectionReset
+                        .partial_cmp(&other.payload.ConnectionReset),
+                    Interrupted => self
+                        .payload
+                        .Interrupted
+                        .partial_cmp(&other.payload.Interrupted),
+                    OutOfMemory => self
+                        .payload
+                        .OutOfMemory
+                        .partial_cmp(&other.payload.OutOfMemory),
+                    PermissionDenied => self
+                        .payload
+                        .PermissionDenied
+                        .partial_cmp(&other.payload.PermissionDenied),
+                    Unrecognized => self
+                        .payload
+                        .Unrecognized
+                        .partial_cmp(&other.payload.Unrecognized),
                 }
             },
         }
@@ -3578,7 +3819,6 @@ impl core::hash::Hash for StreamErr {
 }
 
 impl StreamErr {
-
     pub fn is_BrokenPipe(&self) -> bool {
         matches!(self.discriminant, discriminant_StreamErr::BrokenPipe)
     }
@@ -3613,16 +3853,11 @@ impl StreamErr {
     }
 }
 
-
-
 impl StreamErr {
-
     pub fn BrokenPipe() -> Self {
         Self {
             discriminant: discriminant_StreamErr::BrokenPipe,
-            payload: union_StreamErr {
-                BrokenPipe: (),
-            }
+            payload: union_StreamErr { BrokenPipe: () },
         }
     }
 
@@ -3631,7 +3866,7 @@ impl StreamErr {
             discriminant: discriminant_StreamErr::ConnectionRefused,
             payload: union_StreamErr {
                 ConnectionRefused: (),
-            }
+            },
         }
     }
 
@@ -3640,25 +3875,21 @@ impl StreamErr {
             discriminant: discriminant_StreamErr::ConnectionReset,
             payload: union_StreamErr {
                 ConnectionReset: (),
-            }
+            },
         }
     }
 
     pub fn Interrupted() -> Self {
         Self {
             discriminant: discriminant_StreamErr::Interrupted,
-            payload: union_StreamErr {
-                Interrupted: (),
-            }
+            payload: union_StreamErr { Interrupted: () },
         }
     }
 
     pub fn OutOfMemory() -> Self {
         Self {
             discriminant: discriminant_StreamErr::OutOfMemory,
-            payload: union_StreamErr {
-                OutOfMemory: (),
-            }
+            payload: union_StreamErr { OutOfMemory: () },
         }
     }
 
@@ -3667,7 +3898,7 @@ impl StreamErr {
             discriminant: discriminant_StreamErr::PermissionDenied,
             payload: union_StreamErr {
                 PermissionDenied: (),
-            }
+            },
         }
     }
 
@@ -3676,7 +3907,7 @@ impl StreamErr {
             discriminant: discriminant_StreamErr::Unrecognized,
             payload: union_StreamErr {
                 Unrecognized: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 }
@@ -3691,12 +3922,14 @@ impl Drop for StreamErr {
             discriminant_StreamErr::Interrupted => {}
             discriminant_StreamErr::OutOfMemory => {}
             discriminant_StreamErr::PermissionDenied => {}
-            discriminant_StreamErr::Unrecognized => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.Unrecognized) },
+            discriminant_StreamErr::Unrecognized => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.Unrecognized)
+            },
         }
     }
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum discriminant_WriteResult {
     Error = 0,
@@ -3781,11 +4014,11 @@ impl core::fmt::Debug for WriteResult {
                 Error => {
                     let field: &StreamErr = &self.payload.Error;
                     f.debug_tuple("WriteResult::Error").field(field).finish()
-                },
+                }
                 Wrote => {
                     let field: &() = &self.payload.Wrote;
                     f.debug_tuple("WriteResult::Wrote").field(field).finish()
-                },
+                }
             }
         }
     }
@@ -3849,7 +4082,6 @@ impl core::hash::Hash for WriteResult {
 }
 
 impl WriteResult {
-
     pub fn unwrap_Error(mut self) -> StreamErr {
         debug_assert_eq!(self.discriminant, discriminant_WriteResult::Error);
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.Error) }
@@ -3864,25 +4096,20 @@ impl WriteResult {
     }
 }
 
-
-
 impl WriteResult {
-
     pub fn Error(payload: StreamErr) -> Self {
         Self {
             discriminant: discriminant_WriteResult::Error,
             payload: union_WriteResult {
                 Error: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
     pub fn Wrote() -> Self {
         Self {
             discriminant: discriminant_WriteResult::Wrote,
-            payload: union_WriteResult {
-                Wrote: (),
-            }
+            payload: union_WriteResult { Wrote: () },
         }
     }
 }
@@ -3891,13 +4118,15 @@ impl Drop for WriteResult {
     fn drop(&mut self) {
         // Drop the payloads
         match self.discriminant() {
-            discriminant_WriteResult::Error => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.Error) },
+            discriminant_WriteResult::Error => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.Error)
+            },
             discriminant_WriteResult::Wrote => {}
         }
     }
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum discriminant_ReadResult {
     Error = 0,
@@ -3982,11 +4211,11 @@ impl core::fmt::Debug for ReadResult {
                 Error => {
                     let field: &StreamErr = &self.payload.Error;
                     f.debug_tuple("ReadResult::Error").field(field).finish()
-                },
+                }
                 Read => {
                     let field: &roc_std::RocList<u8> = &self.payload.Read;
                     f.debug_tuple("ReadResult::Read").field(field).finish()
-                },
+                }
             }
         }
     }
@@ -4050,7 +4279,6 @@ impl core::hash::Hash for ReadResult {
 }
 
 impl ReadResult {
-
     pub fn unwrap_Error(mut self) -> StreamErr {
         debug_assert_eq!(self.discriminant, discriminant_ReadResult::Error);
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.Error) }
@@ -4070,16 +4298,13 @@ impl ReadResult {
     }
 }
 
-
-
 impl ReadResult {
-
     pub fn Error(payload: StreamErr) -> Self {
         Self {
             discriminant: discriminant_ReadResult::Error,
             payload: union_ReadResult {
                 Error: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
@@ -4088,7 +4313,7 @@ impl ReadResult {
             discriminant: discriminant_ReadResult::Read,
             payload: union_ReadResult {
                 Read: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 }
@@ -4097,13 +4322,17 @@ impl Drop for ReadResult {
     fn drop(&mut self) {
         // Drop the payloads
         match self.discriminant() {
-            discriminant_ReadResult::Error => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.Error) },
-            discriminant_ReadResult::Read => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.Read) },
+            discriminant_ReadResult::Error => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.Error)
+            },
+            discriminant_ReadResult::Read => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.Read)
+            },
         }
     }
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum discriminant_ReadExactlyResult {
     Error = 0,
@@ -4128,8 +4357,10 @@ pub union union_ReadExactlyResult {
     UnexpectedEOF: (),
 }
 
-const _SIZE_CHECK_union_ReadExactlyResult: () = assert!(core::mem::size_of::<union_ReadExactlyResult>() == 20);
-const _ALIGN_CHECK_union_ReadExactlyResult: () = assert!(core::mem::align_of::<union_ReadExactlyResult>() == 4);
+const _SIZE_CHECK_union_ReadExactlyResult: () =
+    assert!(core::mem::size_of::<union_ReadExactlyResult>() == 20);
+const _ALIGN_CHECK_union_ReadExactlyResult: () =
+    assert!(core::mem::align_of::<union_ReadExactlyResult>() == 4);
 
 const _SIZE_CHECK_ReadExactlyResult: () = assert!(core::mem::size_of::<ReadExactlyResult>() == 24);
 const _ALIGN_CHECK_ReadExactlyResult: () = assert!(core::mem::align_of::<ReadExactlyResult>() == 4);
@@ -4146,7 +4377,8 @@ impl ReadExactlyResult {
 
     /// Internal helper
     fn set_discriminant(&mut self, discriminant: discriminant_ReadExactlyResult) {
-        let discriminant_ptr: *mut discriminant_ReadExactlyResult = (self as *mut ReadExactlyResult).cast();
+        let discriminant_ptr: *mut discriminant_ReadExactlyResult =
+            (self as *mut ReadExactlyResult).cast();
 
         unsafe {
             *(discriminant_ptr.add(20)) = discriminant;
@@ -4193,16 +4425,22 @@ impl core::fmt::Debug for ReadExactlyResult {
             match self.discriminant {
                 Error => {
                     let field: &StreamErr = &self.payload.Error;
-                    f.debug_tuple("ReadExactlyResult::Error").field(field).finish()
-                },
+                    f.debug_tuple("ReadExactlyResult::Error")
+                        .field(field)
+                        .finish()
+                }
                 Read => {
                     let field: &roc_std::RocList<u8> = &self.payload.Read;
-                    f.debug_tuple("ReadExactlyResult::Read").field(field).finish()
-                },
+                    f.debug_tuple("ReadExactlyResult::Read")
+                        .field(field)
+                        .finish()
+                }
                 UnexpectedEOF => {
                     let field: &() = &self.payload.UnexpectedEOF;
-                    f.debug_tuple("ReadExactlyResult::UnexpectedEOF").field(field).finish()
-                },
+                    f.debug_tuple("ReadExactlyResult::UnexpectedEOF")
+                        .field(field)
+                        .finish()
+                }
             }
         }
     }
@@ -4247,7 +4485,10 @@ impl PartialOrd for ReadExactlyResult {
                 match self.discriminant {
                     Error => self.payload.Error.partial_cmp(&other.payload.Error),
                     Read => self.payload.Read.partial_cmp(&other.payload.Read),
-                    UnexpectedEOF => self.payload.UnexpectedEOF.partial_cmp(&other.payload.UnexpectedEOF),
+                    UnexpectedEOF => self
+                        .payload
+                        .UnexpectedEOF
+                        .partial_cmp(&other.payload.UnexpectedEOF),
                 }
             },
         }
@@ -4269,7 +4510,6 @@ impl core::hash::Hash for ReadExactlyResult {
 }
 
 impl ReadExactlyResult {
-
     pub fn unwrap_Error(mut self) -> StreamErr {
         debug_assert_eq!(self.discriminant, discriminant_ReadExactlyResult::Error);
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.Error) }
@@ -4289,20 +4529,20 @@ impl ReadExactlyResult {
     }
 
     pub fn is_UnexpectedEOF(&self) -> bool {
-        matches!(self.discriminant, discriminant_ReadExactlyResult::UnexpectedEOF)
+        matches!(
+            self.discriminant,
+            discriminant_ReadExactlyResult::UnexpectedEOF
+        )
     }
 }
 
-
-
 impl ReadExactlyResult {
-
     pub fn Error(payload: StreamErr) -> Self {
         Self {
             discriminant: discriminant_ReadExactlyResult::Error,
             payload: union_ReadExactlyResult {
                 Error: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
@@ -4311,16 +4551,14 @@ impl ReadExactlyResult {
             discriminant: discriminant_ReadExactlyResult::Read,
             payload: union_ReadExactlyResult {
                 Read: core::mem::ManuallyDrop::new(payload),
-            }
+            },
         }
     }
 
     pub fn UnexpectedEOF() -> Self {
         Self {
             discriminant: discriminant_ReadExactlyResult::UnexpectedEOF,
-            payload: union_ReadExactlyResult {
-                UnexpectedEOF: (),
-            }
+            payload: union_ReadExactlyResult { UnexpectedEOF: () },
         }
     }
 }
@@ -4329,14 +4567,18 @@ impl Drop for ReadExactlyResult {
     fn drop(&mut self) {
         // Drop the payloads
         match self.discriminant() {
-            discriminant_ReadExactlyResult::Error => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.Error) },
-            discriminant_ReadExactlyResult::Read => unsafe { core::mem::ManuallyDrop::drop(&mut self.payload.Read) },
+            discriminant_ReadExactlyResult::Error => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.Error)
+            },
+            discriminant_ReadExactlyResult::Read => unsafe {
+                core::mem::ManuallyDrop::drop(&mut self.payload.Read)
+            },
             discriminant_ReadExactlyResult::UnexpectedEOF => {}
         }
     }
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
 pub enum discriminant_IOError {
     AddrInUse = 0,
@@ -4398,7 +4640,9 @@ impl core::fmt::Debug for discriminant_IOError {
             Self::ExecutableFileBusy => f.write_str("discriminant_IOError::ExecutableFileBusy"),
             Self::FileTooLarge => f.write_str("discriminant_IOError::FileTooLarge"),
             Self::FilesystemLoop => f.write_str("discriminant_IOError::FilesystemLoop"),
-            Self::FilesystemQuotaExceeded => f.write_str("discriminant_IOError::FilesystemQuotaExceeded"),
+            Self::FilesystemQuotaExceeded => {
+                f.write_str("discriminant_IOError::FilesystemQuotaExceeded")
+            }
             Self::HostUnreachable => f.write_str("discriminant_IOError::HostUnreachable"),
             Self::Interrupted => f.write_str("discriminant_IOError::Interrupted"),
             Self::InvalidData => f.write_str("discriminant_IOError::InvalidData"),
@@ -4416,7 +4660,9 @@ impl core::fmt::Debug for discriminant_IOError {
             Self::PermissionDenied => f.write_str("discriminant_IOError::PermissionDenied"),
             Self::ReadOnlyFilesystem => f.write_str("discriminant_IOError::ReadOnlyFilesystem"),
             Self::ResourceBusy => f.write_str("discriminant_IOError::ResourceBusy"),
-            Self::StaleNetworkFileHandle => f.write_str("discriminant_IOError::StaleNetworkFileHandle"),
+            Self::StaleNetworkFileHandle => {
+                f.write_str("discriminant_IOError::StaleNetworkFileHandle")
+            }
             Self::StorageFull => f.write_str("discriminant_IOError::StorageFull"),
             Self::TimedOut => f.write_str("discriminant_IOError::TimedOut"),
             Self::TooManyLinks => f.write_str("discriminant_IOError::TooManyLinks"),
@@ -4649,163 +4895,201 @@ impl core::fmt::Debug for IOError {
                 AddrInUse => {
                     let field: &() = &self.payload.AddrInUse;
                     f.debug_tuple("IOError::AddrInUse").field(field).finish()
-                },
+                }
                 AddrNotAvailable => {
                     let field: &() = &self.payload.AddrNotAvailable;
-                    f.debug_tuple("IOError::AddrNotAvailable").field(field).finish()
-                },
+                    f.debug_tuple("IOError::AddrNotAvailable")
+                        .field(field)
+                        .finish()
+                }
                 AlreadyExists => {
                     let field: &() = &self.payload.AlreadyExists;
-                    f.debug_tuple("IOError::AlreadyExists").field(field).finish()
-                },
+                    f.debug_tuple("IOError::AlreadyExists")
+                        .field(field)
+                        .finish()
+                }
                 ArgumentListTooLong => {
                     let field: &() = &self.payload.ArgumentListTooLong;
-                    f.debug_tuple("IOError::ArgumentListTooLong").field(field).finish()
-                },
+                    f.debug_tuple("IOError::ArgumentListTooLong")
+                        .field(field)
+                        .finish()
+                }
                 BrokenPipe => {
                     let field: &() = &self.payload.BrokenPipe;
                     f.debug_tuple("IOError::BrokenPipe").field(field).finish()
-                },
+                }
                 ConnectionAborted => {
                     let field: &() = &self.payload.ConnectionAborted;
-                    f.debug_tuple("IOError::ConnectionAborted").field(field).finish()
-                },
+                    f.debug_tuple("IOError::ConnectionAborted")
+                        .field(field)
+                        .finish()
+                }
                 ConnectionRefused => {
                     let field: &() = &self.payload.ConnectionRefused;
-                    f.debug_tuple("IOError::ConnectionRefused").field(field).finish()
-                },
+                    f.debug_tuple("IOError::ConnectionRefused")
+                        .field(field)
+                        .finish()
+                }
                 ConnectionReset => {
                     let field: &() = &self.payload.ConnectionReset;
-                    f.debug_tuple("IOError::ConnectionReset").field(field).finish()
-                },
+                    f.debug_tuple("IOError::ConnectionReset")
+                        .field(field)
+                        .finish()
+                }
                 CrossesDevices => {
                     let field: &() = &self.payload.CrossesDevices;
-                    f.debug_tuple("IOError::CrossesDevices").field(field).finish()
-                },
+                    f.debug_tuple("IOError::CrossesDevices")
+                        .field(field)
+                        .finish()
+                }
                 Deadlock => {
                     let field: &() = &self.payload.Deadlock;
                     f.debug_tuple("IOError::Deadlock").field(field).finish()
-                },
+                }
                 DirectoryNotEmpty => {
                     let field: &() = &self.payload.DirectoryNotEmpty;
-                    f.debug_tuple("IOError::DirectoryNotEmpty").field(field).finish()
-                },
+                    f.debug_tuple("IOError::DirectoryNotEmpty")
+                        .field(field)
+                        .finish()
+                }
                 ExecutableFileBusy => {
                     let field: &() = &self.payload.ExecutableFileBusy;
-                    f.debug_tuple("IOError::ExecutableFileBusy").field(field).finish()
-                },
+                    f.debug_tuple("IOError::ExecutableFileBusy")
+                        .field(field)
+                        .finish()
+                }
                 FileTooLarge => {
                     let field: &() = &self.payload.FileTooLarge;
                     f.debug_tuple("IOError::FileTooLarge").field(field).finish()
-                },
+                }
                 FilesystemLoop => {
                     let field: &() = &self.payload.FilesystemLoop;
-                    f.debug_tuple("IOError::FilesystemLoop").field(field).finish()
-                },
+                    f.debug_tuple("IOError::FilesystemLoop")
+                        .field(field)
+                        .finish()
+                }
                 FilesystemQuotaExceeded => {
                     let field: &() = &self.payload.FilesystemQuotaExceeded;
-                    f.debug_tuple("IOError::FilesystemQuotaExceeded").field(field).finish()
-                },
+                    f.debug_tuple("IOError::FilesystemQuotaExceeded")
+                        .field(field)
+                        .finish()
+                }
                 HostUnreachable => {
                     let field: &() = &self.payload.HostUnreachable;
-                    f.debug_tuple("IOError::HostUnreachable").field(field).finish()
-                },
+                    f.debug_tuple("IOError::HostUnreachable")
+                        .field(field)
+                        .finish()
+                }
                 Interrupted => {
                     let field: &() = &self.payload.Interrupted;
                     f.debug_tuple("IOError::Interrupted").field(field).finish()
-                },
+                }
                 InvalidData => {
                     let field: &() = &self.payload.InvalidData;
                     f.debug_tuple("IOError::InvalidData").field(field).finish()
-                },
+                }
                 InvalidFilename => {
                     let field: &() = &self.payload.InvalidFilename;
-                    f.debug_tuple("IOError::InvalidFilename").field(field).finish()
-                },
+                    f.debug_tuple("IOError::InvalidFilename")
+                        .field(field)
+                        .finish()
+                }
                 InvalidInput => {
                     let field: &() = &self.payload.InvalidInput;
                     f.debug_tuple("IOError::InvalidInput").field(field).finish()
-                },
+                }
                 IsADirectory => {
                     let field: &() = &self.payload.IsADirectory;
                     f.debug_tuple("IOError::IsADirectory").field(field).finish()
-                },
+                }
                 NetworkDown => {
                     let field: &() = &self.payload.NetworkDown;
                     f.debug_tuple("IOError::NetworkDown").field(field).finish()
-                },
+                }
                 NetworkUnreachable => {
                     let field: &() = &self.payload.NetworkUnreachable;
-                    f.debug_tuple("IOError::NetworkUnreachable").field(field).finish()
-                },
+                    f.debug_tuple("IOError::NetworkUnreachable")
+                        .field(field)
+                        .finish()
+                }
                 NotADirectory => {
                     let field: &() = &self.payload.NotADirectory;
-                    f.debug_tuple("IOError::NotADirectory").field(field).finish()
-                },
+                    f.debug_tuple("IOError::NotADirectory")
+                        .field(field)
+                        .finish()
+                }
                 NotConnected => {
                     let field: &() = &self.payload.NotConnected;
                     f.debug_tuple("IOError::NotConnected").field(field).finish()
-                },
+                }
                 NotFound => {
                     let field: &() = &self.payload.NotFound;
                     f.debug_tuple("IOError::NotFound").field(field).finish()
-                },
+                }
                 NotSeekable => {
                     let field: &() = &self.payload.NotSeekable;
                     f.debug_tuple("IOError::NotSeekable").field(field).finish()
-                },
+                }
                 Other => {
                     let field: &() = &self.payload.Other;
                     f.debug_tuple("IOError::Other").field(field).finish()
-                },
+                }
                 OutOfMemory => {
                     let field: &() = &self.payload.OutOfMemory;
                     f.debug_tuple("IOError::OutOfMemory").field(field).finish()
-                },
+                }
                 PermissionDenied => {
                     let field: &() = &self.payload.PermissionDenied;
-                    f.debug_tuple("IOError::PermissionDenied").field(field).finish()
-                },
+                    f.debug_tuple("IOError::PermissionDenied")
+                        .field(field)
+                        .finish()
+                }
                 ReadOnlyFilesystem => {
                     let field: &() = &self.payload.ReadOnlyFilesystem;
-                    f.debug_tuple("IOError::ReadOnlyFilesystem").field(field).finish()
-                },
+                    f.debug_tuple("IOError::ReadOnlyFilesystem")
+                        .field(field)
+                        .finish()
+                }
                 ResourceBusy => {
                     let field: &() = &self.payload.ResourceBusy;
                     f.debug_tuple("IOError::ResourceBusy").field(field).finish()
-                },
+                }
                 StaleNetworkFileHandle => {
                     let field: &() = &self.payload.StaleNetworkFileHandle;
-                    f.debug_tuple("IOError::StaleNetworkFileHandle").field(field).finish()
-                },
+                    f.debug_tuple("IOError::StaleNetworkFileHandle")
+                        .field(field)
+                        .finish()
+                }
                 StorageFull => {
                     let field: &() = &self.payload.StorageFull;
                     f.debug_tuple("IOError::StorageFull").field(field).finish()
-                },
+                }
                 TimedOut => {
                     let field: &() = &self.payload.TimedOut;
                     f.debug_tuple("IOError::TimedOut").field(field).finish()
-                },
+                }
                 TooManyLinks => {
                     let field: &() = &self.payload.TooManyLinks;
                     f.debug_tuple("IOError::TooManyLinks").field(field).finish()
-                },
+                }
                 UnexpectedEof => {
                     let field: &() = &self.payload.UnexpectedEof;
-                    f.debug_tuple("IOError::UnexpectedEof").field(field).finish()
-                },
+                    f.debug_tuple("IOError::UnexpectedEof")
+                        .field(field)
+                        .finish()
+                }
                 Unsupported => {
                     let field: &() = &self.payload.Unsupported;
                     f.debug_tuple("IOError::Unsupported").field(field).finish()
-                },
+                }
                 WouldBlock => {
                     let field: &() = &self.payload.WouldBlock;
                     f.debug_tuple("IOError::WouldBlock").field(field).finish()
-                },
+                }
                 WriteZero => {
                     let field: &() = &self.payload.WriteZero;
                     f.debug_tuple("IOError::WriteZero").field(field).finish()
-                },
+                }
             }
         }
     }
@@ -4826,18 +5110,30 @@ impl PartialEq for IOError {
                 AddrInUse => self.payload.AddrInUse == other.payload.AddrInUse,
                 AddrNotAvailable => self.payload.AddrNotAvailable == other.payload.AddrNotAvailable,
                 AlreadyExists => self.payload.AlreadyExists == other.payload.AlreadyExists,
-                ArgumentListTooLong => self.payload.ArgumentListTooLong == other.payload.ArgumentListTooLong,
+                ArgumentListTooLong => {
+                    self.payload.ArgumentListTooLong == other.payload.ArgumentListTooLong
+                }
                 BrokenPipe => self.payload.BrokenPipe == other.payload.BrokenPipe,
-                ConnectionAborted => self.payload.ConnectionAborted == other.payload.ConnectionAborted,
-                ConnectionRefused => self.payload.ConnectionRefused == other.payload.ConnectionRefused,
+                ConnectionAborted => {
+                    self.payload.ConnectionAborted == other.payload.ConnectionAborted
+                }
+                ConnectionRefused => {
+                    self.payload.ConnectionRefused == other.payload.ConnectionRefused
+                }
                 ConnectionReset => self.payload.ConnectionReset == other.payload.ConnectionReset,
                 CrossesDevices => self.payload.CrossesDevices == other.payload.CrossesDevices,
                 Deadlock => self.payload.Deadlock == other.payload.Deadlock,
-                DirectoryNotEmpty => self.payload.DirectoryNotEmpty == other.payload.DirectoryNotEmpty,
-                ExecutableFileBusy => self.payload.ExecutableFileBusy == other.payload.ExecutableFileBusy,
+                DirectoryNotEmpty => {
+                    self.payload.DirectoryNotEmpty == other.payload.DirectoryNotEmpty
+                }
+                ExecutableFileBusy => {
+                    self.payload.ExecutableFileBusy == other.payload.ExecutableFileBusy
+                }
                 FileTooLarge => self.payload.FileTooLarge == other.payload.FileTooLarge,
                 FilesystemLoop => self.payload.FilesystemLoop == other.payload.FilesystemLoop,
-                FilesystemQuotaExceeded => self.payload.FilesystemQuotaExceeded == other.payload.FilesystemQuotaExceeded,
+                FilesystemQuotaExceeded => {
+                    self.payload.FilesystemQuotaExceeded == other.payload.FilesystemQuotaExceeded
+                }
                 HostUnreachable => self.payload.HostUnreachable == other.payload.HostUnreachable,
                 Interrupted => self.payload.Interrupted == other.payload.Interrupted,
                 InvalidData => self.payload.InvalidData == other.payload.InvalidData,
@@ -4845,7 +5141,9 @@ impl PartialEq for IOError {
                 InvalidInput => self.payload.InvalidInput == other.payload.InvalidInput,
                 IsADirectory => self.payload.IsADirectory == other.payload.IsADirectory,
                 NetworkDown => self.payload.NetworkDown == other.payload.NetworkDown,
-                NetworkUnreachable => self.payload.NetworkUnreachable == other.payload.NetworkUnreachable,
+                NetworkUnreachable => {
+                    self.payload.NetworkUnreachable == other.payload.NetworkUnreachable
+                }
                 NotADirectory => self.payload.NotADirectory == other.payload.NotADirectory,
                 NotConnected => self.payload.NotConnected == other.payload.NotConnected,
                 NotFound => self.payload.NotFound == other.payload.NotFound,
@@ -4853,9 +5151,13 @@ impl PartialEq for IOError {
                 Other => self.payload.Other == other.payload.Other,
                 OutOfMemory => self.payload.OutOfMemory == other.payload.OutOfMemory,
                 PermissionDenied => self.payload.PermissionDenied == other.payload.PermissionDenied,
-                ReadOnlyFilesystem => self.payload.ReadOnlyFilesystem == other.payload.ReadOnlyFilesystem,
+                ReadOnlyFilesystem => {
+                    self.payload.ReadOnlyFilesystem == other.payload.ReadOnlyFilesystem
+                }
                 ResourceBusy => self.payload.ResourceBusy == other.payload.ResourceBusy,
-                StaleNetworkFileHandle => self.payload.StaleNetworkFileHandle == other.payload.StaleNetworkFileHandle,
+                StaleNetworkFileHandle => {
+                    self.payload.StaleNetworkFileHandle == other.payload.StaleNetworkFileHandle
+                }
                 StorageFull => self.payload.StorageFull == other.payload.StorageFull,
                 TimedOut => self.payload.TimedOut == other.payload.TimedOut,
                 TooManyLinks => self.payload.TooManyLinks == other.payload.TooManyLinks,
@@ -4886,44 +5188,146 @@ impl PartialOrd for IOError {
             Equal => unsafe {
                 match self.discriminant {
                     AddrInUse => self.payload.AddrInUse.partial_cmp(&other.payload.AddrInUse),
-                    AddrNotAvailable => self.payload.AddrNotAvailable.partial_cmp(&other.payload.AddrNotAvailable),
-                    AlreadyExists => self.payload.AlreadyExists.partial_cmp(&other.payload.AlreadyExists),
-                    ArgumentListTooLong => self.payload.ArgumentListTooLong.partial_cmp(&other.payload.ArgumentListTooLong),
-                    BrokenPipe => self.payload.BrokenPipe.partial_cmp(&other.payload.BrokenPipe),
-                    ConnectionAborted => self.payload.ConnectionAborted.partial_cmp(&other.payload.ConnectionAborted),
-                    ConnectionRefused => self.payload.ConnectionRefused.partial_cmp(&other.payload.ConnectionRefused),
-                    ConnectionReset => self.payload.ConnectionReset.partial_cmp(&other.payload.ConnectionReset),
-                    CrossesDevices => self.payload.CrossesDevices.partial_cmp(&other.payload.CrossesDevices),
+                    AddrNotAvailable => self
+                        .payload
+                        .AddrNotAvailable
+                        .partial_cmp(&other.payload.AddrNotAvailable),
+                    AlreadyExists => self
+                        .payload
+                        .AlreadyExists
+                        .partial_cmp(&other.payload.AlreadyExists),
+                    ArgumentListTooLong => self
+                        .payload
+                        .ArgumentListTooLong
+                        .partial_cmp(&other.payload.ArgumentListTooLong),
+                    BrokenPipe => self
+                        .payload
+                        .BrokenPipe
+                        .partial_cmp(&other.payload.BrokenPipe),
+                    ConnectionAborted => self
+                        .payload
+                        .ConnectionAborted
+                        .partial_cmp(&other.payload.ConnectionAborted),
+                    ConnectionRefused => self
+                        .payload
+                        .ConnectionRefused
+                        .partial_cmp(&other.payload.ConnectionRefused),
+                    ConnectionReset => self
+                        .payload
+                        .ConnectionReset
+                        .partial_cmp(&other.payload.ConnectionReset),
+                    CrossesDevices => self
+                        .payload
+                        .CrossesDevices
+                        .partial_cmp(&other.payload.CrossesDevices),
                     Deadlock => self.payload.Deadlock.partial_cmp(&other.payload.Deadlock),
-                    DirectoryNotEmpty => self.payload.DirectoryNotEmpty.partial_cmp(&other.payload.DirectoryNotEmpty),
-                    ExecutableFileBusy => self.payload.ExecutableFileBusy.partial_cmp(&other.payload.ExecutableFileBusy),
-                    FileTooLarge => self.payload.FileTooLarge.partial_cmp(&other.payload.FileTooLarge),
-                    FilesystemLoop => self.payload.FilesystemLoop.partial_cmp(&other.payload.FilesystemLoop),
-                    FilesystemQuotaExceeded => self.payload.FilesystemQuotaExceeded.partial_cmp(&other.payload.FilesystemQuotaExceeded),
-                    HostUnreachable => self.payload.HostUnreachable.partial_cmp(&other.payload.HostUnreachable),
-                    Interrupted => self.payload.Interrupted.partial_cmp(&other.payload.Interrupted),
-                    InvalidData => self.payload.InvalidData.partial_cmp(&other.payload.InvalidData),
-                    InvalidFilename => self.payload.InvalidFilename.partial_cmp(&other.payload.InvalidFilename),
-                    InvalidInput => self.payload.InvalidInput.partial_cmp(&other.payload.InvalidInput),
-                    IsADirectory => self.payload.IsADirectory.partial_cmp(&other.payload.IsADirectory),
-                    NetworkDown => self.payload.NetworkDown.partial_cmp(&other.payload.NetworkDown),
-                    NetworkUnreachable => self.payload.NetworkUnreachable.partial_cmp(&other.payload.NetworkUnreachable),
-                    NotADirectory => self.payload.NotADirectory.partial_cmp(&other.payload.NotADirectory),
-                    NotConnected => self.payload.NotConnected.partial_cmp(&other.payload.NotConnected),
+                    DirectoryNotEmpty => self
+                        .payload
+                        .DirectoryNotEmpty
+                        .partial_cmp(&other.payload.DirectoryNotEmpty),
+                    ExecutableFileBusy => self
+                        .payload
+                        .ExecutableFileBusy
+                        .partial_cmp(&other.payload.ExecutableFileBusy),
+                    FileTooLarge => self
+                        .payload
+                        .FileTooLarge
+                        .partial_cmp(&other.payload.FileTooLarge),
+                    FilesystemLoop => self
+                        .payload
+                        .FilesystemLoop
+                        .partial_cmp(&other.payload.FilesystemLoop),
+                    FilesystemQuotaExceeded => self
+                        .payload
+                        .FilesystemQuotaExceeded
+                        .partial_cmp(&other.payload.FilesystemQuotaExceeded),
+                    HostUnreachable => self
+                        .payload
+                        .HostUnreachable
+                        .partial_cmp(&other.payload.HostUnreachable),
+                    Interrupted => self
+                        .payload
+                        .Interrupted
+                        .partial_cmp(&other.payload.Interrupted),
+                    InvalidData => self
+                        .payload
+                        .InvalidData
+                        .partial_cmp(&other.payload.InvalidData),
+                    InvalidFilename => self
+                        .payload
+                        .InvalidFilename
+                        .partial_cmp(&other.payload.InvalidFilename),
+                    InvalidInput => self
+                        .payload
+                        .InvalidInput
+                        .partial_cmp(&other.payload.InvalidInput),
+                    IsADirectory => self
+                        .payload
+                        .IsADirectory
+                        .partial_cmp(&other.payload.IsADirectory),
+                    NetworkDown => self
+                        .payload
+                        .NetworkDown
+                        .partial_cmp(&other.payload.NetworkDown),
+                    NetworkUnreachable => self
+                        .payload
+                        .NetworkUnreachable
+                        .partial_cmp(&other.payload.NetworkUnreachable),
+                    NotADirectory => self
+                        .payload
+                        .NotADirectory
+                        .partial_cmp(&other.payload.NotADirectory),
+                    NotConnected => self
+                        .payload
+                        .NotConnected
+                        .partial_cmp(&other.payload.NotConnected),
                     NotFound => self.payload.NotFound.partial_cmp(&other.payload.NotFound),
-                    NotSeekable => self.payload.NotSeekable.partial_cmp(&other.payload.NotSeekable),
+                    NotSeekable => self
+                        .payload
+                        .NotSeekable
+                        .partial_cmp(&other.payload.NotSeekable),
                     Other => self.payload.Other.partial_cmp(&other.payload.Other),
-                    OutOfMemory => self.payload.OutOfMemory.partial_cmp(&other.payload.OutOfMemory),
-                    PermissionDenied => self.payload.PermissionDenied.partial_cmp(&other.payload.PermissionDenied),
-                    ReadOnlyFilesystem => self.payload.ReadOnlyFilesystem.partial_cmp(&other.payload.ReadOnlyFilesystem),
-                    ResourceBusy => self.payload.ResourceBusy.partial_cmp(&other.payload.ResourceBusy),
-                    StaleNetworkFileHandle => self.payload.StaleNetworkFileHandle.partial_cmp(&other.payload.StaleNetworkFileHandle),
-                    StorageFull => self.payload.StorageFull.partial_cmp(&other.payload.StorageFull),
+                    OutOfMemory => self
+                        .payload
+                        .OutOfMemory
+                        .partial_cmp(&other.payload.OutOfMemory),
+                    PermissionDenied => self
+                        .payload
+                        .PermissionDenied
+                        .partial_cmp(&other.payload.PermissionDenied),
+                    ReadOnlyFilesystem => self
+                        .payload
+                        .ReadOnlyFilesystem
+                        .partial_cmp(&other.payload.ReadOnlyFilesystem),
+                    ResourceBusy => self
+                        .payload
+                        .ResourceBusy
+                        .partial_cmp(&other.payload.ResourceBusy),
+                    StaleNetworkFileHandle => self
+                        .payload
+                        .StaleNetworkFileHandle
+                        .partial_cmp(&other.payload.StaleNetworkFileHandle),
+                    StorageFull => self
+                        .payload
+                        .StorageFull
+                        .partial_cmp(&other.payload.StorageFull),
                     TimedOut => self.payload.TimedOut.partial_cmp(&other.payload.TimedOut),
-                    TooManyLinks => self.payload.TooManyLinks.partial_cmp(&other.payload.TooManyLinks),
-                    UnexpectedEof => self.payload.UnexpectedEof.partial_cmp(&other.payload.UnexpectedEof),
-                    Unsupported => self.payload.Unsupported.partial_cmp(&other.payload.Unsupported),
-                    WouldBlock => self.payload.WouldBlock.partial_cmp(&other.payload.WouldBlock),
+                    TooManyLinks => self
+                        .payload
+                        .TooManyLinks
+                        .partial_cmp(&other.payload.TooManyLinks),
+                    UnexpectedEof => self
+                        .payload
+                        .UnexpectedEof
+                        .partial_cmp(&other.payload.UnexpectedEof),
+                    Unsupported => self
+                        .payload
+                        .Unsupported
+                        .partial_cmp(&other.payload.Unsupported),
+                    WouldBlock => self
+                        .payload
+                        .WouldBlock
+                        .partial_cmp(&other.payload.WouldBlock),
                     WriteZero => self.payload.WriteZero.partial_cmp(&other.payload.WriteZero),
                 }
             },
@@ -4983,7 +5387,6 @@ impl core::hash::Hash for IOError {
 }
 
 impl IOError {
-
     pub fn is_AddrInUse(&self) -> bool {
         matches!(self.discriminant, discriminant_IOError::AddrInUse)
     }
@@ -5041,7 +5444,10 @@ impl IOError {
     }
 
     pub fn is_FilesystemQuotaExceeded(&self) -> bool {
-        matches!(self.discriminant, discriminant_IOError::FilesystemQuotaExceeded)
+        matches!(
+            self.discriminant,
+            discriminant_IOError::FilesystemQuotaExceeded
+        )
     }
 
     pub fn is_HostUnreachable(&self) -> bool {
@@ -5113,7 +5519,10 @@ impl IOError {
     }
 
     pub fn is_StaleNetworkFileHandle(&self) -> bool {
-        matches!(self.discriminant, discriminant_IOError::StaleNetworkFileHandle)
+        matches!(
+            self.discriminant,
+            discriminant_IOError::StaleNetworkFileHandle
+        )
     }
 
     pub fn is_StorageFull(&self) -> bool {
@@ -5145,16 +5554,11 @@ impl IOError {
     }
 }
 
-
-
 impl IOError {
-
     pub fn AddrInUse() -> Self {
         Self {
             discriminant: discriminant_IOError::AddrInUse,
-            payload: union_IOError {
-                AddrInUse: (),
-            }
+            payload: union_IOError { AddrInUse: () },
         }
     }
 
@@ -5163,16 +5567,14 @@ impl IOError {
             discriminant: discriminant_IOError::AddrNotAvailable,
             payload: union_IOError {
                 AddrNotAvailable: (),
-            }
+            },
         }
     }
 
     pub fn AlreadyExists() -> Self {
         Self {
             discriminant: discriminant_IOError::AlreadyExists,
-            payload: union_IOError {
-                AlreadyExists: (),
-            }
+            payload: union_IOError { AlreadyExists: () },
         }
     }
 
@@ -5181,16 +5583,14 @@ impl IOError {
             discriminant: discriminant_IOError::ArgumentListTooLong,
             payload: union_IOError {
                 ArgumentListTooLong: (),
-            }
+            },
         }
     }
 
     pub fn BrokenPipe() -> Self {
         Self {
             discriminant: discriminant_IOError::BrokenPipe,
-            payload: union_IOError {
-                BrokenPipe: (),
-            }
+            payload: union_IOError { BrokenPipe: () },
         }
     }
 
@@ -5199,7 +5599,7 @@ impl IOError {
             discriminant: discriminant_IOError::ConnectionAborted,
             payload: union_IOError {
                 ConnectionAborted: (),
-            }
+            },
         }
     }
 
@@ -5208,7 +5608,7 @@ impl IOError {
             discriminant: discriminant_IOError::ConnectionRefused,
             payload: union_IOError {
                 ConnectionRefused: (),
-            }
+            },
         }
     }
 
@@ -5217,25 +5617,21 @@ impl IOError {
             discriminant: discriminant_IOError::ConnectionReset,
             payload: union_IOError {
                 ConnectionReset: (),
-            }
+            },
         }
     }
 
     pub fn CrossesDevices() -> Self {
         Self {
             discriminant: discriminant_IOError::CrossesDevices,
-            payload: union_IOError {
-                CrossesDevices: (),
-            }
+            payload: union_IOError { CrossesDevices: () },
         }
     }
 
     pub fn Deadlock() -> Self {
         Self {
             discriminant: discriminant_IOError::Deadlock,
-            payload: union_IOError {
-                Deadlock: (),
-            }
+            payload: union_IOError { Deadlock: () },
         }
     }
 
@@ -5244,7 +5640,7 @@ impl IOError {
             discriminant: discriminant_IOError::DirectoryNotEmpty,
             payload: union_IOError {
                 DirectoryNotEmpty: (),
-            }
+            },
         }
     }
 
@@ -5253,25 +5649,21 @@ impl IOError {
             discriminant: discriminant_IOError::ExecutableFileBusy,
             payload: union_IOError {
                 ExecutableFileBusy: (),
-            }
+            },
         }
     }
 
     pub fn FileTooLarge() -> Self {
         Self {
             discriminant: discriminant_IOError::FileTooLarge,
-            payload: union_IOError {
-                FileTooLarge: (),
-            }
+            payload: union_IOError { FileTooLarge: () },
         }
     }
 
     pub fn FilesystemLoop() -> Self {
         Self {
             discriminant: discriminant_IOError::FilesystemLoop,
-            payload: union_IOError {
-                FilesystemLoop: (),
-            }
+            payload: union_IOError { FilesystemLoop: () },
         }
     }
 
@@ -5280,7 +5672,7 @@ impl IOError {
             discriminant: discriminant_IOError::FilesystemQuotaExceeded,
             payload: union_IOError {
                 FilesystemQuotaExceeded: (),
-            }
+            },
         }
     }
 
@@ -5289,25 +5681,21 @@ impl IOError {
             discriminant: discriminant_IOError::HostUnreachable,
             payload: union_IOError {
                 HostUnreachable: (),
-            }
+            },
         }
     }
 
     pub fn Interrupted() -> Self {
         Self {
             discriminant: discriminant_IOError::Interrupted,
-            payload: union_IOError {
-                Interrupted: (),
-            }
+            payload: union_IOError { Interrupted: () },
         }
     }
 
     pub fn InvalidData() -> Self {
         Self {
             discriminant: discriminant_IOError::InvalidData,
-            payload: union_IOError {
-                InvalidData: (),
-            }
+            payload: union_IOError { InvalidData: () },
         }
     }
 
@@ -5316,34 +5704,28 @@ impl IOError {
             discriminant: discriminant_IOError::InvalidFilename,
             payload: union_IOError {
                 InvalidFilename: (),
-            }
+            },
         }
     }
 
     pub fn InvalidInput() -> Self {
         Self {
             discriminant: discriminant_IOError::InvalidInput,
-            payload: union_IOError {
-                InvalidInput: (),
-            }
+            payload: union_IOError { InvalidInput: () },
         }
     }
 
     pub fn IsADirectory() -> Self {
         Self {
             discriminant: discriminant_IOError::IsADirectory,
-            payload: union_IOError {
-                IsADirectory: (),
-            }
+            payload: union_IOError { IsADirectory: () },
         }
     }
 
     pub fn NetworkDown() -> Self {
         Self {
             discriminant: discriminant_IOError::NetworkDown,
-            payload: union_IOError {
-                NetworkDown: (),
-            }
+            payload: union_IOError { NetworkDown: () },
         }
     }
 
@@ -5352,61 +5734,49 @@ impl IOError {
             discriminant: discriminant_IOError::NetworkUnreachable,
             payload: union_IOError {
                 NetworkUnreachable: (),
-            }
+            },
         }
     }
 
     pub fn NotADirectory() -> Self {
         Self {
             discriminant: discriminant_IOError::NotADirectory,
-            payload: union_IOError {
-                NotADirectory: (),
-            }
+            payload: union_IOError { NotADirectory: () },
         }
     }
 
     pub fn NotConnected() -> Self {
         Self {
             discriminant: discriminant_IOError::NotConnected,
-            payload: union_IOError {
-                NotConnected: (),
-            }
+            payload: union_IOError { NotConnected: () },
         }
     }
 
     pub fn NotFound() -> Self {
         Self {
             discriminant: discriminant_IOError::NotFound,
-            payload: union_IOError {
-                NotFound: (),
-            }
+            payload: union_IOError { NotFound: () },
         }
     }
 
     pub fn NotSeekable() -> Self {
         Self {
             discriminant: discriminant_IOError::NotSeekable,
-            payload: union_IOError {
-                NotSeekable: (),
-            }
+            payload: union_IOError { NotSeekable: () },
         }
     }
 
     pub fn Other() -> Self {
         Self {
             discriminant: discriminant_IOError::Other,
-            payload: union_IOError {
-                Other: (),
-            }
+            payload: union_IOError { Other: () },
         }
     }
 
     pub fn OutOfMemory() -> Self {
         Self {
             discriminant: discriminant_IOError::OutOfMemory,
-            payload: union_IOError {
-                OutOfMemory: (),
-            }
+            payload: union_IOError { OutOfMemory: () },
         }
     }
 
@@ -5415,7 +5785,7 @@ impl IOError {
             discriminant: discriminant_IOError::PermissionDenied,
             payload: union_IOError {
                 PermissionDenied: (),
-            }
+            },
         }
     }
 
@@ -5424,16 +5794,14 @@ impl IOError {
             discriminant: discriminant_IOError::ReadOnlyFilesystem,
             payload: union_IOError {
                 ReadOnlyFilesystem: (),
-            }
+            },
         }
     }
 
     pub fn ResourceBusy() -> Self {
         Self {
             discriminant: discriminant_IOError::ResourceBusy,
-            payload: union_IOError {
-                ResourceBusy: (),
-            }
+            payload: union_IOError { ResourceBusy: () },
         }
     }
 
@@ -5442,75 +5810,61 @@ impl IOError {
             discriminant: discriminant_IOError::StaleNetworkFileHandle,
             payload: union_IOError {
                 StaleNetworkFileHandle: (),
-            }
+            },
         }
     }
 
     pub fn StorageFull() -> Self {
         Self {
             discriminant: discriminant_IOError::StorageFull,
-            payload: union_IOError {
-                StorageFull: (),
-            }
+            payload: union_IOError { StorageFull: () },
         }
     }
 
     pub fn TimedOut() -> Self {
         Self {
             discriminant: discriminant_IOError::TimedOut,
-            payload: union_IOError {
-                TimedOut: (),
-            }
+            payload: union_IOError { TimedOut: () },
         }
     }
 
     pub fn TooManyLinks() -> Self {
         Self {
             discriminant: discriminant_IOError::TooManyLinks,
-            payload: union_IOError {
-                TooManyLinks: (),
-            }
+            payload: union_IOError { TooManyLinks: () },
         }
     }
 
     pub fn UnexpectedEof() -> Self {
         Self {
             discriminant: discriminant_IOError::UnexpectedEof,
-            payload: union_IOError {
-                UnexpectedEof: (),
-            }
+            payload: union_IOError { UnexpectedEof: () },
         }
     }
 
     pub fn Unsupported() -> Self {
         Self {
             discriminant: discriminant_IOError::Unsupported,
-            payload: union_IOError {
-                Unsupported: (),
-            }
+            payload: union_IOError { Unsupported: () },
         }
     }
 
     pub fn WouldBlock() -> Self {
         Self {
             discriminant: discriminant_IOError::WouldBlock,
-            payload: union_IOError {
-                WouldBlock: (),
-            }
+            payload: union_IOError { WouldBlock: () },
         }
     }
 
     pub fn WriteZero() -> Self {
         Self {
             discriminant: discriminant_IOError::WriteZero,
-            payload: union_IOError {
-                WriteZero: (),
-            }
+            payload: union_IOError { WriteZero: () },
         }
     }
 }
 
-#[derive(Clone, Copy, Default, Debug, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Copy, Default, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct InternalPathType {
     pub isDir: bool,
@@ -5518,7 +5872,7 @@ pub struct InternalPathType {
     pub isSymLink: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash, )]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct GlueTypes {
     pub ha: Request,
@@ -5547,8 +5901,6 @@ pub struct GlueTypes {
     pub pd: InternalPathType,
 }
 
-
-
 pub fn mainForHost() -> GlueTypes {
     extern "C" {
         fn roc__mainForHost_1_exposed_generic(_: *mut GlueTypes);
@@ -5557,7 +5909,7 @@ pub fn mainForHost() -> GlueTypes {
     let mut ret = core::mem::MaybeUninit::uninit();
 
     unsafe {
-        roc__mainForHost_1_exposed_generic(ret.as_mut_ptr(), );
+        roc__mainForHost_1_exposed_generic(ret.as_mut_ptr());
 
         ret.assume_init()
     }
