@@ -134,8 +134,8 @@ prebuiltBinaryName = \target ->
         MacosX64 -> "macos-x64"
         LinuxArm64 -> "linux-arm64.a"
         LinuxX64 -> "linux-x64.a"
-        WindowsArm64 -> "windows-arm64.a"
-        WindowsX64 -> "windows-x64"
+        WindowsArm64 -> "windows-arm64.lib"
+        WindowsX64 -> "windows-x64.lib"
 
 printInfoLine : Str -> Task {} _
 printInfoLine = \msg ->
