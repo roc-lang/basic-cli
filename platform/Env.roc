@@ -134,21 +134,28 @@ dict =
 ARCH : [X86, X64, ARM, AARCH64, OTHER Str]
 OS : [LINUX, MACOS, WINDOWS, OTHER Str]
 
+## Returns the current Achitecture and Operating System.
+##
+## `ARCH : [X86, X64, ARM, AARCH64, OTHER Str]`
+## `OS : [LINUX, MACOS, WINDOWS, OTHER Str]`
+##
+## Note these values are constants from when the platform is built.
+##
 platform : Task {arch : ARCH, os: OS} *
 platform =
     Effect.currentArchOS
     |> Effect.map \fromRust ->
-    
-        arch = 
-            when fromRust.arch is 
+
+        arch =
+            when fromRust.arch is
                 "x86" -> X86
                 "x86_64" -> X64
                 "arm" -> ARM
                 "aarch64" -> AARCH64
                 _ -> OTHER fromRust.arch
 
-        os = 
-            when fromRust.os is 
+        os =
+            when fromRust.os is
                 "linux" -> LINUX
                 "macos" -> MACOS
                 "windows" -> WINDOWS
