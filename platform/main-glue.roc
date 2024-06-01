@@ -8,6 +8,7 @@ platform "glue"
         InternalFile,
         InternalPath,
         InternalTcp,
+        InternalUdp,
     ]
     provides [mainForHost]
 
@@ -35,6 +36,11 @@ GlueTypes : {
     tcpe : InternalTcp.WriteResult,
     tcpf : InternalTcp.ReadResult,
     tcpg : InternalTcp.ReadExactlyResult,
+    udpa : InternalUdp.Socket,
+    udpb : InternalUdp.SocketErr,
+    udpc : InternalUdp.BindErr,
+    udpd : InternalUdp.BindResult,
+    udpe : InternalUdp.ReceiveResult,
 }
 
 mainForHost : GlueTypes
