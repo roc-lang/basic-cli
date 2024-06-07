@@ -1117,3 +1117,17 @@ fn handleDirError(io_err: std::io::Error) -> RocStr {
         _ => RocStr::from(RocStr::from(format!("{:?}", io_err).as_str())),
     }
 }
+
+#[repr(C)]
+pub struct ReturnArchOS {
+    arch: RocStr,
+    os: RocStr,
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_currentArchOS() -> ReturnArchOS {
+    ReturnArchOS {
+        arch: std::env::consts::ARCH.into(),
+        os: std::env::consts::OS.into(),
+    }
+}
