@@ -12,8 +12,8 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-              # macos-11 uses x86-64 machine, macos-14 uses aarch64  
-              os: [ macos-11, macos-14, ubuntu-22.04 ]
+              # macos-12 uses x86-64 machine, macos-14 uses aarch64  
+              os: [ macos-12, macos-14, ubuntu-22.04 ]
         runs-on: ${{ matrix.os }}
         steps:
             - uses: actions/checkout@v3
