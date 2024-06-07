@@ -13,6 +13,7 @@ platform "cli"
         Stdout,
         Task,
         Tcp,
+        Udp,
         Url,
         Utc,
         Sleep,
