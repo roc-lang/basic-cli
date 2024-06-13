@@ -57,4 +57,3 @@ jobs:
       # Workaround for https://github.com/roc-lang/roc/issues/6688
       - name: Check if crash occurred
         run: grep -zqv "crashed" all_tests_output.log
-# TODO clippy, rustfmt, roc fmt check

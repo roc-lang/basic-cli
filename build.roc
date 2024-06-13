@@ -44,13 +44,16 @@ run = \{ release } ->
     Cmd.exec "roc" ["glue", "glue.roc", "crates/", "platform/main.roc"]
     |> Task.mapErr! ErrGeneratingGlue
 
+    # get the roc target for the native machine
     target = getNativeTarget!
 
+    # build the app stub shared library (for processing surgical linker binaries)
     appStubBuildPath = "platform/libapp.$(appStubExt target)"
     printInfoLine! "roc build the app stub shared library at $(appStubBuildPath)"
     Cmd.exec "roc" ["build", "--lib", "platform/libapp.roc"]
     |> Task.mapErr! ErrBuildingAppStub
 
+    # build the roc host binaries
     (cargoBuildArgs, message) =
         if release then
             (["build", "--release"], "building roc host binaries in release mode")
@@ -61,6 +64,7 @@ run = \{ release } ->
     Cmd.exec "cargo" cargoBuildArgs
     |> Task.mapErr! ErrBuildingRocHostBinaries
 
+    # move the prebuilt binary to the platform directory
     prebuiltLegacyBinaryBuildPath =
         if release then
             "target/release/libhost.a"
@@ -72,8 +76,14 @@ run = \{ release } ->
     Cmd.exec "cp" [prebuiltLegacyBinaryBuildPath, prebuiltLegacyBinaryPath]
     |> Task.mapErr! ErrMovingPrebuiltLegacyBinary
 
-    # SURGICAL LINKER IS NOT YET SUPPORTED need to merge
-    # https://github.com/roc-lang/roc/pull/6696
+    #SURGICAL LINKER IS NOT YET SUPPORTED need to merge https://github.com/roc-lang/roc/pull/6808
+    #prebuiltSurgicalBinaryBuildPath =
+    #    if release then
+    #        "target/release/host"
+    #    else
+    #        "target/debug/host"
+    #Cmd.exec "roc" ["preprocess-host", prebuiltSurgicalBinaryBuildPath, "platform/main.roc", "platform/libapp.$(appStubExt target)"]
+    #|> Task.mapErr! ErrPreprocessingSurgicalBinary
 
 getNativeTarget : Task RocTarget _
 getNativeTarget =
