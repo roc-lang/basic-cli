@@ -39,9 +39,9 @@ for roc_file in $EXAMPLES_DIR*.roc; do
 done
 
 # prep for next step
-cd rust_http_server
+cd ci/rust_http_server
 cargo build --release
-cd ..
+cd ../..
 
 # check output with linux expect
 for roc_file in $EXAMPLES_DIR*.roc; do
