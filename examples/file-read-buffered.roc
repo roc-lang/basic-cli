@@ -13,16 +13,13 @@ main =
 
     Stdout.line "Done reading, got $(Inspect.toStr state)"
 
-State : {linesRead: U64, bytesRead: U64}
+State : { linesRead : U64, bytesRead : U64 }
 
 processLine : File.FD -> (State -> Task [Step State, Done State] _)
 processLine = \handle -> \{ linesRead, bytesRead } ->
-    when File.readLine handle |> Task.result! is
-        Ok bytes ->
-            bytesStr = List.len bytes |> Num.toStr
-            Stdout.line! "Read $(bytesStr) bytes"
+        when File.readLine handle |> Task.result! is
+            Ok bytes ->
+                Task.ok (Step { linesRead: linesRead + 1, bytesRead: bytesRead + (List.len bytes |> Num.intCast) })
 
-            Task.ok (Step { linesRead: linesRead + 1, bytesRead: bytesRead + (List.len bytes|> Num.intCast) })
-
-        Err _ ->
-            Task.ok (Done { linesRead, bytesRead })
+            Err _ ->
+                Task.ok (Done { linesRead, bytesRead })
