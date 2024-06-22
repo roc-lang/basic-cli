@@ -16,6 +16,7 @@ generated-docs
 *.wasm
 *.exe
 *.pdb
+*.dylib
 
 # llvm human-readable output
 *.ll

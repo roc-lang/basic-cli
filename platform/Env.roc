@@ -1,4 +1,4 @@
-module [cwd, dict, var, decode, exePath, setCwd]
+module [cwd, dict, var, decode, exePath, setCwd, platform]
 
 import Task exposing [Task]
 import Path exposing [Path]
@@ -130,3 +130,37 @@ dict =
 # Alternatively, it could make sense to have some sort of tag union convention here, e.g.
 # if decoding into a tag union of [Present val, Missing], then it knows what to do.
 # decodeAll : Task val [] [EnvDecodingFailed Str] [Env] where val implements Decoding
+
+ARCH : [X86, X64, ARM, AARCH64, OTHER Str]
+OS : [LINUX, MACOS, WINDOWS, OTHER Str]
+
+## Returns the current Achitecture and Operating System.
+##
+## `ARCH : [X86, X64, ARM, AARCH64, OTHER Str]`
+## `OS : [LINUX, MACOS, WINDOWS, OTHER Str]`
+##
+## Note these values are constants from when the platform is built.
+##
+platform : Task {arch : ARCH, os: OS} *
+platform =
+    Effect.currentArchOS
+    |> Effect.map \fromRust ->
+
+        arch =
+            when fromRust.arch is
+                "x86" -> X86
+                "x86_64" -> X64
+                "arm" -> ARM
+                "aarch64" -> AARCH64
+                _ -> OTHER fromRust.arch
+
+        os =
+            when fromRust.os is
+                "linux" -> LINUX
+                "macos" -> MACOS
+                "windows" -> WINDOWS
+                _ -> OTHER fromRust.os
+
+        Ok {arch, os}
+
+    |> InternalTask.fromEffect

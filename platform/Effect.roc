@@ -41,6 +41,7 @@ hosted Effect
         sleepMillis,
         commandStatus,
         commandOutput,
+        currentArchOS,
     ]
     imports [
         InternalHttp.{ Request, InternalResponse },
@@ -98,3 +99,5 @@ dirCreate : List U8 -> Effect (Result {} Str)
 dirCreateAll : List U8 -> Effect (Result {} Str)
 dirDeleteEmpty : List U8 -> Effect (Result {} Str)
 dirDeleteAll : List U8 -> Effect (Result {} Str)
+
+currentArchOS : Effect {arch: Str, os: Str}
