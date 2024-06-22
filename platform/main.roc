@@ -43,11 +43,11 @@ mainForHost =
             Err err ->
                 line
                     """
-                    Program exited early with error:
+                    Program exited with error:
                         $(Inspect.toStr err)
 
-                    Tip: If you do not want an early exit on error, use `Task.mapErr` to handle the error.
-                    For an example: <https://github.com/roc-lang/basic-cli/blob/main/examples/http-get-json.roc>
+                    Tip: If you do not want to exit on this error, use `Task.mapErr` to handle the error.
+                    Docs for `Task.mapErr`: <https://www.roc-lang.org/packages/basic-cli/Task#mapErr>
                     """
                 |> Task.onErr \_ -> Task.err 1
                 |> Task.await \_ -> Task.err 1
