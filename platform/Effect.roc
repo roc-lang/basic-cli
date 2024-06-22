@@ -30,7 +30,7 @@ hosted Effect
         fileDelete,
         fileWriteUtf8,
         fileWriteBytes,
-        fileOpenBuffered,
+        fileReader,
         fileReadLine,
         pathType,
         posixTime,
@@ -68,7 +68,7 @@ fileWriteUtf8 : List U8, Str -> Effect (Result {} InternalFile.WriteErr)
 fileDelete : List U8 -> Effect (Result {} InternalFile.WriteErr)
 fileReadBytes : List U8 -> Effect (Result (List U8) InternalFile.ReadErr)
 
-fileOpenBuffered : List U8 -> Effect (Result U64 InternalFile.ReadErr)
+fileReader : List U8 -> Effect (Result U64 InternalFile.ReadErr)
 fileReadLine : U64 -> Effect (Result (List U8) Str)
 
 envDict : Effect (Dict Str Str)

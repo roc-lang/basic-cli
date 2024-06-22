@@ -12,9 +12,8 @@ module [
     isFile,
     isSymLink,
     type,
-
-    FD,
-    openBuffered,
+    FileReader,
+    getFileReader,
     readLine,
 ]
 
@@ -187,28 +186,41 @@ type = \path ->
     Path.type (Path.fromStr path)
 
 
-FD := {index: U64, path: Path}
+FileReader := {readerID: U64, path: Path}
 
-openBuffered : Str -> Task FD [FileReadErr Path ReadErr]
-openBuffered = \pathStr ->
+## Try to create a `FileReader` for buffered (= part by part) reading given a path string.
+## See [examples/file-read-buffered.roc](https://github.com/roc-lang/basic-cli/blob/main/examples/file-read-buffered.roc) for example usage.
+##
+## This uses [rust's std::io::BufReader](https://doc.rust-lang.org/std/io/struct.BufReader.html).
+##
+## Use [readUtf8] if you want to get the entire file contents at once.
+getFileReader : Str -> Task FileReader [FileReadErr Path ReadErr]
+getFileReader = \pathStr ->
     import Effect
     import InternalTask
 
     path = Path.fromStr pathStr
 
-    Effect.fileOpenBuffered (Str.toUtf8 pathStr)
+    Effect.fileReader (Str.toUtf8 pathStr)
     |> Effect.map \result -> 
         when result is 
-            Ok index -> Ok (@FD {index, path})
+            Ok readerID -> Ok (@FileReader {readerID, path})
             Err err -> Err (FileReadErr path err)
     |> InternalTask.fromEffect
 
-readLine : FD -> Task (List U8) [FileReadErr Path Str]
-readLine = \@FD {index, path} ->
+## Try to read a line from a file given a FileReader.
+## The line will be provided as the list of bytes (`List U8`) until a newline (`0xA` byte).
+## See [examples/file-read-buffered.roc](https://github.com/roc-lang/basic-cli/blob/main/examples/file-read-buffered.roc) for example usage.
+##
+## This uses [rust's `BufRead::read_line`](https://doc.rust-lang.org/std/io/trait.BufRead.html#method.read_line).
+##
+## Use [readUtf8] if you want to get the entire file contents at once.
+readLine : FileReader -> Task (List U8) [FileReadErr Path Str]
+readLine = \@FileReader {readerID, path} ->
     import Effect
     import InternalTask
 
-    Effect.fileReadLine index
+    Effect.fileReadLine readerID
     |> Effect.map \result -> 
         when result is 
             Ok bytes -> Ok bytes

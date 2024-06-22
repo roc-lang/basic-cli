@@ -552,7 +552,7 @@ pub extern "C" fn roc_fx_fileReadBytes(
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_fileOpenBuffered(
+pub extern "C" fn roc_fx_fileReader(
     roc_path: &RocList<u8>,
 ) -> RocResult<u64, roc_app::ReadErr> {
     match File::open(path_from_roc_path(roc_path)) {
@@ -572,24 +572,24 @@ pub extern "C" fn roc_fx_fileOpenBuffered(
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_fileReadLine(index: u64) -> RocResult<RocList<u8>, RocStr> {
+pub extern "C" fn roc_fx_fileReadLine(readerIndex: u64) -> RocResult<RocList<u8>, RocStr> {
     READERS.with(|reader_thread_local| {
         let readers = reader_thread_local.borrow_mut();
 
-        let file_rc = readers.get(index as usize).unwrap();
+        let reader_ref_cell = readers.get(readerIndex as usize).expect("readerIndex was larger than number of readers in Vec. We expect this can only happen due to an implementation error in basic-cli.");
 
-        let mut string = String::new();
+        let mut string_buffer = String::new();
 
-        let mut file = file_rc.borrow_mut();
+        let mut file_buf_reader = reader_ref_cell.borrow_mut();
 
-        match file.read_line(&mut string) {
+        match file_buf_reader.read_line(&mut string_buffer) {
             Ok(bytes_read) => {
                 // return EOF when no bytes read
                 if bytes_read == 0 {
                     return RocResult::err(RocStr::from("EOF"));
                 }
 
-                RocResult::ok(RocList::from(string.as_bytes()))
+                RocResult::ok(RocList::from(string_buffer.as_bytes()))
             }
             Err(err) => RocResult::err(err.to_string().as_str().into()),
         }
