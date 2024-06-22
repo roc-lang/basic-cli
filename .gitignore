@@ -50,6 +50,7 @@ bench-folder*
 # Tests
 file-test
 example-stdin
+http-get-json
 out.txt
 
 # local roc folder for testing

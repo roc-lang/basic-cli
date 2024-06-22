@@ -18,6 +18,7 @@ jobs:
           mkdir temp
           mv ./ci/test_latest_release.sh temp
           mv ./ci/get_latest_release_git_files.sh temp
+          mv ./ci/rust_http_server temp
           find . -mindepth 1 -maxdepth 1 ! -name 'temp' -exec rm -rf {} +
 
       - name: Get all git files of the latest basic-cli release

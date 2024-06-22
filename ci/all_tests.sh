@@ -38,7 +38,12 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     $ROC build $roc_file $ROC_BUILD_FLAGS
 done
 
-# check output
+# prep for next step
+cd ci/rust_http_server
+cargo build --release
+cd ../..
+
+# check output with linux expect
 for roc_file in $EXAMPLES_DIR*.roc; do
     base_file=$(basename "$roc_file")
 
@@ -61,8 +66,7 @@ rm -rf dirExampleD
 for roc_file in $EXAMPLES_DIR*.roc; do
     base_file=$(basename "$roc_file")
 
-    #      countdown, echo, form, piping, stdin require user input
-    #      dir.roc hits `index out of bounds: the len is...`
+    # countdown, echo, form, piping and stdin all require user input
     ignore_list=("countdown.roc" "echo.roc" "form.roc" "piping.roc" "stdin.roc")
 
     # check if base_file matches something from ignore_list
