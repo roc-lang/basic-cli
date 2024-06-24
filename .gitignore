@@ -51,6 +51,7 @@ bench-folder*
 file-test
 example-stdin
 http-get-json
+file-read-buffered
 out.txt
 
 # local roc folder for testing
