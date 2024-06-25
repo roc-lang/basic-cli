@@ -1,43 +1,36 @@
 module [cwd, dict, var, decode, exePath, setCwd, platform]
 
-import Task exposing [Task]
 import Path exposing [Path]
 import InternalPath
-import Effect
-import InternalTask
 import EnvDecoding
+import PlatformTask
 
 ## Reads the [current working directory](https://en.wikipedia.org/wiki/Working_directory)
 ## from the environment. File operations on relative [Path]s are relative to this directory.
 cwd : Task Path [CwdUnavailable]
 cwd =
-    effect = Effect.map Effect.cwd \bytes ->
-        if List.isEmpty bytes then
-            Err CwdUnavailable
-        else
-            Ok (InternalPath.fromArbitraryBytes bytes)
+    bytes = PlatformTask.cwd!
 
-    InternalTask.fromEffect effect
+    if List.isEmpty bytes then
+        Task.err CwdUnavailable
+    else
+        Task.ok (InternalPath.fromArbitraryBytes bytes)
 
 ## Sets the [current working directory](https://en.wikipedia.org/wiki/Working_directory)
 ## in the environment. After changing it, file operations on relative [Path]s will be relative
 ## to this directory.
 setCwd : Path -> Task {} [InvalidCwd]
 setCwd = \path ->
-    Effect.setCwd (InternalPath.toBytes path)
-    |> Effect.map (\result -> Result.mapErr result \{} -> InvalidCwd)
-    |> InternalTask.fromEffect
+    PlatformTask.setCwd (InternalPath.toBytes path)
+    |> Task.mapErr \{} -> InvalidCwd
 
 ## Gets the path to the currently-running executable.
 exePath : Task Path [ExePathUnavailable]
 exePath =
-    effect =
-        Effect.map Effect.exePath \result ->
-            when result is
-                Ok bytes -> Ok (InternalPath.fromOsBytes bytes)
-                Err {} -> Err ExePathUnavailable
-
-    InternalTask.fromEffect effect
+    result = PlatformTask.exePath |> Task.result!
+    when result is
+        Ok bytes -> Task.ok (InternalPath.fromOsBytes bytes)
+        Err {} -> Task.err ExePathUnavailable
 
 ## Reads the given environment variable.
 ##
@@ -45,9 +38,8 @@ exePath =
 ## [Unicode replacement character](https://unicode.org/glossary/#replacement_character) ('�').
 var : Str -> Task Str [VarNotFound]
 var = \name ->
-    Effect.envVar name
-    |> Effect.map (\result -> Result.mapErr result \{} -> VarNotFound)
-    |> InternalTask.fromEffect
+    PlatformTask.envVar name
+    |> Task.mapErr \{} -> VarNotFound
 
 ## Reads the given environment variable and attempts to decode it.
 ##
@@ -76,27 +68,21 @@ var = \name ->
 ##
 decode : Str -> Task val [VarNotFound, DecodeErr DecodeError] where val implements Decoding
 decode = \name ->
-    Effect.envVar name
-    |> Effect.map
-        (
-            \result ->
-                result
-                |> Result.mapErr (\{} -> VarNotFound)
-                |> Result.try
-                    (\varStr ->
-                        Decode.fromBytes (Str.toUtf8 varStr) (EnvDecoding.format {})
-                        |> Result.mapErr (\_ -> DecodeErr TooShort)))
-    |> InternalTask.fromEffect
+    result = PlatformTask.envVar name |> Task.result!
+    when result is
+        Err {} -> Task.err VarNotFound
+        Ok varStr ->
+            Str.toUtf8 varStr
+            |> Decode.fromBytes (EnvDecoding.format {})
+            |> Result.mapErr (\_ -> DecodeErr TooShort)
+            |> Task.fromResult
 
 ## Reads all the process's environment variables into a [Dict].
 ##
 ## If any key or value contains invalid Unicode, the [Unicode replacement character](https://unicode.org/glossary/#replacement_character)
 ## will be used in place of any parts of keys or values that are invalid Unicode.
 dict : Task (Dict Str Str) *
-dict =
-    Effect.envDict
-    |> Effect.map Ok
-    |> InternalTask.fromEffect
+dict = PlatformTask.envDict
 
 # ## Walks over the process's environment variables as key-value arguments to the walking function.
 # ##
@@ -141,26 +127,22 @@ OS : [LINUX, MACOS, WINDOWS, OTHER Str]
 ##
 ## Note these values are constants from when the platform is built.
 ##
-platform : Task {arch : ARCH, os: OS} *
+platform : Task { arch : ARCH, os : OS } *
 platform =
-    Effect.currentArchOS
-    |> Effect.map \fromRust ->
+    fromRust = PlatformTask.currentArchOS!
+    arch =
+        when fromRust.arch is
+            "x86" -> X86
+            "x86_64" -> X64
+            "arm" -> ARM
+            "aarch64" -> AARCH64
+            _ -> OTHER fromRust.arch
 
-        arch =
-            when fromRust.arch is
-                "x86" -> X86
-                "x86_64" -> X64
-                "arm" -> ARM
-                "aarch64" -> AARCH64
-                _ -> OTHER fromRust.arch
+    os =
+        when fromRust.os is
+            "linux" -> LINUX
+            "macos" -> MACOS
+            "windows" -> WINDOWS
+            _ -> OTHER fromRust.os
 
-        os =
-            when fromRust.os is
-                "linux" -> LINUX
-                "macos" -> MACOS
-                "windows" -> WINDOWS
-                _ -> OTHER fromRust.os
-
-        Ok {arch, os}
-
-    |> InternalTask.fromEffect
+    Task.ok { arch, os }

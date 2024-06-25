@@ -14,10 +14,8 @@ module [
     exec,
 ]
 
-import Task exposing [Task]
-import InternalTask
 import InternalCommand
-import Effect
+import PlatformTask
 
 ## Represents a command to be executed in a child process.
 Cmd := InternalCommand.Command implements [Inspect]
@@ -132,25 +130,21 @@ clearEnvs = \@Cmd cmd ->
 ##
 output : Cmd -> Task Output [CmdOutputError (Output, Err)]
 output = \@Cmd cmd ->
-    Effect.commandOutput (Box.box cmd)
-    |> Effect.map \internalOutput ->
-        out = {
-            stdout: internalOutput.stdout,
-            stderr: internalOutput.stderr,
-        }
+    internalOutput = PlatformTask.commandOutput! (Box.box cmd)
+    out = {
+        stdout: internalOutput.stdout,
+        stderr: internalOutput.stderr,
+    }
 
-        when internalOutput.status is
-            Ok {} -> Ok (out)
-            Err err -> Err (out, err)
-    |> InternalTask.fromEffect
-    |> Task.mapErr CmdOutputError
+    when internalOutput.status is
+        Ok {} -> Task.ok (out)
+        Err err -> Task.err (CmdOutputError (out, err))
 
 ## Execute command and inherit stdin, stdout and stderr from parent
 ##
 status : Cmd -> Task {} [CmdError Err]
 status = \@Cmd cmd ->
-    Effect.commandStatus (Box.box cmd)
-    |> InternalTask.fromEffect
+    PlatformTask.commandStatus (Box.box cmd)
     |> Task.mapErr CmdError
 
 ## Execute command and inherit stdin, stdout and stderr from parent
@@ -161,9 +155,6 @@ status = \@Cmd cmd ->
 ## ```
 exec : Str, List Str -> Task {} [CmdError Err]
 exec = \program, arguments ->
-
-    (@Cmd cmd) = new program |> args arguments
-
-    Effect.commandStatus (Box.box cmd)
-    |> InternalTask.fromEffect
-    |> Task.mapErr CmdError
+    new program
+    |> args arguments
+    |> status

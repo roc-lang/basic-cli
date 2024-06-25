@@ -161,7 +161,6 @@ fn print_backtrace() {
 fn should_show_in_backtrace(fn_name: &str) -> bool {
     let is_from_rust = fn_name.contains("::");
     let is_host_fn = fn_name.starts_with("roc_panic")
-        || fn_name.starts_with("_Effect_effect")
         || fn_name.starts_with("_roc__")
         || fn_name.starts_with("rust_main")
         || fn_name == "_main";
@@ -298,24 +297,28 @@ pub unsafe fn call_the_closure(closure_data_ptr: *const u8) -> i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_envDict() -> RocDict<RocStr, RocStr> {
+pub extern "C" fn roc_fx_envDict() -> RocResult<RocDict<RocStr, RocStr>, ()> {
     // TODO: can we be more efficient about reusing the String's memory for RocStr?
-    std::env::vars_os()
-        .map(|(key, val)| {
-            (
-                RocStr::from(key.to_string_lossy().borrow()),
-                RocStr::from(val.to_string_lossy().borrow()),
-            )
-        })
-        .collect()
+    RocResult::ok(
+        std::env::vars_os()
+            .map(|(key, val)| {
+                (
+                    RocStr::from(key.to_string_lossy().borrow()),
+                    RocStr::from(val.to_string_lossy().borrow()),
+                )
+            })
+            .collect(),
+    )
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_args() -> RocList<RocStr> {
+pub extern "C" fn roc_fx_args() -> RocResult<RocList<RocStr>, ()> {
     // TODO: can we be more efficient about reusing the String's memory for RocStr?
-    std::env::args_os()
-        .map(|os_str| RocStr::from(os_str.to_string_lossy().borrow()))
-        .collect()
+    RocResult::ok(
+        std::env::args_os()
+            .map(|os_str| RocStr::from(os_str.to_string_lossy().borrow()))
+            .collect(),
+    )
 }
 
 #[no_mangle]
@@ -368,13 +371,13 @@ pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, RocStr> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdinBytes() -> RocList<u8> {
+pub extern "C" fn roc_fx_stdinBytes() -> RocResult<RocList<u8>, ()> {
     let stdin = std::io::stdin();
     let mut buffer: [u8; 256] = [0; 256];
 
     match stdin.lock().read(&mut buffer) {
-        Ok(bytes_read) => RocList::from(&buffer[0..bytes_read]),
-        Err(_) => RocList::from((&[]).as_slice()),
+        Ok(bytes_read) => RocResult::ok(RocList::from(&buffer[0..bytes_read])),
+        Err(_) => RocResult::ok(RocList::from((&[]).as_slice())),
     }
 }
 
@@ -459,13 +462,17 @@ pub extern "C" fn roc_fx_stderrWrite(text: &RocStr) -> RocResult<(), RocStr> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_ttyModeCanonical() {
+pub extern "C" fn roc_fx_ttyModeCanonical() -> RocResult<(), ()> {
     crossterm::terminal::disable_raw_mode().expect("failed to disable raw mode");
+
+    RocResult::ok(())
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_ttyModeRaw() {
+pub extern "C" fn roc_fx_ttyModeRaw() -> RocResult<(), ()> {
     crossterm::terminal::enable_raw_mode().expect("failed to enable raw mode");
+
+    RocResult::ok(())
 }
 
 #[no_mangle]
@@ -554,31 +561,33 @@ pub extern "C" fn roc_fx_fileDelete(roc_path: &RocList<u8>) -> RocResult<(), roc
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_cwd() -> RocList<u8> {
+pub extern "C" fn roc_fx_cwd() -> RocResult<RocList<u8>, ()> {
     // TODO instead, call getcwd on UNIX and GetCurrentDirectory on Windows
     match std::env::current_dir() {
-        Ok(path_buf) => os_str_to_roc_path(path_buf.into_os_string().as_os_str()),
+        Ok(path_buf) => RocResult::ok(os_str_to_roc_path(path_buf.into_os_string().as_os_str())),
         Err(_) => {
             // Default to empty path
-            RocList::empty()
+            RocResult::ok(RocList::empty())
         }
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_posixTime() -> roc_std::U128 {
+pub extern "C" fn roc_fx_posixTime() -> RocResult<roc_std::U128, ()> {
     // TODO in future may be able to avoid this panic by using C APIs
     let since_epoch = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("time went backwards");
 
-    roc_std::U128::from(since_epoch.as_nanos())
+    RocResult::ok(roc_std::U128::from(since_epoch.as_nanos()))
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_sleepMillis(milliseconds: u64) {
+pub extern "C" fn roc_fx_sleepMillis(milliseconds: u64) -> RocResult<(), ()> {
     let duration = Duration::from_millis(milliseconds);
     std::thread::sleep(duration);
+
+    RocResult::ok(())
 }
 
 #[no_mangle]
@@ -629,7 +638,9 @@ fn os_str_to_roc_path(os_str: &OsStr) -> RocList<u8> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_sendRequest(roc_request: &roc_app::Request) -> roc_app::InternalResponse {
+pub extern "C" fn roc_fx_sendRequest(
+    roc_request: &roc_app::Request,
+) -> RocResult<roc_app::InternalResponse, ()> {
     use hyper::Client;
     use hyper_rustls::HttpsConnectorBuilder;
 
@@ -676,7 +687,9 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &roc_app::Request) -> roc_app:
     let request = match req_builder.body(bytes) {
         Ok(req) => req,
         Err(err) => {
-            return roc_app::InternalResponse::BadRequest(RocStr::from(err.to_string().as_str()));
+            return RocResult::ok(roc_app::InternalResponse::BadRequest(RocStr::from(
+                err.to_string().as_str(),
+            )));
         }
     };
 
@@ -747,10 +760,10 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &roc_app::Request) -> roc_app:
     };
     match time_limit {
         Some(limit) => match rt.block_on(async { tokio::time::timeout(limit, http_fn).await }) {
-            Ok(res) => res,
-            Err(_) => roc_app::InternalResponse::Timeout(limit.as_millis() as u64),
+            Ok(res) => RocResult::ok(res),
+            Err(_) => RocResult::ok(roc_app::InternalResponse::Timeout(limit.as_millis() as u64)),
         },
-        None => rt.block_on(http_fn),
+        None => RocResult::ok(rt.block_on(http_fn)),
     }
 }
 
@@ -811,30 +824,35 @@ fn toRocGetMetadataError(err: std::io::Error) -> roc_app::GetMetadataErr {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpConnect(host: &RocStr, port: u16) -> roc_app::ConnectResult {
+pub extern "C" fn roc_fx_tcpConnect(
+    host: &RocStr,
+    port: u16,
+) -> RocResult<roc_app::ConnectResult, ()> {
     match TcpStream::connect((host.as_str(), port)) {
         Ok(stream) => {
             let reader = BufReader::new(stream);
             let ptr = Box::into_raw(Box::new(reader)) as u64;
 
-            roc_app::ConnectResult::Connected(ptr)
+            RocResult::ok(roc_app::ConnectResult::Connected(ptr))
         }
-        Err(err) => roc_app::ConnectResult::Error(to_tcp_connect_err(err)),
+        Err(err) => RocResult::ok(roc_app::ConnectResult::Error(to_tcp_connect_err(err))),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpClose(stream_ptr: *mut BufReader<TcpStream>) {
+pub extern "C" fn roc_fx_tcpClose(stream_ptr: *mut BufReader<TcpStream>) -> RocResult<(), ()> {
     unsafe {
         drop(Box::from_raw(stream_ptr));
     }
+
+    RocResult::ok(())
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpReadUpTo(
     bytes_to_read: u64,
     stream_ptr: *mut BufReader<TcpStream>,
-) -> roc_app::ReadResult {
+) -> RocResult<roc_app::ReadResult, ()> {
     let reader = unsafe { &mut *stream_ptr };
 
     let mut chunk = reader.take(bytes_to_read);
@@ -845,10 +863,10 @@ pub extern "C" fn roc_fx_tcpReadUpTo(
             reader.consume(received.len());
 
             let rocList = RocList::from(&received[..]);
-            roc_app::ReadResult::Read(rocList)
+            RocResult::ok(roc_app::ReadResult::Read(rocList))
         }
 
-        Err(err) => roc_app::ReadResult::Error(to_tcp_stream_err(err)),
+        Err(err) => RocResult::ok(roc_app::ReadResult::Error(to_tcp_stream_err(err))),
     }
 }
 
@@ -856,7 +874,7 @@ pub extern "C" fn roc_fx_tcpReadUpTo(
 pub extern "C" fn roc_fx_tcpReadExactly(
     bytes_to_read: u64,
     stream_ptr: *mut BufReader<TcpStream>,
-) -> roc_app::ReadExactlyResult {
+) -> RocResult<roc_app::ReadExactlyResult, ()> {
     let reader = unsafe { &mut *stream_ptr };
     let mut buffer = Vec::with_capacity(bytes_to_read as usize);
     let mut chunk = reader.take(bytes_to_read as u64);
@@ -864,14 +882,14 @@ pub extern "C" fn roc_fx_tcpReadExactly(
     match chunk.read_to_end(&mut buffer) {
         Ok(read) => {
             if (read as u64) < bytes_to_read {
-                roc_app::ReadExactlyResult::UnexpectedEOF()
+                RocResult::ok(roc_app::ReadExactlyResult::UnexpectedEOF())
             } else {
                 let rocList = RocList::from(&buffer[..]);
-                roc_app::ReadExactlyResult::Read(rocList)
+                RocResult::ok(roc_app::ReadExactlyResult::Read(rocList))
             }
         }
 
-        Err(err) => roc_app::ReadExactlyResult::Error(to_tcp_stream_err(err)),
+        Err(err) => RocResult::ok(roc_app::ReadExactlyResult::Error(to_tcp_stream_err(err))),
     }
 }
 
@@ -879,7 +897,7 @@ pub extern "C" fn roc_fx_tcpReadExactly(
 pub extern "C" fn roc_fx_tcpReadUntil(
     byte: u8,
     stream_ptr: *mut BufReader<TcpStream>,
-) -> roc_app::ReadResult {
+) -> RocResult<roc_app::ReadResult, ()> {
     let reader = unsafe { &mut *stream_ptr };
 
     let mut buffer = vec![];
@@ -887,10 +905,10 @@ pub extern "C" fn roc_fx_tcpReadUntil(
     match reader.read_until(byte, &mut buffer) {
         Ok(_) => {
             let rocList = RocList::from(&buffer[..]);
-            roc_app::ReadResult::Read(rocList)
+            RocResult::ok(roc_app::ReadResult::Read(rocList))
         }
 
-        Err(err) => roc_app::ReadResult::Error(to_tcp_stream_err(err)),
+        Err(err) => RocResult::ok(roc_app::ReadResult::Error(to_tcp_stream_err(err))),
     }
 }
 
@@ -898,13 +916,13 @@ pub extern "C" fn roc_fx_tcpReadUntil(
 pub extern "C" fn roc_fx_tcpWrite(
     msg: &RocList<u8>,
     stream_ptr: *mut BufReader<TcpStream>,
-) -> roc_app::WriteResult {
+) -> RocResult<roc_app::WriteResult, ()> {
     let reader = unsafe { &mut *stream_ptr };
     let mut stream = reader.get_ref();
 
     match stream.write_all(msg.as_slice()) {
-        Ok(_) => roc_app::WriteResult::Wrote(),
-        Err(err) => roc_app::WriteResult::Error(to_tcp_stream_err(err)),
+        Ok(_) => RocResult::ok(roc_app::WriteResult::Wrote()),
+        Err(err) => RocResult::ok(roc_app::WriteResult::Error(to_tcp_stream_err(err))),
     }
 }
 
@@ -1001,7 +1019,9 @@ pub extern "C" fn roc_fx_commandStatus(
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_commandOutput(roc_cmd: &roc_app::Command) -> roc_app::Output {
+pub extern "C" fn roc_fx_commandOutput(
+    roc_cmd: &roc_app::Command,
+) -> RocResult<roc_app::Output, ()> {
     let args = roc_cmd.args.into_iter().map(|arg| arg.as_str());
     let num_envs = roc_cmd.envs.len() / 2;
     let flat_envs = &roc_cmd.envs;
@@ -1050,19 +1070,19 @@ pub extern "C" fn roc_fx_commandOutput(roc_cmd: &roc_app::Command) -> roc_app::O
                 }
             };
 
-            roc_app::Output {
-                status: status,
+            RocResult::ok(roc_app::Output {
+                status,
                 stdout: RocList::from(&output.stdout[..]),
                 stderr: RocList::from(&output.stderr[..]),
-            }
+            })
         }
-        Err(err) => roc_app::Output {
+        Err(err) => RocResult::ok(roc_app::Output {
             status: RocResult::err(roc_app::CommandErr::IOError(RocStr::from(
                 err.to_string().borrow(),
             ))),
             stdout: RocList::empty(),
             stderr: RocList::empty(),
-        },
+        }),
     }
 }
 
@@ -1125,9 +1145,9 @@ pub struct ReturnArchOS {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_currentArchOS() -> ReturnArchOS {
-    ReturnArchOS {
+pub extern "C" fn roc_fx_currentArchOS() -> RocResult<ReturnArchOS, ()> {
+    RocResult::ok(ReturnArchOS {
         arch: std::env::consts::ARCH.into(),
         os: std::env::consts::OS.into(),
-    }
+    })
 }

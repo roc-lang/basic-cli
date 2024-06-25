@@ -14,10 +14,8 @@ module [
     get,
 ]
 
-import Effect
-import InternalTask
-import Task exposing [Task]
 import InternalHttp exposing [errorBodyToUtf8, errorBodyFromUtf8]
+import PlatformTask
 
 ## Represents an HTTP request.
 Request : InternalHttp.Request
@@ -115,32 +113,27 @@ errorToString = \err ->
 send : Request -> Task Response [HttpErr Err]
 send = \req ->
     # TODO: Fix our C ABI codegen so that we don't this Box.box heap allocation
-    Effect.sendRequest (Box.box req)
-    |> Effect.map Ok
-    |> InternalTask.fromEffect
-    |> Task.await \internalResponse ->
-        when internalResponse is
-            BadRequest str -> Task.err (BadRequest str)
-            Timeout u64 -> Task.err (Timeout u64)
-            NetworkError -> Task.err NetworkError
-            BadStatus meta body ->
-                Task.err
-                    (
-                        BadStatus {
-                            code: meta.statusCode,
-                            body: errorBodyFromUtf8 body,
-                        }
-                    )
-
-            GoodStatus meta body ->
-                Task.ok {
-                    url: meta.url,
-                    statusCode: meta.statusCode,
-                    statusText: meta.statusText,
-                    headers: meta.headers,
-                    body,
+    internalResponse = PlatformTask.sendRequest! (Box.box req)
+    when internalResponse is
+        BadRequest str -> Task.err (HttpErr (BadRequest str))
+        Timeout u64 -> Task.err (HttpErr (Timeout u64))
+        NetworkError -> Task.err (HttpErr NetworkError)
+        BadStatus meta body ->
+            badStatus =
+                BadStatus {
+                    code: meta.statusCode,
+                    body: errorBodyFromUtf8 body,
                 }
-    |> Task.mapErr HttpErr
+            Task.err (HttpErr badStatus)
+
+        GoodStatus meta body ->
+            Task.ok {
+                url: meta.url,
+                statusCode: meta.statusCode,
+                statusText: meta.statusText,
+                headers: meta.headers,
+                body,
+            }
 
 ## Try to perform an HTTP get request and convert (decode) the received bytes into a Roc type.
 ## Very useful for working with Json.

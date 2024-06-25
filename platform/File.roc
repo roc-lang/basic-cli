@@ -14,7 +14,6 @@ module [
     type,
 ]
 
-import Task exposing [Task]
 import Path exposing [Path, MetadataErr]
 
 ## Tag union of possible errors when reading a file or directory.
