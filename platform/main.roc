@@ -11,7 +11,6 @@ platform "cli"
         Stderr,
         Stdin,
         Stdout,
-        Task,
         Tcp,
         Url,
         Utc,
@@ -21,7 +20,6 @@ platform "cli"
     ]
     packages {}
     imports [
-        Task.{ Task },
         # TODO: Use Stderr.line unqualified once that no longer (incorrectly) results in a "Stderr is not imported" error
         Stderr.{ line },
     ]

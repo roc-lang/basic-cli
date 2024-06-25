@@ -1,8 +1,6 @@
 module [list, parse]
 
-import Task exposing [Task]
-import InternalTask
-import Effect
+import PlatformTask
 import Stdout
 
 import Arg.Cli exposing [CliParser]
@@ -10,11 +8,8 @@ import Arg.ErrorFormatter exposing [formatArgExtractErr]
 import Arg.Help exposing [helpText, usageHelp]
 
 ## Gives a list of the program's command-line arguments.
-list : Task (List Str) []_
-list =
-    Effect.args
-    |> Effect.map Ok
-    |> InternalTask.fromEffect
+list : Task (List Str) *
+list = PlatformTask.args
 
 ## Parse arguments using a CLI parser or show a useful message on failure.
 ##
