@@ -552,9 +552,7 @@ pub extern "C" fn roc_fx_fileReadBytes(
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_fileReader(
-    roc_path: &RocList<u8>,
-) -> RocResult<u64, roc_app::ReadErr> {
+pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<u64, roc_app::ReadErr> {
     match File::open(path_from_roc_path(roc_path)) {
         Ok(file) => READERS.with(|reader_thread_local| {
             let mut readers = reader_thread_local.borrow_mut();
@@ -584,9 +582,9 @@ pub extern "C" fn roc_fx_fileReadLine(readerIndex: u64) -> RocResult<RocList<u8>
 
         match file_buf_reader.read_line(&mut string_buffer) {
             Ok(bytes_read) => {
-                // return EOF when no bytes read
                 if bytes_read == 0 {
-                    return RocResult::err(RocStr::from("EOF"));
+                    // return empty list when no bytes read, e.g. End Of File
+                    return RocResult::ok(RocList::empty());
                 }
 
                 RocResult::ok(RocList::from(string_buffer.as_bytes()))

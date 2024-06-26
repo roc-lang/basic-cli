@@ -5,7 +5,7 @@ import pf.Task exposing [Task, await]
 import pf.File
 
 # Buffered File Reading
-# 
+#
 # Instead of reading an entire file and storing all of it in memory,
 # like with File.readUtf8, you may want to read it in parts.
 # A part of the file is stored in a buffer.
@@ -31,8 +31,11 @@ ReadSummary : { linesRead : U64, bytesRead : U64 }
 processLine : File.FileReader -> (ReadSummary -> Task [Step ReadSummary, Done ReadSummary] _)
 processLine = \reader -> \{ linesRead, bytesRead } ->
         when File.readLine reader |> Task.result! is
+            Ok bytes if List.len bytes == 0 ->
+                Task.ok (Done { linesRead, bytesRead })
+
             Ok bytes ->
                 Task.ok (Step { linesRead: linesRead + 1, bytesRead: bytesRead + (List.len bytes |> Num.intCast) })
 
-            Err _ ->
-                Task.ok (Done { linesRead, bytesRead })
+            Err err ->
+                Task.err (ErrorReadingFile (Inspect.toStr err))
