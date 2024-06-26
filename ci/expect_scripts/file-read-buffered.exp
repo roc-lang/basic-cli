@@ -9,7 +9,7 @@ source ./ci/expect_scripts/shared-code.exp
 
 spawn $env(EXAMPLES_DIR)file-read-buffered
 
-expect "Done reading, got {bytesRead: 1915, linesRead: 17}\r\n" {
+expect "Done reading, got {bytesRead: 1915, linesRead: 17}\r\nGot EOF reading from closed file.\r\n" {
     expect eof {
         check_exit_and_segfault
     }
