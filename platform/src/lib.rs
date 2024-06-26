@@ -5,12 +5,30 @@ use core::ffi::c_void;
 use core::mem::MaybeUninit;
 use roc_std::{RocDict, RocList, RocResult, RocStr};
 use std::borrow::{Borrow, Cow};
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::File;
-use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
+use std::io::{BufRead, BufReader, ErrorKind, Read, Seek, Write};
 use std::net::TcpStream;
 use std::path::Path;
+use std::rc::Rc;
+use std::sync::atomic::AtomicU64;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+trait CustomBuffered: BufRead + Read + Seek {}
+
+impl<T: BufRead + Read + Seek> CustomBuffered for T {}
+
+type CustomReader = Rc<RefCell<Box<dyn CustomBuffered>>>;
+
+type ReaderMap = HashMap<u64, CustomReader>;
+
+thread_local! {
+    static READERS: RefCell<ReaderMap> = RefCell::new(HashMap::new());
+}
+
+static READER_INDEX: AtomicU64 = AtomicU64::new(42);
 
 extern "C" {
     #[link_name = "roc__mainForHost_1_exposed_generic"]
@@ -543,6 +561,60 @@ pub extern "C" fn roc_fx_fileReadBytes(
         },
         Err(err) => RocResult::err(toRocReadError(err)),
     }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<u64, roc_app::ReadErr> {
+    match File::open(path_from_roc_path(roc_path)) {
+        Ok(file) => READERS.with(|reader_thread_local| {
+            let mut readers = reader_thread_local.borrow_mut();
+
+            // monotonically increasing index so each reader has a unique identifier
+            let new_index = READER_INDEX.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+
+            let buf_reader = BufReader::new(file);
+
+            readers.insert(new_index, Rc::new(RefCell::new(Box::new(buf_reader))));
+
+            RocResult::ok(new_index as u64)
+        }),
+        Err(err) => RocResult::err(toRocReadError(err)),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_fileReadLine(readerIndex: u64) -> RocResult<RocList<u8>, RocStr> {
+    READERS.with(|reader_thread_local| {
+        let readers = reader_thread_local.borrow_mut();
+
+        match readers.get(&readerIndex) {
+            // return an empty list when no reader was found
+            None => RocResult::ok(RocList::empty()),
+            Some(reader_ref_cell) => {
+                let mut string_buffer = String::new();
+
+                let mut file_buf_reader = reader_ref_cell.borrow_mut();
+
+                match file_buf_reader.read_line(&mut string_buffer) {
+                    Ok(..) => {
+                        // Note: this returns an empty list when no bytes were read, e.g. End Of File
+                        RocResult::ok(RocList::from(string_buffer.as_bytes()))
+                    }
+                    Err(err) => RocResult::err(err.to_string().as_str().into()),
+                }
+            }
+        }
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_closeFile(readerIndex: u64) {
+    READERS.with(|reader_thread_local| {
+        let mut readers = reader_thread_local.borrow_mut();
+
+        // Rust will close the file after this removal
+        readers.remove(&readerIndex);
+    })
 }
 
 #[no_mangle]

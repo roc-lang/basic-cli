@@ -26,7 +26,7 @@ main =
     pathsAsStr = List.map paths Path.display
 
     # Check the contents of the directory
-    expect pathsAsStr == ["dirExampleA/b", "dirExampleA/child"]
+    expect (Set.fromList pathsAsStr) == (Set.fromList ["dirExampleA/b", "dirExampleA/child"])
     # Try to create a directory without a parent (should fail, ignore error)
     Dir.create "dirExampleD/child"
         |> Task.onErr! \_ -> Task.ok {}
