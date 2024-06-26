@@ -15,6 +15,7 @@ module [
     FileReader,
     getFileReader,
     readLine,
+    closeFileReader,
 ]
 
 import Task exposing [Task]
@@ -194,7 +195,7 @@ FileReader := {readerID: U64, path: Path}
 ## This uses [rust's std::io::BufReader](https://doc.rust-lang.org/std/io/struct.BufReader.html).
 ##
 ## Use [readUtf8] if you want to get the entire file contents at once.
-getFileReader : Str -> Task FileReader [FileReadErr Path ReadErr]
+getFileReader : Str -> Task FileReader [GetFileReadErr Path ReadErr]
 getFileReader = \pathStr ->
     import Effect
     import InternalTask
@@ -202,10 +203,10 @@ getFileReader = \pathStr ->
     path = Path.fromStr pathStr
 
     Effect.fileReader (Str.toUtf8 pathStr)
-    |> Effect.map \result -> 
-        when result is 
+    |> Effect.map \result ->
+        when result is
             Ok readerID -> Ok (@FileReader {readerID, path})
-            Err err -> Err (FileReadErr path err)
+            Err err -> Err (GetFileReadErr path err)
     |> InternalTask.fromEffect
 
 ## Try to read a line from a file given a FileReader.
@@ -221,8 +222,18 @@ readLine = \@FileReader {readerID, path} ->
     import InternalTask
 
     Effect.fileReadLine readerID
-    |> Effect.map \result -> 
-        when result is 
+    |> Effect.map \result ->
+        when result is
             Ok bytes -> Ok bytes
             Err err -> Err (FileReadErr path err)
+    |> InternalTask.fromEffect
+
+
+closeFileReader : FileReader -> Task {} *
+closeFileReader = \@FileReader {readerID} ->
+    import Effect
+    import InternalTask
+
+    Effect.closeFile readerID
+    |> Effect.map Ok
     |> InternalTask.fromEffect

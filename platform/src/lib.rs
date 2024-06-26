@@ -8,14 +8,22 @@ use std::borrow::{Borrow, Cow};
 use std::cell::RefCell;
 use std::ffi::OsStr;
 use std::fs::File;
-use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
+use std::io::{BufRead, BufReader, ErrorKind, Read, Seek, Write};
 use std::net::TcpStream;
 use std::path::Path;
 use std::rc::Rc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+trait CustomBuffered: BufRead + Read + Seek {}
+
+impl<T: BufRead + Read + Seek> CustomBuffered for T {}
+
+type CustomReader = Rc<RefCell<Box<dyn CustomBuffered>>>;
+
+type ReaderVec = Vec<CustomReader>;
+
 thread_local! {
-    static READERS: RefCell<Vec<Rc<RefCell<BufReader<File>>>>> = RefCell::new(Vec::new());
+    static READERS: RefCell<ReaderVec> = RefCell::new(Vec::new());
 }
 
 extern "C" {
@@ -561,7 +569,7 @@ pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<u64, ro
 
             let buf_reader = BufReader::new(file);
 
-            readers.push(Rc::new(RefCell::new(buf_reader)));
+            readers.push(Rc::new(RefCell::new(Box::new(buf_reader))));
 
             RocResult::ok(new_index as u64)
         }),
@@ -591,6 +599,23 @@ pub extern "C" fn roc_fx_fileReadLine(readerIndex: u64) -> RocResult<RocList<u8>
             }
             Err(err) => RocResult::err(err.to_string().as_str().into()),
         }
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_closeFile(readerIndex: u64) {
+    READERS.with(|reader_thread_local| {
+        let readers = reader_thread_local.borrow_mut();
+
+        let reader_ref_cell = readers.get(readerIndex as usize).expect("readerIndex was larger than number of readers in Vec. We expect this can only happen due to an implementation error in basic-cli.");
+
+        let dummy_reader = BufReader::new(std::io::Cursor::new(Vec::new()));
+
+        // we drop the BufReader<File> to manually close the file
+        // by replacing it with a dummy reader that will return EOF
+        // for any future read attempts.
+        *reader_ref_cell.borrow_mut() = Box::new(dummy_reader);
+
     })
 }
 

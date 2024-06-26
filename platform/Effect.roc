@@ -32,6 +32,7 @@ hosted Effect
         fileWriteBytes,
         fileReader,
         fileReadLine,
+        closeFile,
         pathType,
         posixTime,
         tcpConnect,
@@ -70,6 +71,7 @@ fileReadBytes : List U8 -> Effect (Result (List U8) InternalFile.ReadErr)
 
 fileReader : List U8 -> Effect (Result U64 InternalFile.ReadErr)
 fileReadLine : U64 -> Effect (Result (List U8) Str)
+closeFile : U64 -> Effect {}
 
 envDict : Effect (Dict Str Str)
 envVar : Str -> Effect (Result Str {})

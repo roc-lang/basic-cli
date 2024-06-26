@@ -24,7 +24,16 @@ main =
         { linesRead: 0, bytesRead: 0 }
         (processLine reader)
 
-    Stdout.line "Done reading, got $(Inspect.toStr readSummary)"
+    Stdout.line! "Done reading, got $(Inspect.toStr readSummary)"
+
+    # If we close a reader, we will get EOF for any future reads.
+    closedReader = File.getFileReader! "README.md"
+
+    File.closeFileReader! closedReader
+
+    when File.readLine closedReader |> Task.result! is
+        Ok bytes if List.len bytes == 0 -> Stdout.line "Got EOF reading from closed file."
+        _ -> crash "unexpected; we should get an EOF trying to read a file after closing"
 
 ReadSummary : { linesRead : U64, bytesRead : U64 }
 
