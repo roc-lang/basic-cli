@@ -22,10 +22,10 @@ impl<T: BufRead + Read + Seek> CustomBuffered for T {}
 
 type CustomReader = Rc<RefCell<Box<dyn CustomBuffered>>>;
 
-type ReaderVec = HashMap<u64, CustomReader>;
+type ReaderMap = HashMap<u64, CustomReader>;
 
 thread_local! {
-    static READERS: RefCell<ReaderVec> = RefCell::new(HashMap::new());
+    static READERS: RefCell<ReaderMap> = RefCell::new(HashMap::new());
 }
 
 static READER_INDEX: AtomicU64 = AtomicU64::new(42);
@@ -588,7 +588,7 @@ pub extern "C" fn roc_fx_fileReadLine(readerIndex: u64) -> RocResult<RocList<u8>
         let readers = reader_thread_local.borrow_mut();
 
         match readers.get(&readerIndex) {
-            // NB: this will return an empty list when no reader found
+            // return an empty list when no reader was found
             None => RocResult::ok(RocList::empty()),
             Some(reader_ref_cell) => {
                 let mut string_buffer = String::new();
@@ -597,7 +597,7 @@ pub extern "C" fn roc_fx_fileReadLine(readerIndex: u64) -> RocResult<RocList<u8>
 
                 match file_buf_reader.read_line(&mut string_buffer) {
                     Ok(..) => {
-                        // NB: this will return an empty list when no bytes read, e.g. End Of File
+                        // return an empty list when no bytes were read, e.g. End Of File
                         RocResult::ok(RocList::from(string_buffer.as_bytes()))
                     }
                     Err(err) => RocResult::err(err.to_string().as_str().into()),
@@ -612,7 +612,7 @@ pub extern "C" fn roc_fx_closeFile(readerIndex: u64) {
     READERS.with(|reader_thread_local| {
         let mut readers = reader_thread_local.borrow_mut();
 
-        // we drop the BufReader<File> to manually close the file
+        // Rust will close the file after this removal
         readers.remove(&readerIndex);
     })
 }

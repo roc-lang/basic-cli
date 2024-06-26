@@ -20,6 +20,8 @@ module [
 
 import Task exposing [Task]
 import Path exposing [Path, MetadataErr]
+import Effect
+import InternalTask
 
 ## Tag union of possible errors when reading a file or directory.
 ##
@@ -197,9 +199,6 @@ FileReader := {readerID: U64, path: Path}
 ## Use [readUtf8] if you want to get the entire file contents at once.
 getFileReader : Str -> Task FileReader [GetFileReadErr Path ReadErr]
 getFileReader = \pathStr ->
-    import Effect
-    import InternalTask
-
     path = Path.fromStr pathStr
 
     Effect.fileReader (Str.toUtf8 pathStr)
@@ -218,8 +217,6 @@ getFileReader = \pathStr ->
 ## Use [readUtf8] if you want to get the entire file contents at once.
 readLine : FileReader -> Task (List U8) [FileReadErr Path Str]
 readLine = \@FileReader {readerID, path} ->
-    import Effect
-    import InternalTask
 
     Effect.fileReadLine readerID
     |> Effect.map \result ->
@@ -228,11 +225,12 @@ readLine = \@FileReader {readerID, path} ->
             Err err -> Err (FileReadErr path err)
     |> InternalTask.fromEffect
 
-
+## Close the file that was opened when creating the FileReader.
+## [Why you should close files.](https://stackoverflow.com/a/29536383)
+##
+## Calling [File.readLine] after the FileReader is closed will return an empty list.
 closeFileReader : FileReader -> Task {} *
 closeFileReader = \@FileReader {readerID} ->
-    import Effect
-    import InternalTask
 
     Effect.closeFile readerID
     |> Effect.map Ok

@@ -23,20 +23,13 @@ main =
     readSummary = Task.loop!
         { linesRead: 0, bytesRead: 0 }
         (processLine reader)
-
-    Stdout.line! "Done reading, got $(Inspect.toStr readSummary)"
-
-    # If we close a reader, we will get EOF for any future reads.
-    closedReader = File.getFileReader! "README.md"
-
-    File.closeFileReader! closedReader
-
-    when File.readLine closedReader |> Task.result! is
-        Ok bytes if List.len bytes == 0 -> Stdout.line "Got EOF reading from closed file."
-        _ -> crash "unexpected; we should get an EOF trying to read a file after closing"
+    # Why you should close files: https://stackoverflow.com/a/29536383
+    File.closeFileReader! reader
+    Stdout.line! "Done reading file: $(Inspect.toStr readSummary)"
 
 ReadSummary : { linesRead : U64, bytesRead : U64 }
 
+## Count the number of lines and the number of bytes read.
 processLine : File.FileReader -> (ReadSummary -> Task [Step ReadSummary, Done ReadSummary] _)
 processLine = \reader -> \{ linesRead, bytesRead } ->
         when File.readLine reader |> Task.result! is
@@ -47,4 +40,4 @@ processLine = \reader -> \{ linesRead, bytesRead } ->
                 Task.ok (Step { linesRead: linesRead + 1, bytesRead: bytesRead + (List.len bytes |> Num.intCast) })
 
             Err err ->
-                Task.err (ErrorReadingFile (Inspect.toStr err))
+                Task.err (ErrorReadingLine (Inspect.toStr err))
