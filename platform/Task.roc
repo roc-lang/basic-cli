@@ -11,7 +11,7 @@ module [
     loop,
     fromResult,
     batch,
-    seq,
+    sequence,
     forEach,
     result,
 ]
@@ -214,30 +214,33 @@ batch = \current -> \next ->
 
         map current f
 
-## Apply each task in a list sequentially, and return a list of the resulting values.
-## Each task will be awaited before beginning the next task.
+## Apply each task in a list sequentially, and return a [Task] with the list of the resulting values.
+## Each task will be awaited (see [Task.await]) before beginning the next task, 
+## execution will stop if an error occurs.
 ##
 ## ```
 ## fetchAuthorTasks : List (Task Author [DbError])
 ##
 ## getAuthors : Task (List Author) [DbError]
-## getAuthors = Task.seq fetchAuthorTasks
+## getAuthors = Task.sequence fetchAuthorTasks
 ## ```
 ##
-seq : List (Task ok err) -> Task (List ok) err
-seq = \tasks ->
+sequence : List (Task ok err) -> Task (List ok) err
+sequence = \tasks ->
     List.walk tasks (InternalTask.ok []) \state, task ->
         value <- task |> await
 
         state |> map \values -> List.append values value
 
-## Apply a task repeatedly for each item in a list
+## Apply a function that returns `Task {} _` for each item in a list.
+## Each task will be awaited (see [Task.await]) before beginning the next task,
+## execution will stop if an error occurs.
 ##
 ## ```
 ## authors : List Author
 ## saveAuthor : Author -> Task {} [DbError]
 ##
-## saveAuthors : Task (List Author) [DbError]
+## saveAuthors : Task {} [DbError]
 ## saveAuthors = Task.forEach authors saveAuthor
 ## ```
 ##
