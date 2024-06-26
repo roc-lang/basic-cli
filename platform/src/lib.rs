@@ -6,6 +6,7 @@ use core::mem::MaybeUninit;
 use roc_std::{RocDict, RocList, RocResult, RocStr};
 use std::borrow::{Borrow, Cow};
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{BufRead, BufReader, ErrorKind, Read, Seek, Write};
@@ -20,10 +21,10 @@ impl<T: BufRead + Read + Seek> CustomBuffered for T {}
 
 type CustomReader = Rc<RefCell<Box<dyn CustomBuffered>>>;
 
-type ReaderVec = Vec<CustomReader>;
+type ReaderVec = HashMap<u64, CustomReader>;
 
 thread_local! {
-    static READERS: RefCell<ReaderVec> = RefCell::new(Vec::new());
+    static READERS: RefCell<ReaderVec> = RefCell::new(HashMap::new());
 }
 
 extern "C" {
@@ -565,11 +566,11 @@ pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<u64, ro
         Ok(file) => READERS.with(|reader_thread_local| {
             let mut readers = reader_thread_local.borrow_mut();
 
-            let new_index = readers.len();
+            let new_index = readers.len() as u64;
 
             let buf_reader = BufReader::new(file);
 
-            readers.push(Rc::new(RefCell::new(Box::new(buf_reader))));
+            readers.insert(new_index, Rc::new(RefCell::new(Box::new(buf_reader))));
 
             RocResult::ok(new_index as u64)
         }),
@@ -582,22 +583,22 @@ pub extern "C" fn roc_fx_fileReadLine(readerIndex: u64) -> RocResult<RocList<u8>
     READERS.with(|reader_thread_local| {
         let readers = reader_thread_local.borrow_mut();
 
-        let reader_ref_cell = readers.get(readerIndex as usize).expect("readerIndex was larger than number of readers in Vec. We expect this can only happen due to an implementation error in basic-cli.");
+        match readers.get(&readerIndex) {
+            // NB: this will return an empty list when no reader found
+            None => RocResult::ok(RocList::empty()),
+            Some(reader_ref_cell) => {
+                let mut string_buffer = String::new();
 
-        let mut string_buffer = String::new();
+                let mut file_buf_reader = reader_ref_cell.borrow_mut();
 
-        let mut file_buf_reader = reader_ref_cell.borrow_mut();
-
-        match file_buf_reader.read_line(&mut string_buffer) {
-            Ok(bytes_read) => {
-                if bytes_read == 0 {
-                    // return empty list when no bytes read, e.g. End Of File
-                    return RocResult::ok(RocList::empty());
+                match file_buf_reader.read_line(&mut string_buffer) {
+                    Ok(..) => {
+                        // NB: this will return an empty list when no bytes read, e.g. End Of File
+                        RocResult::ok(RocList::from(string_buffer.as_bytes()))
+                    }
+                    Err(err) => RocResult::err(err.to_string().as_str().into()),
                 }
-
-                RocResult::ok(RocList::from(string_buffer.as_bytes()))
             }
-            Err(err) => RocResult::err(err.to_string().as_str().into()),
         }
     })
 }
@@ -605,17 +606,10 @@ pub extern "C" fn roc_fx_fileReadLine(readerIndex: u64) -> RocResult<RocList<u8>
 #[no_mangle]
 pub extern "C" fn roc_fx_closeFile(readerIndex: u64) {
     READERS.with(|reader_thread_local| {
-        let readers = reader_thread_local.borrow_mut();
-
-        let reader_ref_cell = readers.get(readerIndex as usize).expect("readerIndex was larger than number of readers in Vec. We expect this can only happen due to an implementation error in basic-cli.");
-
-        let dummy_reader = BufReader::new(std::io::Cursor::new(Vec::new()));
+        let mut readers = reader_thread_local.borrow_mut();
 
         // we drop the BufReader<File> to manually close the file
-        // by replacing it with a dummy reader that will return EOF
-        // for any future read attempts.
-        *reader_ref_cell.borrow_mut() = Box::new(dummy_reader);
-
+        readers.remove(&readerIndex);
     })
 }
 
