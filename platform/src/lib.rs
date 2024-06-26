@@ -13,6 +13,7 @@ use std::io::{BufRead, BufReader, ErrorKind, Read, Seek, Write};
 use std::net::TcpStream;
 use std::path::Path;
 use std::rc::Rc;
+use std::sync::atomic::AtomicU64;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 trait CustomBuffered: BufRead + Read + Seek {}
@@ -26,6 +27,8 @@ type ReaderVec = HashMap<u64, CustomReader>;
 thread_local! {
     static READERS: RefCell<ReaderVec> = RefCell::new(HashMap::new());
 }
+
+static READER_INDEX: AtomicU64 = AtomicU64::new(42);
 
 extern "C" {
     #[link_name = "roc__mainForHost_1_exposed_generic"]
@@ -566,7 +569,8 @@ pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<u64, ro
         Ok(file) => READERS.with(|reader_thread_local| {
             let mut readers = reader_thread_local.borrow_mut();
 
-            let new_index = readers.len() as u64;
+            // monotonically increasing index so each reader has a unique identifier
+            let new_index = READER_INDEX.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
             let buf_reader = BufReader::new(file);
 
