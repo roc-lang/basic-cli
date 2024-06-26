@@ -597,7 +597,7 @@ pub extern "C" fn roc_fx_fileReadLine(readerIndex: u64) -> RocResult<RocList<u8>
 
                 match file_buf_reader.read_line(&mut string_buffer) {
                     Ok(..) => {
-                        // return an empty list when no bytes were read, e.g. End Of File
+                        // Note: this returns an empty list when no bytes were read, e.g. End Of File
                         RocResult::ok(RocList::from(string_buffer.as_bytes()))
                     }
                     Err(err) => RocResult::err(err.to_string().as_str().into()),
