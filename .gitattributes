@@ -1,2 +1,3 @@
 # ignore glue generated files
-platform/src/main_glue/**/* linguist-generated=true
+crates/roc_std/**/* linguist-generated=true
+crates/roc_app/**/* linguist-generated=true

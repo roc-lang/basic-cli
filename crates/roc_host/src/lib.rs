@@ -26,6 +26,7 @@ extern "C" {
     #[link_name = "roc__mainForHost_0_size"]
     fn size_Fx() -> i64;
 
+    #[allow(dead_code)]
     #[link_name = "roc__mainForHost_0_result_size"]
     fn size_Fx_result() -> i64;
 }
