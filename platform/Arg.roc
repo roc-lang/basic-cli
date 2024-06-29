@@ -8,7 +8,7 @@ import Arg.ErrorFormatter exposing [formatArgExtractErr]
 import Arg.Help exposing [helpText, usageHelp]
 
 ## Gives a list of the program's command-line arguments.
-list : Task (List Str) *
+list : Task (List Str) []_
 list = PlatformTask.args
 
 ## Parse arguments using a CLI parser or show a useful message on failure.
@@ -77,14 +77,15 @@ list = PlatformTask.args
 ## ```
 parse : CliParser state -> Task state [Exit I32 Str, StdoutErr Stdout.Err]
 parse = \parser ->
-    when parser.parser list! is
+    Stdout.line! "Parsing args..."
+    arguments = list!
+    when parser.parser arguments is
         SuccessfullyParsed data ->
             Task.ok data
 
         ShowHelp { subcommandPath } ->
             helpMessage =
                 helpText parser.config subcommandPath parser.textStyle
-
             Stdout.line! helpMessage
             Task.err (Exit 0 "")
 
@@ -99,6 +100,5 @@ parse = \parser ->
 
                 $(usageHelp parser.config subcommandPath parser.textStyle)
                 """
-
             Stdout.line! incorrectUsageMessage
             Task.err (Exit 1 "")
