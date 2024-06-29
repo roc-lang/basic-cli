@@ -19,11 +19,10 @@ platform "cli"
         Tty,
     ]
     packages {}
-    imports [
-        # TODO: Use Stderr.line unqualified once that no longer (incorrectly) results in a "Stderr is not imported" error
-        Stderr.{ line },
-    ]
+    imports []
     provides [mainForHost]
+
+import Stderr
 
 mainForHost : Task {} I32 as Fx
 mainForHost =
@@ -34,12 +33,12 @@ mainForHost =
                 if Str.isEmpty str then
                     Task.err code
                 else
-                    line str
+                    Stderr.line str
                     |> Task.onErr \_ -> Task.err code
                     |> Task.await \{} -> Task.err code
 
             Err err ->
-                line
+                Stderr.line
                     """
                     Program exited with error:
                         $(Inspect.toStr err)

@@ -2,12 +2,11 @@ app [main] { pf: platform "../platform/main.roc" }
 
 import pf.Stdin
 import pf.Stdout
-import pf.Task exposing [await, loop]
 
 main =
     Stdout.line! "\nLet's count down from 3 together - all you have to do is press <ENTER>."
     _ = Stdin.line!
-    loop 3 tick
+    Task.loop 3 tick
 
 tick = \n ->
     if n == 0 then

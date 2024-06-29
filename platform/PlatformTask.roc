@@ -49,7 +49,7 @@ stdoutLine : Str -> Task {} Str
 stdoutWrite : Str -> Task {} Str
 stderrLine : Str -> Task {} Str
 stderrWrite : Str -> Task {} Str
-stdinLine :  Result Str Str
+stdinLine :  Task Str Str
 stdinBytes : Task (List U8) *
 ttyModeCanonical : Task {} *
 ttyModeRaw : Task {} *

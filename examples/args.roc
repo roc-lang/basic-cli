@@ -3,7 +3,6 @@ app [main] {
 }
 
 import pf.Stdout
-import pf.Task exposing [Task]
 import pf.Arg.Cli as Cli
 import pf.Arg.Subcommand as Subcommand
 import pf.Arg.Opt as Opt

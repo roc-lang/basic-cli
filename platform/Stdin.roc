@@ -64,6 +64,4 @@ line =
 ## which disables defaults terminal bevahiour and allows reading input
 ## without buffering until Enter key is pressed.
 bytes : Task (List U8) *
-bytes =
-    PlatformTask.stdinBytes
-    |> Task.mapErr handleErr
+bytes = PlatformTask.stdinBytes

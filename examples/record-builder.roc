@@ -3,7 +3,6 @@ app [main] {
 }
 
 import pf.Stdout
-import pf.Task exposing [Task]
 
 main =
     myrecord : Task { apples : List Str, oranges : List Str } []_

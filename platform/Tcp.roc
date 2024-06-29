@@ -49,13 +49,10 @@ withConnect = \hostname, port, callback ->
     result =
         callback stream
             |> Task.mapErr TcpPerformErr
-            |> Task.onErr! \err ->
-                # TODO: this looks to be unnecessary since we always close the stream at the end of this function
-                close! stream
-                Task.err err
+            |> Task.result!
+    close! stream
 
-    close stream
-    |> Task.map \_ -> result
+    Task.fromResult result
 
 connect : Str, U16 -> Task Stream ConnectErr
 connect = \host, port ->

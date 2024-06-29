@@ -165,7 +165,7 @@ writeBytes = \path, bytes ->
 writeUtf8 : Path, Str -> Task {} [FileWriteErr Path WriteErr]
 writeUtf8 = \path, str ->
     pathBytes = InternalPath.toBytes path
-    PlatformTask.fileWriteUtf8 pathBytes bytes
+    PlatformTask.fileWriteUtf8 pathBytes str
     |> Task.mapErr \err -> FileWriteErr path err
 
 ## Represents an error that can happen when canonicalizing a path.
@@ -451,7 +451,7 @@ isSymLink = \path ->
 type : Path -> Task [IsFile, IsDir, IsSymLink] [PathErr MetadataErr]
 type = \path ->
     InternalPath.toBytes path
-    |> Task.try PlatformTask.pathType
+    |> PlatformTask.pathType
     |> Task.mapErr PathErr
     |> Task.map \pathType ->
         if pathType.isSymLink then
@@ -584,7 +584,7 @@ readUtf8 = \path ->
 readBytes : Path -> Task (List U8) [FileReadErr Path ReadErr]
 readBytes = \path ->
     pathBytes = InternalPath.toBytes path
-    PlatformTask.fileReadBytes bytes
+    PlatformTask.fileReadBytes pathBytes
     |> Task.mapErr \err -> FileReadErr path err
 
 ## Lists the files and directories inside the directory.
