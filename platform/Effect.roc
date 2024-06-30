@@ -97,7 +97,7 @@ pathType : List U8 -> Effect (Result InternalPath.InternalPathType (List U8))
 posixTime : Effect U128
 sleepMillis : U64 -> Effect {}
 
-commandStatus : Box InternalCommand.Command -> Effect (Result {} InternalCommand.CommandErr)
+commandStatus : Box InternalCommand.Command -> Effect (Result {} (List U8))
 commandOutput : Box InternalCommand.Command -> Effect InternalCommand.Output
 
 dirList : List U8 -> Effect (Result (List (List U8)) Str)

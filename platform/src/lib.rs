@@ -995,9 +995,7 @@ fn to_tcp_stream_err(err: std::io::Error) -> roc_app::StreamErr {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_commandStatus(
-    roc_cmd: &roc_app::Command,
-) -> RocResult<(), roc_app::CommandErr> {
+pub extern "C" fn roc_fx_commandStatus(roc_cmd: &roc_app::Command) -> RocResult<(), RocList<u8>> {
     let args = roc_cmd.args.into_iter().map(|arg| arg.as_str());
     let num_envs = roc_cmd.envs.len() / 2;
     let flat_envs = &roc_cmd.envs;
@@ -1034,20 +1032,26 @@ pub extern "C" fn roc_fx_commandStatus(
             } else {
                 match status.code() {
                     Some(code) => {
-                        let error = roc_app::CommandErr::ExitCode(code);
+                        let mut error_bytes = Vec::new();
+                        error_bytes.extend([b'E', b'C']);
+                        error_bytes.extend(code.to_le_bytes());
+                        let error = RocList::from(error_bytes.as_slice()); //RocList::from([b'E',b'C'].extend(code.to_le_bytes()));
                         RocResult::err(error)
                     }
                     None => {
                         // If no exit code is returned, the process was terminated by a signal.
-                        let error = roc_app::CommandErr::KilledBySignal();
+                        // let error = roc_app::CommandErr::KilledBySignal();
+                        //
+                        let mut error_bytes = Vec::new();
+                        error_bytes.extend([b'K', b'S']);
+                        let error = RocList::from(error_bytes.as_slice());
                         RocResult::err(error)
                     }
                 }
             }
         }
         Err(err) => {
-            let str = RocStr::from(err.to_string().borrow());
-            let error = roc_app::CommandErr::IOError(str);
+            let error = RocList::from(format!("{:?}", err).as_bytes());
             RocResult::err(error)
         }
     }

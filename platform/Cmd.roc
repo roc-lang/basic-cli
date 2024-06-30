@@ -150,8 +150,12 @@ output = \@Cmd cmd ->
 status : Cmd -> Task {} [CmdError Err]
 status = \@Cmd cmd ->
     Effect.commandStatus (Box.box cmd)
+    |> Effect.map \result ->
+        when result is
+            Ok a -> Ok a
+            Err bytes -> Err (CmdError (InternalCommand.handleCommandErr bytes))
     |> InternalTask.fromEffect
-    |> Task.mapErr CmdError
+
 
 ## Execute command and inherit stdin, stdout and stderr from parent
 ##
@@ -165,5 +169,8 @@ exec = \program, arguments ->
     (@Cmd cmd) = new program |> args arguments
 
     Effect.commandStatus (Box.box cmd)
+    |> Effect.map \result ->
+        when result is
+            Ok a -> Ok a
+            Err bytes -> Err (CmdError (InternalCommand.handleCommandErr bytes))
     |> InternalTask.fromEffect
-    |> Task.mapErr CmdError
