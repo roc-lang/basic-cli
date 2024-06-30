@@ -25,7 +25,15 @@ Stream : InternalTcp.Stream
 ConnectErr : InternalTcp.ConnectErr
 
 ## Represents errors that can occur when performing a [Task] with a [Stream].
-StreamErr : InternalTcp.StreamErr
+StreamErr : [
+    PermissionDenied,
+    ConnectionRefused,
+    ConnectionReset,
+    Interrupted,
+    OutOfMemory,
+    BrokenPipe,
+    Unrecognized I32 Str,
+]
 
 ## Opens a TCP connection to a remote host and perform a [Task] with it.
 ##

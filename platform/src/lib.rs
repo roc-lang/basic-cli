@@ -364,12 +364,12 @@ pub extern "C" fn roc_fx_exePath(_roc_str: &RocStr) -> RocResult<RocList<u8>, ()
 /// See docs in `platform/Stdin.roc` for descriptions
 fn handleStdinErr(io_err: std::io::Error) -> RocStr {
     match io_err.kind() {
-        ErrorKind::BrokenPipe => RocStr::from("ErrorKind::BrokenPipe"),
-        ErrorKind::UnexpectedEof => RocStr::from("ErrorKind::UnexpectedEof"),
-        ErrorKind::InvalidInput => RocStr::from("ErrorKind::InvalidInput"),
-        ErrorKind::OutOfMemory => RocStr::from("ErrorKind::OutOfMemory"),
-        ErrorKind::Interrupted => RocStr::from("ErrorKind::Interrupted"),
-        ErrorKind::Unsupported => RocStr::from("ErrorKind::Unsupported"),
+        ErrorKind::BrokenPipe => "ErrorKind::BrokenPipe".into(),
+        ErrorKind::UnexpectedEof => "ErrorKind::UnexpectedEof".into(),
+        ErrorKind::InvalidInput => "ErrorKind::InvalidInput".into(),
+        ErrorKind::OutOfMemory => "ErrorKind::OutOfMemory".into(),
+        ErrorKind::Interrupted => "ErrorKind::Interrupted".into(),
+        ErrorKind::Unsupported => "ErrorKind::Unsupported".into(),
         _ => RocStr::from(RocStr::from(format!("{:?}", io_err).as_str())),
     }
 }
@@ -490,7 +490,7 @@ pub extern "C" fn roc_fx_ttyModeRaw() {
 pub extern "C" fn roc_fx_fileWriteUtf8(
     roc_path: &RocList<u8>,
     roc_str: &RocStr,
-) -> RocResult<(), roc_app::WriteErr> {
+) -> RocResult<(), RocStr> {
     write_slice(roc_path, roc_str.as_str().as_bytes())
 }
 
@@ -498,11 +498,11 @@ pub extern "C" fn roc_fx_fileWriteUtf8(
 pub extern "C" fn roc_fx_fileWriteBytes(
     roc_path: &RocList<u8>,
     roc_bytes: &RocList<u8>,
-) -> RocResult<(), roc_app::WriteErr> {
+) -> RocResult<(), RocStr> {
     write_slice(roc_path, roc_bytes.as_slice())
 }
 
-fn write_slice(roc_path: &RocList<u8>, bytes: &[u8]) -> RocResult<(), roc_app::WriteErr> {
+fn write_slice(roc_path: &RocList<u8>, bytes: &[u8]) -> RocResult<(), RocStr> {
     match File::create(path_from_roc_path(roc_path)) {
         Ok(mut file) => match file.write_all(bytes) {
             Ok(()) => RocResult::ok(()),
@@ -551,7 +551,7 @@ fn path_from_roc_path(bytes: &RocList<u8>) -> Cow<'_, Path> {
 #[no_mangle]
 pub extern "C" fn roc_fx_fileReadBytes(
     roc_path: &RocList<u8>,
-) -> RocResult<RocList<u8>, roc_app::ReadErr> {
+) -> RocResult<RocList<u8>, RocStr> {
     let mut bytes = Vec::new();
 
     match File::open(path_from_roc_path(roc_path)) {
@@ -564,7 +564,7 @@ pub extern "C" fn roc_fx_fileReadBytes(
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<u64, roc_app::ReadErr> {
+pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<u64, RocStr> {
     match File::open(path_from_roc_path(roc_path)) {
         Ok(file) => READERS.with(|reader_thread_local| {
             let mut readers = reader_thread_local.borrow_mut();
@@ -618,7 +618,7 @@ pub extern "C" fn roc_fx_closeFile(readerIndex: u64) {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_fileDelete(roc_path: &RocList<u8>) -> RocResult<(), roc_app::ReadErr> {
+pub extern "C" fn roc_fx_fileDelete(roc_path: &RocList<u8>) -> RocResult<(), RocStr> {
     match std::fs::remove_file(path_from_roc_path(roc_path)) {
         Ok(()) => RocResult::ok(()),
         Err(err) => RocResult::err(toRocReadError(err)),
@@ -826,44 +826,27 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &roc_app::Request) -> roc_app:
     }
 }
 
-fn toRocWriteError(err: std::io::Error) -> roc_app::WriteErr {
+fn toRocWriteError(err: std::io::Error) -> RocStr {
     match err.kind() {
-        ErrorKind::NotFound => roc_app::WriteErr::NotFound(),
-        ErrorKind::AlreadyExists => roc_app::WriteErr::AlreadyExists(),
-        ErrorKind::Interrupted => roc_app::WriteErr::Interrupted(),
-        ErrorKind::OutOfMemory => roc_app::WriteErr::OutOfMemory(),
-        ErrorKind::PermissionDenied => roc_app::WriteErr::PermissionDenied(),
-        ErrorKind::TimedOut => roc_app::WriteErr::TimedOut(),
-        // TODO investigate support the following IO errors may need to update API
-        ErrorKind::WriteZero => roc_app::WriteErr::WriteZero(),
-        _ => roc_app::WriteErr::Unsupported(),
-        // TODO investigate support the following IO errors
-        // std::io::ErrorKind::FileTooLarge <- unstable language feature
-        // std::io::ErrorKind::ExecutableFileBusy <- unstable language feature
-        // std::io::ErrorKind::FilesystemQuotaExceeded <- unstable language feature
-        // std::io::ErrorKind::InvalidFilename <- unstable language feature
-        // std::io::ErrorKind::ResourceBusy <- unstable language feature
-        // std::io::ErrorKind::ReadOnlyFilesystem <- unstable language feature
-        // std::io::ErrorKind::TooManyLinks <- unstable language feature
-        // std::io::ErrorKind::StaleNetworkFileHandle <- unstable language feature
-        // std::io::ErrorKind::StorageFull <- unstable language feature
+        ErrorKind::NotFound => "ErrorKind::NotFound".into(),
+        ErrorKind::AlreadyExists => "ErrorKind::AlreadyExists".into(),
+        ErrorKind::Interrupted => "ErrorKind::Interrupted".into(),
+        ErrorKind::OutOfMemory => "ErrorKind::OutOfMemory".into(),
+        ErrorKind::PermissionDenied => "ErrorKind::PermissionDenied".into(),
+        ErrorKind::TimedOut => "ErrorKind::TimedOut".into(),
+        ErrorKind::WriteZero => "ErrorKind::WriteZero".into(),
+        _ => RocStr::from(RocStr::from(format!("{:?}", err).as_str())),
     }
 }
 
-fn toRocReadError(err: std::io::Error) -> roc_app::ReadErr {
+fn toRocReadError(err: std::io::Error) -> RocStr {
     match err.kind() {
-        ErrorKind::Interrupted => roc_app::ReadErr::Interrupted(),
-        ErrorKind::NotFound => roc_app::ReadErr::NotFound(),
-        ErrorKind::OutOfMemory => roc_app::ReadErr::OutOfMemory(),
-        ErrorKind::PermissionDenied => roc_app::ReadErr::PermissionDenied(),
-        ErrorKind::TimedOut => roc_app::ReadErr::TimedOut(),
-        // TODO investigate support the following IO errors may need to update API
-        // std::io::ErrorKind:: => roc_app::ReadErr::TooManyHardlinks,
-        // std::io::ErrorKind:: => roc_app::ReadErr::TooManySymlinks,
-        // std::io::ErrorKind:: => roc_app::ReadErr::Unrecognized,
-        // std::io::ErrorKind::StaleNetworkFileHandle <- unstable language feature
-        // std::io::ErrorKind::InvalidFilename <- unstable language feature
-        _ => roc_app::ReadErr::Unsupported(),
+        ErrorKind::Interrupted => "ErrorKind::Interrupted".into(),
+        ErrorKind::NotFound => "ErrorKind::NotFound".into(),
+        ErrorKind::OutOfMemory => "ErrorKind::OutOfMemory".into(),
+        ErrorKind::PermissionDenied => "ErrorKind::PermissionDenied".into(),
+        ErrorKind::TimedOut => "ErrorKind::TimedOut".into(),
+        _ => RocStr::from(RocStr::from(format!("{:?}", err).as_str())),
     }
 }
 

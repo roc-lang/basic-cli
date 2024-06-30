@@ -569,7 +569,7 @@ readUtf8 = \path ->
                 Str.fromUtf8 bytes
                 |> Result.mapErr \err -> FileReadUtf8Err path err
 
-            Err readErr -> Err (FileReadErr path readErr)
+            Err readErr -> Err (FileReadErr path (InternalFile.handleReadErr readErr))
 
     InternalTask.fromEffect effect
 
@@ -664,19 +664,19 @@ createAll = \path ->
     |> Effect.map \res -> Result.mapErr res handleErr
     |> InternalTask.fromEffect
 
-toWriteTask : Path, (List U8 -> Effect (Result ok err)) -> Task ok [FileWriteErr Path err]
+toWriteTask : Path, (List U8 -> Effect (Result ok Str)) -> Task ok [FileWriteErr Path WriteErr]
 toWriteTask = \path, toEffect ->
     InternalPath.toBytes path
     |> toEffect
     |> InternalTask.fromEffect
-    |> Task.mapErr \err -> FileWriteErr path err
+    |> Task.mapErr \err -> FileWriteErr path (InternalFile.handleWriteErr err)
 
-toReadTask : Path, (List U8 -> Effect (Result ok err)) -> Task ok [FileReadErr Path err]
+toReadTask : Path, (List U8 -> Effect (Result ok Str)) -> Task ok [FileReadErr Path ReadErr]
 toReadTask = \path, toEffect ->
     InternalPath.toBytes path
     |> toEffect
     |> InternalTask.fromEffect
-    |> Task.mapErr \err -> FileReadErr path err
+    |> Task.mapErr \err -> FileReadErr path (InternalFile.handleReadErr err)
 
 # There are othe errors which may be useful, however they are currently unstable
 # features see https://github.com/rust-lang/rust/issues/86442

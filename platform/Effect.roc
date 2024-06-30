@@ -48,7 +48,6 @@ hosted Effect
     ]
     imports [
         InternalHttp.{ Request, InternalResponse },
-        InternalFile,
         InternalTcp,
         InternalCommand,
         InternalPath,
@@ -64,12 +63,12 @@ stdinBytes : Effect (List U8)
 ttyModeCanonical : Effect {}
 ttyModeRaw : Effect {}
 
-fileWriteBytes : List U8, List U8 -> Effect (Result {} InternalFile.WriteErr)
-fileWriteUtf8 : List U8, Str -> Effect (Result {} InternalFile.WriteErr)
-fileDelete : List U8 -> Effect (Result {} InternalFile.WriteErr)
-fileReadBytes : List U8 -> Effect (Result (List U8) InternalFile.ReadErr)
+fileWriteBytes : List U8, List U8 -> Effect (Result {} Str)
+fileWriteUtf8 : List U8, Str -> Effect (Result {} Str)
+fileDelete : List U8 -> Effect (Result {} Str)
+fileReadBytes : List U8 -> Effect (Result (List U8) Str)
 
-fileReader : List U8 -> Effect (Result U64 InternalFile.ReadErr)
+fileReader : List U8 -> Effect (Result U64 Str)
 fileReadLine : U64 -> Effect (Result (List U8) Str)
 closeFile : U64 -> Effect {}
 
