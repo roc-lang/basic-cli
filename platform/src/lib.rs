@@ -856,14 +856,7 @@ fn toRocReadError(err: std::io::Error) -> RocStr {
 }
 
 fn toRocGetMetadataError(err: std::io::Error) -> RocList<u8> {
-    let kind = err.kind();
-
-    let read_err = roc_app::ReadErr_Unrecognized {
-        f1: RocStr::from(kind.to_string().borrow()),
-        f0: err.raw_os_error().unwrap_or_default(),
-    };
-
-    match kind {
+    match err.kind() {
         ErrorKind::PermissionDenied => RocList::from([b'P', b'D']),
         ErrorKind::NotFound => RocList::from([b'N', b'F']),
         _ => RocList::from(format!("{:?}", err).as_bytes()),
