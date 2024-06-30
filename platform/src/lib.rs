@@ -515,7 +515,7 @@ fn write_slice(roc_path: &RocList<u8>, bytes: &[u8]) -> RocResult<(), RocStr> {
 #[no_mangle]
 pub extern "C" fn roc_fx_pathType(
     roc_path: &RocList<u8>,
-) -> RocResult<roc_app::InternalPathType, roc_app::GetMetadataErr> {
+) -> RocResult<roc_app::InternalPathType, RocList<u8>> {
     let path = path_from_roc_path(roc_path);
     match path.symlink_metadata() {
         Ok(m) => RocResult::ok(roc_app::InternalPathType {
@@ -549,9 +549,7 @@ fn path_from_roc_path(bytes: &RocList<u8>) -> Cow<'_, Path> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_fileReadBytes(
-    roc_path: &RocList<u8>,
-) -> RocResult<RocList<u8>, RocStr> {
+pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocList<u8>, RocStr> {
     let mut bytes = Vec::new();
 
     match File::open(path_from_roc_path(roc_path)) {
@@ -850,7 +848,7 @@ fn toRocReadError(err: std::io::Error) -> RocStr {
     }
 }
 
-fn toRocGetMetadataError(err: std::io::Error) -> roc_app::GetMetadataErr {
+fn toRocGetMetadataError(err: std::io::Error) -> RocList<u8> {
     let kind = err.kind();
 
     let read_err = roc_app::ReadErr_Unrecognized {
@@ -859,9 +857,9 @@ fn toRocGetMetadataError(err: std::io::Error) -> roc_app::GetMetadataErr {
     };
 
     match kind {
-        ErrorKind::NotFound => roc_app::GetMetadataErr::PathDoesNotExist(),
-        ErrorKind::PermissionDenied => roc_app::GetMetadataErr::PermissionDenied(),
-        _ => roc_app::GetMetadataErr::Unrecognized(read_err),
+        ErrorKind::PermissionDenied => RocList::from([b'P', b'D']),
+        ErrorKind::NotFound => RocList::from([b'N', b'F']),
+        _ => RocList::from(format!("{:?}", err).as_bytes()),
     }
 }
 

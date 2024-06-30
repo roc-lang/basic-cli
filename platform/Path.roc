@@ -449,8 +449,7 @@ isSymLink = \path ->
 ## > [`File.type`](File#type) does the same thing, except it takes a [Str] instead of a [Path].
 type : Path -> Task [IsFile, IsDir, IsSymLink] [PathErr MetadataErr]
 type = \path ->
-    InternalPath.toBytes path
-    |> Effect.pathType
+    Effect.pathType (InternalPath.toBytes path)
     |> Effect.map \result ->
         when result is
             Ok pathType ->
@@ -461,9 +460,9 @@ type = \path ->
                 else
                     Ok IsFile
 
-            Err e -> Err e
+            Err bytes ->
+                Err (PathErr (InternalPath.handlerGetMetadataErr bytes))
     |> InternalTask.fromEffect
-    |> Task.mapErr PathErr
 
 ## If the last component of this path has no `.`, appends `.` followed by the given string.
 ## Otherwise, replaces everything after the last `.` with the given string.
