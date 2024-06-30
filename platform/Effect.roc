@@ -48,7 +48,6 @@ hosted Effect
     ]
     imports [
         InternalHttp.{ Request, InternalResponse },
-        InternalTcp,
         InternalCommand,
         InternalPath,
     ]
@@ -85,12 +84,12 @@ cwd : Effect (List U8)
 
 sendRequest : Box Request -> Effect InternalResponse
 
-tcpConnect : Str, U16 -> Effect InternalTcp.ConnectResult
-tcpClose : InternalTcp.Stream -> Effect {}
-tcpReadUpTo : U64, InternalTcp.Stream -> Effect InternalTcp.ReadResult
-tcpReadExactly : U64, InternalTcp.Stream -> Effect InternalTcp.ReadExactlyResult
-tcpReadUntil : U8, InternalTcp.Stream -> Effect InternalTcp.ReadResult
-tcpWrite : List U8, InternalTcp.Stream -> Effect InternalTcp.WriteResult
+tcpConnect : Str, U16 -> Effect (Result U64 Str)
+tcpClose : U64 -> Effect (Result {} *)
+tcpReadUpTo : U64, U64 -> Effect (Result (List U8) Str)
+tcpReadExactly : U64, U64 -> Effect (Result (List U8) Str)
+tcpReadUntil : U64, U8 -> Effect (Result (List U8) Str)
+tcpWrite : U64, List U8 -> Effect (Result {} Str)
 
 pathType : List U8 -> Effect (Result InternalPath.InternalPathType (List U8))
 
@@ -106,4 +105,4 @@ dirCreateAll : List U8 -> Effect (Result {} Str)
 dirDeleteEmpty : List U8 -> Effect (Result {} Str)
 dirDeleteAll : List U8 -> Effect (Result {} Str)
 
-currentArchOS : Effect {arch: Str, os: Str}
+currentArchOS : Effect { arch : Str, os : Str }

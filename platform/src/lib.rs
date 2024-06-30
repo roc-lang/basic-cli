@@ -13,7 +13,7 @@ use std::io::{BufRead, BufReader, ErrorKind, Read, Seek, Write};
 use std::net::TcpStream;
 use std::path::Path;
 use std::rc::Rc;
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 trait CustomBuffered: BufRead + Read + Seek {}
@@ -26,9 +26,14 @@ type ReaderMap = HashMap<u64, CustomReader>;
 
 thread_local! {
     static READERS: RefCell<ReaderMap> = RefCell::new(HashMap::new());
+    static TCP_STREAMS: RefCell<HashMap<u64, BufReader<TcpStream>>> = RefCell::new(HashMap::new());
 }
 
 static READER_INDEX: AtomicU64 = AtomicU64::new(42);
+static TCP_STREAM_INDEX: AtomicU64 = AtomicU64::new(0);
+
+const STREAM_NOT_FOUND_ERROR: &str = "StreamNotFound";
+const UNEXPECTED_EOF_ERROR: &str = "UnexpectedEof";
 
 extern "C" {
     #[link_name = "roc__mainForHost_1_exposed_generic"]
@@ -575,13 +580,13 @@ pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<u64, Ro
             let mut readers = reader_thread_local.borrow_mut();
 
             // monotonically increasing index so each reader has a unique identifier
-            let new_index = READER_INDEX.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            let new_index = READER_INDEX.fetch_add(1, Ordering::SeqCst);
 
             let buf_reader = BufReader::new(file);
 
             readers.insert(new_index, Rc::new(RefCell::new(Box::new(buf_reader))));
 
-            RocResult::ok(new_index as u64)
+            RocResult::ok(new_index)
         }),
         Err(err) => RocResult::err(toRocReadError(err)),
     }
@@ -598,7 +603,7 @@ pub extern "C" fn roc_fx_fileReadLine(readerIndex: u64) -> RocResult<RocList<u8>
             Some(reader_ref_cell) => {
                 let mut string_buffer = String::new();
 
-                let mut file_buf_reader = reader_ref_cell.borrow_mut();
+                let mut file_buf_reader = (**reader_ref_cell).borrow_mut();
 
                 match file_buf_reader.read_line(&mut string_buffer) {
                     Ok(..) => {
@@ -864,133 +869,146 @@ fn toRocGetMetadataError(err: std::io::Error) -> RocList<u8> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpConnect(host: &RocStr, port: u16) -> roc_app::ConnectResult {
-    match TcpStream::connect((host.as_str(), port)) {
-        Ok(stream) => {
-            let reader = BufReader::new(stream);
-            let ptr = Box::into_raw(Box::new(reader)) as u64;
+pub extern "C" fn roc_fx_tcpConnect(
+    host: &RocStr,
+    port: u16,
+) -> RocResult<u64, RocStr> {
+    let stream = match TcpStream::connect((host.as_str(), port)) {
+        Ok(stream) => stream,
+        Err(err) => return RocResult::err(to_tcp_connect_err(err)),
+    };
 
-            roc_app::ConnectResult::Connected(ptr)
-        }
-        Err(err) => roc_app::ConnectResult::Error(to_tcp_connect_err(err)),
-    }
+    let reader = BufReader::new(stream);
+    let stream_id = TCP_STREAM_INDEX.fetch_add(1, Ordering::SeqCst);
+
+    TCP_STREAMS.with(|tcp_streams_local| {
+        tcp_streams_local.borrow_mut().insert(stream_id, reader);
+    });
+
+    RocResult::ok(stream_id)
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpClose(stream_ptr: *mut BufReader<TcpStream>) {
-    unsafe {
-        drop(Box::from_raw(stream_ptr));
-    }
+pub extern "C" fn roc_fx_tcpClose(stream_id: u64) -> RocResult<(), ()> {
+    TCP_STREAMS.with(|tcp_streams_local| {
+        tcp_streams_local.borrow_mut().remove(&stream_id);
+    });
+
+    RocResult::ok(())
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpReadUpTo(
+    stream_id: u64,
     bytes_to_read: u64,
-    stream_ptr: *mut BufReader<TcpStream>,
-) -> roc_app::ReadResult {
-    let reader = unsafe { &mut *stream_ptr };
+) -> RocResult<RocList<u8>, RocStr> {
+    TCP_STREAMS.with(|tcp_streams_local| {
+        let mut streams_mut = tcp_streams_local.borrow_mut();
+        let Some(stream) = streams_mut.get_mut(&stream_id) else {
+            return RocResult::err(STREAM_NOT_FOUND_ERROR.into());
+        };
 
-    let mut chunk = reader.take(bytes_to_read);
+        let mut chunk = stream.take(bytes_to_read);
 
-    match chunk.fill_buf() {
-        Ok(received) => {
-            let received = received.to_vec();
-            reader.consume(received.len());
+        match chunk.fill_buf() {
+            Ok(received) => {
+                let received = received.to_vec();
+                stream.consume(received.len());
 
-            let rocList = RocList::from(&received[..]);
-            roc_app::ReadResult::Read(rocList)
+                RocResult::ok(RocList::from(&received[..]))
+            }
+            Err(err) => RocResult::err(to_tcp_stream_err(err)),
         }
-
-        Err(err) => roc_app::ReadResult::Error(to_tcp_stream_err(err)),
-    }
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpReadExactly(
+    stream_id: u64,
     bytes_to_read: u64,
-    stream_ptr: *mut BufReader<TcpStream>,
-) -> roc_app::ReadExactlyResult {
-    let reader = unsafe { &mut *stream_ptr };
-    let mut buffer = Vec::with_capacity(bytes_to_read as usize);
-    let mut chunk = reader.take(bytes_to_read as u64);
+) -> RocResult<RocList<u8>, RocStr> {
+    TCP_STREAMS.with(|tcp_streams_local| {
+        let mut streams_mut = tcp_streams_local.borrow_mut();
+        let Some(stream) = streams_mut.get_mut(&stream_id) else {
+            return RocResult::err(STREAM_NOT_FOUND_ERROR.into());
+        };
 
-    match chunk.read_to_end(&mut buffer) {
-        Ok(read) => {
-            if (read as u64) < bytes_to_read {
-                roc_app::ReadExactlyResult::UnexpectedEOF()
-            } else {
-                let rocList = RocList::from(&buffer[..]);
-                roc_app::ReadExactlyResult::Read(rocList)
+        let mut buffer = Vec::with_capacity(bytes_to_read as usize);
+        let mut chunk = stream.take(bytes_to_read);
+
+        match chunk.read_to_end(&mut buffer) {
+            Ok(read) => {
+                if (read as u64) < bytes_to_read {
+                    RocResult::err(UNEXPECTED_EOF_ERROR.into())
+                } else {
+                    RocResult::ok(RocList::from(&buffer[..]))
+                }
             }
+            Err(err) => RocResult::err(to_tcp_stream_err(err)),
         }
+    })
 
-        Err(err) => roc_app::ReadExactlyResult::Error(to_tcp_stream_err(err)),
-    }
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpReadUntil(
+    stream_id: u64,
     byte: u8,
-    stream_ptr: *mut BufReader<TcpStream>,
-) -> roc_app::ReadResult {
-    let reader = unsafe { &mut *stream_ptr };
+) -> RocResult<RocList<u8>, RocStr> {
+    TCP_STREAMS.with(|tcp_streams_local| {
+        let mut streams_mut = tcp_streams_local.borrow_mut();
+        let Some(stream) = streams_mut.get_mut(&stream_id) else {
+            return RocResult::err(STREAM_NOT_FOUND_ERROR.into());
+        };
 
-    let mut buffer = vec![];
-
-    match reader.read_until(byte, &mut buffer) {
-        Ok(_) => {
-            let rocList = RocList::from(&buffer[..]);
-            roc_app::ReadResult::Read(rocList)
+        let mut buffer = vec![];
+        match stream.read_until(byte, &mut buffer) {
+            Ok(_) => RocResult::ok(RocList::from(&buffer[..])),
+            Err(err) => RocResult::err(to_tcp_stream_err(err)),
         }
-
-        Err(err) => roc_app::ReadResult::Error(to_tcp_stream_err(err)),
-    }
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpWrite(
+    stream_id: u64,
     msg: &RocList<u8>,
-    stream_ptr: *mut BufReader<TcpStream>,
-) -> roc_app::WriteResult {
-    let reader = unsafe { &mut *stream_ptr };
-    let mut stream = reader.get_ref();
+) -> RocResult<(), RocStr> {
+    TCP_STREAMS.with(|tcp_streams_local| {
+        let mut streams_mut = tcp_streams_local.borrow_mut();
+        let Some(stream) = streams_mut.get_mut(&stream_id) else {
+            return RocResult::err(STREAM_NOT_FOUND_ERROR.into());
+        };
 
-    match stream.write_all(msg.as_slice()) {
-        Ok(_) => roc_app::WriteResult::Wrote(),
-        Err(err) => roc_app::WriteResult::Error(to_tcp_stream_err(err)),
+        match stream.get_mut().write_all(msg.as_slice()) {
+            Ok(()) => RocResult::ok(()),
+            Err(err) => RocResult::err(to_tcp_stream_err(err)),
+        }
+    })
+}
+
+fn to_tcp_connect_err(err: std::io::Error) -> RocStr {
+    match err.kind() {
+        ErrorKind::PermissionDenied => "ErrorKind::PermissionDenied".into(),
+        ErrorKind::AddrInUse => "ErrorKind::AddrInUse".into(),
+        ErrorKind::AddrNotAvailable => "ErrorKind::AddrNotAvailable".into(),
+        ErrorKind::ConnectionRefused => "ErrorKind::ConnectionRefused".into(),
+        ErrorKind::Interrupted => "ErrorKind::Interrupted".into(),
+        ErrorKind::TimedOut => "ErrorKind::TimedOut".into(),
+        ErrorKind::Unsupported => "ErrorKind::Unsupported".into(),
+        other => format!("{:?}", other).as_str().into(),
     }
 }
 
-fn to_tcp_connect_err(err: std::io::Error) -> roc_app::ConnectErr {
-    let kind = err.kind();
-    match kind {
-        ErrorKind::PermissionDenied => roc_app::ConnectErr::PermissionDenied(),
-        ErrorKind::AddrInUse => roc_app::ConnectErr::AddrInUse(),
-        ErrorKind::AddrNotAvailable => roc_app::ConnectErr::AddrNotAvailable(),
-        ErrorKind::ConnectionRefused => roc_app::ConnectErr::ConnectionRefused(),
-        ErrorKind::Interrupted => roc_app::ConnectErr::Interrupted(),
-        ErrorKind::TimedOut => roc_app::ConnectErr::TimedOut(),
-        ErrorKind::Unsupported => roc_app::ConnectErr::Unsupported(),
-        _ => roc_app::ConnectErr::Unrecognized(roc_app::ReadErr_Unrecognized {
-            f1: RocStr::from(kind.to_string().borrow()),
-            f0: err.raw_os_error().unwrap_or_default(),
-        }),
-    }
-}
-
-fn to_tcp_stream_err(err: std::io::Error) -> roc_app::StreamErr {
-    let kind = err.kind();
-    match kind {
-        ErrorKind::PermissionDenied => roc_app::StreamErr::PermissionDenied(),
-        ErrorKind::ConnectionRefused => roc_app::StreamErr::ConnectionRefused(),
-        ErrorKind::ConnectionReset => roc_app::StreamErr::ConnectionReset(),
-        ErrorKind::Interrupted => roc_app::StreamErr::Interrupted(),
-        ErrorKind::OutOfMemory => roc_app::StreamErr::OutOfMemory(),
-        ErrorKind::BrokenPipe => roc_app::StreamErr::BrokenPipe(),
-        _ => roc_app::StreamErr::Unrecognized(roc_app::ReadErr_Unrecognized {
-            f1: RocStr::from(kind.to_string().borrow()),
-            f0: err.raw_os_error().unwrap_or_default(),
-        }),
+fn to_tcp_stream_err(err: std::io::Error) -> RocStr {
+    match err.kind() {
+        ErrorKind::PermissionDenied => "ErrorKind::PermissionDenied".into(),
+        ErrorKind::ConnectionRefused => "ErrorKind::ConnectionRefused".into(),
+        ErrorKind::ConnectionReset => "ErrorKind::ConnectionReset".into(),
+        ErrorKind::Interrupted => "ErrorKind::Interrupted".into(),
+        ErrorKind::OutOfMemory => "ErrorKind::OutOfMemory".into(),
+        ErrorKind::BrokenPipe => "ErrorKind::BrokenPipe".into(),
+        other => format!("{:?}", other).as_str().into(),
     }
 }
 

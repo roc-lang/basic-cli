@@ -16,24 +16,59 @@ module [
 import Effect
 import Task exposing [Task]
 import InternalTask
-import InternalTcp
+
+unexpectedEofErrorMessage = "UnexpectedEof"
 
 ## Represents a TCP stream.
-Stream : InternalTcp.Stream
+Stream := U64
 
 ## Represents errors that can occur when connecting to a remote host.
-ConnectErr : InternalTcp.ConnectErr
+ConnectErr : [
+    PermissionDenied,
+    AddrInUse,
+    AddrNotAvailable,
+    ConnectionRefused,
+    Interrupted,
+    TimedOut,
+    Unsupported,
+    Unrecognized Str,
+]
+
+parseConnectErr : Str -> ConnectErr
+parseConnectErr = \err ->
+    when err is
+        "ErrorKind::PermissionDenied" -> PermissionDenied
+        "ErrorKind::AddrInUse" -> AddrInUse
+        "ErrorKind::AddrNotAvailable" -> AddrNotAvailable
+        "ErrorKind::ConnectionRefused" -> ConnectionRefused
+        "ErrorKind::Interrupted" -> Interrupted
+        "ErrorKind::TimedOut" -> TimedOut
+        "ErrorKind::Unsupported" -> Unsupported
+        other -> Unrecognized other
 
 ## Represents errors that can occur when performing a [Task] with a [Stream].
 StreamErr : [
+    StreamNotFound,
     PermissionDenied,
     ConnectionRefused,
     ConnectionReset,
     Interrupted,
     OutOfMemory,
     BrokenPipe,
-    Unrecognized I32 Str,
+    Unrecognized Str,
 ]
+
+parseStreamErr : Str -> StreamErr
+parseStreamErr = \err ->
+    when err is
+        "StreamNotFound" -> StreamNotFound
+        "ErrorKind::PermissionDenied" -> PermissionDenied
+        "ErrorKind::ConnectionRefused" -> ConnectionRefused
+        "ErrorKind::ConnectionReset" -> ConnectionReset
+        "ErrorKind::Interrupted" -> Interrupted
+        "ErrorKind::OutOfMemory" -> OutOfMemory
+        "ErrorKind::BrokenPipe" -> BrokenPipe
+        other -> Unrecognized other
 
 ## Opens a TCP connection to a remote host and perform a [Task] with it.
 ##
@@ -52,18 +87,18 @@ StreamErr : [
 ##
 withConnect : Str, U16, (Stream -> Task a err) -> Task a [TcpConnectErr ConnectErr, TcpPerformErr err]
 withConnect = \hostname, port, callback ->
-    stream <- connect hostname port
-        |> Task.mapErr TcpConnectErr
-        |> Task.await
+    stream =
+        connect hostname port
+            |> Task.mapErr! TcpConnectErr
 
-    result <- callback stream
-        |> Task.mapErr TcpPerformErr
-        |> Task.onErr
-            (\err ->
-                _ <- close stream |> Task.await
-                Task.err err
-            )
-        |> Task.await
+    result =
+        callback stream
+            |> Task.mapErr TcpPerformErr
+            |> Task.onErr!
+                (\err ->
+                    _ = close! stream
+                    Task.err err
+                )
 
     close stream
     |> Task.map \_ -> result
@@ -71,13 +106,15 @@ withConnect = \hostname, port, callback ->
 connect : Str, U16 -> Task Stream ConnectErr
 connect = \host, port ->
     Effect.tcpConnect host port
-    |> Effect.map InternalTcp.fromConnectResult
+    |> Effect.map \res ->
+        res
+        |> Result.map @Stream
+        |> Result.mapErr parseConnectErr
     |> InternalTask.fromEffect
 
 close : Stream -> Task {} *
-close = \stream ->
+close = \@Stream stream ->
     Effect.tcpClose stream
-    |> Effect.map Ok
     |> InternalTask.fromEffect
 
 ## Read up to a number of bytes from the TCP stream.
@@ -89,12 +126,14 @@ close = \stream ->
 ## ```
 ##
 ## > To read an exact number of bytes or fail, you can use [Tcp.readExactly] instead.
-readUpTo : U64, Stream -> Task (List U8) [TcpReadErr StreamErr]
-readUpTo = \bytesToRead, stream ->
-    Effect.tcpReadUpTo bytesToRead stream
-    |> Effect.map InternalTcp.fromReadResult
+readUpTo : Stream, U64 -> Task (List U8) [TcpReadErr StreamErr]
+readUpTo = \@Stream stream, bytesToRead ->
+    Effect.tcpReadUpTo stream bytesToRead
+    |> Effect.map \res ->
+        res
+        |> Result.mapErr parseStreamErr
+        |> Result.mapErr TcpReadErr
     |> InternalTask.fromEffect
-    |> Task.mapErr TcpReadErr
 
 ## Read an exact number of bytes or fail.
 ##
@@ -104,21 +143,16 @@ readUpTo = \bytesToRead, stream ->
 ##
 ## `TcpUnexpectedEOF` is returned if the stream ends before the specfied number of bytes is reached.
 ##
-readExactly : U64, Stream -> Task (List U8) [TcpReadErr StreamErr, TcpUnexpectedEOF]
-readExactly = \bytesToRead, stream ->
-    Effect.tcpReadExactly bytesToRead stream
-    |> Effect.map
-        (\result ->
-            when result is
-                Read bytes ->
-                    Ok bytes
-
-                UnexpectedEOF ->
-                    Err TcpUnexpectedEOF
-
-                Error err ->
-                    Err (TcpReadErr err)
-        )
+readExactly : Stream, U64 -> Task (List U8) [TcpReadErr StreamErr, TcpUnexpectedEOF]
+readExactly = \@Stream stream, bytesToRead ->
+    Effect.tcpReadExactly stream bytesToRead
+    |> Effect.map \res ->
+        res
+        |> Result.mapErr \err ->
+            if err == unexpectedEofErrorMessage then
+                TcpUnexpectedEOF
+            else
+                TcpReadErr (parseStreamErr err)
     |> InternalTask.fromEffect
 
 ## Read until a delimiter or EOF is reached.
@@ -132,12 +166,14 @@ readExactly = \bytesToRead, stream ->
 ##
 ## > To read until a newline is found, you can use [Tcp.readLine] which
 ## conveniently decodes to a [Str].
-readUntil : U8, Stream -> Task (List U8) [TcpReadErr StreamErr]
-readUntil = \byte, stream ->
-    Effect.tcpReadUntil byte stream
-    |> Effect.map InternalTcp.fromReadResult
+readUntil : Stream, U8 -> Task (List U8) [TcpReadErr StreamErr]
+readUntil = \@Stream stream, byte ->
+    Effect.tcpReadUntil stream byte
+    |> Effect.map \res ->
+        res
+        |> Result.mapErr parseStreamErr
+        |> Result.mapErr TcpReadErr
     |> InternalTask.fromEffect
-    |> Task.mapErr TcpReadErr
 
 ## Read until a newline or EOF is reached.
 ##
@@ -151,7 +187,7 @@ readUntil = \byte, stream ->
 ##
 readLine : Stream -> Task Str [TcpReadErr StreamErr, TcpReadBadUtf8 _]
 readLine = \stream ->
-    bytes <- readUntil '\n' stream |> Task.await
+    bytes = readUntil! stream '\n'
 
     Str.fromUtf8 bytes
     |> Result.mapErr TcpReadBadUtf8
@@ -165,12 +201,14 @@ readLine = \stream ->
 ## ```
 ##
 ## > To write a [Str], you can use [Tcp.writeUtf8] instead.
-write : List U8, Stream -> Task {} [TcpWriteErr StreamErr]
-write = \bytes, stream ->
-    Effect.tcpWrite bytes stream
-    |> Effect.map InternalTcp.fromWriteResult
+write : Stream, List U8 -> Task {} [TcpWriteErr StreamErr]
+write = \@Stream stream, bytes ->
+    Effect.tcpWrite stream bytes
+    |> Effect.map \res ->
+        res
+        |> Result.mapErr parseStreamErr
+        |> Result.mapErr TcpWriteErr
     |> InternalTask.fromEffect
-    |> Task.mapErr TcpWriteErr
 
 ## Writes a [Str] to a TCP stream, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##
@@ -180,9 +218,9 @@ write = \bytes, stream ->
 ## ```
 ##
 ## > To write unformatted bytes, you can use [Tcp.write] instead.
-writeUtf8 : Str, Stream -> Task {} [TcpWriteErr StreamErr]
-writeUtf8 = \str, stream ->
-    write (Str.toUtf8 str) stream
+writeUtf8 : Stream, Str -> Task {} [TcpWriteErr StreamErr]
+writeUtf8 = \stream, str ->
+    write stream (Str.toUtf8 str)
 
 ## Convert a [ConnectErr] to a [Str] you can print.
 ##
@@ -202,9 +240,8 @@ connectErrToStr = \err ->
         Interrupted -> "Interrupted"
         TimedOut -> "TimedOut"
         Unsupported -> "Unsupported"
-        Unrecognized code message ->
-            codeStr = Num.toStr code
-            "Unrecognized Error: $(codeStr) - $(message)"
+        Unrecognized message ->
+            "Unrecognized Error: $(message)"
 
 ## Convert a [StreamErr] to a [Str] you can print.
 ##
@@ -222,12 +259,12 @@ connectErrToStr = \err ->
 streamErrToStr : StreamErr -> Str
 streamErrToStr = \err ->
     when err is
+        StreamNotFound -> "StreamNotFound"
         PermissionDenied -> "PermissionDenied"
         ConnectionRefused -> "ConnectionRefused"
         ConnectionReset -> "ConnectionReset"
         Interrupted -> "Interrupted"
         OutOfMemory -> "OutOfMemory"
         BrokenPipe -> "BrokenPipe"
-        Unrecognized code message ->
-            codeStr = Num.toStr code
-            "Unrecognized Error: $(codeStr) - $(message)"
+        Unrecognized message ->
+            "Unrecognized Error: $(message)"
