@@ -512,13 +512,19 @@ fn write_slice(roc_path: &RocList<u8>, bytes: &[u8]) -> RocResult<(), RocStr> {
     }
 }
 
+struct InternalPathType {
+    isDir: bool,
+    isFile: bool,
+    isSymLink: bool,
+}
+
 #[no_mangle]
 pub extern "C" fn roc_fx_pathType(
     roc_path: &RocList<u8>,
-) -> RocResult<roc_app::InternalPathType, RocList<u8>> {
+) -> RocResult<InternalPathType, RocList<u8>> {
     let path = path_from_roc_path(roc_path);
     match path.symlink_metadata() {
-        Ok(m) => RocResult::ok(roc_app::InternalPathType {
+        Ok(m) => RocResult::ok(InternalPathType {
             isDir: m.is_dir(),
             isFile: m.is_file(),
             isSymLink: m.is_symlink(),
