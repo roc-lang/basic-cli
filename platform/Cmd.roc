@@ -141,9 +141,8 @@ output = \@Cmd cmd ->
 
         when internalOutput.status is
             Ok {} -> Ok (out)
-            Err err -> Err (out, err)
+            Err bytes -> Err (CmdOutputError (out, InternalCommand.handleCommandErr bytes))
     |> InternalTask.fromEffect
-    |> Task.mapErr CmdOutputError
 
 ## Execute command and inherit stdin, stdout and stderr from parent
 ##

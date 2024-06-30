@@ -1031,34 +1031,47 @@ pub extern "C" fn roc_fx_commandStatus(roc_cmd: &roc_app::Command) -> RocResult<
                 RocResult::ok(())
             } else {
                 match status.code() {
-                    Some(code) => {
-                        let mut error_bytes = Vec::new();
-                        error_bytes.extend([b'E', b'C']);
-                        error_bytes.extend(code.to_le_bytes());
-                        let error = RocList::from(error_bytes.as_slice()); //RocList::from([b'E',b'C'].extend(code.to_le_bytes()));
-                        RocResult::err(error)
-                    }
+                    Some(code) => commandStatusErrorCode(code),
                     None => {
                         // If no exit code is returned, the process was terminated by a signal.
-                        // let error = roc_app::CommandErr::KilledBySignal();
-                        //
-                        let mut error_bytes = Vec::new();
-                        error_bytes.extend([b'K', b'S']);
-                        let error = RocList::from(error_bytes.as_slice());
-                        RocResult::err(error)
+                        commandStatusKilledBySignal()
                     }
                 }
             }
         }
-        Err(err) => {
-            let error = RocList::from(format!("{:?}", err).as_bytes());
-            RocResult::err(error)
-        }
+        Err(err) => commandStatusOtherError(err),
     }
 }
 
+#[repr(C)]
+pub struct CommandOutput {
+    pub status: roc_std::RocResult<(), RocList<u8>>,
+    pub stderr: roc_std::RocList<u8>,
+    pub stdout: roc_std::RocList<u8>,
+}
+
+fn commandStatusKilledBySignal() -> roc_std::RocResult<(), RocList<u8>> {
+    let mut error_bytes = Vec::new();
+    error_bytes.extend([b'K', b'S']);
+    let error = RocList::from(error_bytes.as_slice());
+    RocResult::err(error)
+}
+
+fn commandStatusErrorCode(code: i32) -> roc_std::RocResult<(), RocList<u8>> {
+    let mut error_bytes = Vec::new();
+    error_bytes.extend([b'E', b'C']);
+    error_bytes.extend(code.to_ne_bytes()); // use NATIVE ENDIANNESS
+    let error = RocList::from(error_bytes.as_slice()); //RocList::from([b'E',b'C'].extend(code.to_le_bytes()));
+    RocResult::err(error)
+}
+
+fn commandStatusOtherError(err: std::io::Error) -> roc_std::RocResult<(), RocList<u8>> {
+    let error = RocList::from(format!("{:?}", err).as_bytes());
+    RocResult::err(error)
+}
+
 #[no_mangle]
-pub extern "C" fn roc_fx_commandOutput(roc_cmd: &roc_app::Command) -> roc_app::Output {
+pub extern "C" fn roc_fx_commandOutput(roc_cmd: &roc_app::Command) -> CommandOutput {
     let args = roc_cmd.args.into_iter().map(|arg| arg.as_str());
     let num_envs = roc_cmd.envs.len() / 2;
     let flat_envs = &roc_cmd.envs;
@@ -1095,28 +1108,22 @@ pub extern "C" fn roc_fx_commandOutput(roc_cmd: &roc_app::Command) -> roc_app::O
                 RocResult::ok(())
             } else {
                 match output.status.code() {
-                    Some(code) => {
-                        let error = roc_app::CommandErr::ExitCode(code);
-                        RocResult::err(error)
-                    }
+                    Some(code) => commandStatusErrorCode(code),
                     None => {
                         // If no exit code is returned, the process was terminated by a signal.
-                        let error = roc_app::CommandErr::KilledBySignal();
-                        RocResult::err(error)
+                        commandStatusKilledBySignal()
                     }
                 }
             };
 
-            roc_app::Output {
-                status: status,
+            CommandOutput {
+                status,
                 stdout: RocList::from(&output.stdout[..]),
                 stderr: RocList::from(&output.stderr[..]),
             }
         }
-        Err(err) => roc_app::Output {
-            status: RocResult::err(roc_app::CommandErr::IOError(RocStr::from(
-                err.to_string().borrow(),
-            ))),
+        Err(err) => CommandOutput {
+            status: commandStatusOtherError(err),
             stdout: RocList::empty(),
             stderr: RocList::empty(),
         },

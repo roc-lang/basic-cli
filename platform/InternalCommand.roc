@@ -33,7 +33,7 @@ Command : {
 }
 
 Output : {
-    status : Result {} CommandErr,
+    status : Result {} (List U8),
     stdout : List U8,
     stderr : List U8,
 }
