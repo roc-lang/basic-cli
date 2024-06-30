@@ -512,7 +512,8 @@ fn write_slice(roc_path: &RocList<u8>, bytes: &[u8]) -> RocResult<(), RocStr> {
     }
 }
 
-struct InternalPathType {
+#[repr(C)]
+pub struct InternalPathType {
     isDir: bool,
     isFile: bool,
     isSymLink: bool,
