@@ -1,5 +1,5 @@
 #![allow(non_snake_case)]
-
+#![allow(improper_ctypes)]
 use core::alloc::Layout;
 use core::ffi::c_void;
 use core::mem::MaybeUninit;
@@ -43,16 +43,19 @@ extern "C" {
     #[allow(dead_code)]
     #[link_name = "roc__mainForHost_0_size"]
     fn size_Fx() -> i64;
-
-    #[link_name = "roc__mainForHost_0_result_size"]
-    fn size_Fx_result() -> i64;
 }
 
+/// # Safety
+///
+/// This function is unsafe.
 #[no_mangle]
 pub unsafe extern "C" fn roc_alloc(size: usize, _alignment: u32) -> *mut c_void {
     libc::malloc(size)
 }
 
+/// # Safety
+///
+/// This function is unsafe.
 #[no_mangle]
 pub unsafe extern "C" fn roc_realloc(
     c_ptr: *mut c_void,
@@ -63,11 +66,17 @@ pub unsafe extern "C" fn roc_realloc(
     libc::realloc(c_ptr, new_size)
 }
 
+/// # Safety
+///
+/// This function is unsafe.
 #[no_mangle]
 pub unsafe extern "C" fn roc_dealloc(c_ptr: *mut c_void, _alignment: u32) {
     libc::free(c_ptr)
 }
 
+/// # Safety
+///
+/// This function is unsafe.
 #[no_mangle]
 pub unsafe extern "C" fn roc_panic(msg: &RocStr, tag_id: u32) {
     _ = crossterm::terminal::disable_raw_mode();
@@ -88,17 +97,26 @@ pub unsafe extern "C" fn roc_panic(msg: &RocStr, tag_id: u32) {
     }
 }
 
+/// # Safety
+///
+/// This function is unsafe.
 #[no_mangle]
 pub unsafe extern "C" fn roc_dbg(loc: &RocStr, msg: &RocStr, src: &RocStr) {
     eprintln!("[{}] {} = {}", loc, src, msg);
 }
 
+/// # Safety
+///
+/// This function is unsafe.
 #[cfg(unix)]
 #[no_mangle]
 pub unsafe extern "C" fn roc_getppid() -> libc::pid_t {
     libc::getppid()
 }
 
+/// # Safety
+///
+/// This function should be called with a valid addr pointer.
 #[cfg(unix)]
 #[no_mangle]
 pub unsafe extern "C" fn roc_mmap(
@@ -112,6 +130,9 @@ pub unsafe extern "C" fn roc_mmap(
     libc::mmap(addr, len, prot, flags, fd, offset)
 }
 
+/// # Safety
+///
+/// This function should be called with a valid name pointer.
 #[cfg(unix)]
 #[no_mangle]
 pub unsafe extern "C" fn roc_shm_open(
@@ -141,9 +162,10 @@ fn print_backtrace() {
                 let fn_name = fn_name.to_string();
 
                 if should_show_in_backtrace(&fn_name) {
-                    let mut entry: Entry = Default::default();
-
-                    entry.fn_name = format_fn_name(&fn_name);
+                    let mut entry = Entry {
+                        fn_name: format_fn_name(&fn_name),
+                        ..Default::default()
+                    };
 
                     if let Some(path) = symbol.filename() {
                         entry.filename = Some(path.to_string_lossy().into_owned());
@@ -190,7 +212,7 @@ fn should_show_in_backtrace(fn_name: &str) -> bool {
 fn format_fn_name(fn_name: &str) -> String {
     // e.g. convert "_Num_sub_a0c29024d3ec6e3a16e414af99885fbb44fa6182331a70ab4ca0886f93bad5"
     // to ["Num", "sub", "a0c29024d3ec6e3a16e414af99885fbb44fa6182331a70ab4ca0886f93bad5"]
-    let mut pieces_iter = fn_name.split("_");
+    let mut pieces_iter = fn_name.split('_');
 
     if let (_, Some(module_name), Some(name)) =
         (pieces_iter.next(), pieces_iter.next(), pieces_iter.next())
@@ -217,6 +239,9 @@ fn display_roc_fn(module_name: &str, fn_name: &str) -> String {
     format!("\u{001B}[36m{module_name}\u{001B}[39m.{fn_name}")
 }
 
+/// # Safety
+///
+/// This function should be provided a valid dst pointer.
 #[no_mangle]
 pub unsafe extern "C" fn roc_memset(dst: *mut c_void, c: i32, n: usize) -> *mut c_void {
     libc::memset(dst, c, n)
@@ -294,10 +319,13 @@ pub extern "C" fn rust_main() -> i32 {
 
         std::alloc::dealloc(buffer, layout);
 
-        return out;
+        out
     }
 }
 
+/// # Safety
+///
+/// This function should be passed a pointer to a closure data buffer.
 pub unsafe fn call_the_closure(closure_data_ptr: *const u8) -> i32 {
     // Main always returns an i32. just allocate for that.
     let mut out: RocResult<(), i32> = RocResult::ok(());
@@ -364,13 +392,13 @@ pub extern "C" fn roc_fx_exePath(_roc_str: &RocStr) -> RocResult<RocList<u8>, ()
 /// See docs in `platform/Stdin.roc` for descriptions
 fn handleStdinErr(io_err: std::io::Error) -> RocStr {
     match io_err.kind() {
-        ErrorKind::BrokenPipe => RocStr::from("ErrorKind::BrokenPipe"),
-        ErrorKind::UnexpectedEof => RocStr::from("ErrorKind::UnexpectedEof"),
-        ErrorKind::InvalidInput => RocStr::from("ErrorKind::InvalidInput"),
-        ErrorKind::OutOfMemory => RocStr::from("ErrorKind::OutOfMemory"),
-        ErrorKind::Interrupted => RocStr::from("ErrorKind::Interrupted"),
-        ErrorKind::Unsupported => RocStr::from("ErrorKind::Unsupported"),
-        _ => RocStr::from(RocStr::from(format!("{:?}", io_err).as_str())),
+        ErrorKind::BrokenPipe => "ErrorKind::BrokenPipe".into(),
+        ErrorKind::UnexpectedEof => "ErrorKind::UnexpectedEof".into(),
+        ErrorKind::InvalidInput => "ErrorKind::InvalidInput".into(),
+        ErrorKind::OutOfMemory => "ErrorKind::OutOfMemory".into(),
+        ErrorKind::Interrupted => "ErrorKind::Interrupted".into(),
+        ErrorKind::Unsupported => "ErrorKind::Unsupported".into(),
+        _ => format!("{:?}", io_err).as_str().into(),
     }
 }
 
@@ -392,20 +420,20 @@ pub extern "C" fn roc_fx_stdinBytes() -> RocList<u8> {
 
     match stdin.lock().read(&mut buffer) {
         Ok(bytes_read) => RocList::from(&buffer[0..bytes_read]),
-        Err(_) => RocList::from((&[]).as_slice()),
+        Err(_) => RocList::from(([]).as_slice()),
     }
 }
 
 /// See docs in `platform/Stdout.roc` for descriptions
 fn handleStdoutErr(io_err: std::io::Error) -> RocStr {
     match io_err.kind() {
-        ErrorKind::BrokenPipe => RocStr::from("ErrorKind::BrokenPipe"),
-        ErrorKind::WouldBlock => RocStr::from("ErrorKind::WouldBlock"),
-        ErrorKind::WriteZero => RocStr::from("ErrorKind::WriteZero"),
-        ErrorKind::Unsupported => RocStr::from("ErrorKind::Unsupported"),
-        ErrorKind::Interrupted => RocStr::from("ErrorKind::Interrupted"),
-        ErrorKind::OutOfMemory => RocStr::from("ErrorKind::OutOfMemory"),
-        _ => RocStr::from(RocStr::from(format!("{:?}", io_err).as_str())),
+        ErrorKind::BrokenPipe => "ErrorKind::BrokenPipe".into(),
+        ErrorKind::WouldBlock => "ErrorKind::WouldBlock".into(),
+        ErrorKind::WriteZero => "ErrorKind::WriteZero".into(),
+        ErrorKind::Unsupported => "ErrorKind::Unsupported".into(),
+        ErrorKind::Interrupted => "ErrorKind::Interrupted".into(),
+        ErrorKind::OutOfMemory => "ErrorKind::OutOfMemory".into(),
+        _ => format!("{:?}", io_err).as_str().into(),
     }
 }
 
@@ -439,13 +467,13 @@ pub extern "C" fn roc_fx_stdoutWrite(text: &RocStr) -> RocResult<(), RocStr> {
 /// See docs in `platform/Stdout.roc` for descriptions
 fn handleStderrErr(io_err: std::io::Error) -> RocStr {
     match io_err.kind() {
-        ErrorKind::BrokenPipe => RocStr::from("ErrorKind::BrokenPipe"),
-        ErrorKind::WouldBlock => RocStr::from("ErrorKind::WouldBlock"),
-        ErrorKind::WriteZero => RocStr::from("ErrorKind::WriteZero"),
-        ErrorKind::Unsupported => RocStr::from("ErrorKind::Unsupported"),
-        ErrorKind::Interrupted => RocStr::from("ErrorKind::Interrupted"),
-        ErrorKind::OutOfMemory => RocStr::from("ErrorKind::OutOfMemory"),
-        _ => RocStr::from(RocStr::from(format!("{:?}", io_err).as_str())),
+        ErrorKind::BrokenPipe => "ErrorKind::BrokenPipe".into(),
+        ErrorKind::WouldBlock => "ErrorKind::WouldBlock".into(),
+        ErrorKind::WriteZero => "ErrorKind::WriteZero".into(),
+        ErrorKind::Unsupported => "ErrorKind::Unsupported".into(),
+        ErrorKind::Interrupted => "ErrorKind::Interrupted".into(),
+        ErrorKind::OutOfMemory => "ErrorKind::OutOfMemory".into(),
+        _ => format!("{:?}", io_err).as_str().into(),
     }
 }
 
@@ -667,20 +695,15 @@ pub extern "C" fn roc_fx_dirList(
 
         let mut entries = Vec::new();
 
-        for entry in dir {
-            match entry {
-                Ok(entry) => {
-                    let path = entry.path();
-                    let str = path.as_os_str();
-                    entries.push(os_str_to_roc_path(str));
-                }
-                Err(_) => {} // TODO should we ignore errors reading directory??
-            }
+        for entry in dir.flatten() {
+            let path = entry.path();
+            let str = path.as_os_str();
+            entries.push(os_str_to_roc_path(str));
         }
 
-        return roc_std::RocResult::ok(RocList::from_iter(entries));
+        roc_std::RocResult::ok(RocList::from_iter(entries))
     } else {
-        return roc_std::RocResult::err("ErrorKind::NotADirectory".into());
+        roc_std::RocResult::err("ErrorKind::NotADirectory".into())
     }
 }
 
@@ -741,7 +764,7 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &roc_app::Request) -> roc_app:
     let bytes = String::from_utf8(roc_request.body.as_slice().to_vec()).unwrap();
     let mime_type_str = roc_request.mimeType.as_str();
 
-    if !has_content_type_header && mime_type_str.len() > 0 {
+    if !has_content_type_header && !mime_type_str.is_empty() {
         req_builder = req_builder.header("Content-Type", mime_type_str);
     }
 
@@ -895,15 +918,21 @@ pub extern "C" fn roc_fx_tcpConnect(host: &RocStr, port: u16) -> roc_app::Connec
     }
 }
 
+/// # Safety
+///
+/// This function should provided a valid pointer to a `BufReader<TcpStream>`.
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpClose(stream_ptr: *mut BufReader<TcpStream>) {
+pub unsafe extern "C" fn roc_fx_tcpClose(stream_ptr: *mut BufReader<TcpStream>) {
     unsafe {
         drop(Box::from_raw(stream_ptr));
     }
 }
 
+/// # Safety
+///
+/// This function should provided a valid pointer to a `BufReader<TcpStream>`.
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpReadUpTo(
+pub unsafe extern "C" fn roc_fx_tcpReadUpTo(
     bytes_to_read: u64,
     stream_ptr: *mut BufReader<TcpStream>,
 ) -> roc_app::ReadResult {
@@ -924,14 +953,17 @@ pub extern "C" fn roc_fx_tcpReadUpTo(
     }
 }
 
+/// # Safety
+///
+/// This function should provided a valid pointer to a `BufReader<TcpStream>`.
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpReadExactly(
+pub unsafe extern "C" fn roc_fx_tcpReadExactly(
     bytes_to_read: u64,
     stream_ptr: *mut BufReader<TcpStream>,
 ) -> roc_app::ReadExactlyResult {
     let reader = unsafe { &mut *stream_ptr };
     let mut buffer = Vec::with_capacity(bytes_to_read as usize);
-    let mut chunk = reader.take(bytes_to_read as u64);
+    let mut chunk = reader.take(bytes_to_read);
 
     match chunk.read_to_end(&mut buffer) {
         Ok(read) => {
@@ -947,8 +979,11 @@ pub extern "C" fn roc_fx_tcpReadExactly(
     }
 }
 
+/// # Safety
+///
+/// This function should provided a valid pointer to a `BufReader<TcpStream>`.
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpReadUntil(
+pub unsafe extern "C" fn roc_fx_tcpReadUntil(
     byte: u8,
     stream_ptr: *mut BufReader<TcpStream>,
 ) -> roc_app::ReadResult {
@@ -966,8 +1001,11 @@ pub extern "C" fn roc_fx_tcpReadUntil(
     }
 }
 
+/// # Safety
+///
+/// This function should provided a valid pointer to a `BufReader<TcpStream>`.
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpWrite(
+pub unsafe extern "C" fn roc_fx_tcpWrite(
     msg: &RocList<u8>,
     stream_ptr: *mut BufReader<TcpStream>,
 ) -> roc_app::WriteResult {
@@ -1123,7 +1161,7 @@ pub extern "C" fn roc_fx_commandOutput(roc_cmd: &roc_app::Command) -> roc_app::O
             };
 
             roc_app::Output {
-                status: status,
+                status,
                 stdout: RocList::from(&output.stdout[..]),
                 stderr: RocList::from(&output.stderr[..]),
             }
@@ -1186,7 +1224,7 @@ fn handleDirError(io_err: std::io::Error) -> RocStr {
         // ErrorKind::FilesystemQuotaExceeded => RocStr::from("ErrorKind::FilesystemQuotaExceeded"),
         // ErrorKind::StorageFull => RocStr::from("ErrorKind::StorageFull"),
         // ErrorKind::InvalidFilename => RocStr::from("ErrorKind::InvalidFilename"),
-        _ => RocStr::from(RocStr::from(format!("{:?}", io_err).as_str())),
+        _ => RocStr::from(format!("{:?}", io_err).as_str()),
     }
 }
 
