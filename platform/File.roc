@@ -22,6 +22,7 @@ import Task exposing [Task]
 import Path exposing [Path, MetadataErr]
 import Effect
 import InternalTask
+import InternalFile
 
 ## Tag union of possible errors when reading a file or directory.
 ##
@@ -205,7 +206,7 @@ getFileReader = \pathStr ->
     |> Effect.map \result ->
         when result is
             Ok readerID -> Ok (@FileReader {readerID, path})
-            Err err -> Err (GetFileReadErr path err)
+            Err err -> Err (GetFileReadErr path (InternalFile.handleReadErr err))
     |> InternalTask.fromEffect
 
 ## Try to read a line from a file given a FileReader.

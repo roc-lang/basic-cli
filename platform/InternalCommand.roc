@@ -2,6 +2,7 @@ module [
     Command,
     Output,
     CommandErr,
+    handleCommandErr,
 ]
 
 CommandErr : [
@@ -9,6 +10,20 @@ CommandErr : [
     KilledBySignal,
     IOError Str,
 ]
+
+handleCommandErr : List U8 -> CommandErr
+handleCommandErr = \err ->
+    when err is
+        ['E','C',.. as rest] ->
+            code = rest |> Str.fromUtf8 |> Result.try Str.toI32 |> Result.withDefault -99
+            ExitCode code
+
+        ['K','S'] -> KilledBySignal
+
+        other ->
+            msg = Str.fromUtf8 other |> Result.withDefault "BadUtf8 from host"
+
+            IOError msg
 
 Command : {
     program : Str,
@@ -18,7 +33,7 @@ Command : {
 }
 
 Output : {
-    status : Result {} CommandErr,
+    status : Result {} (List U8),
     stdout : List U8,
     stderr : List U8,
 }

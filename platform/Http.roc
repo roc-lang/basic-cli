@@ -20,7 +20,14 @@ import Task exposing [Task]
 import InternalHttp exposing [errorBodyToUtf8, errorBodyFromUtf8]
 
 ## Represents an HTTP request.
-Request : InternalHttp.Request
+Request : {
+    method : Method,
+    headers : List Header,
+    url : Str,
+    mimeType : Str,
+    body : List U8,
+    timeout : TimeoutConfig,
+}
 
 ## Represents an HTTP method.
 Method : InternalHttp.Method
@@ -70,8 +77,8 @@ defaultRequest = {
 ## See common headers [here](https://en.wikipedia.org/wiki/List_of_HTTP_header_fields).
 ##
 header : Str, Str -> Header
-header =
-    Header
+header = \key, value ->
+    { key, value }
 
 ## Map a [Response] body to a [Str] or return an [Err].
 handleStringResponse : Response -> Result Str Err
@@ -114,32 +121,45 @@ errorToString = \err ->
 ## ```
 send : Request -> Task Response [HttpErr Err]
 send = \req ->
+    internalReq : InternalHttp.Request
+    internalReq = {
+        method : InternalHttp.methodToStr req.method,
+        headers : req.headers,
+        url : req.url,
+        mimeType : req.mimeType,
+        body : req.body,
+        timeoutMs : when req.timeout is
+            NoTimeout -> 0
+            TimeoutMilliseconds ms -> ms
+    }
+
     # TODO: Fix our C ABI codegen so that we don't this Box.box heap allocation
-    Effect.sendRequest (Box.box req)
+    Effect.sendRequest (Box.box internalReq)
     |> Effect.map Ok
     |> InternalTask.fromEffect
-    |> Task.await \internalResponse ->
-        when internalResponse is
-            BadRequest str -> Task.err (BadRequest str)
-            Timeout u64 -> Task.err (Timeout u64)
-            NetworkError -> Task.err NetworkError
-            BadStatus meta body ->
+    |> Task.await \{ variant, body, metadata } ->
+        when variant is
+            "Timeout" -> Task.err (Timeout internalReq.timeoutMs)
+            "NetworkErr" -> Task.err NetworkError
+            "BadStatus" ->
                 Task.err
                     (
                         BadStatus {
-                            code: meta.statusCode,
+                            code: metadata.statusCode,
                             body: errorBodyFromUtf8 body,
                         }
                     )
 
-            GoodStatus meta body ->
+            "GoodStatus" ->
                 Task.ok {
-                    url: meta.url,
-                    statusCode: meta.statusCode,
-                    statusText: meta.statusText,
-                    headers: meta.headers,
+                    url: metadata.url,
+                    statusCode: metadata.statusCode,
+                    statusText: metadata.statusText,
+                    headers: metadata.headers,
                     body,
                 }
+
+            "BadRequest" | _other -> Task.err (BadRequest metadata.statusText)
     |> Task.mapErr HttpErr
 
 ## Try to perform an HTTP get request and convert (decode) the received bytes into a Roc type.

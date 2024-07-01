@@ -48,7 +48,7 @@ tick = \stream ->
     Stdout.write! "> "
 
     outMsg = Stdin.line!
-    Tcp.writeUtf8! "$(outMsg)\n" stream
+    Tcp.writeUtf8! stream "$(outMsg)\n"
 
     inMsg = Tcp.readLine! stream
     Stdout.line! "< $(inMsg)"
