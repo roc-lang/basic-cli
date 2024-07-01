@@ -273,7 +273,11 @@ pub fn init() {
         roc_fx_ttyModeRaw as _,
         roc_fx_fileWriteUtf8 as _,
         roc_fx_fileWriteBytes as _,
+        roc_fx_pathType as _,
         roc_fx_fileReadBytes as _,
+        roc_fx_fileReader as _,
+        roc_fx_fileReadLine as _,
+        roc_fx_closeFile as _,
         roc_fx_fileDelete as _,
         roc_fx_cwd as _,
         roc_fx_posixTime as _,
@@ -292,7 +296,7 @@ pub fn init() {
         roc_fx_dirCreateAll as _,
         roc_fx_dirDeleteEmpty as _,
         roc_fx_dirDeleteAll as _,
-        roc_fx_pathType as _,
+        roc_fx_currentArchOS as _,
     ];
     #[allow(forgetting_references)]
     std::mem::forget(std::hint::black_box(funcs));
