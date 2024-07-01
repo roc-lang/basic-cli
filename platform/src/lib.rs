@@ -296,7 +296,6 @@ pub fn init() {
         roc_fx_dirCreateAll as _,
         roc_fx_dirDeleteEmpty as _,
         roc_fx_dirDeleteAll as _,
-        roc_fx_pathType as _,
         roc_fx_currentArchOS as _,
     ];
     #[allow(forgetting_references)]
