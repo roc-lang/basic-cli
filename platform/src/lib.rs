@@ -4,6 +4,7 @@ use core::alloc::Layout;
 use core::ffi::c_void;
 use core::mem::MaybeUninit;
 use roc_std::{RocDict, RocList, RocResult, RocStr};
+use tokio::runtime::Runtime;
 use std::borrow::{Borrow, Cow};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -27,7 +28,12 @@ type ReaderMap = HashMap<u64, CustomReader>;
 thread_local! {
     static READERS: RefCell<ReaderMap> = RefCell::new(HashMap::new());
     static TCP_STREAMS: RefCell<HashMap<u64, BufReader<TcpStream>>> = RefCell::new(HashMap::new());
-}
+    static TOKIO_RUNTIME: Runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_io()
+        .enable_time()
+        .build()
+        .unwrap();
+ }
 
 static READER_INDEX: AtomicU64 = AtomicU64::new(42);
 static TCP_STREAM_INDEX: AtomicU64 = AtomicU64::new(0);
@@ -688,9 +694,9 @@ pub extern "C" fn roc_fx_dirList(
             }
         }
 
-        return roc_std::RocResult::ok(RocList::from_iter(entries));
+        return RocResult::ok(RocList::from_iter(entries));
     } else {
-        return roc_std::RocResult::err("ErrorKind::NotADirectory".into());
+        return RocResult::err("ErrorKind::NotADirectory".into());
     }
 }
 
@@ -710,40 +716,105 @@ fn os_str_to_roc_path(os_str: &OsStr) -> RocList<u8> {
     RocList::from(bytes.as_slice())
 }
 
+#[repr(C)]
+#[derive(Debug)]
+pub struct Request {
+    body: RocList<u8>,
+    headers: RocList<Header>,
+    method: RocStr,
+    mimeType: RocStr,
+    timeoutMs: u64,
+    url: RocStr,
+}
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct Header {
+    key: RocStr,
+    value: RocStr,
+}
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct Metadata {
+    headers: RocList<Header>,
+    url: RocStr,
+    statusCode: u16,
+    statusText: RocStr,
+}
+
+impl Metadata {
+    fn empty() -> Metadata {
+        Metadata {
+            headers: RocList::empty(),
+            statusText: RocStr::empty(),
+            url: RocStr::empty(),
+            statusCode: 0,
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct InternalResponse {
+    body: RocList<u8>,
+    metadata: Metadata,
+    variant: RocStr,
+}
+
+impl InternalResponse {
+    fn bad_request(error: &str) -> InternalResponse {
+        InternalResponse {
+            variant: "BadRequest".into(),
+            metadata: Metadata { statusText: RocStr::from(error), ..Metadata::empty() },
+            body: RocList::empty(),
+        }
+    }
+
+    fn good_status(metadata: Metadata, body: RocList<u8>) -> InternalResponse {
+        InternalResponse {
+            variant: "GoodStatus".into(),
+            metadata,
+            body,
+        }
+    }
+
+    fn bad_status(metadata: Metadata, body: RocList<u8>) -> InternalResponse {
+        InternalResponse {
+            variant: "BadStatus".into(),
+            metadata,
+            body,
+        }
+    }
+
+    fn timeout() -> InternalResponse {
+        InternalResponse {
+            variant: "Timeout".into(),
+            metadata: Metadata::empty(),
+            body: RocList::empty(),
+        }
+    }
+
+    fn network_error() -> InternalResponse {
+        InternalResponse { 
+            variant: "NetworkError".into(),
+            metadata: Metadata::empty(),
+            body: RocList::empty(),
+        }
+    }
+}
+
 #[no_mangle]
-pub extern "C" fn roc_fx_sendRequest(roc_request: &roc_app::Request) -> roc_app::InternalResponse {
-    use hyper::Client;
-    use hyper_rustls::HttpsConnectorBuilder;
-
-    let https = HttpsConnectorBuilder::new()
-        .with_native_roots()
-        .https_or_http()
-        .enable_http1()
-        .build();
-
-    let client: Client<_, String> = Client::builder().build(https);
-
-    let method = match roc_request.method {
-        roc_app::Method::Connect => hyper::Method::CONNECT,
-        roc_app::Method::Delete => hyper::Method::DELETE,
-        roc_app::Method::Get => hyper::Method::GET,
-        roc_app::Method::Head => hyper::Method::HEAD,
-        roc_app::Method::Options => hyper::Method::OPTIONS,
-        roc_app::Method::Patch => hyper::Method::PATCH,
-        roc_app::Method::Post => hyper::Method::POST,
-        roc_app::Method::Put => hyper::Method::PUT,
-        roc_app::Method::Trace => hyper::Method::TRACE,
-    };
-
+pub extern "C" fn roc_fx_sendRequest(roc_request: &Request) -> InternalResponse {
+    let method = parse_http_method(&roc_request.method.as_str());
     let mut req_builder = hyper::Request::builder()
         .method(method)
         .uri(roc_request.url.as_str());
     let mut has_content_type_header = false;
 
     for header in roc_request.headers.iter() {
-        let (name, value) = header.as_Header();
-        req_builder = req_builder.header(name.as_str(), value.as_str());
-        if name.eq_ignore_ascii_case("Content-Type") {
+        req_builder = req_builder.header(header.key.as_str(), header.value.as_str());
+        if header.key.eq_ignore_ascii_case("Content-Type") {
             has_content_type_header = true;
         }
     }
@@ -757,82 +828,88 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &roc_app::Request) -> roc_app:
 
     let request = match req_builder.body(bytes) {
         Ok(req) => req,
-        Err(err) => {
-            return roc_app::InternalResponse::BadRequest(RocStr::from(err.to_string().as_str()));
-        }
+        Err(err) => return InternalResponse::bad_request(err.to_string().as_str()),
     };
 
-    let time_limit = if roc_request.timeout.is_TimeoutMilliseconds() {
-        let ms: u64 = roc_request.timeout.clone().unwrap_TimeoutMilliseconds();
-        Some(Duration::from_millis(ms))
+    if roc_request.timeoutMs > 0 {
+        let time_limit = Duration::from_millis(roc_request.timeoutMs);
+
+        TOKIO_RUNTIME.with(|rt| {
+            rt.block_on(async { tokio::time::timeout(time_limit, send_request(request, &roc_request.url)).await })
+                .unwrap_or_else(|_err| InternalResponse::timeout())
+        })
     } else {
-        None
-    };
+        TOKIO_RUNTIME.with(|rt| {
+            rt.block_on(send_request(request, &roc_request.url))
+        })
+    }
+}
 
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_io()
-        .enable_time()
-        .build()
-        .unwrap();
+fn parse_http_method(method: &str) -> hyper::Method {
+    match method {
+        "Connect" => hyper::Method::CONNECT,
+        "Delete" => hyper::Method::DELETE,
+        "Get" => hyper::Method::GET,
+        "Head" => hyper::Method::HEAD,
+        "Options" => hyper::Method::OPTIONS,
+        "Patch" => hyper::Method::PATCH,
+        "Post" => hyper::Method::POST,
+        "Put" => hyper::Method::PUT,
+        "Trace" => hyper::Method::TRACE,
+        _other => unreachable!("Should only pass known HTTP methods from Roc side")
+    }
+}
 
-    let http_fn = async {
-        let res = client.request(request).await;
+async fn send_request(request: hyper::Request<String>, url: &str) -> InternalResponse {
+    use hyper::Client;
+    use hyper_rustls::HttpsConnectorBuilder;
 
-        match res {
-            Ok(response) => {
-                let status = response.status();
-                let status_str = status.canonical_reason().unwrap_or_else(|| status.as_str());
+    let https = HttpsConnectorBuilder::new()
+        .with_native_roots()
+        .https_or_http()
+        .enable_http1()
+        .build();
 
-                let headers_iter = response.headers().iter().map(|(name, value)| {
-                    roc_app::Header::Header(
-                        RocStr::from(name.as_str()),
-                        RocStr::from(value.to_str().unwrap_or_default()),
-                    )
-                });
+    let client: Client<_, String> = Client::builder().build(https);
+    let res = client.request(request).await;
 
-                let metadata = roc_app::Metadata {
-                    headers: RocList::from_iter(headers_iter),
-                    statusText: RocStr::from(status_str),
-                    url: RocStr::from(roc_request.url.as_str()),
-                    statusCode: status.as_u16(),
-                };
+    match res {
+        Ok(response) => {
+            let status = response.status();
+            let status_str = status.canonical_reason().unwrap_or_else(|| status.as_str());
 
-                let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
-                let body: RocList<u8> = RocList::from_iter(bytes);
-
-                if status.is_success() {
-                    // Glue code made this expect a Response_BadStatus? BadStatus and GoodStatus
-                    // have the same fields so deduplication makes sense? But possibly a bug?
-                    roc_app::InternalResponse::GoodStatus(roc_app::InternalResponse_BadStatus {
-                        f0: metadata,
-                        f1: body,
-                    })
-                } else {
-                    roc_app::InternalResponse::BadStatus(roc_app::InternalResponse_BadStatus {
-                        f0: metadata,
-                        f1: body,
-                    })
+            let headers_iter = response.headers().iter().map(|(name, value)| {
+                Header {
+                    key: RocStr::from(name.as_str()),
+                    value: RocStr::from(value.to_str().unwrap_or_default()),
                 }
-            }
-            Err(err) => {
-                if err.is_timeout() {
-                    roc_app::InternalResponse::Timeout(
-                        time_limit.map(|d| d.as_millis()).unwrap_or_default() as u64,
-                    )
-                } else if err.is_connect() || err.is_closed() {
-                    roc_app::InternalResponse::NetworkError()
-                } else {
-                    roc_app::InternalResponse::BadRequest(RocStr::from(err.to_string().as_str()))
-                }
+            });
+
+            let metadata = Metadata {
+                headers: RocList::from_iter(headers_iter),
+                statusText: RocStr::from(status_str),
+                url: RocStr::from(url),
+                statusCode: status.as_u16(),
+            };
+
+            let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+            let body: RocList<u8> = RocList::from_iter(bytes);
+
+            if status.is_success() {
+                return InternalResponse::good_status(metadata, body);
+            } else {
+                return InternalResponse::bad_status(metadata, body);
             }
         }
-    };
-    match time_limit {
-        Some(limit) => match rt.block_on(async { tokio::time::timeout(limit, http_fn).await }) {
-            Ok(res) => res,
-            Err(_) => roc_app::InternalResponse::Timeout(limit.as_millis() as u64),
-        },
-        None => rt.block_on(http_fn),
+        Err(err) => {
+            if err.is_timeout() {
+                InternalResponse::timeout()
+            } else if err.is_connect() || err.is_closed() {
+                InternalResponse::network_error()
+            } else {
+                InternalResponse::bad_request(err.to_string().as_str())
+            }
+        }
     }
 }
 
@@ -1012,8 +1089,24 @@ fn to_tcp_stream_err(err: std::io::Error) -> RocStr {
     }
 }
 
+#[repr(C)]
+#[derive(Debug)]
+pub struct Command {
+    pub args: RocList<RocStr>,
+    pub envs: RocList<RocStr>,
+    pub program: RocStr,
+    pub clearEnvs: bool,
+}
+
+#[repr(C)]
+pub struct CommandOutput {
+    pub status: RocResult<(), RocList<u8>>,
+    pub stderr: RocList<u8>,
+    pub stdout: RocList<u8>,
+}
+
 #[no_mangle]
-pub extern "C" fn roc_fx_commandStatus(roc_cmd: &roc_app::Command) -> RocResult<(), RocList<u8>> {
+pub extern "C" fn roc_fx_commandStatus(roc_cmd: &Command) -> RocResult<(), RocList<u8>> {
     let args = roc_cmd.args.into_iter().map(|arg| arg.as_str());
     let num_envs = roc_cmd.envs.len() / 2;
     let flat_envs = &roc_cmd.envs;
@@ -1061,21 +1154,14 @@ pub extern "C" fn roc_fx_commandStatus(roc_cmd: &roc_app::Command) -> RocResult<
     }
 }
 
-#[repr(C)]
-pub struct CommandOutput {
-    pub status: roc_std::RocResult<(), RocList<u8>>,
-    pub stderr: roc_std::RocList<u8>,
-    pub stdout: roc_std::RocList<u8>,
-}
-
-fn commandStatusKilledBySignal() -> roc_std::RocResult<(), RocList<u8>> {
+fn commandStatusKilledBySignal() -> RocResult<(), RocList<u8>> {
     let mut error_bytes = Vec::new();
     error_bytes.extend([b'K', b'S']);
     let error = RocList::from(error_bytes.as_slice());
     RocResult::err(error)
 }
 
-fn commandStatusErrorCode(code: i32) -> roc_std::RocResult<(), RocList<u8>> {
+fn commandStatusErrorCode(code: i32) -> RocResult<(), RocList<u8>> {
     let mut error_bytes = Vec::new();
     error_bytes.extend([b'E', b'C']);
     error_bytes.extend(code.to_ne_bytes()); // use NATIVE ENDIANNESS
@@ -1083,13 +1169,13 @@ fn commandStatusErrorCode(code: i32) -> roc_std::RocResult<(), RocList<u8>> {
     RocResult::err(error)
 }
 
-fn commandStatusOtherError(err: std::io::Error) -> roc_std::RocResult<(), RocList<u8>> {
+fn commandStatusOtherError(err: std::io::Error) -> RocResult<(), RocList<u8>> {
     let error = RocList::from(format!("{:?}", err).as_bytes());
     RocResult::err(error)
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_commandOutput(roc_cmd: &roc_app::Command) -> CommandOutput {
+pub extern "C" fn roc_fx_commandOutput(roc_cmd: &Command) -> CommandOutput {
     let args = roc_cmd.args.into_iter().map(|arg| arg.as_str());
     let num_envs = roc_cmd.envs.len() / 2;
     let flat_envs = &roc_cmd.envs;

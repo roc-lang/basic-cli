@@ -47,7 +47,7 @@ hosted Effect
         currentArchOS,
     ]
     imports [
-        InternalHttp.{ Request, InternalResponse },
+        InternalHttp,
         InternalCommand,
         InternalPath,
     ]
@@ -82,7 +82,7 @@ args : Effect (List Str)
 
 cwd : Effect (List U8)
 
-sendRequest : Box Request -> Effect InternalResponse
+sendRequest : Box InternalHttp.Request -> Effect InternalHttp.InternalResponse
 
 tcpConnect : Str, U16 -> Effect (Result U64 Str)
 tcpClose : U64 -> Effect (Result {} *)

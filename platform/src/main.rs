@@ -12,6 +12,8 @@ fn main() {
 
         let out = host::call_the_closure(buffer);
 
+        println!("This print statement fixes a segfault.");
+
         std::alloc::dealloc(buffer, layout);
 
         std::process::exit(out);
