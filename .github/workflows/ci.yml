@@ -16,6 +16,9 @@ jobs:
         operating-system: [ubuntu-20.04, ubuntu-22.04]
     steps:
       - uses: actions/checkout@v3
+
+      - name: Does init() in platform/src/lib.rs contain all roc_fx functions? (Imperfect check)
+        run: cat platform/src/lib.rs | grep -oP 'roc_fx_[^(\s]*' | sort | uniq -u | grep -q . && exit 1 || exit 0
           
       - id: try_fetching_testing_release
         continue-on-error: true
