@@ -11,6 +11,7 @@ use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{BufRead, BufReader, ErrorKind, Read, Seek, Write};
 use std::net::TcpStream;
+use std::net::UdpSocket;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::atomic::AtomicU64;
@@ -1053,6 +1054,22 @@ fn to_tcp_stream_err(err: std::io::Error) -> roc_app::StreamErr {
             f0: err.raw_os_error().unwrap_or_default(),
         }),
     }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_udpBind(host: &RocStr, port: u16) -> roc_app::BindResult {
+    match UdpSocket::bind((host.as_str(), port)) {
+        Ok(socket) => {
+            let ptr = Box::into_raw(Box::new(socket)) as u64;
+
+            roc_app::BindResult::Bound(ptr)
+        }
+        Err(err) => roc_app::BindResult::Error(to_udp_bind_err(err)),
+    }
+}
+
+fn to_udp_bind_err(err: std::io::Error) -> roc_app::BindErr {
+    roc_app::BindErr::Nope()
 }
 
 #[no_mangle]

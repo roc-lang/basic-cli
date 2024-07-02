@@ -41,6 +41,8 @@ hosted Effect
         tcpReadExactly,
         tcpReadUntil,
         tcpWrite,
+        udpBind,
+        udpReceiveUpTo,
         sleepMillis,
         commandStatus,
         commandOutput,
@@ -50,6 +52,7 @@ hosted Effect
         InternalHttp.{ Request, InternalResponse },
         InternalFile,
         InternalTcp,
+        InternalUdp,
         InternalCommand,
         InternalPath,
     ]
@@ -92,6 +95,10 @@ tcpReadUpTo : U64, InternalTcp.Stream -> Effect InternalTcp.ReadResult
 tcpReadExactly : U64, InternalTcp.Stream -> Effect InternalTcp.ReadExactlyResult
 tcpReadUntil : U8, InternalTcp.Stream -> Effect InternalTcp.ReadResult
 tcpWrite : List U8, InternalTcp.Stream -> Effect InternalTcp.WriteResult
+
+udpBind : Str, U16 -> Effect InternalUdp.BindResult
+udpReceiveUpTo : U64, InternalUdp.Socket -> Effect InternalUdp.ReceiveResult
+
 
 pathType : List U8 -> Effect (Result InternalPath.InternalPathType InternalPath.GetMetadataErr)
 
