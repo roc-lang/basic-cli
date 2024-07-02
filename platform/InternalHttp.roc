@@ -1,30 +1,53 @@
-module [Request, Method, Header, TimeoutConfig, Part, InternalResponse, Error, ErrorBody, errorBodyToUtf8, errorBodyFromUtf8]
+module [
+    Request,
+    Method,
+    Header,
+    TimeoutConfig,
+    InternalResponse,
+    Error,
+    ErrorBody,
+    methodToStr,
+    errorBodyToUtf8,
+    errorBodyFromUtf8,
+]
 
 Request : {
-    method : Method,
+    method : Str,
     headers : List Header,
     url : Str,
     mimeType : Str,
     body : List U8,
-    timeout : TimeoutConfig,
+    timeoutMs : U64,
 }
-
-Method : [Options, Get, Post, Put, Delete, Head, Trace, Connect, Patch]
-
-Header : [Header Str Str]
 
 # Name is distinguished from the Timeout tag used in Response and Error
 TimeoutConfig : [TimeoutMilliseconds U64, NoTimeout]
 
-Part : [Part Str (List U8)]
+Method : [Options, Get, Post, Put, Delete, Head, Trace, Connect, Patch]
 
-InternalResponse : [
-    BadRequest Str,
-    Timeout U64,
-    NetworkError,
-    BadStatus Metadata (List U8),
-    GoodStatus Metadata (List U8),
-]
+methodToStr : Method -> Str
+methodToStr = \method ->
+    when method is
+        Options -> "Options"
+        Get -> "Get"
+        Post -> "Post"
+        Put -> "Put"
+        Delete -> "Delete"
+        Head -> "Head"
+        Trace -> "Trace"
+        Connect -> "Connect"
+        Patch -> "Patch"
+
+Header : {
+    key : Str,
+    value : Str,
+}
+
+InternalResponse : {
+    variant : Str,
+    metadata : Metadata,
+    body : List U8,
+}
 
 Metadata : {
     url : Str,
