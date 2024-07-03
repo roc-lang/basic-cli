@@ -118,7 +118,7 @@ prebuiltStaticLibrary : RocTarget -> Str
 prebuiltStaticLibrary = \target ->
     when target is
         MacosArm64 -> "macos-arm64.a"
-        MacosX64 -> "macos-x64"
+        MacosX64 -> "macos-x64.a"
         LinuxArm64 -> "linux-arm64.a"
         LinuxX64 -> "linux-x64.a"
         WindowsArm64 -> "windows-arm64.lib"
@@ -128,7 +128,7 @@ prebuiltObject : RocTarget -> Str
 prebuiltObject = \target ->
     when target is
         MacosArm64 -> "macos-arm64.a"
-        MacosX64 -> "macos-x64"
+        MacosX64 -> "macos-x64.a"
         LinuxArm64 -> "linux-arm64.a"
         LinuxX64 -> "linux-x64.a"
         WindowsArm64 -> "windows-arm64.lib"
