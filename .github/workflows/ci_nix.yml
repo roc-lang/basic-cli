@@ -32,7 +32,7 @@ jobs:
         run: uname -m
 
       - name: Build platform binary
-        run: nix develop -c sh -c 'roc ./build.roc -p ./'
+        run: nix develop -c sh -c 'roc ./build.roc --release -path ./'
 
       - name: Run all tests
         run: nix develop -c sh -c 'export ROC=roc && export EXAMPLES_DIR=./examples/ && ./ci/all_tests.sh'
