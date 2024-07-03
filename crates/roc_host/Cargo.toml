@@ -8,7 +8,6 @@ edition = "2021"
 [lib]
 name = "roc_host"
 path = "src/lib.rs"
-crate-type = ["lib"]
 
 [dependencies]
 roc_std = { path = "../roc_std" }
