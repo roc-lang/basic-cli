@@ -52,7 +52,7 @@ run = \{ release, path } ->
 
     info! "Listing working directory ..."
     "ls"
-        |> Cmd.exec  ["-la", "$(root)"]
+        |> Cmd.exec  ["-R", "$(root)"]
         |> Task.mapErr! ErrListingWorkingDir
 
     info! "Generating glue for builtins ..."
