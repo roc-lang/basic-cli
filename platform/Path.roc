@@ -563,7 +563,7 @@ readUtf8 : Path -> Task Str [FileReadErr Path ReadErr, FileReadUtf8Err Path _]
 readUtf8 = \path ->
     bytes =
         PlatformTask.fileReadBytes (InternalPath.toBytes path)
-            |> Task.mapErr! \readErr -> FileReadErr path readErr
+            |> Task.mapErr! \readErr -> FileReadErr path (InternalFile.handleReadErr readErr)
 
     Str.fromUtf8 bytes
     |> Result.mapErr \err -> FileReadUtf8Err path err
@@ -659,7 +659,26 @@ createAll = \path ->
     |> PlatformTask.dirCreateAll
     |> Task.mapErr handleErr
 
-# There are other errors which may be useful, however they are currently unstable
+# <<<<<<< HEAD
+# # There are other errors which may be useful, however they are currently unstable
+# =======
+# toWriteTask : Path, (List U8 -> Effect (Result ok Str)) -> Task ok [FileWriteErr Path WriteErr]
+# toWriteTask = \path, toEffect ->
+#     InternalPath.toBytes path
+#     |> toEffect
+#     |> InternalTask.fromEffect
+#     |> Task.mapErr \err -> FileWriteErr path (InternalFile.handleWriteErr err)
+
+# toReadTask : Path, (List U8 -> Effect (Result ok Str)) -> Task ok [FileReadErr Path ReadErr]
+# toReadTask = \path, toEffect ->
+#     InternalPath.toBytes path
+#     |> toEffect
+#     |> InternalTask.fromEffect
+#     |> Task.mapErr \err -> FileReadErr path (InternalFile.handleReadErr err)
+
+# >>>>>>> main
+
+# There are othe errors which may be useful, however they are currently unstable
 # features see https://github.com/rust-lang/rust/issues/86442
 # TODO add these when available
 # ErrorKind::NotADirectory => RocStr::from("ErrorKind::NotADirectory"),

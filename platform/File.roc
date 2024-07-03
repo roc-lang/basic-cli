@@ -12,9 +12,16 @@ module [
     isFile,
     isSymLink,
     type,
+    FileReader,
+    getFileReader,
+    readLine,
+    closeFileReader,
 ]
 
 import Path exposing [Path, MetadataErr]
+import Effect
+import InternalTask
+import InternalFile
 
 ## Tag union of possible errors when reading a file or directory.
 ##
@@ -180,3 +187,52 @@ isSymLink = \path ->
 type : Str -> Task [IsFile, IsDir, IsSymLink] [PathErr MetadataErr]
 type = \path ->
     Path.type (Path.fromStr path)
+
+
+FileReader := {readerID: U64, path: Path}
+
+## Try to create a `FileReader` for buffered (= part by part) reading given a path string.
+## See [examples/file-read-buffered.roc](https://github.com/roc-lang/basic-cli/blob/main/examples/file-read-buffered.roc) for example usage.
+##
+## This uses [rust's std::io::BufReader](https://doc.rust-lang.org/std/io/struct.BufReader.html).
+##
+## Use [readUtf8] if you want to get the entire file contents at once.
+getFileReader : Str -> Task FileReader [GetFileReadErr Path ReadErr]
+getFileReader = \pathStr ->
+    path = Path.fromStr pathStr
+
+    Effect.fileReader (Str.toUtf8 pathStr)
+    |> Effect.map \result ->
+        when result is
+            Ok readerID -> Ok (@FileReader {readerID, path})
+            Err err -> Err (GetFileReadErr path (InternalFile.handleReadErr err))
+    |> InternalTask.fromEffect
+
+## Try to read a line from a file given a FileReader.
+## The line will be provided as the list of bytes (`List U8`) until a newline (`0xA` byte).
+## This list will be empty when we reached the end of the file.
+## See [examples/file-read-buffered.roc](https://github.com/roc-lang/basic-cli/blob/main/examples/file-read-buffered.roc) for example usage.
+##
+## This uses [rust's `BufRead::read_line`](https://doc.rust-lang.org/std/io/trait.BufRead.html#method.read_line).
+##
+## Use [readUtf8] if you want to get the entire file contents at once.
+readLine : FileReader -> Task (List U8) [FileReadErr Path Str]
+readLine = \@FileReader {readerID, path} ->
+
+    Effect.fileReadLine readerID
+    |> Effect.map \result ->
+        when result is
+            Ok bytes -> Ok bytes
+            Err err -> Err (FileReadErr path err)
+    |> InternalTask.fromEffect
+
+## Close the file that was opened when creating the FileReader.
+## [Why you should close files.](https://stackoverflow.com/a/29536383)
+##
+## Calling [File.readLine] after the FileReader is closed will return an empty list.
+closeFileReader : FileReader -> Task {} *
+closeFileReader = \@FileReader {readerID} ->
+
+    Effect.closeFile readerID
+    |> Effect.map Ok
+    |> InternalTask.fromEffect

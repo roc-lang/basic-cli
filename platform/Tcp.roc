@@ -16,21 +16,65 @@ module [
 import InternalTcp
 import PlatformTask
 
+unexpectedEofErrorMessage = "UnexpectedEof"
+
 ## Represents a TCP stream.
-Stream : InternalTcp.Stream
+Stream := U64
 
 ## Represents errors that can occur when connecting to a remote host.
-ConnectErr : InternalTcp.ConnectErr
+ConnectErr : [
+    PermissionDenied,
+    AddrInUse,
+    AddrNotAvailable,
+    ConnectionRefused,
+    Interrupted,
+    TimedOut,
+    Unsupported,
+    Unrecognized Str,
+]
+
+parseConnectErr : Str -> ConnectErr
+parseConnectErr = \err ->
+    when err is
+        "ErrorKind::PermissionDenied" -> PermissionDenied
+        "ErrorKind::AddrInUse" -> AddrInUse
+        "ErrorKind::AddrNotAvailable" -> AddrNotAvailable
+        "ErrorKind::ConnectionRefused" -> ConnectionRefused
+        "ErrorKind::Interrupted" -> Interrupted
+        "ErrorKind::TimedOut" -> TimedOut
+        "ErrorKind::Unsupported" -> Unsupported
+        other -> Unrecognized other
 
 ## Represents errors that can occur when performing a [Task] with a [Stream].
-StreamErr : InternalTcp.StreamErr
+StreamErr : [
+    StreamNotFound,
+    PermissionDenied,
+    ConnectionRefused,
+    ConnectionReset,
+    Interrupted,
+    OutOfMemory,
+    BrokenPipe,
+    Unrecognized Str,
+]
+
+parseStreamErr : Str -> StreamErr
+parseStreamErr = \err ->
+    when err is
+        "StreamNotFound" -> StreamNotFound
+        "ErrorKind::PermissionDenied" -> PermissionDenied
+        "ErrorKind::ConnectionRefused" -> ConnectionRefused
+        "ErrorKind::ConnectionReset" -> ConnectionReset
+        "ErrorKind::Interrupted" -> Interrupted
+        "ErrorKind::OutOfMemory" -> OutOfMemory
+        "ErrorKind::BrokenPipe" -> BrokenPipe
+        other -> Unrecognized other
 
 ## Opens a TCP connection to a remote host and perform a [Task] with it.
 ##
 ## ```
 ## # Connect to localhost:8080 and send "Hi from Roc!"
 ## stream <- Tcp.withConnect "localhost" 8080
-## Tcp.writeUtf8 "Hi from Roc!" stream
+## Tcp.writeUtf8 stream "Hi from Roc!"
 ## ```
 ##
 ## The connection is automatically closed after the [Task] is completed. Examples of
@@ -50,14 +94,14 @@ withConnect = \hostname, port, callback ->
         callback stream
             |> Task.mapErr TcpPerformErr
             |> Task.result!
-    close! stream
 
+    close! stream
     Task.fromResult result
 
 connect : Str, U16 -> Task Stream ConnectErr
 connect = \host, port ->
     PlatformTask.tcpConnect! host port
-        |> InternalTcp.fromConnectResult
+        |> Result.mapErr InternalTcp.parseConnectErr
         |> Task.fromResult
 
 close : Stream -> Task {} *
@@ -67,56 +111,52 @@ close = PlatformTask.tcpClose
 ##
 ## ```
 ## # Read up to 64 bytes from the stream and convert to a Str
-## received <- File.readUpTo 64 stream |> Task.await
+## received <- File.readUpTo stream 64 |> Task.await
 ## Str.fromUtf8 received
 ## ```
 ##
 ## > To read an exact number of bytes or fail, you can use [Tcp.readExactly] instead.
-readUpTo : U64, Stream -> Task (List U8) [TcpReadErr StreamErr]
-readUpTo = \bytesToRead, stream ->
-    PlatformTask.tcpReadUpTo! bytesToRead stream
-        |> InternalTcp.fromReadResult
+readUpTo : Stream, U64 -> Task (List U8) [TcpReadErr StreamErr]
+readUpTo = \@Stream stream, bytesToRead ->
+    PlatformTask.tcpReadUpTo! stream bytesToRead
+        |> Result.mapErr InternalTcp.parseStreamErr
         |> Result.mapErr TcpReadErr
         |> Task.fromResult
 
 ## Read an exact number of bytes or fail.
 ##
 ## ```
-## File.readExactly 64 stream
+## File.readExactly stream 64
 ## ```
 ##
 ## `TcpUnexpectedEOF` is returned if the stream ends before the specfied number of bytes is reached.
 ##
-readExactly : U64, Stream -> Task (List U8) [TcpReadErr StreamErr, TcpUnexpectedEOF]
-readExactly = \bytesToRead, stream ->
-    result = PlatformTask.tcpReadExactly! bytesToRead stream
-    when result is
-        Read bytes ->
-            Task.ok bytes
-
-        UnexpectedEOF ->
-            Task.err TcpUnexpectedEOF
-
-        Error err ->
-            Task.err (TcpReadErr err)
+readExactly : Stream, U64 -> Task (List U8) [TcpReadErr StreamErr, TcpUnexpectedEOF]
+readExactly = \@Stream stream, bytesToRead ->
+    PlatformTask.tcpReadExactly stream bytesToRead
+    |> Task.mapErr \err ->
+        if err == unexpectedEofErrorMessage then
+            TcpUnexpectedEOF
+        else
+            TcpReadErr (parseStreamErr err)
 
 ## Read until a delimiter or EOF is reached.
 ##
 ## ```
 ## # Read until null terminator
-## File.readUntil 0 stream
+## File.readUntil stream 0
 ## ```
 ##
 ## If found, the delimiter is included as the last byte.
 ##
 ## > To read until a newline is found, you can use [Tcp.readLine] which
 ## conveniently decodes to a [Str].
-readUntil : U8, Stream -> Task (List U8) [TcpReadErr StreamErr]
-readUntil = \byte, stream ->
-    PlatformTask.tcpReadUntil! byte stream
-        |> InternalTcp.fromReadResult
-        |> Result.mapErr TcpReadErr
-        |> Task.fromResult
+readUntil : Stream, U8 -> Task (List U8) [TcpReadErr StreamErr]
+readUntil = \@Stream stream, byte ->
+    PlatformTask.tcpReadUntil! stream byte
+    |> Result.mapErr InternalTcp.parseStreamErr
+    |> Result.mapErr TcpReadErr
+    |> Task.fromResult
 
 ## Read until a newline or EOF is reached.
 ##
@@ -130,7 +170,7 @@ readUntil = \byte, stream ->
 ##
 readLine : Stream -> Task Str [TcpReadErr StreamErr, TcpReadBadUtf8 _]
 readLine = \stream ->
-    bytes = readUntil! '\n' stream
+    bytes = readUntil! stream '\n'
 
     Str.fromUtf8 bytes
     |> Result.mapErr TcpReadBadUtf8
@@ -140,28 +180,28 @@ readLine = \stream ->
 ##
 ## ```
 ## # Writes the bytes 1, 2, 3
-## Tcp.writeBytes [1, 2, 3] stream
+## Tcp.writeBytes stream [1, 2, 3]
 ## ```
 ##
 ## > To write a [Str], you can use [Tcp.writeUtf8] instead.
-write : List U8, Stream -> Task {} [TcpWriteErr StreamErr]
-write = \bytes, stream ->
-    PlatformTask.tcpWrite! bytes stream
-        |> InternalTcp.fromWriteResult
-        |> Result.mapErr TcpWriteErr
-        |> Task.fromResult
+write : Stream, List U8 -> Task {} [TcpWriteErr StreamErr]
+write = \@Stream stream, bytes ->
+    PlatformTask.tcpWrite! stream bytes
+    |> Result.mapErr InternalTcp.parseStreamErr
+    |> Result.mapErr TcpWriteErr
+    |> Task.fromResult
 
 ## Writes a [Str] to a TCP stream, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##
 ## ```
 ## # Write "Hi from Roc!" encoded as UTF-8
-## Tcp.writeUtf8 "Hi from Roc!" stream
+## Tcp.writeUtf8 stream "Hi from Roc!"
 ## ```
 ##
 ## > To write unformatted bytes, you can use [Tcp.write] instead.
-writeUtf8 : Str, Stream -> Task {} [TcpWriteErr StreamErr]
-writeUtf8 = \str, stream ->
-    write (Str.toUtf8 str) stream
+writeUtf8 : Stream, Str -> Task {} [TcpWriteErr StreamErr]
+writeUtf8 = \stream, str ->
+    write stream (Str.toUtf8 str)
 
 ## Convert a [ConnectErr] to a [Str] you can print.
 ##
@@ -181,9 +221,7 @@ connectErrToStr = \err ->
         Interrupted -> "Interrupted"
         TimedOut -> "TimedOut"
         Unsupported -> "Unsupported"
-        Unrecognized code message ->
-            codeStr = Num.toStr code
-            "Unrecognized Error: $(codeStr) - $(message)"
+        Unrecognized message -> "Unrecognized Error: $(message)"
 
 ## Convert a [StreamErr] to a [Str] you can print.
 ##
@@ -201,12 +239,11 @@ connectErrToStr = \err ->
 streamErrToStr : StreamErr -> Str
 streamErrToStr = \err ->
     when err is
+        StreamNotFound -> "StreamNotFound"
         PermissionDenied -> "PermissionDenied"
         ConnectionRefused -> "ConnectionRefused"
         ConnectionReset -> "ConnectionReset"
         Interrupted -> "Interrupted"
         OutOfMemory -> "OutOfMemory"
         BrokenPipe -> "BrokenPipe"
-        Unrecognized code message ->
-            codeStr = Num.toStr code
-            "Unrecognized Error: $(codeStr) - $(message)"
+        Unrecognized message -> "Unrecognized Error: $(message)"

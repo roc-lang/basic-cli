@@ -12,7 +12,10 @@ fn main() {
 
         let out = host::call_the_closure(buffer);
 
-        std::alloc::dealloc(buffer, layout);
+        // TODO: deallocation currently causes a segfault (probably because layout doesn't match main's size).
+        // investigate why this is and then re-enable this, rather than letting the system clean up the memory.
+        //
+        // std::alloc::dealloc(buffer, layout);
 
         std::process::exit(out);
     }

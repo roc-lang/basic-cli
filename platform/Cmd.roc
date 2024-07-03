@@ -137,15 +137,16 @@ output = \@Cmd cmd ->
     }
 
     when internalOutput.status is
-        Ok {} -> Task.ok (out)
-        Err err -> Task.err (CmdOutputError (out, err))
+        Ok {} -> Task.ok out
+        Err bytes -> Task.err (CmdOutputError (out, InternalCommand.handleCommandErr bytes))
 
 ## Execute command and inherit stdin, stdout and stderr from parent
 ##
 status : Cmd -> Task {} [CmdError Err]
 status = \@Cmd cmd ->
     PlatformTask.commandStatus (Box.box cmd)
-    |> Task.mapErr CmdError
+    |> Task.mapErr \bytes ->
+        Err (CmdError (InternalCommand.handleCommandErr bytes))
 
 ## Execute command and inherit stdin, stdout and stderr from parent
 ##

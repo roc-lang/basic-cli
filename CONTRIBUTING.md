@@ -2,7 +2,7 @@
 
 ## Code of Conduct
 
-We are committed to providing a friendly, safe and welcoming environment for all. Make sure to take a look at the [Code of Conduct](https://github.com/roc-lang/roc/blob/main/CODE_OF_CONDUCT.md)!
+We are committed to providing a friendly, safe and welcoming environment for all. See the [Code of Conduct](https://github.com/roc-lang/roc/blob/main/CODE_OF_CONDUCT.md) for details.
 
 ## How to generate docs?
 
