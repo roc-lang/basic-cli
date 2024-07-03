@@ -19,6 +19,9 @@ if [ -z "${ROC}" ]; then
   exit 1
 fi
 
+# build the basic-cli platform
+$ROC ./build.roc --release --roc $ROC
+
 # roc check
 for roc_file in $EXAMPLES_DIR*.roc; do
     $ROC check $roc_file

@@ -1,6 +1,5 @@
 app [main] {
-    cli: platform "https://github.com/roc-lang/basic-cli/releases/download/0.12.0/cf_TpThUd4e69C7WzHxCbgsagnDmk3xlb_HmEKXTICw.tar.br",
-    weaver: "https://github.com/smores56/weaver/releases/download/0.2.0/BBDPvzgGrYp-AhIDw0qmwxT0pWZIQP_7KOrUrZfp_xw.tar.br",
+    cli: platform "TODO use updated basic-cli 0.12.0 (requires changes from github.com/roc-lang/basic-cli/pull/224)",
 }
 
 import cli.Task exposing [Task]
@@ -8,29 +7,35 @@ import cli.Cmd
 import cli.Stdout
 import cli.Env
 import cli.Arg
-import weaver.Opt
-import weaver.Cli
+import cli.Arg.Opt as Opt
+import cli.Arg.Cli as Cli
 
+## Builds the basic-cli [platform](https://www.roc-lang.org/platforms).
+##
+## run with: roc ./build.roc --release
+##
+main : Task {} _
 main =
 
     cliParser =
-        Cli.weave {
-            release: <- Opt.flag { short: "r", long: "release", help: "Release build" },
-            maybeRoc: <- Opt.maybeStr { short: "c", long: "cli", help: "Path to the roc cli"},
+        Cli.build {
+            releaseMode: <- Opt.flag { short: "r", long: "release", help: "Release build. Passes `--release` to `cargo build`." },
+            maybeRoc: <- Opt.maybeStr { short: "p", long: "roc", help: "Path to the roc executable. Can be just `roc` or a full path."},
         }
         |> Cli.finish {
-            name: "basic-webserver",
+            name: "basic-cli-builder",
             version: "",
             authors: ["Luke Boswell <https://github.com/lukewilliamboswell>"],
-            description: "This build script generates the binaries and packages the platform for distribution.",
+            description: "Generates all files needed by Roc to use this basic-cli platform.",
         }
         |> Cli.assertValid
 
     when Cli.parseOrDisplayMessage cliParser (Arg.list!) is
         Ok args -> run args
-        Err message -> Task.err (Exit 1 message)
+        Err errMsg -> Task.err (Exit 1 errMsg)
 
-run = \{ release, maybeRoc } ->
+run : { releaseMode : Bool, maybeRoc : Result Str err} -> Task {} _
+run = \{ releaseMode, maybeRoc } ->
 
     roc = maybeRoc |> Result.withDefault "roc"
 
@@ -39,31 +44,32 @@ run = \{ release, maybeRoc } ->
         |> Cmd.exec  ["glue", "glue.roc", "crates/", "platform/main.roc"]
         |> Task.mapErr! ErrGeneratingGlue
 
+    # target is MacosArm64, LinuxX64,...
     info! "Getting the native target ..."
     target =
         Env.platform
         |> Task.await! getNativeTarget
 
-    stubPath = "platform/libapp.$(stubExt target)"
+    stubPath = "platform/libapp.$(stubFileExtension target)"
 
     info! "Building stubbed app shared library ..."
     roc
         |> Cmd.exec  ["build", "--lib", "platform/libapp.roc", "--output", stubPath]
         |> Task.mapErr! ErrBuildingAppStub
 
-    (cargoBuildArgs, message) =
-        if release then
+    (cargoBuildArgs, infoMessage) =
+        if releaseMode then
             (["build", "--release"], "Building host in RELEASE mode ...")
         else
             (["build"], "Building host in DEBUG mode ...")
 
-    info! message
+    info! infoMessage
     "cargo"
         |> Cmd.exec  cargoBuildArgs
         |> Task.mapErr! ErrBuildingHostBinaries
 
-    hostBuildPath = if release then "target/release/libhost.a" else "target/debug/libhost.a"
-    hostDestPath = "platform/$(prebuiltStaticLibrary target)"
+    hostBuildPath = if releaseMode then "target/release/libhost.a" else "target/debug/libhost.a"
+    hostDestPath = "platform/$(prebuiltStaticLibFile target)"
 
     info! "Moving the prebuilt binary from $(hostBuildPath) to $(hostDestPath) ..."
     "cp"
@@ -71,7 +77,7 @@ run = \{ release, maybeRoc } ->
         |> Task.mapErr! ErrMovingPrebuiltLegacyBinary
 
     info! "Preprocessing surgical host ..."
-    surgicalBuildPath = if release then "target/release/host" else "target/debug/host"
+    surgicalBuildPath = if releaseMode then "target/release/host" else "target/debug/host"
     roc
         |> Cmd.exec  ["preprocess-host", surgicalBuildPath, "platform/main.roc", stubPath]
         |> Task.mapErr! ErrPreprocessingSurgicalBinary
@@ -96,15 +102,15 @@ getNativeTarget =\{os, arch} ->
         (LINUX, X64) -> Task.ok LinuxX64
         _ -> Task.err (UnsupportedNative os arch)
 
-stubExt : RocTarget -> Str
-stubExt = \target ->
+stubFileExtension : RocTarget -> Str
+stubFileExtension = \target ->
     when target is
         MacosX64 | MacosArm64 -> "dylib"
         LinuxArm64 | LinuxX64-> "so"
         WindowsX64| WindowsArm64 -> "dll"
 
-prebuiltStaticLibrary : RocTarget -> Str
-prebuiltStaticLibrary = \target ->
+prebuiltStaticLibFile : RocTarget -> Str
+prebuiltStaticLibFile = \target ->
     when target is
         MacosArm64 -> "macos-arm64.a"
         MacosX64 -> "macos-x64.a"
