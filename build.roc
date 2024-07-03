@@ -26,7 +26,8 @@ main =
     cliParser =
         Cli.weave {
             release: <- Opt.flag { short: "r", long: "release", help: "Release build" },
-            path: <- Opt.maybeStr { short: "p", long: "path", help: "Path to the workspace root"}
+            path: <- Opt.maybeStr { short: "p", long: "path", help: "Path to the workspace root"},
+            roc: <- Opt.str { short: "d", long: "roc", help: "Path to the roc binary"},
         }
         |> Cli.finish {
             name: "basic-webserver",
@@ -40,7 +41,7 @@ main =
         Ok args -> run args
         Err message -> Task.err (Exit 1 message)
 
-run = \{ release, path } ->
+run = \{ release, path, roc } ->
 
     root = path |> Result.withDefault ""
 
@@ -56,7 +57,7 @@ run = \{ release, path } ->
         |> Task.mapErr! ErrListingWorkingDir
 
     info! "Generating glue for builtins ..."
-    "roc"
+    roc
         |> Cmd.exec  ["glue", "$(root)glue.roc", "$(root)crates/", "$(root)platform/main.roc"]
         |> Task.mapErr! ErrGeneratingGlue
 
@@ -68,7 +69,7 @@ run = \{ release, path } ->
     stubPath = "$(root)platform/libapp.$(stubExt target)"
 
     info! "Building stubbed app shared library ..."
-    "roc"
+    roc
         |> Cmd.exec  ["build", "--lib", "$(root)platform/libapp.roc", "--output", stubPath]
         |> Task.mapErr! ErrBuildingAppStub
 
@@ -102,7 +103,7 @@ run = \{ release, path } ->
     # SURGICAL LINKER IS NOT YET SUPPORTED need to merge https://github.com/roc-lang/roc/pull/6808
     #info! "Preprocessing surgical host ..."
     #surgicalBuildPath = if release then "target/release/host" else "target/debug/host"
-    #"roc"
+    #roc
     #    |> Cmd.exec  ["preprocess-host", surgicalBuildPath, "platform/main.roc", stubPath]
     #    |> Task.mapErr! ErrPreprocessingSurgicalBinary
 

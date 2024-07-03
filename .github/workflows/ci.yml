@@ -49,7 +49,7 @@ jobs:
       - run: expect -v
 
       - name: Build platform binary
-        run: ./roc_nightly/roc ./build.roc --release --path ./
+        run: ./roc_nightly/roc ./build.roc --release --path ./ --roc ./roc_nightly/roc
 
       - name: Run all tests
         run: ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
