@@ -24,7 +24,7 @@ main =
 
     cliParser =
         Cli.weave {
-            release: <- Opt.flag { short: "r", help: "Release build" },
+            release: <- Opt.flag { short: "r", long: "release", help: "Release build" },
         }
         |> Cli.finish {
             name: "basic-webserver",

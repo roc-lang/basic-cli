@@ -7,7 +7,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   test-latest-release:
     runs-on: [ubuntu-20.04]
     steps:
@@ -26,6 +25,6 @@ jobs:
 
       - name: Use ./ci/test_latest_release.sh of the latest git main
         run: mv -f ./temp/test_latest_release.sh ./ci/
-      
+
       - name: Run all tests with latest roc release + latest basic-cli release
         run: EXAMPLES_DIR=./examples/ ./ci/test_latest_release.sh
