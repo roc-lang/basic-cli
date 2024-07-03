@@ -40,6 +40,11 @@ main =
 
 run = \{ release } ->
 
+    info! "TODO: REMOVE getting cwd ..."
+    "pwd"
+        |> Cmd.exec  []
+        |> Task.mapErr! ErrGettingWorkingDirectory
+
     info! "Generating glue for builtins ..."
     "roc"
         |> Cmd.exec  ["glue", "glue.roc", "crates/", "platform/main.roc"]
