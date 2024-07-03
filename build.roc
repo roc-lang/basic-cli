@@ -7,6 +7,7 @@ import cli.Task exposing [Task]
 import cli.Cmd
 import cli.Stdout
 import cli.Env
+import cli.File
 import cli.Arg
 import weaver.Opt
 import weaver.Cli
@@ -25,6 +26,7 @@ main =
     cliParser =
         Cli.weave {
             release: <- Opt.flag { short: "r", long: "release", help: "Release build" },
+            path: <- Opt.maybeStr { short: "p", long: "path", help: "Path to the workspace root"}
         }
         |> Cli.finish {
             name: "basic-webserver",
@@ -38,16 +40,19 @@ main =
         Ok args -> run args
         Err message -> Task.err (Exit 1 message)
 
-run = \{ release } ->
+run = \{ release, path } ->
 
-    info! "TODO: REMOVE getting cwd ..."
-    "pwd"
-        |> Cmd.exec  []
-        |> Task.mapErr! ErrGettingWorkingDirectory
+    root = path |> Result.withDefault ""
+
+    info! "Checking working directory ..."
+    "$(root)flake.nix"
+        |> File.isFile
+        |> Task.await \exists -> if exists then Task.ok {} else Task.err (ErrInvalidWorkingDir root)
+        |> Task.mapErr! \err -> ErrWorkingDirectory err root
 
     info! "Generating glue for builtins ..."
     "roc"
-        |> Cmd.exec  ["glue", "glue.roc", "crates/", "platform/main.roc"]
+        |> Cmd.exec  ["glue", "$(root)glue.roc", "$(root)crates/", "$(root)platform/main.roc"]
         |> Task.mapErr! ErrGeneratingGlue
 
     info! "Getting the native target ..."
@@ -55,11 +60,11 @@ run = \{ release } ->
         Env.platform
         |> Task.await! getNativeTarget
 
-    stubPath = "platform/libapp.$(stubExt target)"
+    stubPath = "$(root)platform/libapp.$(stubExt target)"
 
     info! "Building stubbed app shared library ..."
     "roc"
-        |> Cmd.exec  ["build", "--lib", "platform/libapp.roc", "--output", stubPath]
+        |> Cmd.exec  ["build", "--lib", "$(root)platform/libapp.roc", "--output", stubPath]
         |> Task.mapErr! ErrBuildingAppStub
 
     (cargoBuildArgs, message) =
@@ -73,8 +78,8 @@ run = \{ release } ->
         |> Cmd.exec  cargoBuildArgs
         |> Task.mapErr! ErrBuildingHostBinaries
 
-    hostBuildPath = if release then "target/release/libhost.a" else "target/debug/libhost.a"
-    hostDestPath = "platform/$(prebuiltStaticLibrary target)"
+    hostBuildPath = if release then "$(root)target/release/libhost.a" else "$(root)target/debug/libhost.a"
+    hostDestPath = "$(root)platform/$(prebuiltStaticLibrary target)"
 
     info! "Moving the prebuilt binary from $(hostBuildPath) to $(hostDestPath) ..."
     "cp"
@@ -83,7 +88,7 @@ run = \{ release } ->
 
     # TODO remove this, just a temporary workaround to see if this makes CI happy
     # if so we know that linux requires an object `.o` file for some reason...
-    prebuiltObjectPath = "platform/$(prebuiltObject target)"
+    prebuiltObjectPath = "$(root)platform/$(prebuiltObject target)"
     info! "Moving the prebuilt binary from $(hostBuildPath) to $(prebuiltObjectPath) ..."
     "cp"
         |> Cmd.exec  [hostBuildPath, prebuiltObjectPath]
