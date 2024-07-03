@@ -50,6 +50,11 @@ run = \{ release, path } ->
         |> Task.await \exists -> if exists then Task.ok {} else Task.err (ErrInvalidWorkingDir root)
         |> Task.mapErr! \err -> ErrWorkingDirectory err root
 
+    info! "Listing working directory ..."
+    "ls"
+        |> Cmd.exec  ["-la", "$(root)"]
+        |> Task.mapErr! ErrListingWorkingDir
+
     info! "Generating glue for builtins ..."
     "roc"
         |> Cmd.exec  ["glue", "$(root)glue.roc", "$(root)crates/", "$(root)platform/main.roc"]

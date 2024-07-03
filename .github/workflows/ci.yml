@@ -18,7 +18,7 @@ jobs:
 
       - name: Does init() in platform/src/lib.rs contain all roc_fx functions? (Imperfect check)
         run: cat platform/src/lib.rs | grep -oP 'roc_fx_[^(\s]*' | sort | uniq -u | grep -q . && exit 1 || exit 0
-          
+
       - id: try_fetching_testing_release
         continue-on-error: true
         run: |
@@ -49,7 +49,7 @@ jobs:
       - run: expect -v
 
       - name: Build platform binary
-        run: ./roc_nightly/roc ./build.roc
+        run: ./roc_nightly/roc ./build.roc -p ./
 
       - name: Run all tests
         run: ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
