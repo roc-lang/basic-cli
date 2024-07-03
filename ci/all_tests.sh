@@ -85,7 +85,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     if [ "$base_file" == "path.roc" ]; then
         absolute_roc=$(which $ROC | xargs realpath)
         cd $EXAMPLES_DIR
-        $absolute_roc dev $base_file $ROC_BUILD_FLAGS
+        $absolute_roc dev --linker=legacy --prebuilt-platform $base_file $ROC_BUILD_FLAGS
         cd ..
     else
         $ROC dev --linker=legacy --prebuilt-platform $roc_file $ROC_BUILD_FLAGS
