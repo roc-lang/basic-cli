@@ -35,7 +35,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         continue
     fi
 
-    $ROC build --linker=legacy $roc_file $ROC_BUILD_FLAGS
+    $ROC build --linker=legacy --prebuilt-platform $roc_file $ROC_BUILD_FLAGS
 done
 
 # prep for next step
@@ -88,7 +88,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         $absolute_roc dev $base_file $ROC_BUILD_FLAGS
         cd ..
     else
-        $ROC dev --linker=legacy $roc_file $ROC_BUILD_FLAGS
+        $ROC dev --linker=legacy --prebuilt-platform $roc_file $ROC_BUILD_FLAGS
     fi
 done
 
