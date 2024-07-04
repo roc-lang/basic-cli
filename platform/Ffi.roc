@@ -2,6 +2,7 @@ module [
     Lib,
     withLib,
     call,
+    callNoReturn,
 ]
 
 import Effect
@@ -46,6 +47,13 @@ call : Lib, Str, a -> Task b *
 call = \@Lib lib, fnName, args ->
     Effect.ffiCall lib fnName (Box.box args)
     |> Effect.map Box.unbox
+    |> Effect.map Ok
+    |> InternalTask.fromEffect
+    |> Task.onErr \_ -> crash "unreachable"
+
+callNoReturn : Lib, Str, a -> Task {} *
+callNoReturn = \@Lib lib, fnName, args ->
+    Effect.ffiCallNoReturn lib fnName (Box.box args)
     |> Effect.map Ok
     |> InternalTask.fromEffect
     |> Task.onErr \_ -> crash "unreachable"

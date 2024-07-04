@@ -44,6 +44,7 @@ hosted Effect
         ffiLoad,
         ffiClose,
         ffiCall,
+        ffiCallNoReturn,
         sleepMillis,
         commandStatus,
         commandOutput,
@@ -98,6 +99,7 @@ ffiLoad : Str -> Effect (Result U64 Str)
 ffiClose : U64 -> Effect {}
 # TODO: Error propagation
 ffiCall : U64, Str, (Box a) -> Effect (Box b)
+ffiCallNoReturn : U64, Str, (Box a) -> Effect {}
 
 pathType : List U8 -> Effect (Result InternalPath.InternalPathType (List U8))
 

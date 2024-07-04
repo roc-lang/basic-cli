@@ -307,6 +307,7 @@ pub fn init() {
         roc_fx_ffiLoad as _,
         roc_fx_ffiClose as _,
         roc_fx_ffiCall as _,
+        roc_fx_ffiCallNoReturn as _,
         roc_fx_commandStatus as _,
         roc_fx_commandOutput as _,
         roc_fx_dirCreate as _,
@@ -1157,6 +1158,22 @@ pub extern "C" fn roc_fx_ffiCall(lib_id: u64, fn_name: &RocStr, boxed: *mut c_vo
         let cif = Cif::new([Type::pointer(); 1].into_iter(), Type::pointer());
 
         unsafe { cif.call::<*mut c_void>(CodePtr(fp as *mut c_void), &[arg(&boxed)]) }
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_ffiCallNoReturn(lib_id: u64, fn_name: &RocStr, boxed: *mut c_void) {
+    FFI_LIBS.with(|ffi_libs_local| {
+        let ffi_libs_local = ffi_libs_local.borrow();
+        let lib = ffi_libs_local.get(&lib_id).unwrap();
+
+        let fn_symbol = unsafe { lib.get::<FfiFn>(fn_name.as_bytes()).unwrap() };
+        let fp: FfiFn = *fn_symbol;
+
+        use libffi::middle::{arg, Cif, CodePtr, Type};
+        let cif = Cif::new([Type::pointer(); 1].into_iter(), Type::void());
+
+        unsafe { cif.call::<c_void>(CodePtr(fp as *mut c_void), &[arg(&boxed)]) };
     })
 }
 

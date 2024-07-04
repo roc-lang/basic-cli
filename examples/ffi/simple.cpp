@@ -1,17 +1,6 @@
-#include <limits>
 #include <string>
 
-extern "C" void *roc_alloc(size_t size, uint32_t _alignment);
-
-extern "C" struct RocBox {
-  void *inner;
-};
-
-extern "C" struct RocStr {
-  char *bytes;
-  intptr_t len;
-  intptr_t cap;
-};
+#include "roc_helpers.h"
 
 // Roc passes the box in without ownership.
 // This means roc frees it for us!!!
@@ -29,11 +18,7 @@ extern "C" RocBox say_hi(RocBox b) {
   RocStr msg;
   msg.len = base.size() + input_len;
   msg.cap = msg.len;
-  void *raw_ptr = roc_alloc(msg.len + 8, std::alignment_of<size_t>());
-  msg.bytes = static_cast<char *>(raw_ptr) + 8;
-
-  // Set RC
-  *(static_cast<intptr_t *>(raw_ptr)) = std::numeric_limits<intptr_t>::min();
+  msg.bytes = allocate_with_refcount<char>(msg.len);
 
   for (size_t i = 0; i < base.size(); ++i) {
     msg.bytes[i] = base[i];
@@ -41,13 +26,6 @@ extern "C" RocBox say_hi(RocBox b) {
   for (size_t i = 0; i < input_len; ++i) {
     msg.bytes[base.size() + i] = input_bytes[i];
   }
-  RocBox out;
-  raw_ptr = roc_alloc(sizeof(RocStr) + 8, std::alignment_of<size_t>());
-  // Set RC
-  *(static_cast<intptr_t *>(raw_ptr)) = std::numeric_limits<intptr_t>::min();
-  // Set String
-  *reinterpret_cast<RocStr *>(static_cast<intptr_t *>(raw_ptr) + 1) = msg;
-  out.inner = static_cast<void *>(static_cast<intptr_t *>(raw_ptr) + 1);
 
-  return out;
+  return box_data(msg);
 }
