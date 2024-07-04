@@ -308,6 +308,7 @@ pub fn init() {
         roc_fx_ffiLoad as _,
         roc_fx_ffiClose as _,
         roc_fx_ffiCall as _,
+        roc_fx_ffiResult as _,
         roc_fx_commandStatus as _,
         roc_fx_commandOutput as _,
         roc_fx_dirCreate as _,
@@ -1110,20 +1111,20 @@ fn to_tcp_stream_err(err: std::io::Error) -> RocStr {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-#[repr(C)]
-struct RawStr {
-    bytes: *mut char,
-    len: usize,
-    cap: usize,
-}
-
 #[no_mangle]
 pub extern "C" fn roc_fx_ffiArg(boxed: *const c_void) -> u64 {
     // Some reason, roc only has us borrow the box.
     // Inc refcount to keep it alive.
     unsafe { *((boxed as *mut isize).sub(1)) += 1 };
     boxed as u64
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_ffiResult(raw: u64) -> *const c_void {
+    // Some reason, roc only has us borrow the box.
+    // Inc refcount to keep it alive.
+    // unsafe { *((boxed as *mut isize).sub(1)) += 1 };
+    raw as *const c_void
 }
 
 #[no_mangle]
@@ -1154,7 +1155,7 @@ type FfiFn = unsafe extern "C" fn();
 #[no_mangle]
 // This is super unsafe...but definitely the easiest way to wire up.
 // No types, just send a bunch of boxed data over.
-pub extern "C" fn roc_fx_ffiCall(lib_id: u64, fn_name: &RocStr, args: &RocList<u64>) {
+pub extern "C" fn roc_fx_ffiCall(lib_id: u64, fn_name: &RocStr, args: &RocList<u64>) -> u64 {
     FFI_LIBS.with(|ffi_libs_local| {
         let ffi_libs_local = ffi_libs_local.borrow();
         let lib = ffi_libs_local.get(&lib_id).unwrap();
@@ -1168,12 +1169,14 @@ pub extern "C" fn roc_fx_ffiCall(lib_id: u64, fn_name: &RocStr, args: &RocList<u
         let pointer_types: Vec<Type> = std::iter::repeat(Type::pointer())
             .take(args.len())
             .collect();
-        let cif = Cif::new(pointer_types.into_iter(), Type::void());
+        let cif = Cif::new(pointer_types.into_iter(), Type::pointer());
 
         let pointers: Vec<*mut c_void> = args.into_iter().map(|x| *x as *mut c_void).collect();
         let mapped_args: Vec<Arg> = pointers.iter().map(|x| arg(x)).collect();
-        unsafe { cif.call::<c_void>(CodePtr(fp as *mut c_void), &mapped_args) };
-    });
+        let boxed_out =
+            unsafe { cif.call::<*mut c_void>(CodePtr(fp as *mut c_void), &mapped_args) };
+        boxed_out as u64
+    })
 }
 
 #[repr(C)]

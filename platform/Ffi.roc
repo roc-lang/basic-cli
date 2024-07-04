@@ -1,9 +1,11 @@
 module [
-    Arg,
     Lib,
+    Arg,
+    Res,
     withLib,
-    arg,
     call,
+    arg,
+    result,
 ]
 
 import Effect
@@ -16,6 +18,9 @@ Lib := U64
 ## Represents a function arg.
 Arg := U64
 
+## Represents a function result.
+Res := U64
+
 ## Opens a library for ffi and perform a [Task] with it.
 withLib : Str, (Lib -> Task a err) -> Task a [FfiLoadErr Str, FfiCallErr err]
 withLib = \path, callback ->
@@ -23,7 +28,7 @@ withLib = \path, callback ->
         load path
             |> Task.mapErr! FfiLoadErr
 
-    result =
+    out =
         callback lib
             |> Task.mapErr FfiCallErr
             |> Task.onErr!
@@ -33,7 +38,7 @@ withLib = \path, callback ->
                 )
 
     close lib
-    |> Task.map \_ -> result
+    |> Task.map \_ -> out
 
 load : Str -> Task Lib Str
 load = \path ->
@@ -47,9 +52,10 @@ close = \@Lib lib ->
     |> Effect.map Ok
     |> InternalTask.fromEffect
 
-call : Lib, Str, List Arg -> Task {} *
+call : Lib, Str, List Arg -> Task Res *
 call = \@Lib lib, fnName, args ->
     Effect.ffiCall lib fnName (List.map args \@Arg a -> a)
+    |> Effect.map @Res
     |> Effect.map Ok
     |> InternalTask.fromEffect
     |> Task.onErr \_ -> crash "unreachable"
@@ -60,6 +66,15 @@ arg = \data ->
     |> Box.box
     |> Effect.ffiArg
     |> Effect.map @Arg
+    |> Effect.map Ok
+    |> InternalTask.fromEffect
+    |> Task.onErr \_ -> crash "unreachable"
+
+result : Res -> Task a *
+result = \@Res res ->
+    res
+    |> Effect.ffiResult
+    |> Effect.map Box.unbox
     |> Effect.map Ok
     |> InternalTask.fromEffect
     |> Task.onErr \_ -> crash "unreachable"

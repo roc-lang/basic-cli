@@ -8,7 +8,9 @@ main =
     Ffi.withLib "examples/ffi/simple.module" \lib ->
         Stdout.line! "Loaded Successfully!!!"
         arg = Ffi.arg! "This came from Roc!\n"
-        Stdout.line! "Created Arg!!!\n"
-        Ffi.call! lib "say_hi" [arg]
-        Stdout.line! "Completed!!!"
+        Stdout.line! "Sending Call to over FFI...\n"
+        res = Ffi.call! lib "say_hi" [arg]
+        resStr = Ffi.result! res
+        Stdout.line! "FFI sent this message back:\n"
+        Stdout.line! resStr
 
