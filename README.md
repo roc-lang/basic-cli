@@ -13,3 +13,20 @@ A Roc [platform](https://github.com/roc-lang/roc/wiki/Roc-concepts-explained#pla
   - [0.9.x](https://www.roc-lang.org/packages/basic-cli/0.9.1)
   - [0.8.x](https://www.roc-lang.org/packages/basic-cli/0.8.1)
   - [latest main branch](https://www.roc-lang.org/packages/basic-cli)
+
+## Building the platform
+
+The following diagram shows the steps for `roc build.roc` which build the platform binaries.
+
+![diagram of build process](20240704-basic-cli-build-steps.png)
+
+## Running an example locally
+
+After building the platform, you will now have the prebuilt binaries in the `/platform` directory.
+
+You can now run an example like;
+
+```sh
+$ roc exmaples/hello-world.roc
+Hello, World!
+```
