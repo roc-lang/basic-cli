@@ -563,7 +563,6 @@ fn write_slice(roc_path: &RocList<u8>, bytes: &[u8]) -> RocResult<(), RocStr> {
 }
 
 #[repr(C)]
-// #[derive(Debug)]
 pub struct InternalPathType {
     isDir: bool,
     isFile: bool,
@@ -754,7 +753,6 @@ fn os_str_to_roc_path(os_str: &OsStr) -> RocList<u8> {
 }
 
 #[repr(C)]
-#[derive(Debug)]
 pub struct Request {
     body: RocList<u8>,
     headers: RocList<Header>,
@@ -765,14 +763,12 @@ pub struct Request {
 }
 
 #[repr(C)]
-#[derive(Debug)]
 pub struct Header {
     key: RocStr,
     value: RocStr,
 }
 
 #[repr(C)]
-#[derive(Debug)]
 pub struct Metadata {
     headers: RocList<Header>,
     url: RocStr,
@@ -792,7 +788,6 @@ impl Metadata {
 }
 
 #[repr(C)]
-#[derive(Debug)]
 pub struct InternalResponse {
     body: RocList<u8>,
     metadata: Metadata,
@@ -846,8 +841,6 @@ impl InternalResponse {
 
 #[no_mangle]
 pub extern "C" fn roc_fx_sendRequest(roc_request: &Request) -> InternalResponse {
-    dbg!(&roc_request);
-
     let method = parse_http_method(&roc_request.method.as_str());
     let mut req_builder = hyper::Request::builder()
         .method(method)
@@ -914,8 +907,6 @@ async fn send_request(request: hyper::Request<String>, url: &str) -> InternalRes
 
     let client: Client<_, String> = Client::builder().build(https);
     let res = client.request(request).await;
-
-    dbg!(&res);
 
     match res {
         Ok(response) => {
@@ -1318,7 +1309,6 @@ fn handleDirError(io_err: std::io::Error) -> RocStr {
 }
 
 #[repr(C)]
-#[derive(Debug)]
 pub struct ReturnArchOS {
     arch: RocStr,
     os: RocStr,
