@@ -2,8 +2,8 @@
 #include <cstdint>
 #include <iostream>
 
-#include "vendor/sqlite3.h"
 #include "roc_helpers.h"
+#include "vendor/sqlite3.h"
 
 // Str -> U64
 // path -> pointer to db

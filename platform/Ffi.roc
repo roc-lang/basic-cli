@@ -13,7 +13,7 @@ import InternalTask
 Lib := U64
 
 ## Opens a library for ffi and perform a [Task] with it.
-withLib : Str, (Lib -> Task a err) -> Task a [FfiLoadErr Str, FfiCallErr err]
+withLib : Str, (Lib -> Task a [FfiLoadErr Str]err) -> Task a [FfiLoadErr Str]err
 withLib = \path, callback ->
     lib =
         load path
@@ -21,7 +21,6 @@ withLib = \path, callback ->
 
     out =
         callback lib
-            |> Task.mapErr FfiCallErr
             |> Task.onErr!
                 (\err ->
                     _ = close! lib
@@ -43,17 +42,15 @@ close = \@Lib lib ->
     |> Effect.map Ok
     |> InternalTask.fromEffect
 
-call : Lib, Str, a -> Task b *
+call : Lib, Str, a -> Task b [FfiCallErr Str]
 call = \@Lib lib, fnName, args ->
     Effect.ffiCall lib fnName (Box.box args)
-    |> Effect.map Box.unbox
-    |> Effect.map Ok
     |> InternalTask.fromEffect
-    |> Task.onErr \_ -> crash "unreachable"
+    |> Task.map Box.unbox
+    |> Task.mapErr FfiCallErr
 
-callNoReturn : Lib, Str, a -> Task {} *
+callNoReturn : Lib, Str, a -> Task {} [FfiCallErr Str]
 callNoReturn = \@Lib lib, fnName, args ->
     Effect.ffiCallNoReturn lib fnName (Box.box args)
-    |> Effect.map Ok
     |> InternalTask.fromEffect
-    |> Task.onErr \_ -> crash "unreachable"
+    |> Task.mapErr FfiCallErr

@@ -1146,34 +1146,57 @@ type FfiFn = unsafe extern "C" fn();
 // If we only limit to primitives wrapping in a tag works, but anything complex definitely has to be boxed.
 // So I think the current best bet is to make this take a single box of a record of data.
 // And return a single box of data.... So unsafe...
-pub extern "C" fn roc_fx_ffiCall(lib_id: u64, fn_name: &RocStr, boxed: *mut c_void) -> *mut c_void {
+pub extern "C" fn roc_fx_ffiCall(
+    lib_id: u64,
+    fn_name: &RocStr,
+    boxed: *mut c_void,
+) -> RocResult<*mut c_void, RocStr> {
     FFI_LIBS.with(|ffi_libs_local| {
         let ffi_libs_local = ffi_libs_local.borrow();
-        let lib = ffi_libs_local.get(&lib_id).unwrap();
+        let lib = match ffi_libs_local.get(&lib_id) {
+            Some(lib) => lib,
+            None => return RocResult::err("FFI Library Missing. Was it already closed?".into()),
+        };
 
-        let fn_symbol = unsafe { lib.get::<FfiFn>(fn_name.as_bytes()).unwrap() };
+        let fn_symbol = match unsafe { lib.get::<FfiFn>(fn_name.as_bytes()) } {
+            Ok(sym) => sym,
+            Err(e) => return RocResult::err(e.to_string().as_str().into()),
+        };
         let fp: FfiFn = *fn_symbol;
 
         use libffi::middle::{arg, Cif, CodePtr, Type};
         let cif = Cif::new([Type::pointer(); 1].into_iter(), Type::pointer());
 
-        unsafe { cif.call::<*mut c_void>(CodePtr(fp as *mut c_void), &[arg(&boxed)]) }
+        let out = unsafe { cif.call::<*mut c_void>(CodePtr(fp as *mut c_void), &[arg(&boxed)]) };
+        RocResult::ok(out)
     })
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_ffiCallNoReturn(lib_id: u64, fn_name: &RocStr, boxed: *mut c_void) {
+pub extern "C" fn roc_fx_ffiCallNoReturn(
+    lib_id: u64,
+    fn_name: &RocStr,
+    boxed: *mut c_void,
+) -> RocResult<(), RocStr> {
     FFI_LIBS.with(|ffi_libs_local| {
         let ffi_libs_local = ffi_libs_local.borrow();
-        let lib = ffi_libs_local.get(&lib_id).unwrap();
+        let lib = match ffi_libs_local.get(&lib_id) {
+            Some(lib) => lib,
+            None => return RocResult::err("FFI Library Missing. Was it already closed?".into()),
+        };
 
-        let fn_symbol = unsafe { lib.get::<FfiFn>(fn_name.as_bytes()).unwrap() };
+        let fn_symbol = match unsafe { lib.get::<FfiFn>(fn_name.as_bytes()) } {
+            Ok(sym) => sym,
+            Err(e) => return RocResult::err(e.to_string().as_str().into()),
+        };
         let fp: FfiFn = *fn_symbol;
 
         use libffi::middle::{arg, Cif, CodePtr, Type};
         let cif = Cif::new([Type::pointer(); 1].into_iter(), Type::void());
 
         unsafe { cif.call::<c_void>(CodePtr(fp as *mut c_void), &[arg(&boxed)]) };
+
+        RocResult::ok(())
     })
 }
 
