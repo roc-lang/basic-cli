@@ -98,8 +98,8 @@ tcpWrite : U64, List U8 -> Effect (Result {} Str)
 ffiLoad : Str -> Effect (Result U64 Str)
 ffiClose : U64 -> Effect {}
 # TODO: Error propagation
-ffiCall : U64, Str, (Box a) -> Effect (Result (Box b) Str)
-ffiCallNoReturn : U64, Str, (Box a) -> Effect (Result {} Str)
+ffiCall : U64, Str, Box a -> Effect (Result (Box b) Str)
+ffiCallNoReturn : U64, Str, Box a -> Effect (Result {} Str)
 
 pathType : List U8 -> Effect (Result InternalPath.InternalPathType (List U8))
 

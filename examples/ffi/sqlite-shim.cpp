@@ -42,8 +42,8 @@ extern "C" RocBox open_db(RocBox b) {
 // U64 -> {}
 // pointer to db to nothing
 extern "C" void close_db(RocBox b) {
-  auto* db = static_cast<sqlite3 *>(b.inner);
-  if(int rc = sqlite3_close(db)) {
+  auto *db = reinterpret_cast<sqlite3 *>(*static_cast<uint64_t *>(b.inner));
+  if (int rc = sqlite3_close(db)) {
     // should return an error, failure to close db.
     std::cerr << "Sqlite failed to close db: " << sqlite3_errmsg(db)
               << std::endl;
