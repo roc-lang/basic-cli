@@ -304,11 +304,9 @@ pub fn init() {
         roc_fx_tcpReadExactly as _,
         roc_fx_tcpReadUntil as _,
         roc_fx_tcpWrite as _,
-        roc_fx_ffiArg as _,
         roc_fx_ffiLoad as _,
         roc_fx_ffiClose as _,
         roc_fx_ffiCall as _,
-        roc_fx_ffiResult as _,
         roc_fx_commandStatus as _,
         roc_fx_commandOutput as _,
         roc_fx_dirCreate as _,
@@ -1112,22 +1110,6 @@ fn to_tcp_stream_err(err: std::io::Error) -> RocStr {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_ffiArg(boxed: *const c_void) -> u64 {
-    // Some reason, roc only has us borrow the box.
-    // Inc refcount to keep it alive.
-    unsafe { *((boxed as *mut isize).sub(1)) += 1 };
-    boxed as u64
-}
-
-#[no_mangle]
-pub extern "C" fn roc_fx_ffiResult(raw: u64) -> *const c_void {
-    // Some reason, roc only has us borrow the box.
-    // Inc refcount to keep it alive.
-    // unsafe { *((boxed as *mut isize).sub(1)) += 1 };
-    raw as *const c_void
-}
-
-#[no_mangle]
 pub extern "C" fn roc_fx_ffiLoad(path: &RocStr) -> RocResult<u64, RocStr> {
     let lib = match unsafe { Library::new(path.as_str()) } {
         Ok(lib) => lib,
@@ -1155,7 +1137,15 @@ type FfiFn = unsafe extern "C" fn();
 #[no_mangle]
 // This is super unsafe...but definitely the easiest way to wire up.
 // No types, just send a bunch of boxed data over.
-pub extern "C" fn roc_fx_ffiCall(lib_id: u64, fn_name: &RocStr, args: &RocList<u64>) -> u64 {
+// Technically, we could force the user to pass in side band type info as an arg.
+// Then we could actually pass the data in as the correct type.
+// That said it would still be boxed, we would have not way to guarantee the side band types,
+// and the called function could still have totally different types.
+// So it wouldn't really be any safer.....
+// If we only limit to primitives wrapping in a tag works, but anything complex definitely has to be boxed.
+// So I think the current best bet is to make this take a single box of a record of data.
+// And return a single box of data.... So unsafe...
+pub extern "C" fn roc_fx_ffiCall(lib_id: u64, fn_name: &RocStr, boxed: *mut c_void) -> *mut c_void {
     FFI_LIBS.with(|ffi_libs_local| {
         let ffi_libs_local = ffi_libs_local.borrow();
         let lib = ffi_libs_local.get(&lib_id).unwrap();
@@ -1163,19 +1153,10 @@ pub extern "C" fn roc_fx_ffiCall(lib_id: u64, fn_name: &RocStr, args: &RocList<u
         let fn_symbol = unsafe { lib.get::<FfiFn>(fn_name.as_bytes()).unwrap() };
         let fp: FfiFn = *fn_symbol;
 
-        use libffi::middle::*;
+        use libffi::middle::{arg, Cif, CodePtr, Type};
+        let cif = Cif::new([Type::pointer(); 1].into_iter(), Type::pointer());
 
-        // Map args to ffi types.
-        let pointer_types: Vec<Type> = std::iter::repeat(Type::pointer())
-            .take(args.len())
-            .collect();
-        let cif = Cif::new(pointer_types.into_iter(), Type::pointer());
-
-        let pointers: Vec<*mut c_void> = args.into_iter().map(|x| *x as *mut c_void).collect();
-        let mapped_args: Vec<Arg> = pointers.iter().map(|x| arg(x)).collect();
-        let boxed_out =
-            unsafe { cif.call::<*mut c_void>(CodePtr(fp as *mut c_void), &mapped_args) };
-        boxed_out as u64
+        unsafe { cif.call::<*mut c_void>(CodePtr(fp as *mut c_void), &[arg(&boxed)]) }
     })
 }
 

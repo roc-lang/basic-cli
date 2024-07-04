@@ -1,11 +1,7 @@
 module [
     Lib,
-    Arg,
-    Res,
     withLib,
     call,
-    arg,
-    result,
 ]
 
 import Effect
@@ -14,12 +10,6 @@ import InternalTask
 
 ## Represents a shared library.
 Lib := U64
-
-## Represents a function arg.
-Arg := U64
-
-## Represents a function result.
-Res := U64
 
 ## Opens a library for ffi and perform a [Task] with it.
 withLib : Str, (Lib -> Task a err) -> Task a [FfiLoadErr Str, FfiCallErr err]
@@ -52,30 +42,10 @@ close = \@Lib lib ->
     |> Effect.map Ok
     |> InternalTask.fromEffect
 
-call : Lib, Str, List Arg -> Task Res *
+call : Lib, Str, a -> Task b *
 call = \@Lib lib, fnName, args ->
-    Effect.ffiCall lib fnName (List.map args \@Arg a -> a)
-    |> Effect.map @Res
-    |> Effect.map Ok
-    |> InternalTask.fromEffect
-    |> Task.onErr \_ -> crash "unreachable"
-
-arg : a -> Task Arg *
-arg = \data ->
-    data
-    |> Box.box
-    |> Effect.ffiArg
-    |> Effect.map @Arg
-    |> Effect.map Ok
-    |> InternalTask.fromEffect
-    |> Task.onErr \_ -> crash "unreachable"
-
-result : Res -> Task a *
-result = \@Res res ->
-    res
-    |> Effect.ffiResult
+    Effect.ffiCall lib fnName (Box.box args)
     |> Effect.map Box.unbox
     |> Effect.map Ok
     |> InternalTask.fromEffect
     |> Task.onErr \_ -> crash "unreachable"
-
