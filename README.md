@@ -27,6 +27,6 @@ After building the platform, you will now have the prebuilt binaries in the `/pl
 You can now run an example like;
 
 ```sh
-$ roc exmaples/hello-world.roc
+$ roc examples/hello-world.roc
 Hello, World!
 ```
