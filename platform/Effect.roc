@@ -44,6 +44,7 @@ hosted Effect
         ffiLoad,
         ffiClose,
         ffiCall,
+        ffiArg,
         sleepMillis,
         commandStatus,
         commandOutput,
@@ -88,15 +89,16 @@ cwd : Effect (List U8)
 sendRequest : Box InternalHttp.Request -> Effect InternalHttp.InternalResponse
 
 tcpConnect : Str, U16 -> Effect (Result U64 Str)
-tcpClose : U64 -> Effect (Result {} *)
+tcpClose : U64 -> Effect (Result {} {})
 tcpReadUpTo : U64, U64 -> Effect (Result (List U8) Str)
 tcpReadExactly : U64, U64 -> Effect (Result (List U8) Str)
 tcpReadUntil : U64, U8 -> Effect (Result (List U8) Str)
 tcpWrite : U64, List U8 -> Effect (Result {} Str)
 
-ffiLoad : Str  -> Effect (Result U64 Str)
-ffiClose : U64 -> Effect (Result {} *)
-ffiCall : U64, Str -> Effect (Result {} *)
+ffiLoad : Str -> Effect (Result U64 Str)
+ffiClose : U64 -> Effect {}
+ffiCall : U64, Str, List U64 -> Effect {}
+ffiArg : Box a -> Effect U64
 
 pathType : List U8 -> Effect (Result InternalPath.InternalPathType (List U8))
 

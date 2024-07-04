@@ -4,7 +4,7 @@ use core::alloc::Layout;
 use core::ffi::c_void;
 use core::mem::MaybeUninit;
 use libloading::Library;
-use roc_std::{RocDict, RocList, RocResult, RocStr};
+use roc_std::{RocBox, RocDict, RocList, RocResult, RocStr};
 use std::borrow::{Borrow, Cow};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -304,6 +304,7 @@ pub fn init() {
         roc_fx_tcpReadExactly as _,
         roc_fx_tcpReadUntil as _,
         roc_fx_tcpWrite as _,
+        roc_fx_ffiArg as _,
         roc_fx_ffiLoad as _,
         roc_fx_ffiClose as _,
         roc_fx_ffiCall as _,
@@ -1109,6 +1110,22 @@ fn to_tcp_stream_err(err: std::io::Error) -> RocStr {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+#[repr(C)]
+struct RawStr {
+    bytes: *mut char,
+    len: usize,
+    cap: usize,
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_ffiArg(boxed: *const c_void) -> u64 {
+    // Some reason, roc only has us borrow the box.
+    // Inc refcount to keep it alive.
+    unsafe { *((boxed as *mut isize).sub(1)) += 1 };
+    boxed as u64
+}
+
 #[no_mangle]
 pub extern "C" fn roc_fx_ffiLoad(path: &RocStr) -> RocResult<u64, RocStr> {
     let lib = match unsafe { Library::new(path.as_str()) } {
@@ -1126,19 +1143,18 @@ pub extern "C" fn roc_fx_ffiLoad(path: &RocStr) -> RocResult<u64, RocStr> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_ffiClose(lib_id: u64) -> RocResult<(), ()> {
+pub extern "C" fn roc_fx_ffiClose(lib_id: u64) {
     FFI_LIBS.with(|ffi_libs_local| {
         ffi_libs_local.borrow_mut().remove(&lib_id);
     });
-
-    RocResult::ok(())
 }
 
 type FfiFn = unsafe extern "C" fn();
 
 #[no_mangle]
-// TODO: wire in type specific and returning data
-pub extern "C" fn roc_fx_ffiCall(lib_id: u64, fn_name: &RocStr) -> RocResult<(), ()> {
+// This is super unsafe...but definitely the easiest way to wire up.
+// No types, just send a bunch of boxed data over.
+pub extern "C" fn roc_fx_ffiCall(lib_id: u64, fn_name: &RocStr, args: &RocList<u64>) {
     FFI_LIBS.with(|ffi_libs_local| {
         let ffi_libs_local = ffi_libs_local.borrow();
         let lib = ffi_libs_local.get(&lib_id).unwrap();
@@ -1149,13 +1165,15 @@ pub extern "C" fn roc_fx_ffiCall(lib_id: u64, fn_name: &RocStr) -> RocResult<(),
         use libffi::middle::*;
 
         // Map args to ffi types.
-        // let args = vec![Type::f64(), Type::pointer()];
-        let cif = Cif::new([].into_iter(), Type::void());
+        let pointer_types: Vec<Type> = std::iter::repeat(Type::pointer())
+            .take(args.len())
+            .collect();
+        let cif = Cif::new(pointer_types.into_iter(), Type::void());
 
-        unsafe { cif.call::<c_void>(CodePtr(fp as *mut c_void), &[]) };
+        let pointers: Vec<*mut c_void> = args.into_iter().map(|x| *x as *mut c_void).collect();
+        let mapped_args: Vec<Arg> = pointers.iter().map(|x| arg(x)).collect();
+        unsafe { cif.call::<c_void>(CodePtr(fp as *mut c_void), &mapped_args) };
     });
-
-    RocResult::ok(())
 }
 
 #[repr(C)]

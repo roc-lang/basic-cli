@@ -1,6 +1,8 @@
 module [
+    Arg,
     Lib,
     withLib,
+    arg,
     call,
 ]
 
@@ -11,12 +13,15 @@ import InternalTask
 ## Represents a shared library.
 Lib := U64
 
+## Represents a function arg.
+Arg := U64
+
 ## Opens a library for ffi and perform a [Task] with it.
 withLib : Str, (Lib -> Task a err) -> Task a [FfiLoadErr Str, FfiCallErr err]
 withLib = \path, callback ->
     lib =
         load path
-        |> Task.mapErr! FfiLoadErr
+            |> Task.mapErr! FfiLoadErr
 
     result =
         callback lib
@@ -33,19 +38,29 @@ withLib = \path, callback ->
 load : Str -> Task Lib Str
 load = \path ->
     Effect.ffiLoad path
-    |> Effect.map \res ->
-        res
-        |> Result.map @Lib
     |> InternalTask.fromEffect
+    |> Task.map @Lib
 
 close : Lib -> Task {} *
 close = \@Lib lib ->
     Effect.ffiClose lib
+    |> Effect.map Ok
     |> InternalTask.fromEffect
 
-call : Lib, Str -> Task {} *
-call = \@Lib lib, fnName ->
-    Effect.ffiCall lib fnName
+call : Lib, Str, List Arg -> Task {} *
+call = \@Lib lib, fnName, args ->
+    Effect.ffiCall lib fnName (List.map args \@Arg a -> a)
+    |> Effect.map Ok
     |> InternalTask.fromEffect
-    # Types are broken and this fixes it...
-    |> Task.onErr \_ -> Task.ok {}
+    |> Task.onErr \_ -> crash "unreachable"
+
+arg : a -> Task Arg *
+arg = \data ->
+    data
+    |> Box.box
+    |> Effect.ffiArg
+    |> Effect.map @Arg
+    |> Effect.map Ok
+    |> InternalTask.fromEffect
+    |> Task.onErr \_ -> crash "unreachable"
+

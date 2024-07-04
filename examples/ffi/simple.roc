@@ -7,6 +7,8 @@ import pf.Task exposing [Task]
 main =
     Ffi.withLib "examples/ffi/simple.module" \lib ->
         Stdout.line! "Loaded Successfully!!!"
-        Ffi.call! lib "say_hi"
+        arg = Ffi.arg! "This came from Roc!\n"
+        Stdout.line! "Created Arg!!!\n"
+        Ffi.call! lib "say_hi" [arg]
         Stdout.line! "Completed!!!"
 
