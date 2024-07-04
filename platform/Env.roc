@@ -9,7 +9,9 @@ import PlatformTask
 ## from the environment. File operations on relative [Path]s are relative to this directory.
 cwd : Task Path [CwdUnavailable]
 cwd =
-    bytes = PlatformTask.cwd!
+    bytes = PlatformTask.cwd
+        |> Task.result!
+        |> Result.withDefault []
 
     if List.isEmpty bytes then
         Task.err CwdUnavailable
@@ -81,8 +83,12 @@ decode = \name ->
 ##
 ## If any key or value contains invalid Unicode, the [Unicode replacement character](https://unicode.org/glossary/#replacement_character)
 ## will be used in place of any parts of keys or values that are invalid Unicode.
-dict : Task (Dict Str Str) *
-dict = PlatformTask.envDict
+dict : Task (Dict Str Str) []_
+dict =
+    PlatformTask.envDict
+        |> Task.result!
+        |> Result.withDefault (Dict.empty {})
+        |> Task.ok
 
 # ## Walks over the process's environment variables as key-value arguments to the walking function.
 # ##
@@ -127,9 +133,13 @@ OS : [LINUX, MACOS, WINDOWS, OTHER Str]
 ##
 ## Note these values are constants from when the platform is built.
 ##
-platform : Task { arch : ARCH, os : OS } *
+platform : Task { arch : ARCH, os : OS } []_
 platform =
-    fromRust = PlatformTask.currentArchOS!
+    fromRust =
+        PlatformTask.currentArchOS
+            |> Task.result!
+            |> Result.withDefault { arch: "", os: "" }
+
     arch =
         when fromRust.arch is
             "x86" -> X86

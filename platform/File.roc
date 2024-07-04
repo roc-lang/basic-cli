@@ -19,9 +19,8 @@ module [
 ]
 
 import Path exposing [Path, MetadataErr]
-import Effect
-import InternalTask
 import InternalFile
+import PlatformTask
 
 ## Tag union of possible errors when reading a file or directory.
 ##
@@ -188,7 +187,6 @@ type : Str -> Task [IsFile, IsDir, IsSymLink] [PathErr MetadataErr]
 type = \path ->
     Path.type (Path.fromStr path)
 
-
 FileReader := {readerID: U64, path: Path}
 
 ## Try to create a `FileReader` for buffered (= part by part) reading given a path string.
@@ -200,13 +198,13 @@ FileReader := {readerID: U64, path: Path}
 getFileReader : Str -> Task FileReader [GetFileReadErr Path ReadErr]
 getFileReader = \pathStr ->
     path = Path.fromStr pathStr
+    result =
+        PlatformTask.fileReader (Str.toUtf8 pathStr)
+            |> Task.result!
 
-    Effect.fileReader (Str.toUtf8 pathStr)
-    |> Effect.map \result ->
-        when result is
-            Ok readerID -> Ok (@FileReader {readerID, path})
-            Err err -> Err (GetFileReadErr path (InternalFile.handleReadErr err))
-    |> InternalTask.fromEffect
+    when result is
+        Ok readerID -> Task.ok (@FileReader { readerID, path })
+        Err err -> Task.err (GetFileReadErr path (InternalFile.handleReadErr err))
 
 ## Try to read a line from a file given a FileReader.
 ## The line will be provided as the list of bytes (`List U8`) until a newline (`0xA` byte).
@@ -217,22 +215,17 @@ getFileReader = \pathStr ->
 ##
 ## Use [readUtf8] if you want to get the entire file contents at once.
 readLine : FileReader -> Task (List U8) [FileReadErr Path Str]
-readLine = \@FileReader {readerID, path} ->
-
-    Effect.fileReadLine readerID
-    |> Effect.map \result ->
-        when result is
-            Ok bytes -> Ok bytes
-            Err err -> Err (FileReadErr path err)
-    |> InternalTask.fromEffect
+readLine = \@FileReader { readerID, path } ->
+    PlatformTask.fileReadLine readerID
+        |> Task.mapErr \err -> FileReadErr path err
 
 ## Close the file that was opened when creating the FileReader.
 ## [Why you should close files.](https://stackoverflow.com/a/29536383)
 ##
 ## Calling [File.readLine] after the FileReader is closed will return an empty list.
 closeFileReader : FileReader -> Task {} *
-closeFileReader = \@FileReader {readerID} ->
-
-    Effect.closeFile readerID
-    |> Effect.map Ok
-    |> InternalTask.fromEffect
+closeFileReader = \@FileReader { readerID } ->
+    PlatformTask.closeFile readerID
+        |> Task.result!
+        |> Result.withDefault {}
+        |> Task.ok

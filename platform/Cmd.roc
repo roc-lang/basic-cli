@@ -130,15 +130,18 @@ clearEnvs = \@Cmd cmd ->
 ##
 output : Cmd -> Task Output [CmdOutputError (Output, Err)]
 output = \@Cmd cmd ->
-    internalOutput = PlatformTask.commandOutput! (Box.box cmd)
-    out = {
-        stdout: internalOutput.stdout,
-        stderr: internalOutput.stderr,
-    }
+    when PlatformTask.commandOutput (Box.box cmd) |> Task.result! is
+        Err {} -> crash "Failed to get command output from host"
 
-    when internalOutput.status is
-        Ok {} -> Task.ok out
-        Err bytes -> Task.err (CmdOutputError (out, InternalCommand.handleCommandErr bytes))
+        Ok internalOutput ->
+            out = {
+                stdout: internalOutput.stdout,
+                stderr: internalOutput.stderr,
+            }
+
+            when internalOutput.status is
+                Ok {} -> Task.ok out
+                Err bytes -> Task.err (CmdOutputError (out, InternalCommand.handleCommandErr bytes))
 
 ## Execute command and inherit stdin, stdout and stderr from parent
 ##
@@ -146,7 +149,7 @@ status : Cmd -> Task {} [CmdError Err]
 status = \@Cmd cmd ->
     PlatformTask.commandStatus (Box.box cmd)
     |> Task.mapErr \bytes ->
-        Err (CmdError (InternalCommand.handleCommandErr bytes))
+        CmdError (InternalCommand.handleCommandErr bytes)
 
 ## Execute command and inherit stdin, stdout and stderr from parent
 ##

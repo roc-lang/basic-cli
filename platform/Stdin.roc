@@ -63,5 +63,9 @@ line =
 ## > This is typically used in combintation with [Tty.enableRawMode],
 ## which disables defaults terminal bevahiour and allows reading input
 ## without buffering until Enter key is pressed.
-bytes : Task (List U8) *
-bytes = PlatformTask.stdinBytes
+bytes : Task (List U8) []_
+bytes =
+    PlatformTask.stdinBytes
+        |> Task.result!
+        |> Result.withDefault []
+        |> Task.ok

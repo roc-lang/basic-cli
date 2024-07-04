@@ -150,7 +150,7 @@ writeBytes : Path, List U8 -> Task {} [FileWriteErr Path WriteErr]
 writeBytes = \path, bytes ->
     pathBytes = InternalPath.toBytes path
     PlatformTask.fileWriteBytes pathBytes bytes
-    |> Task.mapErr \err -> FileWriteErr path err
+    |> Task.mapErr \err -> FileWriteErr path (InternalFile.handleWriteErr err)
 
 ## Writes a [Str] to a file, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##
@@ -166,7 +166,7 @@ writeUtf8 : Path, Str -> Task {} [FileWriteErr Path WriteErr]
 writeUtf8 = \path, str ->
     pathBytes = InternalPath.toBytes path
     PlatformTask.fileWriteUtf8 pathBytes str
-    |> Task.mapErr \err -> FileWriteErr path err
+    |> Task.mapErr \err -> FileWriteErr path (InternalFile.handleWriteErr err)
 
 ## Represents an error that can happen when canonicalizing a path.
 # CanonicalizeErr a : [
@@ -423,7 +423,7 @@ display = \path ->
 ## > [`File.isDir`](File#isDir) does the same thing, except it takes a [Str] instead of a [Path].
 isDir : Path -> Task Bool [PathErr MetadataErr]
 isDir = \path ->
-    res <- type path |> Task.await
+    res = type! path
     Task.ok (res == IsDir)
 
 ## Returns true if the path exists on disk and is pointing at a regular file.
@@ -433,7 +433,7 @@ isDir = \path ->
 ## > [`File.isFile`](File#isFile) does the same thing, except it takes a [Str] instead of a [Path].
 isFile : Path -> Task Bool [PathErr MetadataErr]
 isFile = \path ->
-    res <- type path |> Task.await
+    res = type! path
     Task.ok (res == IsFile)
 
 ## Returns true if the path exists on disk and is pointing at a symbolic link.
@@ -442,7 +442,7 @@ isFile = \path ->
 ## > [`File.isSymLink`](File#isSymLink) does the same thing, except it takes a [Str] instead of a [Path].
 isSymLink : Path -> Task Bool [PathErr MetadataErr]
 isSymLink = \path ->
-    res <- type path |> Task.await
+    res = type! path
     Task.ok (res == IsSymLink)
 
 ## Return the type of the path if the path exists on disk.
@@ -452,7 +452,7 @@ type : Path -> Task [IsFile, IsDir, IsSymLink] [PathErr MetadataErr]
 type = \path ->
     InternalPath.toBytes path
     |> PlatformTask.pathType
-    |> Task.mapErr PathErr
+    |> Task.mapErr \err -> PathErr (InternalPath.handlerGetMetadataErr err)
     |> Task.map \pathType ->
         if pathType.isSymLink then
             IsSymLink
@@ -526,7 +526,7 @@ delete : Path -> Task {} [FileWriteErr Path WriteErr]
 delete = \path ->
     pathBytes = InternalPath.toBytes path
     PlatformTask.fileDelete pathBytes
-    |> Task.mapErr \err -> FileWriteErr path err
+    |> Task.mapErr \err -> FileWriteErr path (InternalFile.handleWriteErr err)
 
 # read : Path, fmt -> Task contents [FileReadErr Path ReadErr, FileReadDecodingFailed] where contents implements Decoding, fmt implements DecoderFormatting
 # read = \path, fmt ->
@@ -585,7 +585,7 @@ readBytes : Path -> Task (List U8) [FileReadErr Path ReadErr]
 readBytes = \path ->
     pathBytes = InternalPath.toBytes path
     PlatformTask.fileReadBytes pathBytes
-    |> Task.mapErr \err -> FileReadErr path err
+    |> Task.mapErr \err -> FileReadErr path (InternalFile.handleReadErr err)
 
 ## Lists the files and directories inside the directory.
 ##
@@ -658,25 +658,6 @@ createAll = \path ->
     InternalPath.toBytes path
     |> PlatformTask.dirCreateAll
     |> Task.mapErr handleErr
-
-# <<<<<<< HEAD
-# # There are other errors which may be useful, however they are currently unstable
-# =======
-# toWriteTask : Path, (List U8 -> Effect (Result ok Str)) -> Task ok [FileWriteErr Path WriteErr]
-# toWriteTask = \path, toEffect ->
-#     InternalPath.toBytes path
-#     |> toEffect
-#     |> InternalTask.fromEffect
-#     |> Task.mapErr \err -> FileWriteErr path (InternalFile.handleWriteErr err)
-
-# toReadTask : Path, (List U8 -> Effect (Result ok Str)) -> Task ok [FileReadErr Path ReadErr]
-# toReadTask = \path, toEffect ->
-#     InternalPath.toBytes path
-#     |> toEffect
-#     |> InternalTask.fromEffect
-#     |> Task.mapErr \err -> FileReadErr path (InternalFile.handleReadErr err)
-
-# >>>>>>> main
 
 # There are othe errors which may be useful, however they are currently unstable
 # features see https://github.com/rust-lang/rust/issues/86442

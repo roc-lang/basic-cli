@@ -119,48 +119,52 @@ errorToString = \err ->
 ## ```
 send : Request -> Task Response [HttpErr Err]
 send = \req ->
-    internalReq : InternalHttp.Request
-    internalReq = {
-        method : InternalHttp.methodToStr req.method,
-        headers : req.headers,
-        url : req.url,
-        mimeType : req.mimeType,
-        body : req.body,
-        timeoutMs : when req.timeout is
+    timeoutMs =
+        when req.timeout is
             NoTimeout -> 0
             TimeoutMilliseconds ms -> ms
+
+    internalRequest : InternalHttp.Request
+    internalRequest = {
+        method: InternalHttp.methodToStr req.method,
+        headers: req.headers,
+        url: req.url,
+        mimeType: req.mimeType,
+        body: req.body,
+        timeoutMs,
     }
 
     # TODO: Fix our C ABI codegen so that we don't this Box.box heap allocation
-    { variant, body, metadata } = PlatformTask.sendRequest! (Box.box req)
+    when PlatformTask.sendRequest (Box.box internalRequest) |> Task.result! is
+        Err {} -> crash "Failed to decode response data from host"
+        Ok { variant, body, metadata } ->
+            responseResult =
+                when variant is
+                    "Timeout" -> Err (Timeout timeoutMs)
+                    "NetworkErr" -> Err NetworkError
+                    "BadStatus" ->
+                        Err
+                            (
+                                BadStatus {
+                                    code: metadata.statusCode,
+                                    body: errorBodyFromUtf8 body,
+                                }
+                            )
 
-    responseResult =
-        when variant is
-            "Timeout" -> Err (Timeout internalReq.timeoutMs)
-            "NetworkErr" -> Err NetworkError
-            "BadStatus" ->
-                Err
-                    (
-                        BadStatus {
-                            code: metadata.statusCode,
-                            body: errorBodyFromUtf8 body,
+                    "GoodStatus" ->
+                        Ok {
+                            url: metadata.url,
+                            statusCode: metadata.statusCode,
+                            statusText: metadata.statusText,
+                            headers: metadata.headers,
+                            body,
                         }
-                    )
 
-            "GoodStatus" ->
-                Ok {
-                    url: metadata.url,
-                    statusCode: metadata.statusCode,
-                    statusText: metadata.statusText,
-                    headers: metadata.headers,
-                    body,
-                }
+                    "BadRequest" | _other -> Err (BadRequest metadata.statusText)
 
-            "BadRequest" | _other -> Err (BadRequest metadata.statusText)
-
-    responseResult
-    |> Result.mapErr HttpErr
-    |> Task.fromResult
+            responseResult
+            |> Result.mapErr HttpErr
+            |> Task.fromResult
 
 ## Try to perform an HTTP get request and convert (decode) the received bytes into a Roc type.
 ## Very useful for working with Json.

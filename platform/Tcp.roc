@@ -13,7 +13,6 @@ module [
     streamErrToStr,
 ]
 
-import InternalTcp
 import PlatformTask
 
 unexpectedEofErrorMessage = "UnexpectedEof"
@@ -89,7 +88,6 @@ withConnect = \hostname, port, callback ->
     stream =
         connect hostname port
             |> Task.mapErr! TcpConnectErr
-
     result =
         callback stream
             |> Task.mapErr TcpPerformErr
@@ -100,12 +98,16 @@ withConnect = \hostname, port, callback ->
 
 connect : Str, U16 -> Task Stream ConnectErr
 connect = \host, port ->
-    PlatformTask.tcpConnect! host port
-        |> Result.mapErr InternalTcp.parseConnectErr
-        |> Task.fromResult
+    PlatformTask.tcpConnect host port
+        |> Task.map @Stream
+        |> Task.mapErr! parseConnectErr
 
-close : Stream -> Task {} *
-close = PlatformTask.tcpClose
+close : Stream -> Task {} []_
+close = \@Stream stream ->
+    PlatformTask.tcpClose stream
+        |> Task.result!
+        |> Result.withDefault {}
+        |> Task.ok
 
 ## Read up to a number of bytes from the TCP stream.
 ##
@@ -118,10 +120,8 @@ close = PlatformTask.tcpClose
 ## > To read an exact number of bytes or fail, you can use [Tcp.readExactly] instead.
 readUpTo : Stream, U64 -> Task (List U8) [TcpReadErr StreamErr]
 readUpTo = \@Stream stream, bytesToRead ->
-    PlatformTask.tcpReadUpTo! stream bytesToRead
-        |> Result.mapErr InternalTcp.parseStreamErr
-        |> Result.mapErr TcpReadErr
-        |> Task.fromResult
+    PlatformTask.tcpReadUpTo stream bytesToRead
+        |> Task.mapErr \err -> TcpReadErr (parseStreamErr err)
 
 ## Read an exact number of bytes or fail.
 ##
@@ -153,10 +153,8 @@ readExactly = \@Stream stream, bytesToRead ->
 ## conveniently decodes to a [Str].
 readUntil : Stream, U8 -> Task (List U8) [TcpReadErr StreamErr]
 readUntil = \@Stream stream, byte ->
-    PlatformTask.tcpReadUntil! stream byte
-    |> Result.mapErr InternalTcp.parseStreamErr
-    |> Result.mapErr TcpReadErr
-    |> Task.fromResult
+    PlatformTask.tcpReadUntil stream byte
+        |> Task.mapErr! \err -> TcpReadErr (parseStreamErr err)
 
 ## Read until a newline or EOF is reached.
 ##
@@ -186,10 +184,8 @@ readLine = \stream ->
 ## > To write a [Str], you can use [Tcp.writeUtf8] instead.
 write : Stream, List U8 -> Task {} [TcpWriteErr StreamErr]
 write = \@Stream stream, bytes ->
-    PlatformTask.tcpWrite! stream bytes
-    |> Result.mapErr InternalTcp.parseStreamErr
-    |> Result.mapErr TcpWriteErr
-    |> Task.fromResult
+    PlatformTask.tcpWrite stream bytes
+        |> Task.mapErr! \err -> TcpWriteErr (parseStreamErr err)
 
 ## Writes a [Str] to a TCP stream, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##

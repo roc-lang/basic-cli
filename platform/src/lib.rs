@@ -4,7 +4,6 @@ use core::alloc::Layout;
 use core::ffi::c_void;
 use core::mem::MaybeUninit;
 use roc_std::{RocDict, RocList, RocResult, RocStr};
-use tokio::runtime::Runtime;
 use std::borrow::{Borrow, Cow};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -16,6 +15,7 @@ use std::path::Path;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use tokio::runtime::Runtime;
 
 trait CustomBuffered: BufRead + Read + Seek {}
 
@@ -26,14 +26,14 @@ type CustomReader = Rc<RefCell<Box<dyn CustomBuffered>>>;
 type ReaderMap = HashMap<u64, CustomReader>;
 
 thread_local! {
-    static READERS: RefCell<ReaderMap> = RefCell::new(HashMap::new());
-    static TCP_STREAMS: RefCell<HashMap<u64, BufReader<TcpStream>>> = RefCell::new(HashMap::new());
-    static TOKIO_RUNTIME: Runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_io()
-        .enable_time()
-        .build()
-        .unwrap();
- }
+   static READERS: RefCell<ReaderMap> = RefCell::new(HashMap::new());
+   static TCP_STREAMS: RefCell<HashMap<u64, BufReader<TcpStream>>> = RefCell::new(HashMap::new());
+   static TOKIO_RUNTIME: Runtime = tokio::runtime::Builder::new_current_thread()
+       .enable_io()
+       .enable_time()
+       .build()
+       .unwrap();
+}
 
 static READER_INDEX: AtomicU64 = AtomicU64::new(42);
 static TCP_STREAM_INDEX: AtomicU64 = AtomicU64::new(0);
@@ -754,6 +754,7 @@ fn os_str_to_roc_path(os_str: &OsStr) -> RocList<u8> {
 }
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct Request {
     body: RocList<u8>,
     headers: RocList<Header>,
@@ -764,12 +765,14 @@ pub struct Request {
 }
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct Header {
     key: RocStr,
     value: RocStr,
 }
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct Metadata {
     headers: RocList<Header>,
     url: RocStr,
@@ -789,6 +792,7 @@ impl Metadata {
 }
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct InternalResponse {
     body: RocList<u8>,
     metadata: Metadata,
@@ -799,7 +803,10 @@ impl InternalResponse {
     fn bad_request(error: &str) -> InternalResponse {
         InternalResponse {
             variant: "BadRequest".into(),
-            metadata: Metadata { statusText: RocStr::from(error), ..Metadata::empty() },
+            metadata: Metadata {
+                statusText: RocStr::from(error),
+                ..Metadata::empty()
+            },
             body: RocList::empty(),
         }
     }
@@ -829,7 +836,7 @@ impl InternalResponse {
     }
 
     fn network_error() -> InternalResponse {
-        InternalResponse { 
+        InternalResponse {
             variant: "NetworkError".into(),
             metadata: Metadata::empty(),
             body: RocList::empty(),
@@ -839,6 +846,8 @@ impl InternalResponse {
 
 #[no_mangle]
 pub extern "C" fn roc_fx_sendRequest(roc_request: &Request) -> InternalResponse {
+    dbg!(&roc_request);
+
     let method = parse_http_method(&roc_request.method.as_str());
     let mut req_builder = hyper::Request::builder()
         .method(method)
@@ -868,13 +877,13 @@ pub extern "C" fn roc_fx_sendRequest(roc_request: &Request) -> InternalResponse 
         let time_limit = Duration::from_millis(roc_request.timeoutMs);
 
         TOKIO_RUNTIME.with(|rt| {
-            rt.block_on(async { tokio::time::timeout(time_limit, send_request(request, &roc_request.url)).await })
-                .unwrap_or_else(|_err| InternalResponse::timeout())
+            rt.block_on(async {
+                tokio::time::timeout(time_limit, send_request(request, &roc_request.url)).await
+            })
+            .unwrap_or_else(|_err| InternalResponse::timeout())
         })
     } else {
-        TOKIO_RUNTIME.with(|rt| {
-            rt.block_on(send_request(request, &roc_request.url))
-        })
+        TOKIO_RUNTIME.with(|rt| rt.block_on(send_request(request, &roc_request.url)))
     }
 }
 
@@ -889,7 +898,7 @@ fn parse_http_method(method: &str) -> hyper::Method {
         "Post" => hyper::Method::POST,
         "Put" => hyper::Method::PUT,
         "Trace" => hyper::Method::TRACE,
-        _other => unreachable!("Should only pass known HTTP methods from Roc side")
+        _other => unreachable!("Should only pass known HTTP methods from Roc side"),
     }
 }
 
@@ -906,16 +915,16 @@ async fn send_request(request: hyper::Request<String>, url: &str) -> InternalRes
     let client: Client<_, String> = Client::builder().build(https);
     let res = client.request(request).await;
 
+    dbg!(&res);
+
     match res {
         Ok(response) => {
             let status = response.status();
             let status_str = status.canonical_reason().unwrap_or_else(|| status.as_str());
 
-            let headers_iter = response.headers().iter().map(|(name, value)| {
-                Header {
-                    key: RocStr::from(name.as_str()),
-                    value: RocStr::from(value.to_str().unwrap_or_default()),
-                }
+            let headers_iter = response.headers().iter().map(|(name, value)| Header {
+                key: RocStr::from(name.as_str()),
+                value: RocStr::from(value.to_str().unwrap_or_default()),
             });
 
             let metadata = Metadata {
@@ -929,9 +938,9 @@ async fn send_request(request: hyper::Request<String>, url: &str) -> InternalRes
             let body: RocList<u8> = RocList::from_iter(bytes);
 
             if status.is_success() {
-                return InternalResponse::good_status(metadata, body);
+                InternalResponse::good_status(metadata, body)
             } else {
-                return InternalResponse::bad_status(metadata, body);
+                InternalResponse::bad_status(metadata, body)
             }
         }
         Err(err) => {
@@ -979,10 +988,7 @@ fn toRocGetMetadataError(err: std::io::Error) -> RocList<u8> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpConnect(
-    host: &RocStr,
-    port: u16,
-) -> RocResult<u64, RocStr> {
+pub extern "C" fn roc_fx_tcpConnect(host: &RocStr, port: u16) -> RocResult<u64, RocStr> {
     let stream = match TcpStream::connect((host.as_str(), port)) {
         Ok(stream) => stream,
         Err(err) => return RocResult::err(to_tcp_connect_err(err)),
@@ -1060,10 +1066,7 @@ pub extern "C" fn roc_fx_tcpReadExactly(
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpReadUntil(
-    stream_id: u64,
-    byte: u8,
-) -> RocResult<RocList<u8>, RocStr> {
+pub extern "C" fn roc_fx_tcpReadUntil(stream_id: u64, byte: u8) -> RocResult<RocList<u8>, RocStr> {
     TCP_STREAMS.with(|tcp_streams_local| {
         let mut streams_mut = tcp_streams_local.borrow_mut();
         let Some(stream) = streams_mut.get_mut(&stream_id) else {
@@ -1079,10 +1082,7 @@ pub extern "C" fn roc_fx_tcpReadUntil(
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpWrite(
-    stream_id: u64,
-    msg: &RocList<u8>,
-) -> RocResult<(), RocStr> {
+pub extern "C" fn roc_fx_tcpWrite(stream_id: u64, msg: &RocList<u8>) -> RocResult<(), RocStr> {
     TCP_STREAMS.with(|tcp_streams_local| {
         let mut streams_mut = tcp_streams_local.borrow_mut();
         let Some(stream) = streams_mut.get_mut(&stream_id) else {
@@ -1261,7 +1261,7 @@ pub extern "C" fn roc_fx_commandOutput(roc_cmd: &Command) -> CommandOutput {
             status: commandStatusOtherError(err),
             stdout: RocList::empty(),
             stderr: RocList::empty(),
-        }
+        },
     }
 }
 

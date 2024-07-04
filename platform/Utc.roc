@@ -15,11 +15,15 @@ import PlatformTask
 Utc := I128 implements [Inspect]
 
 ## Duration since UNIX EPOCH
-now : Task Utc *
+now : Task Utc []_
 now =
-    PlatformTask.posixTime
-    |> Task.map Num.toI128
-    |> Task.map @Utc
+    currentEpoch =
+        PlatformTask.posixTime
+            |> Task.result!
+            |> Result.withDefault 0
+            |> Num.toI128
+
+    Task.ok (@Utc currentEpoch)
 
 # Constant number of nanoseconds in a millisecond
 nanosPerMilli = 1_000_000

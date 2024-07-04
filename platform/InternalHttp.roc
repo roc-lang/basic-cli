@@ -44,9 +44,9 @@ Header : {
 }
 
 InternalResponse : {
-    variant : Str,
-    metadata : Metadata,
     body : List U8,
+    metadata : Metadata,
+    variant : Str,
 }
 
 Metadata : {
