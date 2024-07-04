@@ -29,5 +29,7 @@ hyper = { version = "=0.14.27", default-features = false, features = ["http1", "
 hyper-rustls = { version = "=0.24.2", default-features = false, features = ["http1", "tls12", "native-tokio"]}
 tokio = { version = "=1.31.0", default-features = false}
 crossterm = "=0.27.0"
+libloading = "=0.8.4"
+libffi = "=3.2.0"
 
 [workspace]

@@ -41,6 +41,9 @@ hosted Effect
         tcpReadExactly,
         tcpReadUntil,
         tcpWrite,
+        ffiLoad,
+        ffiClose,
+        ffiCall,
         sleepMillis,
         commandStatus,
         commandOutput,
@@ -90,6 +93,10 @@ tcpReadUpTo : U64, U64 -> Effect (Result (List U8) Str)
 tcpReadExactly : U64, U64 -> Effect (Result (List U8) Str)
 tcpReadUntil : U64, U8 -> Effect (Result (List U8) Str)
 tcpWrite : U64, List U8 -> Effect (Result {} Str)
+
+ffiLoad : Str  -> Effect (Result U64 Str)
+ffiClose : U64 -> Effect (Result {} *)
+ffiCall : U64, Str -> Effect (Result {} *)
 
 pathType : List U8 -> Effect (Result InternalPath.InternalPathType (List U8))
 
