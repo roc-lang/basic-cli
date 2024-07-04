@@ -2,7 +2,6 @@
 #include <string>
 
 extern "C" void *roc_alloc(size_t size, uint32_t _alignment);
-extern "C" void roc_dealloc(void *ptr, uint32_t _alignment);
 
 extern "C" struct RocBox {
   void *inner;
@@ -14,6 +13,8 @@ extern "C" struct RocStr {
   intptr_t cap;
 };
 
+// Roc passes the box in without ownership.
+// This means roc frees it for us!!!
 extern "C" RocBox say_hi(RocBox b) {
   auto str = *(static_cast<RocStr *>(b.inner));
   char *input_bytes = str.bytes;
@@ -47,9 +48,6 @@ extern "C" RocBox say_hi(RocBox b) {
   // Set String
   *reinterpret_cast<RocStr *>(static_cast<intptr_t *>(raw_ptr) + 1) = msg;
   out.inner = static_cast<void *>(static_cast<intptr_t *>(raw_ptr) + 1);
-
-  // TODO: Refcounting and real inner string freeing.
-  roc_dealloc(static_cast<size_t *>(b.inner) - 1, std::alignment_of<size_t>());
 
   return out;
 }
