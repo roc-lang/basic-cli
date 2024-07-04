@@ -25,6 +25,7 @@ extern "C" RocBox open_db(RocBox b) {
   char bytes[256];
   for (size_t i = 0; i < path_len; ++i)
     bytes[i] = path_bytes[i];
+  bytes[path_len] = 0;
 
   sqlite3 *db;
   if (int rc = sqlite3_open(bytes, &db)) {
