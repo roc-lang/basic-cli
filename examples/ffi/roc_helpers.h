@@ -49,6 +49,8 @@ template <typename T> RocBox box_data(T t) {
   return out;
 }
 
+inline bool roc_str_is_small(const RocStr &str) { return str.cap < 0; }
+
 inline std::string_view roc_str_view(RocStr *str) {
   char *path_bytes = str->bytes;
   size_t path_len = str->len;

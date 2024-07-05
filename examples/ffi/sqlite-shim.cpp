@@ -92,11 +92,7 @@ extern "C" struct SqlVal {
   uint8_t tag;
 };
 
-// (U64, U64, List (Str, SqlVal)) -> List (List SqlVal)
-extern "C" RocBox execute_stmt(RocBox b) {
-  auto [db, stmt, bindings] =
-      *static_cast<std::tuple<sqlite3 *, sqlite3_stmt *, RocList> *>(b.inner);
-
+void bind_params(sqlite3 *db, sqlite3_stmt *stmt, RocList bindings) {
   // Loop through bindings and add them.
   auto binding_ptr = static_cast<std::tuple<RocStr, SqlVal> *>(bindings.ptr);
   for (size_t i = 0; i < bindings.len; ++i) {
@@ -127,9 +123,13 @@ extern "C" RocBox execute_stmt(RocBox b) {
       rc = sqlite3_bind_double(stmt, param, val.data.real);
       break;
     case string: {
+      auto lifetime = SQLITE_STATIC;
+      if (roc_str_is_small(val.data.str))
+        lifetime = SQLITE_TRANSIENT;
+
       std::string_view view = roc_str_view(&val.data.str);
-      rc = sqlite3_bind_text64(stmt, param, view.data(), view.size(),
-                               SQLITE_STATIC, SQLITE_UTF8);
+      rc = sqlite3_bind_text64(stmt, param, view.data(), view.size(), lifetime,
+                               SQLITE_UTF8);
       break;
     }
     }
@@ -139,7 +139,61 @@ extern "C" RocBox execute_stmt(RocBox b) {
       exit(-2);
     }
   }
+}
 
+SqlVal load_sqlval(sqlite3_stmt *stmt, int i) {
+  SqlVal val{};
+  switch (sqlite3_column_type(stmt, i)) {
+  case SQLITE_INTEGER:
+    val.tag = integer;
+    val.data.integer = sqlite3_column_int64(stmt, i);
+    break;
+  case SQLITE_FLOAT:
+    val.tag = real;
+    val.data.real = sqlite3_column_double(stmt, i);
+    break;
+  case SQLITE_TEXT: {
+    val.tag = string;
+    RocStr &str = val.data.str;
+    str.len = sqlite3_column_bytes(stmt, i);
+    str.cap = str.len;
+    char *data = allocate_with_refcount<char>(str.len);
+    const char *text =
+        reinterpret_cast<const char *>(sqlite3_column_text(stmt, i));
+    for (size_t j = 0; j < str.len; ++j) {
+      data[j] = text[j];
+    }
+    str.bytes = data;
+    break;
+  }
+  case SQLITE_BLOB: {
+    val.tag = bytes;
+    RocList &list = val.data.bytes;
+    list.len = sqlite3_column_bytes(stmt, i);
+    list.cap = list.len;
+    uint8_t *data = allocate_with_refcount<uint8_t>(list.len);
+    const uint8_t *blob =
+        reinterpret_cast<const uint8_t *>(sqlite3_column_blob(stmt, i));
+    for (size_t j = 0; j < list.len; ++j) {
+      data[j] = blob[j];
+    }
+    list.ptr = data;
+    break;
+  }
+  case SQLITE_NULL:
+  default:
+    val.tag = null;
+    break;
+  }
+  return val;
+}
+
+// (U64, U64, List (Str, SqlVal)) -> List (List SqlVal)
+extern "C" RocBox execute_stmt(RocBox b) {
+  auto [db, stmt, bindings] =
+      *static_cast<std::tuple<sqlite3 *, sqlite3_stmt *, RocList> *>(b.inner);
+
+  bind_params(db, stmt, bindings);
   // Load rows and cols.
   int col_count = sqlite3_column_count(stmt);
   RocList out{nullptr, 0, 0};
@@ -165,51 +219,7 @@ extern "C" RocBox execute_stmt(RocBox b) {
     inner.cap = col_count;
     inner.ptr = allocate_with_refcount<SqlVal>(inner.len);
     for (int i = 0; i < col_count; ++i) {
-      // TODO: load column to SqlVal and store them in list.
-      SqlVal val{};
-      switch (sqlite3_column_type(stmt, i)) {
-      case SQLITE_INTEGER:
-        val.tag = integer;
-        val.data.integer = sqlite3_column_int64(stmt, i);
-        break;
-      case SQLITE_FLOAT:
-        val.tag = real;
-        val.data.real = sqlite3_column_double(stmt, i);
-        break;
-      case SQLITE_TEXT: {
-        val.tag = string;
-        RocStr &str = val.data.str;
-        str.len = sqlite3_column_bytes(stmt, i);
-        str.cap = str.len;
-        char *data = allocate_with_refcount<char>(str.len);
-        const char *text =
-            reinterpret_cast<const char *>(sqlite3_column_text(stmt, i));
-        for (size_t j = 0; j < str.len; ++j) {
-          data[j] = text[j];
-        }
-        str.bytes = data;
-        break;
-      }
-      case SQLITE_BLOB: {
-        val.tag = bytes;
-        RocList &list = val.data.bytes;
-        list.len = sqlite3_column_bytes(stmt, i);
-        list.cap = list.len;
-        uint8_t *data = allocate_with_refcount<uint8_t>(list.len);
-        const uint8_t *blob =
-            reinterpret_cast<const uint8_t *>(sqlite3_column_blob(stmt, i));
-        for (size_t j = 0; j < list.len; ++j) {
-          data[j] = blob[j];
-        }
-        list.ptr = data;
-        break;
-      }
-      case SQLITE_NULL:
-      default:
-        val.tag = null;
-        break;
-      }
-      reinterpret_cast<SqlVal *>(inner.ptr)[i] = val;
+      reinterpret_cast<SqlVal *>(inner.ptr)[i] = load_sqlval(stmt, i);
     }
 
     // Store row list into outer list.
