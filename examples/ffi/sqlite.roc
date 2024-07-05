@@ -38,6 +38,15 @@ executeStmt : Ffi.Lib, Stmt, Dict Str SqlVal -> Task (List (List SqlVal)) _
 executeStmt = \lib, @Stmt {db, stmt}, bindings ->
     Ffi.call lib "execute_stmt" (db, stmt, Dict.toList bindings)
 
+executeStmtUnsafeTuple : Ffi.Lib, Stmt, Dict Str SqlVal -> Task (List a) _
+executeStmtUnsafeTuple = \lib, @Stmt {db, stmt}, bindings ->
+    Ffi.call lib "execute_stmt_unsafe_tuple" (db, stmt, Dict.toList bindings)
+
+
+executeStmtIntStr : Ffi.Lib, Stmt, Dict Str SqlVal -> Task (List (I64, Str)) _
+executeStmtIntStr = \lib, stmt, bindings ->
+    executeStmtUnsafeTuple lib stmt bindings
+
 
 main =
     Ffi.withLib "examples/ffi/sqlite.module" \lib ->
@@ -56,7 +65,14 @@ main =
         |> Inspect.toStr
         |> Stdout.line!
 
-        Stdout.line! "Cleaning up"
+        Stdout.line! "\nNow querying a second time without nested allocations!"
+        resTup = executeStmtIntStr! lib stmt bindings
+
+        resTup
+        |> Inspect.toStr
+        |> Stdout.line!
+
+        Stdout.line! "\nCleaning up"
         finalizeStmt! lib stmt
         closeDb! lib db
         Stdout.line! "Done"

@@ -26,17 +26,23 @@ extern "C" struct RocList {
   size_t cap;
 };
 
-template <typename T> T *allocate_with_refcount(size_t count) {
+inline void *allocate_with_refcount(size_t count, size_t elem_size,
+                                    size_t elem_align) {
   size_t rc_align = sizeof(size_t);
-  size_t alignment = std::max(rc_align, alignof(T));
+  size_t alignment = std::max(rc_align, elem_align);
 
-  void *raw_ptr = roc_alloc(sizeof(T) * count + alignment, alignment);
+  void *raw_ptr = roc_alloc(elem_size * count + alignment, alignment);
   void *data_ptr = static_cast<char *>(raw_ptr) + alignment;
   void *rc_ptr = static_cast<char *>(data_ptr) - rc_align;
 
   // Set RC to one value.
   *(static_cast<intptr_t *>(rc_ptr)) = std::numeric_limits<intptr_t>::min();
 
+  return data_ptr;
+}
+
+template <typename T> T *allocate_with_refcount(size_t count) {
+  void *data_ptr = allocate_with_refcount(count, sizeof(T), alignof(T));
   return static_cast<T *>(data_ptr);
 }
 
@@ -62,16 +68,27 @@ inline std::string_view roc_str_view(RocStr *str) {
   return {path_bytes, path_len};
 }
 
-template <typename T> void roc_list_append(RocList &list, T data) {
+inline void roc_list_ensure_excess_capacity(RocList &list, size_t count,
+                                            size_t elem_size,
+                                            size_t elem_align) {
   if (!list.ptr) {
-    list.ptr = allocate_with_refcount<T>(64);
+    list.ptr = allocate_with_refcount(64, elem_size, elem_align);
     list.len = 0;
     list.cap = 64;
   }
-  if (list.len >= list.cap) {
+  if (list.cap - list.len < count) {
     std::cerr << "TODO: reallocation of lists" << std::endl;
     exit(-7);
   }
+}
+
+template <typename T>
+void roc_list_ensure_excess_capacity(RocList &list, size_t count) {
+  roc_list_ensure_excess_capacity(list, count, sizeof(T), alignof(T));
+}
+
+template <typename T> void roc_list_append(RocList &list, T data) {
+  roc_list_ensure_excess_capacity<T>(list, 1);
 
   reinterpret_cast<T *>(list.ptr)[list.len++] = data;
 }
