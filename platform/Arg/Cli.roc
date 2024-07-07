@@ -102,6 +102,7 @@ module [
     finish,
     finishWithoutValidating,
     assertValid,
+    parseOrDisplayMessage,
 ]
 
 import Arg.Opt
@@ -116,7 +117,8 @@ import Arg.Base exposing [
 import Arg.Parser exposing [Arg, parseArgs]
 import Arg.Builder exposing [CliBuilder, GetOptionsAction]
 import Arg.Validate exposing [validateCli, CliValidationErr]
-import Arg.ErrorFormatter exposing [formatCliValidationErr]
+import Arg.ErrorFormatter exposing [formatArgExtractErr, formatCliValidationErr]
+import Arg.Help exposing [helpText, usageHelp]
 
 ## A parser that interprets command line arguments and returns well-formed data.
 CliParser state : {
@@ -280,6 +282,87 @@ assertValid = \result ->
     when result is
         Ok cli -> cli
         Err err -> crash (formatCliValidationErr err)
+
+## Parse arguments using a CLI parser or show a useful message on failure.
+##
+## We have the following priorities in returning messages to the user:
+## 1) If the `-h/--help` flag is passed, the help page for the command/subcommand
+##    called will be displayed no matter if your arguments were correctly parsed.
+## 2) If the `-V/--version` flag is passed, the version for the app will
+##    be displayed no matter if your arguments were correctly parsed.
+## 3) If the provided arguments were parsed and neither of the above two
+##    built-in flags were passed, we return to you your data.
+## 4) If the provided arguments were not correct, we return a short message
+##    with which argument was not provided correctly, followed by the
+##    usage section of the relevant command/subcommand's help text.
+##
+## ```roc
+## exampleCli =
+##     Cli.build {
+##         verbosity: <- Opt.count { short: "v", help: "How verbose our logs should be." },
+##     }
+##     |> Cli.finish {
+##         name: "example",
+##         version: "v0.1.0",
+##         description: "An example CLI.",
+##     }
+##     |> Cli.assertValid
+##
+## expect
+##     exampleCli
+##     |> Cli.parseOrDisplayMessage ["example", "-h"]
+##     == Err
+##         """
+##         example v0.1.0
+##
+##         An example CLI.
+##
+##         Usage:
+##           example [OPTIONS]
+##
+##         Options:
+##           -v             How verbose our logs should be.
+##           -h, --help     Show this help page.
+##           -V, --version  Show the version.
+##         """
+##
+## expect
+##     exampleCli
+##     |> Cli.parseOrDisplayMessage ["example", "-V"]
+##     == Err "v0.1.0"
+##
+## expect
+##     exampleCli
+##     |> Cli.parseOrDisplayMessage ["example", "-v"]
+##     == Ok { verbosity: 1 }
+##
+## expect
+##     exampleCli
+##     |> Cli.parseOrDisplayMessage ["example", "-x"]
+##     == Err
+##         """
+##         Error: The argument -x was not recognized.
+##
+##         Usage:
+##           example [OPTIONS]
+##         """
+## ```
+parseOrDisplayMessage : CliParser state, List Str -> Result state Str
+parseOrDisplayMessage = \parser, args ->
+    when parser.parser args is
+        SuccessfullyParsed data -> Ok data
+        ShowHelp { subcommandPath } -> Err (helpText parser.config subcommandPath parser.textStyle)
+        ShowVersion -> Err parser.config.version
+        IncorrectUsage err { subcommandPath } ->
+            usageStr = usageHelp parser.config subcommandPath parser.textStyle
+            incorrectUsageStr =
+                """
+                Error: $(formatArgExtractErr err)
+
+                $(usageStr)
+                """
+
+            Err incorrectUsageStr
 
 expect
     build {
