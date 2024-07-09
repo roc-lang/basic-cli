@@ -1,5 +1,5 @@
 app [main] {
-    cli: platform "TODO use updated basic-cli 0.12.0 (requires changes from github.com/roc-lang/basic-cli/pull/224)",
+    cli: platform "https://github.com/roc-lang/basic-cli/releases/download/0.12.0/Lb8EgiejTUzbggO2HVVuPJFkwvvsfW6LojkLR20kTVE.tar.br",
 }
 
 import cli.Task exposing [Task]
