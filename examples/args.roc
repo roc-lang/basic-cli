@@ -12,7 +12,7 @@ import pf.Arg.Param as Param
 import pf.Arg
 
 main =
-    args = Arg.list!
+    args = Arg.list! {}
 
     when Cli.parseOrDisplayMessage cli args is
         Ok { command: subcommand } ->
