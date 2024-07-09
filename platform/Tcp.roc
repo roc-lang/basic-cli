@@ -112,9 +112,10 @@ connect = \host, port ->
         |> Result.mapErr parseConnectErr
     |> InternalTask.fromEffect
 
-close : Stream -> Task {} *
+close : Stream -> Task {} []
 close = \@Stream stream ->
     Effect.tcpClose stream
+    |> Effect.map Ok
     |> InternalTask.fromEffect
 
 ## Read up to a number of bytes from the TCP stream.
