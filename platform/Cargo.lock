@@ -186,7 +186,6 @@ dependencies = [
  "hyper",
  "hyper-rustls",
  "libc",
- "roc_app",
  "roc_std",
  "tokio",
 ]
@@ -396,13 +395,6 @@ dependencies = [
  "spin",
  "untrusted",
  "windows-sys 0.52.0",
-]
-
-[[package]]
-name = "roc_app"
-version = "1.0.0"
-dependencies = [
- "roc_std",
 ]
 
 [[package]]

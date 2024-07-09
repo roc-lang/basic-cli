@@ -3,6 +3,7 @@ app [main] {
 }
 
 import pf.Stdout
+import pf.Stderr
 import pf.Task exposing [Task]
 import pf.Arg.Cli as Cli
 import pf.Arg.Subcommand as Subcommand
@@ -11,19 +12,26 @@ import pf.Arg.Param as Param
 import pf.Arg
 
 main =
-    { command: subcommand } = Arg.parse! cli
+    args = Arg.list! {}
 
-    result =
-        when subcommand is
-            Max { first, rest } ->
-                rest
-                |> List.walk first \max, n ->
-                    Num.max max n
+    when Cli.parseOrDisplayMessage cli args is
+        Ok { command: subcommand } ->
+            mathOutcome =
+                when subcommand is
+                    Max { first, rest } ->
+                        rest
+                        |> List.walk first \max, n ->
+                            Num.max max n
 
-            Div { dividend, divisor } ->
-                dividend / divisor
+                    Div { dividend, divisor } ->
+                        dividend / divisor
 
-    Stdout.line (Num.toStr result)
+            Stdout.line (Num.toStr mathOutcome)
+
+        Err message ->
+            Stderr.line! message
+
+            Task.err (Exit 1 "")
 
 cli =
     Cli.build {
