@@ -29,7 +29,7 @@
 ## ```roc
 ## fooSubcommand =
 ##     Opt.u64 { short: "a", help: "Set the alpha level" }
-##     |> Subcommand.finish {
+##     |> SubCmd.finish {
 ##         name: "foo",
 ##         description: "Foo some stuff."
 ##         mapper: Foo,
@@ -39,7 +39,7 @@
 ##     # We allow two subcommands of the same parent to have overlapping
 ##     # fields since only one can ever be parsed at a time.
 ##     Opt.u64 { short: "a", help: "Set the alpha level" }
-##     |> Subcommand.finish {
+##     |> SubCmd.finish {
 ##         name: "bar",
 ##         description: "Bar some stuff."
 ##         mapper: Bar,
@@ -47,7 +47,7 @@
 ##
 ## { Cli.combine <-
 ##     verbosity: Opt.count { short: "v", long: "verbose" },
-##     sc: Subcommand.optional [fooSubcommand, barSubcommand],
+##     sc: SubCmd.optional [fooSubcommand, barSubcommand],
 ## }
 ## ```
 ##

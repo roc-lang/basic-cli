@@ -36,7 +36,7 @@ SubcommandParserConfig subState : {
 ##         foo: Opt.str { short: "f" },
 ##         bar: Opt.str { short: "b" },
 ##     }
-##     |> Subcommand.finish { name: "foobar", description: "Foo and bar subcommand", mapper: FooBar }
+##     |> SubCmd.finish { name: "foobar", description: "Foo and bar subcommand", mapper: FooBar }
 ## ```
 finish : CliBuilder state fromAction toAction, { name : Str, description ? Str, mapper : state -> commonState } -> { name : Str, parser : ArgParser commonState, config : SubcommandConfig }
 finish = \builder, { name, description ? "", mapper } ->
@@ -95,14 +95,14 @@ getFirstArgToCheckForSubcommandCall = \{ remainingArgs, subcommandPath }, subcom
 ## expect
 ##     fooSubcommand =
 ##         Opt.str { short: "f" }
-##         |> Subcommand.finish { name: "foo", description: "Foo subcommand", mapper: Foo }
+##         |> SubCmd.finish { name: "foo", description: "Foo subcommand", mapper: Foo }
 ##
 ##     barSubcommand =
 ##         Opt.str { short: "b" }
-##         |> Subcommand.finish { name: "bar", description: "Bar subcommand", mapper: Bar }
+##         |> SubCmd.finish { name: "bar", description: "Bar subcommand", mapper: Bar }
 ##
 ##     { parser } =
-##         Subcommand.optional [fooSubcommand, barSubcommand],
+##         SubCmd.optional [fooSubcommand, barSubcommand],
 ##         |> Cli.finish { name: "example" }
 ##         |> Cli.assertValid
 ##
@@ -154,14 +154,14 @@ optional = \subcommandConfigs ->
 ## expect
 ##     fooSubcommand =
 ##         Opt.str { short: "f" }
-##         |> Subcommand.finish { name: "foo", description: "Foo subcommand", mapper: Foo }
+##         |> SubCmd.finish { name: "foo", description: "Foo subcommand", mapper: Foo }
 ##
 ##     barSubcommand =
 ##         Opt.str { short: "b" }
-##         |> Subcommand.finish { name: "bar", description: "Bar subcommand", mapper: Bar }
+##         |> SubCmd.finish { name: "bar", description: "Bar subcommand", mapper: Bar }
 ##
 ##     { parser } =
-##         Subcommand.required [fooSubcommand, barSubcommand],
+##         SubCmd.required [fooSubcommand, barSubcommand],
 ##         |> Cli.finish { name: "example" }
 ##         |> Cli.assertValid
 ##

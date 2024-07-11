@@ -6,7 +6,7 @@ import pf.Stdout
 import pf.Stderr
 import pf.Task exposing [Task]
 import pf.Arg.Cli as Cli
-import pf.Arg.Subcommand as Subcommand
+import pf.Arg.SubCmd as SubCmd
 import pf.Arg.Opt as Opt
 import pf.Arg.Param as Param
 import pf.Arg
@@ -34,7 +34,7 @@ main =
             Task.err (Exit 1 "")
 
 cli =
-    Subcommand.required [maxSubcommand, divideSubcommand]
+    SubCmd.required [maxSubcommand, divideSubcommand]
     |> Cli.finish {
         name: "args-example",
         description: "A calculator example of the CLI platform argument parser.",
@@ -48,7 +48,7 @@ maxSubcommand =
         first: Param.dec { name: "first", help: "the first number to compare." },
         rest: Param.decList { name: "rest", help: "the other numbers to compare." },
     }
-    |> Subcommand.finish {
+    |> SubCmd.finish {
         name: "max",
         description: "Find the largest of multiple numbers.",
         mapper: Max,
@@ -67,7 +67,7 @@ divideSubcommand =
             help: "the number to divide by; corresponds to a denominator.",
         },
     }
-    |> Subcommand.finish {
+    |> SubCmd.finish {
         name: "div",
         description: "Divide two numbers.",
         mapper: Div,

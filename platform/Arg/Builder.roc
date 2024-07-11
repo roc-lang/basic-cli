@@ -9,7 +9,6 @@ module [
     addParameter,
     addSubcommands,
     updateParser,
-    bindParser,
     map,
     combine,
     intoParts,
@@ -18,8 +17,6 @@ module [
 
 import Arg.Base exposing [
     ArgParser,
-    ArgParserState,
-    ArgParserResult,
     onSuccessfulArgParse,
     mapSuccessfullyParsed,
     ArgExtractErr,
@@ -89,20 +86,11 @@ setParser = \@CliBuilder builder, parser ->
 updateParser : CliBuilder state fromAction toAction, ({ data : state, remainingArgs : List Arg } -> Result { data : nextState, remainingArgs : List Arg } ArgExtractErr) -> CliBuilder nextState fromAction toAction
 updateParser = \@CliBuilder builder, updater ->
     newParser =
-        { data, remainingArgs, subcommandPath } <- onSuccessfulArgParse builder.parser
-        when updater { data, remainingArgs } is
-            Err err -> IncorrectUsage err { subcommandPath }
-            Ok { data: updatedData, remainingArgs: restOfArgs } ->
-                SuccessfullyParsed { data: updatedData, remainingArgs: restOfArgs, subcommandPath }
-
-    setParser (@CliBuilder builder) newParser
-
-bindParser : CliBuilder state fromAction toAction, (ArgParserState state -> ArgParserResult (ArgParserState nextState)) -> CliBuilder nextState fromAction toAction
-bindParser = \@CliBuilder builder, updater ->
-    newParser : ArgParser nextState
-    newParser =
-        { data, remainingArgs, subcommandPath } <- onSuccessfulArgParse builder.parser
-        updater { data, remainingArgs, subcommandPath }
+        onSuccessfulArgParse builder.parser \{ data, remainingArgs, subcommandPath } ->
+            when updater { data, remainingArgs } is
+                Err err -> IncorrectUsage err { subcommandPath }
+                Ok { data: updatedData, remainingArgs: restOfArgs } ->
+                    SuccessfullyParsed { data: updatedData, remainingArgs: restOfArgs, subcommandPath }
 
     setParser (@CliBuilder builder) newParser
 
@@ -132,18 +120,17 @@ map = \@CliBuilder builder, mapper ->
 
 combine : CliBuilder a action1 action2, CliBuilder b action2 action3, (a, b -> c) -> CliBuilder c action1 action3
 combine = \@CliBuilder left, @CliBuilder right, combiner ->
-    combinedParser = \input ->
-        when left.parser input is
-            ShowVersion -> ShowVersion
-            ShowHelp sp -> ShowHelp sp
-            IncorrectUsage argExtractErr sp -> IncorrectUsage argExtractErr sp
-            SuccessfullyParsed { data, remainingArgs, subcommandPath } ->
-                when right.parser { args: remainingArgs, subcommandPath } is
-                    ShowVersion -> ShowVersion
-                    ShowHelp sp -> ShowHelp sp
-                    IncorrectUsage argExtractErr sp -> IncorrectUsage argExtractErr sp
-                    SuccessfullyParsed { data: data2, remainingArgs: restOfArgs, subcommandPath: nextSp } ->
-                        SuccessfullyParsed { data: combiner data data2, remainingArgs: restOfArgs, subcommandPath: nextSp }
+    combinedParser =
+        onSuccessfulArgParse left.parser \firstResult ->
+            innerParser =
+                onSuccessfulArgParse right.parser \{ data: secondData, remainingArgs, subcommandPath } ->
+                    SuccessfullyParsed {
+                        data: combiner firstResult.data secondData,
+                        remainingArgs,
+                        subcommandPath,
+                    }
+
+            innerParser { args: firstResult.remainingArgs, subcommandPath: firstResult.subcommandPath }
 
     @CliBuilder {
         parser: combinedParser,
