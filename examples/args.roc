@@ -15,7 +15,7 @@ main =
     args = Arg.list! {}
 
     when Cli.parseOrDisplayMessage cli args is
-        Ok { command: subcommand } ->
+        Ok subcommand ->
             mathOutcome =
                 when subcommand is
                     Max { first, rest } ->
@@ -34,9 +34,7 @@ main =
             Task.err (Exit 1 "")
 
 cli =
-    Cli.build {
-        command: <- Subcommand.required [maxSubcommand, divideSubcommand],
-    }
+    Subcommand.required [maxSubcommand, divideSubcommand]
     |> Cli.finish {
         name: "args-example",
         description: "A calculator example of the CLI platform argument parser.",
@@ -45,10 +43,10 @@ cli =
     |> Cli.assertValid
 
 maxSubcommand =
-    Cli.build {
+    { Cli.combine <-
         # ensure there's at least one parameter provided
-        first: <- Param.dec { name: "first", help: "the first number to compare." },
-        rest: <- Param.decList { name: "rest", help: "the other numbers to compare." },
+        first: Param.dec { name: "first", help: "the first number to compare." },
+        rest: Param.decList { name: "rest", help: "the other numbers to compare." },
     }
     |> Subcommand.finish {
         name: "max",
@@ -57,19 +55,17 @@ maxSubcommand =
     }
 
 divideSubcommand =
-    Cli.build {
-        dividend: <-
-            Opt.dec {
-                short: "n",
-                long: "dividend",
-                help: "the number to divide; corresponds to a numerator.",
-            },
-        divisor: <-
-            Opt.dec {
-                short: "d",
-                long: "divisor",
-                help: "the number to divide by; corresponds to a denominator.",
-            },
+    { Cli.combine <-
+        dividend: Opt.dec {
+            short: "n",
+            long: "dividend",
+            help: "the number to divide; corresponds to a numerator.",
+        },
+        divisor: Opt.dec {
+            short: "d",
+            long: "divisor",
+            help: "the number to divide by; corresponds to a denominator.",
+        },
     }
     |> Subcommand.finish {
         name: "div",

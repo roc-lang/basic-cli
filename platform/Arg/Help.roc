@@ -7,8 +7,6 @@ import Arg.Base exposing [
     ParameterConfig,
     SubcommandConfig,
     SubcommandsConfig,
-    helpOption,
-    versionOption,
 ]
 import Arg.Utils exposing [toUpperCase, strLen]
 
@@ -66,9 +64,7 @@ findSubcommand = \command, path ->
 ##
 ## ```roc
 ## exampleCli =
-##     Cli.build {
-##         verbosity: <- Opt.count { short: "v", help: "How verbose our logs should be." },
-##     }
+##     Opt.count { short: "v", help: "How verbose our logs should be." }
 ##     |> Cli.finish {
 ##         name: "example",
 ##         version: "v0.1.0",
@@ -162,9 +158,7 @@ helpText = \baseConfig, path, textStyle ->
 ##
 ## ```roc
 ## exampleCli =
-##     Cli.build {
-##         verbosity: <- Opt.count { short: "v", help: "How verbose our logs should be." },
-##     }
+##     Opt.count { short: "v", help: "How verbose our logs should be." }
 ##     |> Cli.finish {
 ##         name: "example",
 ##         version: "v0.1.0",
@@ -188,16 +182,11 @@ usageHelp = \config, path, textStyle ->
 
     requiredOptions =
         options
-        |> List.keepIf \opt -> opt.plurality == One
+        |> List.dropIf \opt -> opt.expectedValue == NothingExpected
         |> List.map optionSimpleNameFormatter
 
-    noOtherOptions =
-        options
-        |> List.dropIf \opt -> opt.plurality == One || opt == helpOption || opt == versionOption
-        |> List.isEmpty
-
     otherOptions =
-        if noOtherOptions then
+        if List.len requiredOptions == List.len options then
             []
         else
             ["[options]"]

@@ -32,12 +32,13 @@ SubcommandParserConfig subState : {
 ##
 ## ```roc
 ## fooSubcommand =
-##     Cli.build {
-##         foo: <- Opt.str { short: "f" },
+##     { Cli.combine <-
+##         foo: Opt.str { short: "f" },
+##         bar: Opt.str { short: "b" },
 ##     }
-##     |> Subcommand.finish { name: "foo", description: "Foo subcommand", mapper: Foo }
+##     |> Subcommand.finish { name: "foobar", description: "Foo and bar subcommand", mapper: FooBar }
 ## ```
-finish : CliBuilder state action, { name : Str, description ? Str, mapper : state -> commonState } -> { name : Str, parser : ArgParser commonState, config : SubcommandConfig }
+finish : CliBuilder state fromAction toAction, { name : Str, description ? Str, mapper : state -> commonState } -> { name : Str, parser : ArgParser commonState, config : SubcommandConfig }
 finish = \builder, { name, description ? "", mapper } ->
     { options, parameters, subcommands, parser } =
         builder
@@ -57,7 +58,7 @@ finish = \builder, { name, description ? "", mapper } ->
 
 ## Check the first parameter passed to see if a subcommand was called.
 getFirstArgToCheckForSubcommandCall :
-    ArgParserState x,
+    ArgParserState *,
     List (SubcommandParserConfig subState),
     (Result (SubcommandParserConfig subState) [NotFound] -> ArgParserResult (ArgParserState state))
     -> ArgParserResult (ArgParserState state)
@@ -93,51 +94,46 @@ getFirstArgToCheckForSubcommandCall = \{ remainingArgs, subcommandPath }, subcom
 ## ```roc
 ## expect
 ##     fooSubcommand =
-##         Cli.build {
-##             foo: <- Opt.str { short: "f" },
-##         }
+##         Opt.str { short: "f" }
 ##         |> Subcommand.finish { name: "foo", description: "Foo subcommand", mapper: Foo }
 ##
 ##     barSubcommand =
-##         Cli.build {
-##             bar: <- Opt.str { short: "b" },
-##         }
+##         Opt.str { short: "b" }
 ##         |> Subcommand.finish { name: "bar", description: "Bar subcommand", mapper: Bar }
 ##
-##     Cli.build {
-##         sc: <- Subcommand.optional [fooSubcommand, barSubcommand],
-##     }
-##     |> Cli.finish { name: "example" }
-##     |> Cli.assertValid
-##     |> Cli.parseOrDisplayMessage ["example", "bar", "-b", "abc"]
-##     == Ok { sc: Ok (Bar { b: "abc" }) }
+##     { parser } =
+##         Subcommand.optional [fooSubcommand, barSubcommand],
+##         |> Cli.finish { name: "example" }
+##         |> Cli.assertValid
+##
+##     parser ["example", "bar", "-b", "abc"]
+##     == SuccessfullyParsed (Ok (Bar "abc"))
 ## ```
-optional : List (SubcommandParserConfig subState) -> (CliBuilder (Result subState [NoSubcommand] -> state) GetOptionsAction -> CliBuilder state GetParamsAction)
+optional : List (SubcommandParserConfig subState) -> CliBuilder (Result subState [NoSubcommand]) GetOptionsAction GetParamsAction
 optional = \subcommandConfigs ->
     subcommands =
         subcommandConfigs
         |> List.map \{ name, config } -> (name, config)
         |> Dict.fromList
 
-    \builder ->
-        builder
-        |> Arg.Builder.addSubcommands subcommands
-        |> Arg.Builder.bindParser \{ data, remainingArgs, subcommandPath } ->
-            subcommandFound <- getFirstArgToCheckForSubcommandCall { data, remainingArgs, subcommandPath } subcommandConfigs
-
+    fullParser = \{ args, subcommandPath } ->
+        getFirstArgToCheckForSubcommandCall { data: {}, remainingArgs: args, subcommandPath } subcommandConfigs \subcommandFound ->
             when subcommandFound is
                 Err NotFound ->
-                    SuccessfullyParsed { data: data (Err NoSubcommand), remainingArgs, subcommandPath }
+                    SuccessfullyParsed { data: Err NoSubcommand, remainingArgs: args, subcommandPath }
 
                 Ok subcommand ->
                     subParser =
-                        { data: subData, remainingArgs: subRemainingArgs, subcommandPath: subSubcommandPath } <- onSuccessfulArgParse subcommand.parser
-                        SuccessfullyParsed { data: data (Ok subData), remainingArgs: subRemainingArgs, subcommandPath: subSubcommandPath }
+                        onSuccessfulArgParse subcommand.parser \{ data: subData, remainingArgs: subRemainingArgs, subcommandPath: subSubcommandPath } ->
+                            SuccessfullyParsed { data: Ok subData, remainingArgs: subRemainingArgs, subcommandPath: subSubcommandPath }
 
                     subParser {
-                        args: List.dropFirst remainingArgs 1,
+                        args: args |> List.dropFirst 1,
                         subcommandPath: subcommandPath |> List.append subcommand.name,
                     }
+
+    Arg.Builder.fromFullParser fullParser
+    |> Arg.Builder.addSubcommands subcommands
 
 ## Use previously defined subcommands as data in a parent CLI builder.
 ##
@@ -157,48 +153,43 @@ optional = \subcommandConfigs ->
 ## ```roc
 ## expect
 ##     fooSubcommand =
-##         Cli.build {
-##             foo: <- Opt.str { short: "f" },
-##         }
+##         Opt.str { short: "f" }
 ##         |> Subcommand.finish { name: "foo", description: "Foo subcommand", mapper: Foo }
 ##
 ##     barSubcommand =
-##         Cli.build {
-##             bar: <- Opt.str { short: "b" },
-##         }
+##         Opt.str { short: "b" }
 ##         |> Subcommand.finish { name: "bar", description: "Bar subcommand", mapper: Bar }
 ##
-##     Cli.build {
-##         sc: <- Subcommand.required [fooSubcommand, barSubcommand],
-##     }
-##     |> Cli.finish { name: "example" }
-##     |> Cli.assertValid
-##     |> Cli.parseOrDisplayMessage ["example", "bar", "-b", "abc"]
-##     == Ok { sc: Bar { b: "abc" } }
+##     { parser } =
+##         Subcommand.required [fooSubcommand, barSubcommand],
+##         |> Cli.finish { name: "example" }
+##         |> Cli.assertValid
+##
+##     parser ["example", "bar", "-b", "abc"]
+##     == SuccessfullyParsed (Bar "abc")
 ## ```
-required : List (SubcommandParserConfig subState) -> (CliBuilder (subState -> state) GetOptionsAction -> CliBuilder state GetParamsAction)
+required : List (SubcommandParserConfig subData) -> CliBuilder subData GetOptionsAction GetParamsAction
 required = \subcommandConfigs ->
     subcommands =
         subcommandConfigs
         |> List.map \{ name, config } -> (name, config)
         |> Dict.fromList
 
-    \builder ->
-        builder
-        |> Arg.Builder.addSubcommands subcommands
-        |> Arg.Builder.bindParser \{ data, remainingArgs, subcommandPath } ->
-            subcommandFound <- getFirstArgToCheckForSubcommandCall { data, remainingArgs, subcommandPath } subcommandConfigs
-
+    fullParser = \{ args, subcommandPath } ->
+        getFirstArgToCheckForSubcommandCall { data: {}, remainingArgs: args, subcommandPath } subcommandConfigs \subcommandFound ->
             when subcommandFound is
                 Err NotFound ->
                     IncorrectUsage NoSubcommandCalled { subcommandPath }
 
                 Ok subcommand ->
                     subParser =
-                        { data: subData, remainingArgs: subRemainingArgs, subcommandPath: subSubcommandPath } <- onSuccessfulArgParse subcommand.parser
-                        SuccessfullyParsed { data: data subData, remainingArgs: subRemainingArgs, subcommandPath: subSubcommandPath }
+                        onSuccessfulArgParse subcommand.parser \{ data: subData, remainingArgs: subRemainingArgs, subcommandPath: subSubcommandPath } ->
+                            SuccessfullyParsed { data: subData, remainingArgs: subRemainingArgs, subcommandPath: subSubcommandPath }
 
                     subParser {
-                        args: List.dropFirst remainingArgs 1,
+                        args: args |> List.dropFirst 1,
                         subcommandPath: subcommandPath |> List.append subcommand.name,
                     }
+
+    Arg.Builder.fromFullParser fullParser
+    |> Arg.Builder.addSubcommands subcommands

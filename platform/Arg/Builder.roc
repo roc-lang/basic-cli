@@ -3,12 +3,15 @@ module [
     GetParamsAction,
     StopCollectingAction,
     CliBuilder,
-    fromState,
-    addOptions,
-    addParameters,
+    fromArgParser,
+    fromFullParser,
+    addOption,
+    addParameter,
     addSubcommands,
     updateParser,
     bindParser,
+    map,
+    combine,
     intoParts,
     checkForHelpAndVersion,
 ]
@@ -18,6 +21,7 @@ import Arg.Base exposing [
     ArgParserState,
     ArgParserResult,
     onSuccessfulArgParse,
+    mapSuccessfullyParsed,
     ArgExtractErr,
     OptionConfig,
     helpOption,
@@ -31,35 +35,49 @@ GetOptionsAction : { getOptions : {} }
 GetParamsAction : { getParams : {} }
 StopCollectingAction : []
 
-CliBuilder state action := {
-    parser : ArgParser state,
+CliBuilder data fromAction toAction := {
+    parser : ArgParser data,
     options : List OptionConfig,
     parameters : List ParameterConfig,
     subcommands : Dict Str SubcommandConfig,
 }
 
-fromState : base -> CliBuilder base GetOptionsAction
-fromState = \base ->
+fromArgParser : (List Arg -> Result { data : data, remainingArgs : List Arg } ArgExtractErr) -> CliBuilder data fromAction toAction
+fromArgParser = \parser ->
+    newParser = \{ args, subcommandPath } ->
+        when parser args is
+            Ok { data, remainingArgs } -> SuccessfullyParsed { data, remainingArgs, subcommandPath }
+            Err err -> IncorrectUsage err { subcommandPath }
+
     @CliBuilder {
-        parser: \{ args, subcommandPath } -> SuccessfullyParsed { data: base, remainingArgs: args, subcommandPath },
+        parser: newParser,
         options: [],
         parameters: [],
         subcommands: Dict.empty {},
     }
 
-addOptions : CliBuilder state action, List OptionConfig -> CliBuilder state action
-addOptions = \@CliBuilder builder, newOptions ->
-    @CliBuilder { builder & options: List.concat builder.options newOptions }
+fromFullParser : ArgParser data -> CliBuilder data fromAction toAction
+fromFullParser = \parser ->
+    @CliBuilder {
+        parser,
+        options: [],
+        parameters: [],
+        subcommands: Dict.empty {},
+    }
 
-addParameters : CliBuilder state action, List ParameterConfig -> CliBuilder state action
-addParameters = \@CliBuilder builder, newParameters ->
-    @CliBuilder { builder & parameters: List.concat builder.parameters newParameters }
+addOption : CliBuilder state fromAction toAction, OptionConfig -> CliBuilder state fromAction toAction
+addOption = \@CliBuilder builder, newOption ->
+    @CliBuilder { builder & options: List.append builder.options newOption }
 
-addSubcommands : CliBuilder state action, Dict Str SubcommandConfig -> CliBuilder state action
+addParameter : CliBuilder state fromAction toAction, ParameterConfig -> CliBuilder state fromAction toAction
+addParameter = \@CliBuilder builder, newParameter ->
+    @CliBuilder { builder & parameters: List.append builder.parameters newParameter }
+
+addSubcommands : CliBuilder state fromAction toAction, Dict Str SubcommandConfig -> CliBuilder state fromAction toAction
 addSubcommands = \@CliBuilder builder, newSubcommands ->
     @CliBuilder { builder & subcommands: Dict.insertAll builder.subcommands newSubcommands }
 
-setParser : CliBuilder state action, ArgParser nextState -> CliBuilder nextState nextAction
+setParser : CliBuilder state fromAction toAction, ArgParser nextState -> CliBuilder nextState fromAction toAction
 setParser = \@CliBuilder builder, parser ->
     @CliBuilder {
         options: builder.options,
@@ -68,7 +86,7 @@ setParser = \@CliBuilder builder, parser ->
         parser,
     }
 
-updateParser : CliBuilder state action, ({ data : state, remainingArgs : List Arg } -> Result { data : nextState, remainingArgs : List Arg } ArgExtractErr) -> CliBuilder nextState nextAction
+updateParser : CliBuilder state fromAction toAction, ({ data : state, remainingArgs : List Arg } -> Result { data : nextState, remainingArgs : List Arg } ArgExtractErr) -> CliBuilder nextState fromAction toAction
 updateParser = \@CliBuilder builder, updater ->
     newParser =
         { data, remainingArgs, subcommandPath } <- onSuccessfulArgParse builder.parser
@@ -79,7 +97,7 @@ updateParser = \@CliBuilder builder, updater ->
 
     setParser (@CliBuilder builder) newParser
 
-bindParser : CliBuilder state action, (ArgParserState state -> ArgParserResult (ArgParserState nextState)) -> CliBuilder nextState nextAction
+bindParser : CliBuilder state fromAction toAction, (ArgParserState state -> ArgParserResult (ArgParserState nextState)) -> CliBuilder nextState fromAction toAction
 bindParser = \@CliBuilder builder, updater ->
     newParser : ArgParser nextState
     newParser =
@@ -89,7 +107,7 @@ bindParser = \@CliBuilder builder, updater ->
     setParser (@CliBuilder builder) newParser
 
 intoParts :
-    CliBuilder state action
+    CliBuilder state fromAction toAction
     -> {
         parser : ArgParser state,
         options : List OptionConfig,
@@ -97,6 +115,42 @@ intoParts :
         subcommands : Dict Str SubcommandConfig,
     }
 intoParts = \@CliBuilder builder -> builder
+
+map : CliBuilder a fromAction toAction, (a -> b) -> CliBuilder b fromAction toAction
+map = \@CliBuilder builder, mapper ->
+    combinedParser = \input ->
+        builder.parser input
+        |> mapSuccessfullyParsed \{ data, remainingArgs, subcommandPath } ->
+            { data: mapper data, remainingArgs, subcommandPath }
+
+    @CliBuilder {
+        parser: combinedParser,
+        options: builder.options,
+        parameters: builder.parameters,
+        subcommands: builder.subcommands,
+    }
+
+combine : CliBuilder a action1 action2, CliBuilder b action2 action3, (a, b -> c) -> CliBuilder c action1 action3
+combine = \@CliBuilder left, @CliBuilder right, combiner ->
+    combinedParser = \input ->
+        when left.parser input is
+            ShowVersion -> ShowVersion
+            ShowHelp sp -> ShowHelp sp
+            IncorrectUsage argExtractErr sp -> IncorrectUsage argExtractErr sp
+            SuccessfullyParsed { data, remainingArgs, subcommandPath } ->
+                when right.parser { args: remainingArgs, subcommandPath } is
+                    ShowVersion -> ShowVersion
+                    ShowHelp sp -> ShowHelp sp
+                    IncorrectUsage argExtractErr sp -> IncorrectUsage argExtractErr sp
+                    SuccessfullyParsed { data: data2, remainingArgs: restOfArgs, subcommandPath: nextSp } ->
+                        SuccessfullyParsed { data: combiner data data2, remainingArgs: restOfArgs, subcommandPath: nextSp }
+
+    @CliBuilder {
+        parser: combinedParser,
+        options: List.concat left.options right.options,
+        parameters: List.concat left.parameters right.parameters,
+        subcommands: Dict.insertAll left.subcommands right.subcommands,
+    }
 
 flagWasPassed : OptionConfig, List Arg -> Bool
 flagWasPassed = \option, args ->
@@ -107,7 +161,7 @@ flagWasPassed = \option, args ->
             Long long -> long.name == option.long
             Parameter _p -> Bool.false
 
-checkForHelpAndVersion : CliBuilder state action -> CliBuilder state action
+checkForHelpAndVersion : CliBuilder state fromAction toAction -> CliBuilder state fromAction toAction
 checkForHelpAndVersion = \@CliBuilder builder ->
     newParser = \{ args, subcommandPath } ->
         when builder.parser { args, subcommandPath } is
@@ -130,15 +184,15 @@ checkForHelpAndVersion = \@CliBuilder builder ->
 
 expect
     { parser } =
-        fromState (\x -> { x })
-        |> updateParser \{ data, remainingArgs } -> Ok { data: data (Inspect.toStr remainingArgs), remainingArgs: [] }
+        fromArgParser \args -> Ok { data: Inspect.toStr args, remainingArgs: [] }
+        |> map Inspected
         |> intoParts
 
     out = parser { args: [Parameter "123"], subcommandPath: [] }
 
     out
     == SuccessfullyParsed {
-        data: { x: "[(Parameter \"123\")]" },
+        data: Inspected "[(Parameter \"123\")]",
         remainingArgs: [],
         subcommandPath: [],
     }

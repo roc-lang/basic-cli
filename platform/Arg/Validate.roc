@@ -40,7 +40,6 @@ CliValidationErr : [
 ##   - A long flag which is more than one character and kebab-case.
 ##   - Both a short and a long flag with the above requirements.
 ## - All parameters must be have kebab-case names.
-## - All custom option/parameter types are have kebab-case names.
 ## - No options can overlap, even between different subcommands, so long
 ##   as the options between the subcommands are ambiguous.
 ##   - For example, a CLI with a `-t` option at the root level and also

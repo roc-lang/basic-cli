@@ -1,18 +1,19 @@
-## Build a CLI parser using the `: <- ` builder notation!
+## Build a CLI parser using the `<-` builder notation!
 ##
 ## This module is the entry point for creating CLIs.
-## To get started, call the [build] method and pass a
+## To get started, create a
 ## [record builder](https://www.roc-lang.org/examples/RecordBuilder/README.html)
-## to it. You can pass `Opt`s, `Param`s, or `Subcommand`s as fields,
-## and they will be automatically registered in the config as
-## well as rolled into a parser with the inferred types of the
-## fields you use.
+## using the [combine] method as the mapper.
+## You can pass `Opt`s, `Param`s, or `Subcommand`s as fields,
+## and they will automatically be registered in the CLI config
+## as well as build a parser with the inferred types of the fields
+## you set.
 ##
 ## ```roc
-## Cli.build {
-##     alpha: <- Opt.u64 { short: "a", help: "Set the alpha level" },
-##     verbosity: <- Opt.count { short: "v", long: "verbose", help: "How loud we should be." },
-##     files: <- Param.strList { name: "files", help: "The files to process." },
+## { Cli.combine <-
+##     alpha: Opt.u64 { short: "a", help: "Set the alpha level" },
+##     verbosity: Opt.count { short: "v", long: "verbose", help: "How loud we should be." },
+##     files: Param.strList { name: "files", help: "The files to process." },
 ## }
 ## |> Cli.finish {
 ##     name: "example",
@@ -27,12 +28,7 @@
 ##
 ## ```roc
 ## fooSubcommand =
-##     Cli.build {
-##         alpha: <- Opt.u64 {
-##             short: "a",
-##             help: "Set the alpha level",
-##         },
-##     }
+##     Opt.u64 { short: "a", help: "Set the alpha level" }
 ##     |> Subcommand.finish {
 ##         name: "foo",
 ##         description: "Foo some stuff."
@@ -40,22 +36,18 @@
 ##     }
 ##
 ## barSubcommand =
-##     Cli.build {
-##         # We allow two subcommands of the same parent to have overlapping
-##         # fields since only one can ever be parsed at a time.
-##         alpha: <- Opt.u64 {
-##             short: "a",
-##             help: "Set the alpha level",
-##         },
-##     }
+##     # We allow two subcommands of the same parent to have overlapping
+##     # fields since only one can ever be parsed at a time.
+##     Opt.u64 { short: "a", help: "Set the alpha level" }
 ##     |> Subcommand.finish {
 ##         name: "bar",
 ##         description: "Bar some stuff."
 ##         mapper: Bar,
 ##     }
 ##
-## Cli.build {
-##     sc: <- Subcommand.optional [fooSubcommand, barSubcommand],
+## { Cli.combine <-
+##     verbosity: Opt.count { short: "v", long: "verbose" },
+##     sc: Subcommand.optional [fooSubcommand, barSubcommand],
 ## }
 ## ```
 ##
@@ -70,10 +62,10 @@
 ##
 ## ```roc
 ## cliParser =
-##     Cli.build {
-##         alpha: <- Opt.u64 { short: "a", help: "Set the alpha level" },
-##         verbosity: <- Opt.count { short: "v", long: "verbose", help: "How loud we should be." },
-##         files: <- Param.strList { name: "files", help: "The files to process." },
+##     { Cli.combine <-
+##         alpha: Opt.u64 { short: "a", help: "Set the alpha level" },
+##         verbosity: Opt.count { short: "v", long: "verbose", help: "How loud we should be." },
+##         files: Param.strList { name: "files", help: "The files to process." },
 ##     }
 ##     |> Cli.finish {
 ##         name: "example",
@@ -98,7 +90,8 @@
 ## _right order. Luckily, all of this is ensured at the type level._
 module [
     CliParser,
-    build,
+    map,
+    combine,
     finish,
     finishWithoutValidating,
     assertValid,
@@ -106,6 +99,7 @@ module [
 ]
 
 import Arg.Opt
+import Arg.Param
 import Arg.Base exposing [
     TextStyle,
     ArgParserResult,
@@ -115,9 +109,12 @@ import Arg.Base exposing [
     mapSuccessfullyParsed,
 ]
 import Arg.Parser exposing [Arg, parseArgs]
-import Arg.Builder exposing [CliBuilder, GetOptionsAction]
+import Arg.Builder exposing [CliBuilder]
 import Arg.Validate exposing [validateCli, CliValidationErr]
-import Arg.ErrorFormatter exposing [formatArgExtractErr, formatCliValidationErr]
+import Arg.ErrorFormatter exposing [
+    formatArgExtractErr,
+    formatCliValidationErr,
+]
 import Arg.Help exposing [helpText, usageHelp]
 
 ## A parser that interprets command line arguments and returns well-formed data.
@@ -127,24 +124,49 @@ CliParser state : {
     textStyle : TextStyle,
 }
 
-## Initialize a CLI builder using the `: <- ` builder notation.
+## Map over the parsed value of a CLI parser field.
+##
+## Useful for naming bare fields, or handling default values.
+##
+## ```roc
+## expect
+##     { parser } =
+##         { Cli.combine <-
+##             verbosity: Opt.count { short: "v", long: "verbose" }
+##                 |> Cli.map Verbosity,
+##             file: Param.maybeStr { name: "file" }
+##                 |> Cli.map \f -> Result.withDefault f "NO_FILE",
+##         }
+##         |> Cli.finish { name: "example" }
+##         |> Cli.assertValid
+##
+##    parser ["example", "-vvv"]
+##    == SuccessfullyParsed { verbosity: Verbosity 3, file: "NO_FILE" }
+## ```
+map : CliBuilder a fromAction toAction, (a -> b) -> CliBuilder b fromAction toAction
+map = \builder, mapper ->
+    Arg.Builder.map builder mapper
+
+## Assemble a CLI builder using the `<- ` builder notation.
 ##
 ## Check the module-level documentation for general usage instructions.
 ##
 ## ```roc
 ## expect
 ##     { parser } =
-##         Cli.build {
-##             verbosity: <- Opt.count { short: "v", long: "verbose" },
+##         { Cli.combine <-
+##             verbosity: Opt.count { short: "v", long: "verbose" },
+##             file: Param.str { name: "file" },
 ##         }
 ##         |> Cli.finish { name: "example" }
 ##         |> Cli.assertValid
 ##
-##    parser ["example", "-vvv"]
-##    == SuccessfullyParsed { verbosity: 3 }
+##    parser ["example", "file.txt", "-vvv"]
+##    == SuccessfullyParsed { verbosity: 3, file: "file.txt" }
 ## ```
-build : base -> CliBuilder base GetOptionsAction
-build = \base -> Arg.Builder.fromState base
+combine : CliBuilder a action1 action2, CliBuilder b action2 action3, (a, b -> c) -> CliBuilder c action1 action3
+combine = \left, right, combiner ->
+    Arg.Builder.combine left right combiner
 
 ## Fail the parsing process if any arguments are left over after parsing.
 ensureAllArgsWereParsed : List Arg -> Result {} ArgExtractErr
@@ -192,20 +214,22 @@ ensureAllArgsWereParsed = \remainingArgs ->
 ##
 ## ```roc
 ## expect
-##     Cli.build {
-##         verbosity: <- Opt.count { short: "v", long: "verbose" },
+##     { Cli.combine <-
+##         verbosity: Opt.count { short: "v", long: "verbose" },
+##         file: Param.str { name: "file" },
 ##     }
 ##     |> Cli.finish { name: "example" }
 ##     |> Result.isOk
 ##
 ## expect
-##     Cli.build {
-##         verbosity: <- Opt.count { short: "" },
+##     { Cli.combine <-
+##         verbosity: Opt.count { short: "" },
+##         file: Param.str { name: "" },
 ##     }
 ##     |> Cli.finish { name: "example" }
 ##     |> Result.isErr
 ## ```
-finish : CliBuilder state action, CliConfigParams -> Result (CliParser state) CliValidationErr
+finish : CliBuilder data fromAction toAction, CliConfigParams -> Result (CliParser data) CliValidationErr
 finish = \builder, params ->
     { parser, config, textStyle } = finishWithoutValidating builder params
 
@@ -222,15 +246,16 @@ finish = \builder, params ->
 ## ```roc
 ## expect
 ##     { parser } =
-##         Cli.build {
-##             verbosity: <- Opt.count { short: "v", long: "verbose" },
+##         { Cli.combine <-
+##             verbosity: Opt.count { short: "v", long: "verbose" },
+##             file: Param.maybeStr { name: "file" },
 ##         }
 ##         |> Cli.finishWithoutValidating { name: "example" }
 ##
 ##     parser ["example", "-v", "-v"]
-##     == SuccessfullyParsed { verbosity: 2 }
+##     == SuccessfullyParsed { verbosity: 2, file: Err NoValue }
 ## ```
-finishWithoutValidating : CliBuilder state action, CliConfigParams -> CliParser state
+finishWithoutValidating : CliBuilder data fromAction toAction, CliConfigParams -> CliParser data
 finishWithoutValidating = \builder, { name, authors ? [], version ? "", description ? "", textStyle ? Color } ->
     { options, parameters, subcommands, parser } =
         builder
@@ -271,13 +296,11 @@ finishWithoutValidating = \builder, { name, authors ? [], version ? "", descript
 ## for correct parsing.
 ##
 ## ```roc
-## Cli.build {
-##     a: <- Opt.num { short: "a" }
-## }
+## Opt.num { short: "a" }
 ## |> Cli.finish { name: "example" }
 ## |> Cli.assertValid
 ## ```
-assertValid : Result (CliParser state) CliValidationErr -> CliParser state
+assertValid : Result (CliParser data) CliValidationErr -> CliParser data
 assertValid = \result ->
     when result is
         Ok cli -> cli
@@ -298,8 +321,9 @@ assertValid = \result ->
 ##
 ## ```roc
 ## exampleCli =
-##     Cli.build {
-##         verbosity: <- Opt.count { short: "v", help: "How verbose our logs should be." },
+##     { Cli.combine <-
+##         verbosity: Opt.count { short: "v", long: "verbose" },
+##         alpha: Opt.maybeNum { short: "a", long: "alpha" },
 ##     }
 ##     |> Cli.finish {
 ##         name: "example",
@@ -322,6 +346,7 @@ assertValid = \result ->
 ##
 ##         Options:
 ##           -v             How verbose our logs should be.
+##           -a, --alpha    Set the alpha level.
 ##           -h, --help     Show this help page.
 ##           -V, --version  Show the version.
 ##         """
@@ -347,7 +372,7 @@ assertValid = \result ->
 ##           example [OPTIONS]
 ##         """
 ## ```
-parseOrDisplayMessage : CliParser state, List Str -> Result state Str
+parseOrDisplayMessage : CliParser data, List Str -> Result data Str
 parseOrDisplayMessage = \parser, args ->
     when parser.parser args is
         SuccessfullyParsed data -> Ok data
@@ -365,15 +390,21 @@ parseOrDisplayMessage = \parser, args ->
             Err incorrectUsageStr
 
 expect
-    build {
-        verbosity: <- Arg.Opt.count { short: "v" },
-    }
-    |> finish { name: "empty" }
+    Arg.Opt.count { short: "v" }
+    |> Arg.Cli.map Verbosity
+    |> Arg.Cli.finish { name: "empty" }
     |> Result.isOk
 
 expect
-    build {
-        verbosity: <- Arg.Opt.count { short: "" },
-    }
-    |> finish { name: "example" }
+    Arg.Opt.count { short: "" }
+    |> Arg.Cli.map Verbosity
+    |> Arg.Cli.finish { name: "example" }
     |> Result.isErr
+
+expect
+    { Arg.Cli.combine <-
+        verbosity: Arg.Opt.count { short: "v" },
+        points: Arg.Param.str { name: "points" },
+    }
+    |> Arg.Cli.finish { name: "test" }
+    |> Result.isOk
