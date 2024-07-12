@@ -32,8 +32,9 @@ list = \_ ->
 ##
 ## ```roc
 ## exampleCli =
-##     Cli.build {
-##         verbosity: <- Opt.count { short: "v", help: "How verbose our logs should be." },
+##     { Cli.combine <-
+##         verbosity: Opt.count { short: "v", help: "How verbose our logs should be." },
+##         alpha: Opt.mapbeU64 { short: "a", help: "Set the alpha level." },
 ##     }
 ##     |> Cli.finish {
 ##         name: "example",
@@ -56,6 +57,7 @@ list = \_ ->
 ##
 ##         Options:
 ##           -v             How verbose our logs should be.
+##           -a             Set the alpha level.
 ##           -h, --help     Show this help page.
 ##           -V, --version  Show the version.
 ##         """
@@ -90,7 +92,6 @@ parse = \parser ->
         ShowHelp { subcommandPath } ->
             helpMessage =
                 helpText parser.config subcommandPath parser.textStyle
-
             Stdout.line! helpMessage
             Task.err (Exit 0 "")
 
@@ -105,6 +106,5 @@ parse = \parser ->
 
                 $(usageHelp parser.config subcommandPath parser.textStyle)
                 """
-
             Stdout.line! incorrectUsageMessage
             Task.err (Exit 1 "")

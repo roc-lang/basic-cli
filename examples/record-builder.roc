@@ -7,9 +7,9 @@ import pf.Task exposing [Task]
 
 main =
     myrecord : Task { apples : List Str, oranges : List Str } []_
-    myrecord = Task.ok {
-        apples: <- getFruit Apples |> Task.batch,
-        oranges: <- getFruit Oranges |> Task.batch,
+    myrecord = { sequenceTasks <-
+        apples: getFruit Apples,
+        oranges: getFruit Oranges,
     }
 
     { apples, oranges } = myrecord!
@@ -26,3 +26,10 @@ getFruit = \request ->
     when request is
         Apples -> Task.ok ["Granny Smith", "Pink Lady", "Golden Delicious"]
         Oranges -> Task.ok ["Navel", "Blood Orange", "Clementine"]
+
+sequenceTasks : Task a err, Task b err, (a, b -> c) -> Task c err
+sequenceTasks = \firstTask, secondTask, mapper ->
+    first = firstTask!
+    second = secondTask!
+
+    Task.ok (mapper first second)
