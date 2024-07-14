@@ -95,6 +95,7 @@ decode = \name ->
 dict : Task (Dict Str Str) *
 dict =
     Effect.envDict
+    |> Effect.map Dict.fromList
     |> Effect.map Ok
     |> InternalTask.fromEffect
 

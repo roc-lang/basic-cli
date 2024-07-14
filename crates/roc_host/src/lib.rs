@@ -3,7 +3,7 @@
 use core::alloc::Layout;
 use core::ffi::c_void;
 use core::mem::MaybeUninit;
-use roc_std::{RocDict, RocList, RocResult, RocStr};
+use roc_std::{RocList, RocResult, RocStr};
 use std::borrow::{Borrow, Cow};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -355,7 +355,7 @@ pub unsafe fn call_the_closure(closure_data_ptr: *const u8) -> i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_envDict() -> RocDict<RocStr, RocStr> {
+pub extern "C" fn roc_fx_envDict() -> RocList<(RocStr, RocStr)> {
     // TODO: can we be more efficient about reusing the String's memory for RocStr?
     std::env::vars_os()
         .map(|(key, val)| {
@@ -753,6 +753,20 @@ pub struct Request {
 pub struct Header {
     key: RocStr,
     value: RocStr,
+}
+
+impl roc_std::RocRefcounted for Header {
+    fn inc(&mut self) {
+        self.key.inc();
+        self.value.inc();
+    }
+    fn dec(&mut self) {
+        self.key.dec();
+        self.value.dec();
+    }
+    fn is_refcounted() -> bool {
+        true
+    }
 }
 
 #[repr(C)]

@@ -1,6 +1,6 @@
 app [makeGlue] {
-    pf: platform "https://github.com/lukewilliamboswell/roc/releases/download/test/olBfrjtI-HycorWJMxdy7Dl2pcbbBoJy4mnSrDtRrlI.tar.br",
-    glue: "https://github.com/lukewilliamboswell/roc-glue-code-gen/releases/download/0.1.0/NprKi63CKBinQjoke2ttsOTHmjmsrmsILzRgzlds02c.tar.br",
+    pf: platform "https://github.com/lukewilliamboswell/roc/releases/download/glue-0.2/5bWcGHHGninJr_RP0-Mg5lPEGYGpPeYwYmVCwG_cZG4.tar.br",
+    glue: "https://github.com/lukewilliamboswell/roc-glue-code-gen/releases/download/0.4.0/E6x8uVSMI0YQ9CgpMww6Cj2g3BlN1lV8H04UEZh_-QA.tar.br",
 }
 
 import glue.Rust
