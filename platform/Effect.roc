@@ -85,7 +85,7 @@ cwd : Effect (List U8)
 sendRequest : Box InternalHttp.Request -> Effect InternalHttp.InternalResponse
 
 tcpConnect : Str, U16 -> Effect (Result U64 Str)
-tcpClose : U64 -> Effect (Result {} *)
+tcpClose : U64 -> Effect {}
 tcpReadUpTo : U64, U64 -> Effect (Result (List U8) Str)
 tcpReadExactly : U64, U64 -> Effect (Result (List U8) Str)
 tcpReadUntil : U64, U8 -> Effect (Result (List U8) Str)

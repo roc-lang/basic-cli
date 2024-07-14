@@ -997,12 +997,10 @@ pub extern "C" fn roc_fx_tcpConnect(host: &RocStr, port: u16) -> RocResult<u64, 
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpClose(stream_id: u64) -> RocResult<(), ()> {
+pub extern "C" fn roc_fx_tcpClose(stream_id: u64) {
     TCP_STREAMS.with(|tcp_streams_local| {
         tcp_streams_local.borrow_mut().remove(&stream_id);
-    });
-
-    RocResult::ok(())
+    })
 }
 
 #[no_mangle]
