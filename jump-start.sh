@@ -16,11 +16,6 @@ roc glue glue.roc crates ./platform/main.roc
 
 cargo build --release
 
-cp target/release/libhost.a ./platform/macos-arm64.a || true
-cp target/release/libhost.a ./platform/macos-x64.a || true
-cp target/release/libhost.a ./platform/linux-arm64.a || true
-cp target/release/libhost.a ./platform/linux-x64.a || true
-cp target/release/libhost.lib ./platform/windows-arm64.lib || true
-cp target/release/libhost.lib ./platform/windows-x64.lib || true
+cp target/release/libhost.a ./platform/libhost.a
 
-roc build build.roc
+roc build --linker=legacy build.roc
