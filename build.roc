@@ -7,8 +7,8 @@ import cli.Cmd
 import cli.Stdout
 import cli.Env
 import cli.Arg
-import cli.Arg.Opt as Opt
-import cli.Arg.Cli as Cli
+import cli.Arg.Opt
+import cli.Arg.Cli
 
 ## Builds the basic-cli [platform](https://www.roc-lang.org/platforms).
 ##
@@ -18,19 +18,19 @@ main : Task {} _
 main =
 
     cliParser =
-        Cli.build {
-            releaseMode: <- Opt.flag { short: "r", long: "release", help: "Release build. Passes `--release` to `cargo build`." },
-            maybeRoc: <- Opt.maybeStr { short: "p", long: "roc", help: "Path to the roc executable. Can be just `roc` or a full path."},
+        { Arg.Cli.combine <-
+            releaseMode: Arg.Opt.flag { short: "r", long: "release", help: "Release build. Passes `--release` to `cargo build`." },
+            maybeRoc: Arg.Opt.maybeStr { short: "p", long: "roc", help: "Path to the roc executable. Can be just `roc` or a full path."},
         }
-        |> Cli.finish {
+        |> Arg.Cli.finish {
             name: "basic-cli-builder",
             version: "",
             authors: ["Luke Boswell <https://github.com/lukewilliamboswell>"],
             description: "Generates all files needed by Roc to use this basic-cli platform.",
         }
-        |> Cli.assertValid
+        |> Arg.Cli.assertValid
 
-    when Cli.parseOrDisplayMessage cliParser (Arg.list!) is
+    when Arg.Cli.parseOrDisplayMessage cliParser (Arg.list! {}) is
         Ok args -> run args
         Err errMsg -> Task.err (Exit 1 errMsg)
 
