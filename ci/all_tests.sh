@@ -20,7 +20,7 @@ if [ -z "${ROC}" ]; then
 fi
 
 # build the basic-cli platform
-$ROC ./build.roc --release --roc $ROC
+$ROC ./build.roc --prebuilt-platform -- --release --roc $ROC
 
 # roc check
 for roc_file in $EXAMPLES_DIR*.roc; do
@@ -38,7 +38,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         continue
     fi
 
-    $ROC build --linker=legacy --prebuilt-platform $roc_file $ROC_BUILD_FLAGS
+    $ROC build --prebuilt-platform $roc_file $ROC_BUILD_FLAGS
 done
 
 # prep for next step
@@ -88,10 +88,10 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     if [ "$base_file" == "path.roc" ]; then
         absolute_roc=$(which $ROC | xargs realpath)
         cd $EXAMPLES_DIR
-        $absolute_roc dev --linker=legacy --prebuilt-platform $base_file $ROC_BUILD_FLAGS
+        $absolute_roc dev --prebuilt-platform $base_file $ROC_BUILD_FLAGS
         cd ..
     else
-        $ROC dev --linker=legacy --prebuilt-platform $roc_file $ROC_BUILD_FLAGS
+        $ROC dev --prebuilt-platform $roc_file $ROC_BUILD_FLAGS
     fi
 done
 
