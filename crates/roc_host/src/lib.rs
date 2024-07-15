@@ -17,6 +17,11 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::runtime::Runtime;
 
+/// Implementation of the host.
+/// The host contains code that calls the Roc main function and provides the
+/// Roc app with functions to allocate memory and execute effects such as
+/// writing to stdio or making HTTP requests.
+
 trait CustomBuffered: BufRead + Read + Seek {}
 
 impl<T: BufRead + Read + Seek> CustomBuffered for T {}

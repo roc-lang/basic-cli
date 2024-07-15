@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-## This script is used to build a local prebuilt binary for the native target,
-## so that the build.roc script can be run. This is only needed in the event
-## of a breaking change in the roc compiler that prevents older version of the
-## build script from running.
+## This script is only needed in the event of a breaking change in the
+## Roc compiler that prevents build.roc from running.
+## This script builds a local prebuilt binary for the native target,
+## so that the build.roc script can be run. 
 ##
 ## To use this, change the build.roc script to use the platform locally..
 

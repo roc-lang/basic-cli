@@ -14,6 +14,8 @@ import cli.Arg.Cli
 ##
 ## run with: roc ./build.roc --release
 ##
+## Check basic-cli-build-steps.png for a diagram that shows what the code does.
+##
 main : Task {} _
 main =
 
@@ -37,52 +39,39 @@ main =
 run : { releaseMode : Bool, maybeRoc : Result Str err} -> Task {} _
 run = \{ releaseMode, maybeRoc } ->
 
-    roc = maybeRoc |> Result.withDefault "roc"
+    rocCmd = maybeRoc |> Result.withDefault "roc"
 
+    generateGlue! rocCmd
+
+    # target is MacosArm64, LinuxX64,...
+    target = getNativeTarget!
+
+    stubLibPath = "platform/libapp.$(stubFileExtension target)"
+
+    buildStubAppLib! rocCmd stubLibPath
+
+    cargoBuildHost! releaseMode
+
+    copyHostLib! releaseMode target
+
+    preprocessHost! rocCmd releaseMode stubLibPath
+
+    info! "Successfully built platform files!"
+
+generateGlue : Str -> Task {} _
+generateGlue = \rocCmd ->
     info! "Generating glue for builtins ..."
-    roc
+
+    rocCmd
         |> Cmd.exec  ["glue", "glue.roc", "crates/", "platform/main.roc"]
         |> Task.mapErr! ErrGeneratingGlue
 
-    # target is MacosArm64, LinuxX64,...
+getNativeTarget : Task RocTarget _
+getNativeTarget =
     info! "Getting the native target ..."
-    target =
-        Env.platform
-        |> Task.await! getNativeTarget
-
-    stubPath = "platform/libapp.$(stubFileExtension target)"
-
-    info! "Building stubbed app shared library ..."
-    roc
-        |> Cmd.exec  ["build", "--lib", "platform/libapp.roc", "--output", stubPath]
-        |> Task.mapErr! ErrBuildingAppStub
-
-    (cargoBuildArgs, infoMessage) =
-        if releaseMode then
-            (["build", "--release"], "Building host in RELEASE mode ...")
-        else
-            (["build"], "Building host in DEBUG mode ...")
-
-    info! infoMessage
-    "cargo"
-        |> Cmd.exec  cargoBuildArgs
-        |> Task.mapErr! ErrBuildingHostBinaries
-
-    hostBuildPath = if releaseMode then "target/release/libhost.a" else "target/debug/libhost.a"
-    hostDestPath = "platform/$(prebuiltStaticLibFile target)"
-
-    info! "Moving the prebuilt binary from $(hostBuildPath) to $(hostDestPath) ..."
-    "cp"
-        |> Cmd.exec  [hostBuildPath, hostDestPath]
-        |> Task.mapErr! ErrMovingPrebuiltLegacyBinary
-
-    info! "Preprocessing surgical host ..."
-    surgicalBuildPath = if releaseMode then "target/release/host" else "target/debug/host"
-    roc
-        |> Cmd.exec  ["preprocess-host", surgicalBuildPath, "platform/main.roc", stubPath]
-        |> Task.mapErr! ErrPreprocessingSurgicalBinary
-
-    info! "Successfully completed building platform binaries."
+    
+    Env.platform
+    |> Task.await convertNativeTarget
 
 RocTarget : [
     MacosArm64,
@@ -93,14 +82,21 @@ RocTarget : [
     WindowsX64,
 ]
 
-getNativeTarget : _ -> Task RocTarget _
-getNativeTarget =\{os, arch} ->
+convertNativeTarget : _ -> Task RocTarget _
+convertNativeTarget =\{os, arch} ->
     when (os, arch) is
         (MACOS, AARCH64) -> Task.ok MacosArm64
         (MACOS, X64) -> Task.ok MacosX64
         (LINUX, AARCH64) -> Task.ok LinuxArm64
         (LINUX, X64) -> Task.ok LinuxX64
         _ -> Task.err (UnsupportedNative os arch)
+
+buildStubAppLib : Str, Str -> Task {} _
+buildStubAppLib = \rocCmd, stubLibPath ->
+    info! "Building stubbed app shared library ..."
+    rocCmd
+        |> Cmd.exec  ["build", "--lib", "platform/libapp.roc", "--output", stubLibPath]
+        |> Task.mapErr! ErrBuildingAppStub
 
 stubFileExtension : RocTarget -> Str
 stubFileExtension = \target ->
@@ -118,6 +114,39 @@ prebuiltStaticLibFile = \target ->
         LinuxX64 -> "linux-x64.a"
         WindowsArm64 -> "windows-arm64.lib"
         WindowsX64 -> "windows-x64.lib"
+
+cargoBuildHost : Bool -> Task {} _
+cargoBuildHost = \releaseMode ->
+    (cargoBuildArgs, infoMessage) =
+        if releaseMode then
+            (["build", "--release"], "Building host in RELEASE mode ...")
+        else
+            (["build"], "Building host in DEBUG mode ...")
+
+
+    info! infoMessage
+    "cargo"
+        |> Cmd.exec  cargoBuildArgs
+        |> Task.mapErr! ErrBuildingHostBinaries
+
+copyHostLib : Bool, RocTarget -> Task {} _
+copyHostLib = \releaseMode, target ->
+    hostBuildPath = if releaseMode then "target/release/libhost.a" else "target/debug/libhost.a"
+    hostDestPath = "platform/$(prebuiltStaticLibFile target)"
+
+    info! "Moving the prebuilt binary from $(hostBuildPath) to $(hostDestPath) ..."
+    "cp"
+        |> Cmd.exec  [hostBuildPath, hostDestPath]
+        |> Task.mapErr! ErrMovingPrebuiltLegacyBinary
+
+preprocessHost : Str, Bool, Str -> Task {} _
+preprocessHost = \rocCmd, releaseMode, stubLibPath ->
+    info! "Preprocessing surgical host ..."
+    surgicalBuildPath = if releaseMode then "target/release/host" else "target/debug/host"
+    
+    rocCmd
+        |> Cmd.exec  ["preprocess-host", surgicalBuildPath, "platform/main.roc", stubLibPath]
+        |> Task.mapErr! ErrPreprocessingSurgicalBinary
 
 info : Str -> Task {} _
 info = \msg ->
