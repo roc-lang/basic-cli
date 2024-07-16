@@ -8,14 +8,20 @@
 ## To use this, change the build.roc script to use the platform locally..
 
 # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
-set -euxo pipefail
+set -exo pipefail
 
-roc build --lib ./platform/libapp.roc
+if [ -z "${ROC}" ]; then
+  echo "Warning: ROC environment variable is not set... I'll try with just roc."
 
-roc glue glue.roc crates ./platform/main.roc
+  ROC="roc"
+fi
+
+$ROC build --lib ./platform/libapp.roc
+
+$ROC glue glue.roc crates ./platform/main.roc
 
 cargo build --release
 
 cp target/release/libhost.a ./platform/libhost.a
 
-roc build --linker=legacy build.roc
+$ROC build --linker=legacy build.roc
