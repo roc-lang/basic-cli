@@ -617,9 +617,8 @@ fn path_from_roc_path(bytes: &RocList<u8>) -> Cow<'_, Path> {
 
 #[no_mangle]
 pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocList<u8>, RocStr> {
-    // TODO: write our own duplicate of `read_to_end` that avoids the vector.
+    // TODO: write our own duplicate of `read_to_end` that directly fills a `RocList<u8>`.
     // This adds an extra O(n) copy.
-    // Or pass the vec in as a slice like we would with an mmap.
     let mut bytes = Vec::new();
 
     match File::open(path_from_roc_path(roc_path)) {
@@ -656,9 +655,8 @@ pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<RocBox<
 pub extern "C" fn roc_fx_fileReadLine(data: RocBox<()>) -> RocResult<RocList<u8>, RocStr> {
     let buf_reader: &mut BufReader<File> = RefcountedResourceHeap::box_to_resource(data);
 
-    // TODO: write our own duplicate of `read_line/read_until` that avoids the String.
+    // TODO: write our own duplicate of `read_line/read_until` that directly fills a `RocList<u8>`.
     // This adds an extra O(n) copy.
-    // Or pass the string in as a slice like we would with an mmap.
     let mut string_buffer = String::new();
     match buf_reader.read_line(&mut string_buffer) {
         Ok(..) => {
