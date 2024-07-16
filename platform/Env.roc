@@ -1,4 +1,4 @@
-module [cwd, dict, var, decode, exePath, setCwd, platform]
+module [cwd, dict, var, decode, exePath, setCwd, platform, tmpDir]
 
 import Task exposing [Task]
 import Path exposing [Path]
@@ -142,7 +142,7 @@ OS : [LINUX, MACOS, WINDOWS, OTHER Str]
 ##
 ## Note these values are constants from when the platform is built.
 ##
-platform : Task {arch : ARCH, os: OS} *
+platform : Task { arch : ARCH, os : OS } *
 platform =
     Effect.currentArchOS
     |> Effect.map \fromRust ->
@@ -162,6 +162,11 @@ platform =
                 "windows" -> WINDOWS
                 _ -> OTHER fromRust.os
 
-        Ok {arch, os}
+        Ok { arch, os }
+    |> InternalTask.fromEffect
 
+tmpDir : Task Str []_
+tmpDir =
+    Effect.tmpDir
+    |> Effect.map Ok
     |> InternalTask.fromEffect
