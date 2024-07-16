@@ -36,8 +36,8 @@ architecture=$(uname -m)
 for roc_file in $EXAMPLES_DIR*.roc; do
     base_file=$(basename "$roc_file")
 
-    # Skip env.roc when on aarch64
-    if [ "$architecture" == "aarch64" ] && [ "$base_file" == "env.roc" ]; then
+    # Skip env-var.roc when on aarch64
+    if [ "$architecture" == "aarch64" ] && [ "$base_file" == "env-var.roc" ]; then
         continue
     fi
 
@@ -58,8 +58,8 @@ cd ../..
 for roc_file in $EXAMPLES_DIR*.roc; do
     base_file=$(basename "$roc_file")
 
-    # Skip env.roc when on aarch64
-    if [ "$architecture" == "aarch64" ] && [ "$base_file" == "env.roc" ]; then
+    # Skip env-var.roc when on aarch64
+    if [ "$architecture" == "aarch64" ] && [ "$base_file" == "env-var.roc" ]; then
         continue
     fi
 
@@ -87,8 +87,8 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         fi
     done
 
-    # Skip env.roc when on aarch64
-    if [ "$architecture" == "aarch64" ] && [ "$base_file" == "env.roc" ]; then
+    # Skip env-var.roc when on aarch64
+    if [ "$architecture" == "aarch64" ] && [ "$base_file" == "env-var.roc" ]; then
         continue
     fi
 
