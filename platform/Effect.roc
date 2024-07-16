@@ -45,7 +45,7 @@ hosted Effect
         commandStatus,
         commandOutput,
         currentArchOS,
-        tmpDir,
+        tempDir,
     ]
     imports [
         InternalHttp,
@@ -108,4 +108,4 @@ dirDeleteAll : List U8 -> Effect (Result {} Str)
 
 currentArchOS : Effect { arch : Str, os : Str }
 
-tmpDir : Effect Str
+tempDir : Effect (List U8)

@@ -52,6 +52,8 @@ file-test
 example-stdin
 http-get-json
 file-read-buffered
+temp-dir
+env-var
 out.txt
 
 # local roc folder for testing

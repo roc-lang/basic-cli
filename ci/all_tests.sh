@@ -38,7 +38,12 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         continue
     fi
 
-    $ROC build --prebuilt-platform $roc_file $ROC_BUILD_FLAGS
+    if [ "$base_file" == "temp-dir.roc" ]; then
+        $ROC build --prebuilt-platform $roc_file $ROC_BUILD_FLAGS --linker=legacy
+    else
+        $ROC build --prebuilt-platform $roc_file $ROC_BUILD_FLAGS
+    fi
+    
 done
 
 # prep for next step
@@ -90,6 +95,8 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         cd $EXAMPLES_DIR
         $absolute_roc dev --prebuilt-platform $base_file $ROC_BUILD_FLAGS
         cd ..
+    elif [ "$base_file" == "temp-dir.roc" ]; then
+        $ROC dev --prebuilt-platform $roc_file $ROC_BUILD_FLAGS --linker=legacy
     else
         $ROC dev --prebuilt-platform $roc_file $ROC_BUILD_FLAGS
     fi

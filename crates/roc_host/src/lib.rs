@@ -309,7 +309,7 @@ pub fn init() {
         roc_fx_dirDeleteEmpty as _,
         roc_fx_dirDeleteAll as _,
         roc_fx_currentArchOS as _,
-        roc_fx_tmpDir as _,
+        roc_fx_tempDir as _,
     ];
     #[allow(forgetting_references)]
     std::mem::forget(std::hint::black_box(funcs));
@@ -1328,8 +1328,13 @@ pub extern "C" fn roc_fx_currentArchOS() -> ReturnArchOS {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tmpDir() -> RocStr {
-    format!("{}", std::env::temp_dir().display())
-        .as_str()
-        .into()
+pub extern "C" fn roc_fx_tempDir() -> RocList<u8> {
+    let path_os_string_bytes =
+        std::env::temp_dir()
+        .into_os_string()
+        .into_encoded_bytes();
+
+    RocList::from(
+        path_os_string_bytes.as_slice()
+    )
 }
