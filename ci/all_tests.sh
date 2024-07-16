@@ -78,7 +78,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     base_file=$(basename "$roc_file")
 
     # countdown, echo, form, piping... all require user input or special setup
-    ignore_list=("countdown.roc" "echo.roc" "form.roc" "piping.roc" "stdin.roc" "args.roc" "http-get-json.roc")
+    ignore_list=("countdown.roc" "echo.roc" "form.roc" "piping.roc" "stdin.roc" "args.roc" "http-get-json.roc" "env-var.roc")
 
     # check if base_file matches something from ignore_list
     for file in "${ignore_list[@]}"; do
@@ -86,11 +86,6 @@ for roc_file in $EXAMPLES_DIR*.roc; do
             continue 2 # continue the outer loop if a match is found
         fi
     done
-
-    # Skip env-var.roc when on aarch64
-    if [ "$architecture" == "aarch64" ] && [ "$base_file" == "env-var.roc" ]; then
-        continue
-    fi
 
     # For path.roc we need be inside the EXAMPLES_DIR
     if [ "$base_file" == "path.roc" ]; then
