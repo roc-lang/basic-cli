@@ -12,7 +12,7 @@ import cli.Arg.Cli
 
 ## Builds the basic-cli [platform](https://www.roc-lang.org/platforms).
 ##
-## run with: roc ./build.roc --release
+## run with: roc ./build.roc
 ##
 ## Check basic-cli-build-steps.png for a diagram that shows what the code does.
 ##
@@ -20,10 +20,7 @@ main : Task {} _
 main =
 
     cliParser =
-        { Arg.Cli.combine <-
-            releaseMode: Arg.Opt.flag { short: "r", long: "release", help: "Release build. Passes `--release` to `cargo build`." },
-            maybeRoc: Arg.Opt.maybeStr { short: "p", long: "roc", help: "Path to the roc executable. Can be just `roc` or a full path."},
-        }
+        Arg.Opt.maybeStr { short: "p", long: "roc", help: "Path to the roc executable. Can be just `roc` or a full path."}
         |> Arg.Cli.finish {
             name: "basic-cli-builder",
             version: "",
@@ -36,9 +33,9 @@ main =
         Ok args -> run args
         Err errMsg -> Task.err (Exit 1 errMsg)
 
-run : { releaseMode : Bool, maybeRoc : Result Str err} -> Task {} _
-run = \{ releaseMode, maybeRoc } ->
-
+run : Result Str err -> Task {} _
+run = \maybeRoc ->
+    # rocCmd may be a path or just roc
     rocCmd = maybeRoc |> Result.withDefault "roc"
 
     generateGlue! rocCmd
@@ -50,11 +47,11 @@ run = \{ releaseMode, maybeRoc } ->
 
     buildStubAppLib! rocCmd stubLibPath
 
-    cargoBuildHost! releaseMode
+    cargoBuildHost!
 
-    copyHostLib! releaseMode target
+    copyHostLib! target
 
-    preprocessHost! rocCmd releaseMode stubLibPath
+    preprocessHost! rocCmd stubLibPath
 
     info! "Successfully built platform files!"
 
@@ -115,23 +112,20 @@ prebuiltStaticLibFile = \target ->
         WindowsArm64 -> "windows-arm64.lib"
         WindowsX64 -> "windows-x64.lib"
 
-cargoBuildHost : Bool -> Task {} _
-cargoBuildHost = \releaseMode ->
-    (cargoBuildArgs, infoMessage) =
-        if releaseMode then
-            (["build", "--release"], "Building host in RELEASE mode ...")
-        else
-            (["build"], "Building host in DEBUG mode ...")
+cargoBuildHost : Task {} _
+cargoBuildHost =
+    cargoBuildArgs =
+        ["build", "--release"]
 
 
-    info! infoMessage
+    info! "Building host in RELEASE mode ..."
     "cargo"
         |> Cmd.exec  cargoBuildArgs
         |> Task.mapErr! ErrBuildingHostBinaries
 
-copyHostLib : Bool, RocTarget -> Task {} _
-copyHostLib = \releaseMode, target ->
-    hostBuildPath = if releaseMode then "target/release/libhost.a" else "target/debug/libhost.a"
+copyHostLib : RocTarget -> Task {} _
+copyHostLib = \target ->
+    hostBuildPath = "target/release/libhost.a"
     hostDestPath = "platform/$(prebuiltStaticLibFile target)"
 
     info! "Moving the prebuilt binary from $(hostBuildPath) to $(hostDestPath) ..."
@@ -139,10 +133,10 @@ copyHostLib = \releaseMode, target ->
         |> Cmd.exec  [hostBuildPath, hostDestPath]
         |> Task.mapErr! ErrMovingPrebuiltLegacyBinary
 
-preprocessHost : Str, Bool, Str -> Task {} _
-preprocessHost = \rocCmd, releaseMode, stubLibPath ->
+preprocessHost : Str, Str -> Task {} _
+preprocessHost = \rocCmd, stubLibPath ->
     info! "Preprocessing surgical host ..."
-    surgicalBuildPath = if releaseMode then "target/release/host" else "target/debug/host"
+    surgicalBuildPath = "target/release/host"
     
     rocCmd
         |> Cmd.exec  ["preprocess-host", surgicalBuildPath, "platform/main.roc", stubLibPath]
