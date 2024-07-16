@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/roc_std",
+    "crates/roc_host",
+    "crates/roc_host_lib",
+    "crates/roc_host_bin",
+]
+
+[profile.release]
+lto = true
+strip = "debuginfo"
+codegen-units = 1

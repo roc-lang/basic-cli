@@ -45,6 +45,7 @@ hosted Effect
         commandStatus,
         commandOutput,
         currentArchOS,
+        tempDir,
     ]
     imports [
         InternalHttp,
@@ -71,7 +72,7 @@ fileReader : List U8 -> Effect (Result U64 Str)
 fileReadLine : U64 -> Effect (Result (List U8) Str)
 closeFile : U64 -> Effect {}
 
-envDict : Effect (Dict Str Str)
+envDict : Effect (List (Str, Str))
 envVar : Str -> Effect (Result Str {})
 exePath : Effect (Result (List U8) {})
 setCwd : List U8 -> Effect (Result {} {})
@@ -106,3 +107,5 @@ dirDeleteEmpty : List U8 -> Effect (Result {} Str)
 dirDeleteAll : List U8 -> Effect (Result {} Str)
 
 currentArchOS : Effect { arch : Str, os : Str }
+
+tempDir : Effect (List U8)

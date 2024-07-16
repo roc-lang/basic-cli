@@ -1,4 +1,4 @@
-module [cwd, dict, var, decode, exePath, setCwd, platform]
+module [cwd, dict, var, decode, exePath, setCwd, platform, tempDir]
 
 import Task exposing [Task]
 import Path exposing [Path]
@@ -95,6 +95,7 @@ decode = \name ->
 dict : Task (Dict Str Str) *
 dict =
     Effect.envDict
+    |> Effect.map Dict.fromList
     |> Effect.map Ok
     |> InternalTask.fromEffect
 
@@ -141,7 +142,7 @@ OS : [LINUX, MACOS, WINDOWS, OTHER Str]
 ##
 ## Note these values are constants from when the platform is built.
 ##
-platform : Task {arch : ARCH, os: OS} *
+platform : Task { arch : ARCH, os : OS } *
 platform =
     Effect.currentArchOS
     |> Effect.map \fromRust ->
@@ -161,6 +162,20 @@ platform =
                 "windows" -> WINDOWS
                 _ -> OTHER fromRust.os
 
-        Ok {arch, os}
+        Ok { arch, os }
+    |> InternalTask.fromEffect
 
+## This uses rust's [`std::env::temp_dir()`](https://doc.rust-lang.org/std/env/fn.temp_dir.html)
+##
+## !! From the Rust documentation:
+##
+## The temporary directory may be shared among users, or between processes with different privileges;
+## thus, the creation of any files or directories in the temporary directory must use a secure method
+## to create a uniquely named file. Creating a file or directory with a fixed or predictable name may
+## result in “insecure temporary file” security vulnerabilities.
+##
+tempDir : Task Path []_
+tempDir =
+    Effect.tempDir
+    |> Effect.map (\pathOSStringBytes -> Ok (InternalPath.fromOsBytes pathOSStringBytes))
     |> InternalTask.fromEffect
