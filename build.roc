@@ -1,5 +1,5 @@
 app [main] {
-    cli: platform "platform/main.roc",
+    cli: platform "platform/main.roc", # TODO use basic-cli 0.13 url
 }
 
 import cli.Task exposing [Task]
