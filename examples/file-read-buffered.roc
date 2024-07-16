@@ -23,8 +23,6 @@ main =
     readSummary = Task.loop!
         { linesRead: 0, bytesRead: 0 }
         (processLine reader)
-    # Why you should close files: https://stackoverflow.com/a/29536383
-    File.closeFileReader! reader
     Stdout.line! "Done reading file: $(Inspect.toStr readSummary)"
 
 ReadSummary : { linesRead : U64, bytesRead : U64 }

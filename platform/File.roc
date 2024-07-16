@@ -15,7 +15,6 @@ module [
     FileReader,
     getFileReader,
     readLine,
-    closeFileReader,
 ]
 
 import Task exposing [Task]
@@ -189,8 +188,7 @@ type : Str -> Task [IsFile, IsDir, IsSymLink] [PathErr MetadataErr]
 type = \path ->
     Path.type (Path.fromStr path)
 
-
-FileReader := {readerID: U64, path: Path}
+FileReader := { reader : Box {}, path : Path }
 
 ## Try to create a `FileReader` for buffered (= part by part) reading given a path string.
 ## See [examples/file-read-buffered.roc](https://github.com/roc-lang/basic-cli/blob/main/examples/file-read-buffered.roc) for example usage.
@@ -205,7 +203,7 @@ getFileReader = \pathStr ->
     Effect.fileReader (Str.toUtf8 pathStr)
     |> Effect.map \result ->
         when result is
-            Ok readerID -> Ok (@FileReader {readerID, path})
+            Ok reader -> Ok (@FileReader { reader, path })
             Err err -> Err (GetFileReadErr path (InternalFile.handleReadErr err))
     |> InternalTask.fromEffect
 
@@ -218,22 +216,11 @@ getFileReader = \pathStr ->
 ##
 ## Use [readUtf8] if you want to get the entire file contents at once.
 readLine : FileReader -> Task (List U8) [FileReadErr Path Str]
-readLine = \@FileReader {readerID, path} ->
+readLine = \@FileReader { reader, path } ->
 
-    Effect.fileReadLine readerID
+    Effect.fileReadLine reader
     |> Effect.map \result ->
         when result is
             Ok bytes -> Ok bytes
             Err err -> Err (FileReadErr path err)
-    |> InternalTask.fromEffect
-
-## Close the file that was opened when creating the FileReader.
-## [Why you should close files.](https://stackoverflow.com/a/29536383)
-##
-## Calling [File.readLine] after the FileReader is closed will return an empty list.
-closeFileReader : FileReader -> Task {} *
-closeFileReader = \@FileReader {readerID} ->
-
-    Effect.closeFile readerID
-    |> Effect.map Ok
     |> InternalTask.fromEffect
