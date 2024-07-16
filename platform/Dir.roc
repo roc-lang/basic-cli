@@ -6,6 +6,7 @@ module [
     createAll,
     deleteEmpty,
     deleteAll,
+    tmpDir,
 ]
 
 import Task exposing [Task]

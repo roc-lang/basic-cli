@@ -32,6 +32,7 @@ module [
     createAll,
     deleteEmpty,
     deleteAll,
+    tmpDir,
 ]
 
 import InternalPath
@@ -695,3 +696,9 @@ handleErr = \err ->
         e if e == "ErrorKind::AlreadyExists" -> DirErr AlreadyExists
         e if e == "ErrorKind::NotADirectory" -> DirErr NotADirectory
         str -> DirErr (Other str)
+
+tmpDir : Task Str []_
+tmpDir =
+    Effect.tmpDir
+    |> Effect.map Ok
+    |> InternalTask.fromEffect
