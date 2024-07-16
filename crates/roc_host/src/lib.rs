@@ -3,11 +3,12 @@
 use core::alloc::Layout;
 use core::ffi::c_void;
 use core::mem::MaybeUninit;
-use heap::Heap;
-use roc_std::{RocList, RocResult, RocStr};
+use heap::RefcountedResourceHeap;
+use roc_std::{RocBox, RocList, RocResult, RocStr};
 use std::borrow::{Borrow, Cow};
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::env;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
@@ -16,7 +17,6 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use std::{env, mem};
 use tokio::runtime::Runtime;
 
 /// Implementation of the host.
@@ -24,8 +24,6 @@ use tokio::runtime::Runtime;
 /// Roc app with functions to allocate memory and execute effects such as
 /// writing to stdio or making HTTP requests.
 mod heap;
-
-const REFCOUNT_ONE: usize = isize::MIN as usize;
 
 thread_local! {
    static TCP_STREAMS: RefCell<HashMap<u64, BufReader<TcpStream>>> = RefCell::new(HashMap::new());
@@ -36,15 +34,17 @@ thread_local! {
        .unwrap();
 }
 
-fn reader_heap() -> &'static Mutex<RefCell<Heap<(usize, BufReader<File>)>>> {
-    static READER_HEAP: OnceLock<Mutex<RefCell<Heap<(usize, BufReader<File>)>>>> = OnceLock::new();
+fn reader_heap() -> &'static Mutex<RefCell<RefcountedResourceHeap<BufReader<File>>>> {
+    static READER_HEAP: OnceLock<Mutex<RefCell<RefcountedResourceHeap<BufReader<File>>>>> =
+        OnceLock::new();
     READER_HEAP.get_or_init(|| {
         let DEFAULT_MAX_FILES = 65536;
         let max_files = env::var("ROC_BASIC_CLI_MAX_FILES")
             .map(|v| v.parse().unwrap_or(DEFAULT_MAX_FILES))
             .unwrap_or(DEFAULT_MAX_FILES);
         Mutex::new(RefCell::new(
-            Heap::new(max_files).expect("Failed to allocate mmap for file handle references."),
+            RefcountedResourceHeap::new(max_files)
+                .expect("Failed to allocate mmap for file handle references."),
         ))
     })
 }
@@ -94,8 +94,8 @@ pub unsafe extern "C" fn roc_dealloc(c_ptr: *mut c_void, _alignment: u32) {
     {
         let mut guard = reader_heap().lock().unwrap();
         let heap = guard.get_mut();
-        if heap.in_range(c_ptr as _) {
-            heap.dealloc(c_ptr as _);
+        if heap.in_range(c_ptr) {
+            heap.dealloc(c_ptr);
             return;
         }
     }
@@ -632,7 +632,7 @@ pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocL
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<usize, RocStr> {
+pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<RocBox<()>, RocStr> {
     match File::open(path_from_roc_path(roc_path)) {
         Ok(file) => {
             let buf_reader = BufReader::new(file);
@@ -641,15 +641,10 @@ pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<usize, 
                 let mut guard = reader_heap().lock().unwrap();
                 let heap = guard.get_mut();
 
-                heap.alloc()
+                heap.alloc_for(buf_reader)
             };
             match alloc_result {
-                Ok(alloc_ptr) => unsafe {
-                    *alloc_ptr = (REFCOUNT_ONE, buf_reader);
-
-                    let box_ptr = alloc_ptr as usize + mem::size_of::<usize>();
-                    RocResult::ok(box_ptr)
-                },
+                Ok(out) => RocResult::ok(out),
                 Err(err) => RocResult::err(toRocReadError(err)),
             }
         }
@@ -658,15 +653,14 @@ pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<usize, 
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_fileReadLine(box_ptr: usize) -> RocResult<RocList<u8>, RocStr> {
-    let alloc_ptr = (box_ptr - mem::size_of::<usize>()) as *mut (usize, BufReader<File>);
-    let boxed_reader: &mut (usize, BufReader<File>) = unsafe { &mut *alloc_ptr };
+pub extern "C" fn roc_fx_fileReadLine(data: RocBox<()>) -> RocResult<RocList<u8>, RocStr> {
+    let buf_reader: &mut BufReader<File> = RefcountedResourceHeap::box_to_resource(data);
 
     // TODO: write our own duplicate of `read_line/read_until` that avoids the String.
     // This adds an extra O(n) copy.
     // Or pass the string in as a slice like we would with an mmap.
     let mut string_buffer = String::new();
-    match boxed_reader.1.read_line(&mut string_buffer) {
+    match buf_reader.read_line(&mut string_buffer) {
         Ok(..) => {
             // Note: this returns an empty list when no bytes were read, e.g. End Of File
             RocResult::ok(RocList::from(string_buffer.as_bytes()))
