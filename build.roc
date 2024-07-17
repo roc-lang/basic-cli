@@ -92,7 +92,7 @@ buildStubAppLib : Str, Str -> Task {} _
 buildStubAppLib = \rocCmd, stubLibPath ->
     info! "Building stubbed app shared library ..."
     rocCmd
-        |> Cmd.exec  ["build", "--lib", "platform/libapp.roc", "--output", stubLibPath]
+        |> Cmd.exec  ["build", "--lib", "platform/libapp.roc", "--output", stubLibPath, "--optimize"]
         |> Task.mapErr! ErrBuildingAppStub
 
 stubFileExtension : RocTarget -> Str
@@ -118,7 +118,7 @@ cargoBuildHost =
         ["build", "--release"]
 
 
-    info! "Building host in RELEASE mode ..."
+    info! "Building rust host ..."
     "cargo"
         |> Cmd.exec  cargoBuildArgs
         |> Task.mapErr! ErrBuildingHostBinaries
