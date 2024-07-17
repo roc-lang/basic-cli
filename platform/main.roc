@@ -47,7 +47,7 @@ mainForHost =
                         $(Inspect.toStr err)
 
                     Tip: If you do not want to exit on this error, use `Task.mapErr` to handle the error.
-                    Docs for `Task.mapErr`: <https://www.roc-lang.org/packages/basic-cli/Task#mapErr>
+                    Docs for `Task.mapErr`: <https://www.roc-lang.org/packages/basic-cli/0.13.0/Task#mapErr>
                     """
                 |> Task.onErr \_ -> Task.err 1
                 |> Task.await \_ -> Task.err 1
