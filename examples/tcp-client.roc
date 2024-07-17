@@ -23,21 +23,22 @@ handleErr = \error ->
                 $ ncat -e \$(which cat) -l 8085
                 """
 
-        TcpReadBadUtf8 _ ->
+        TcpPerformErr (TcpReadBadUtf8 _) ->
             Stderr.line "Received invalid UTF-8 data"
 
-        TcpReadErr err ->
+        TcpPerformErr (TcpReadErr err) ->
             errStr = Tcp.streamErrToStr err
             Stderr.line "Error while reading: $(errStr)"
 
-        TcpWriteErr err ->
+        TcpPerformErr (TcpWriteErr err) ->
             errStr = Tcp.streamErrToStr err
             Stderr.line "Error while writing: $(errStr)"
 
         other -> Stderr.line "Got other error: $(Inspect.toStr other)"
 
 run =
-    stream = Tcp.connect! "127.0.0.1" 8085
+    stream <- Tcp.withConnect "127.0.0.1" 8085
+
     Stdout.line! "Connected!"
 
     Task.loop {} \_ -> Task.map (tick stream) Step
