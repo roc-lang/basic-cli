@@ -38,6 +38,8 @@ run = \maybeRoc ->
     # rocCmd may be a path or just roc
     rocCmd = maybeRoc |> Result.withDefault "roc"
 
+    rocVersion! rocCmd
+
     generateGlue! rocCmd
 
     # target is MacosArm64, LinuxX64,...
@@ -54,6 +56,14 @@ run = \maybeRoc ->
     preprocessHost! rocCmd stubLibPath
 
     info! "Successfully built platform files!"
+
+rocVersion : Str -> Task {} _
+rocVersion = \rocCmd ->
+    info! "Checking provided roc; executing `$(rocCmd) version`:"
+
+    rocCmd
+        |> Cmd.exec  ["version"]
+        |> Task.mapErr! RocVersionCheckFailed
 
 generateGlue : Str -> Task {} _
 generateGlue = \rocCmd ->
