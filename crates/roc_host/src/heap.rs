@@ -19,9 +19,12 @@ use std::{
 
 const REFCOUNT_ONE: usize = isize::MIN as usize;
 
+#[repr(C)]
+struct Refcounted<T>(usize, T);
+
 /// HeapOfRefcounted is a wrapper around Heap for data that roc stores with a refcount.
 /// It will return a pointer to right after the refcount (what a `Box {}` would expect in Roc).
-pub struct RefcountedResourceHeap<T>(Heap<(usize, T)>);
+pub struct RefcountedResourceHeap<T>(Heap<Refcounted<T>>);
 
 impl<T> RefcountedResourceHeap<T> {
     pub fn new(max_elements: usize) -> Result<RefcountedResourceHeap<T>> {
@@ -30,7 +33,7 @@ impl<T> RefcountedResourceHeap<T> {
 
     pub fn alloc_for(self: &mut Self, data: T) -> Result<RocBox<()>> {
         self.0.alloc().map(|alloc_ptr| {
-            unsafe { *alloc_ptr = (REFCOUNT_ONE, data) };
+            unsafe { *alloc_ptr = Refcounted(REFCOUNT_ONE, data) };
             let box_ptr = alloc_ptr as usize + mem::size_of::<usize>();
             unsafe { std::mem::transmute(box_ptr) }
         })
@@ -47,8 +50,8 @@ impl<T> RefcountedResourceHeap<T> {
     pub fn box_to_resource<'a>(data: RocBox<()>) -> &'a mut T {
         let box_ptr: usize = unsafe { std::mem::transmute(data) };
 
-        let alloc_ptr = (box_ptr - mem::size_of::<usize>()) as *mut (usize, T);
-        let alloc: &mut (usize, T) = unsafe { &mut *alloc_ptr };
+        let alloc_ptr = (box_ptr - mem::size_of::<usize>()) as *mut Refcounted<T>;
+        let alloc: &mut Refcounted<T> = unsafe { &mut *alloc_ptr };
         &mut alloc.1
     }
 }
