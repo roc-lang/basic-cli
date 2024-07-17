@@ -7,7 +7,6 @@ use heap::RefcountedResourceHeap;
 use roc_std::{RocBox, RocList, RocResult, RocStr};
 use std::borrow::{Borrow, Cow};
 use std::cell::RefCell;
-use std::env;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
@@ -35,12 +34,9 @@ fn file_heap() -> &'static Mutex<RefCell<RefcountedResourceHeap<BufReader<File>>
     static FILE_HEAP: OnceLock<Mutex<RefCell<RefcountedResourceHeap<BufReader<File>>>>> =
         OnceLock::new();
     FILE_HEAP.get_or_init(|| {
-        let DEFAULT_MAX_FILES = 65536;
-        let max_files = env::var("ROC_BASIC_CLI_MAX_FILES")
-            .map(|v| v.parse().unwrap_or(DEFAULT_MAX_FILES))
-            .unwrap_or(DEFAULT_MAX_FILES);
+        let MAX_FILES = u32::MAX as usize;
         Mutex::new(RefCell::new(
-            RefcountedResourceHeap::new(max_files)
+            RefcountedResourceHeap::new(MAX_FILES)
                 .expect("Failed to allocate mmap for file handle references."),
         ))
     })
@@ -53,12 +49,9 @@ fn tcp_heap() -> &'static Mutex<RefCell<RefcountedResourceHeap<BufReader<TcpStre
     static TCP_HEAP: OnceLock<Mutex<RefCell<RefcountedResourceHeap<BufReader<TcpStream>>>>> =
         OnceLock::new();
     TCP_HEAP.get_or_init(|| {
-        let DEFAULT_MAX_TCP_STREAMS = 65536;
-        let max_tcp_streams = env::var("ROC_BASIC_CLI_MAX_TCP_STREAMS")
-            .map(|v| v.parse().unwrap_or(DEFAULT_MAX_TCP_STREAMS))
-            .unwrap_or(DEFAULT_MAX_TCP_STREAMS);
+        let MAX_TCP_STREAMS = u32::MAX as usize;
         Mutex::new(RefCell::new(
-            RefcountedResourceHeap::new(max_tcp_streams)
+            RefcountedResourceHeap::new(MAX_TCP_STREAMS)
                 .expect("Failed to allocate mmap for tcp handle references."),
         ))
     })
@@ -661,10 +654,7 @@ pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<RocBox<
 
                 heap.alloc_for(buf_reader)
             };
-            match alloc_result {
-                Ok(out) => RocResult::ok(out),
-                Err(err) => RocResult::err(toRocReadError(err)),
-            }
+            RocResult::ok(alloc_result.expect("running out of descriptors is impossible"))
         }
         Err(err) => RocResult::err(toRocReadError(err)),
     }
@@ -1016,10 +1006,7 @@ pub extern "C" fn roc_fx_tcpConnect(host: &RocStr, port: u16) -> RocResult<RocBo
 
                 heap.alloc_for(reader)
             };
-            match alloc_result {
-                Ok(out) => RocResult::ok(out),
-                Err(err) => RocResult::err(to_tcp_connect_err(err)),
-            }
+            RocResult::ok(alloc_result.expect("running out of descriptors is impossible"))
         }
         Err(err) => return RocResult::err(to_tcp_connect_err(err)),
     }
