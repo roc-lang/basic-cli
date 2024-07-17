@@ -120,7 +120,7 @@ pub unsafe extern "C" fn roc_dealloc(c_ptr: *mut c_void, _alignment: u32) {
     {
         let mut guard = mmap_heap().lock().unwrap();
         let heap = guard.get_mut();
-        if dbg!(heap.in_range(c_ptr)) {
+        if heap.in_range(c_ptr) {
             heap.dealloc(c_ptr);
             return;
         }
