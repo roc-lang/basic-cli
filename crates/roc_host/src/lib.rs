@@ -26,6 +26,9 @@ use tokio::runtime::Runtime;
 mod heap;
 
 thread_local! {
+    // TODO: update TCP_STREAMS to match the FILE_HEAP.
+    // Tried to do this before and it broke stdin somehow.
+    // Very confused.
    static TCP_STREAMS: RefCell<HashMap<u64, BufReader<TcpStream>>> = RefCell::new(HashMap::new());
    static TOKIO_RUNTIME: Runtime = tokio::runtime::Builder::new_current_thread()
        .enable_io()
@@ -34,10 +37,10 @@ thread_local! {
        .unwrap();
 }
 
-fn reader_heap() -> &'static Mutex<RefCell<RefcountedResourceHeap<BufReader<File>>>> {
-    static READER_HEAP: OnceLock<Mutex<RefCell<RefcountedResourceHeap<BufReader<File>>>>> =
+fn file_heap() -> &'static Mutex<RefCell<RefcountedResourceHeap<BufReader<File>>>> {
+    static FILE_HEAP: OnceLock<Mutex<RefCell<RefcountedResourceHeap<BufReader<File>>>>> =
         OnceLock::new();
-    READER_HEAP.get_or_init(|| {
+    FILE_HEAP.get_or_init(|| {
         let DEFAULT_MAX_FILES = 65536;
         let max_files = env::var("ROC_BASIC_CLI_MAX_FILES")
             .map(|v| v.parse().unwrap_or(DEFAULT_MAX_FILES))
@@ -92,7 +95,7 @@ pub unsafe extern "C" fn roc_realloc(
 #[no_mangle]
 pub unsafe extern "C" fn roc_dealloc(c_ptr: *mut c_void, _alignment: u32) {
     {
-        let mut guard = reader_heap().lock().unwrap();
+        let mut guard = file_heap().lock().unwrap();
         let heap = guard.get_mut();
         if heap.in_range(c_ptr) {
             heap.dealloc(c_ptr);
@@ -637,7 +640,7 @@ pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<RocBox<
             let buf_reader = BufReader::new(file);
 
             let alloc_result = {
-                let mut guard = reader_heap().lock().unwrap();
+                let mut guard = file_heap().lock().unwrap();
                 let heap = guard.get_mut();
 
                 heap.alloc_for(buf_reader)
