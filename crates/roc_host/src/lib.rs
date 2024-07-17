@@ -54,8 +54,8 @@ fn file_heap() -> &'static Mutex<RefCell<RefcountedResourceHeap<BufReader<File>>
 }
 
 fn mmap_heap() -> &'static Mutex<RefCell<RefcountedResourceHeap<MmapMut>>> {
-    static FILE_HEAP: OnceLock<Mutex<RefCell<RefcountedResourceHeap<MmapMut>>>> = OnceLock::new();
-    FILE_HEAP.get_or_init(|| {
+    static MMAP_HEAP: OnceLock<Mutex<RefCell<RefcountedResourceHeap<MmapMut>>>> = OnceLock::new();
+    MMAP_HEAP.get_or_init(|| {
         let DEFAULT_MAX_MMAPS = 65536;
         let max_mmaps = env::var("ROC_BASIC_CLI_MAX_MMAPS")
             .map(|v| v.parse().unwrap_or(DEFAULT_MAX_MMAPS))
