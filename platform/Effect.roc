@@ -30,12 +30,13 @@ hosted Effect
         fileDelete,
         fileWriteUtf8,
         fileWriteBytes,
+        FileReader,
         fileReader,
         fileReadLine,
         pathType,
         posixTime,
+        TcpStream,
         tcpConnect,
-        tcpClose,
         tcpReadUpTo,
         tcpReadExactly,
         tcpReadUntil,
@@ -67,8 +68,9 @@ fileWriteUtf8 : List U8, Str -> Effect (Result {} Str)
 fileDelete : List U8 -> Effect (Result {} Str)
 fileReadBytes : List U8 -> Effect (Result (List U8) Str)
 
-fileReader : List U8 -> Effect (Result (Box {}) Str)
-fileReadLine : Box {} -> Effect (Result (List U8) Str)
+FileReader := Box {}
+fileReader : List U8 -> Effect (Result FileReader Str)
+fileReadLine : FileReader -> Effect (Result (List U8) Str)
 
 envDict : Effect (List (Str, Str))
 envVar : Str -> Effect (Result Str {})
@@ -83,12 +85,12 @@ cwd : Effect (List U8)
 
 sendRequest : Box InternalHttp.Request -> Effect InternalHttp.InternalResponse
 
-tcpConnect : Str, U16 -> Effect (Result U64 Str)
-tcpClose : U64 -> Effect {}
-tcpReadUpTo : U64, U64 -> Effect (Result (List U8) Str)
-tcpReadExactly : U64, U64 -> Effect (Result (List U8) Str)
-tcpReadUntil : U64, U8 -> Effect (Result (List U8) Str)
-tcpWrite : U64, List U8 -> Effect (Result {} Str)
+TcpStream := Box {}
+tcpConnect : Str, U16 -> Effect (Result TcpStream Str)
+tcpReadUpTo : TcpStream, U64 -> Effect (Result (List U8) Str)
+tcpReadExactly : TcpStream, U64 -> Effect (Result (List U8) Str)
+tcpReadUntil : TcpStream, U8 -> Effect (Result (List U8) Str)
+tcpWrite : TcpStream, List U8 -> Effect (Result {} Str)
 
 pathType : List U8 -> Effect (Result InternalPath.InternalPathType (List U8))
 

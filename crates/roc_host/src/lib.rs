@@ -7,14 +7,12 @@ use heap::RefcountedResourceHeap;
 use roc_std::{RocBox, RocList, RocResult, RocStr};
 use std::borrow::{Borrow, Cow};
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::env;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
 use std::net::TcpStream;
 use std::path::Path;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::runtime::Runtime;
@@ -26,7 +24,6 @@ use tokio::runtime::Runtime;
 mod heap;
 
 thread_local! {
-   static TCP_STREAMS: RefCell<HashMap<u64, BufReader<TcpStream>>> = RefCell::new(HashMap::new());
    static TOKIO_RUNTIME: Runtime = tokio::runtime::Builder::new_current_thread()
        .enable_io()
        .enable_time()
@@ -34,10 +31,10 @@ thread_local! {
        .unwrap();
 }
 
-fn reader_heap() -> &'static Mutex<RefCell<RefcountedResourceHeap<BufReader<File>>>> {
-    static READER_HEAP: OnceLock<Mutex<RefCell<RefcountedResourceHeap<BufReader<File>>>>> =
+fn file_heap() -> &'static Mutex<RefCell<RefcountedResourceHeap<BufReader<File>>>> {
+    static FILE_HEAP: OnceLock<Mutex<RefCell<RefcountedResourceHeap<BufReader<File>>>>> =
         OnceLock::new();
-    READER_HEAP.get_or_init(|| {
+    FILE_HEAP.get_or_init(|| {
         let DEFAULT_MAX_FILES = 65536;
         let max_files = env::var("ROC_BASIC_CLI_MAX_FILES")
             .map(|v| v.parse().unwrap_or(DEFAULT_MAX_FILES))
@@ -49,9 +46,24 @@ fn reader_heap() -> &'static Mutex<RefCell<RefcountedResourceHeap<BufReader<File
     })
 }
 
-static TCP_STREAM_INDEX: AtomicU64 = AtomicU64::new(0);
+fn tcp_heap() -> &'static Mutex<RefCell<RefcountedResourceHeap<BufReader<TcpStream>>>> {
+    // TODO: Should this be a BufReader and BufWriter of the tcp stream?
+    // like this: https://stackoverflow.com/questions/58467659/how-to-store-tcpstream-with-bufreader-and-bufwriter-in-a-data-structure/58491889#58491889
 
-const STREAM_NOT_FOUND_ERROR: &str = "StreamNotFound";
+    static TCP_HEAP: OnceLock<Mutex<RefCell<RefcountedResourceHeap<BufReader<TcpStream>>>>> =
+        OnceLock::new();
+    TCP_HEAP.get_or_init(|| {
+        let DEFAULT_MAX_TCP_STREAMS = 65536;
+        let max_tcp_streams = env::var("ROC_BASIC_CLI_MAX_TCP_STREAMS")
+            .map(|v| v.parse().unwrap_or(DEFAULT_MAX_TCP_STREAMS))
+            .unwrap_or(DEFAULT_MAX_TCP_STREAMS);
+        Mutex::new(RefCell::new(
+            RefcountedResourceHeap::new(max_tcp_streams)
+                .expect("Failed to allocate mmap for tcp handle references."),
+        ))
+    })
+}
+
 const UNEXPECTED_EOF_ERROR: &str = "UnexpectedEof";
 
 extern "C" {
@@ -92,7 +104,15 @@ pub unsafe extern "C" fn roc_realloc(
 #[no_mangle]
 pub unsafe extern "C" fn roc_dealloc(c_ptr: *mut c_void, _alignment: u32) {
     {
-        let mut guard = reader_heap().lock().unwrap();
+        let mut guard = file_heap().lock().unwrap();
+        let heap = guard.get_mut();
+        if heap.in_range(c_ptr) {
+            heap.dealloc(c_ptr);
+            return;
+        }
+    }
+    {
+        let mut guard = tcp_heap().lock().unwrap();
         let heap = guard.get_mut();
         if heap.in_range(c_ptr) {
             heap.dealloc(c_ptr);
@@ -312,7 +332,6 @@ pub fn init() {
         roc_fx_dirList as _,
         roc_fx_sendRequest as _,
         roc_fx_tcpConnect as _,
-        roc_fx_tcpClose as _,
         roc_fx_tcpReadUpTo as _,
         roc_fx_tcpReadExactly as _,
         roc_fx_tcpReadUntil as _,
@@ -637,7 +656,7 @@ pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<RocBox<
             let buf_reader = BufReader::new(file);
 
             let alloc_result = {
-                let mut guard = reader_heap().lock().unwrap();
+                let mut guard = file_heap().lock().unwrap();
                 let heap = guard.get_mut();
 
                 heap.alloc_for(buf_reader)
@@ -652,8 +671,8 @@ pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<RocBox<
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_fileReadLine(data: RocBox<()>) -> RocResult<RocList<u8>, RocStr> {
-    let buf_reader: &mut BufReader<File> = RefcountedResourceHeap::box_to_resource(data);
+pub extern "C" fn roc_fx_fileReadLine(file: RocBox<()>) -> RocResult<RocList<u8>, RocStr> {
+    let buf_reader: &mut BufReader<File> = RefcountedResourceHeap::box_to_resource(file);
 
     // TODO: write our own duplicate of `read_line/read_until` that directly fills a `RocList<u8>`.
     // This adds an extra O(n) copy.
@@ -986,110 +1005,96 @@ fn toRocGetMetadataError(err: std::io::Error) -> RocList<u8> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpConnect(host: &RocStr, port: u16) -> RocResult<u64, RocStr> {
-    let stream = match TcpStream::connect((host.as_str(), port)) {
-        Ok(stream) => stream,
+pub extern "C" fn roc_fx_tcpConnect(host: &RocStr, port: u16) -> RocResult<RocBox<()>, RocStr> {
+    match TcpStream::connect((host.as_str(), port)) {
+        Ok(stream) => {
+            let reader = BufReader::new(stream);
+
+            let alloc_result = {
+                let mut guard = tcp_heap().lock().unwrap();
+                let heap = guard.get_mut();
+
+                heap.alloc_for(reader)
+            };
+            match alloc_result {
+                Ok(out) => RocResult::ok(out),
+                Err(err) => RocResult::err(to_tcp_connect_err(err)),
+            }
+        }
         Err(err) => return RocResult::err(to_tcp_connect_err(err)),
-    };
-
-    let reader = BufReader::new(stream);
-    let stream_id = TCP_STREAM_INDEX.fetch_add(1, Ordering::SeqCst);
-
-    TCP_STREAMS.with(|tcp_streams_local| {
-        tcp_streams_local.borrow_mut().insert(stream_id, reader);
-    });
-
-    RocResult::ok(stream_id)
-}
-
-#[no_mangle]
-pub extern "C" fn roc_fx_tcpClose(stream_id: u64) {
-    TCP_STREAMS.with(|tcp_streams_local| {
-        tcp_streams_local.borrow_mut().remove(&stream_id);
-    })
+    }
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpReadUpTo(
-    stream_id: u64,
+    stream: RocBox<()>,
     bytes_to_read: u64,
 ) -> RocResult<RocList<u8>, RocStr> {
-    TCP_STREAMS.with(|tcp_streams_local| {
-        let mut streams_mut = tcp_streams_local.borrow_mut();
-        let Some(stream) = streams_mut.get_mut(&stream_id) else {
-            return RocResult::err(STREAM_NOT_FOUND_ERROR.into());
-        };
+    let stream: &mut BufReader<TcpStream> = RefcountedResourceHeap::box_to_resource(stream);
 
-        let mut chunk = stream.take(bytes_to_read);
+    let mut chunk = stream.take(bytes_to_read);
 
-        match chunk.fill_buf() {
-            Ok(received) => {
-                let received = received.to_vec();
-                stream.consume(received.len());
+    match chunk.fill_buf() {
+        Ok(received) => {
+            // TODO: write our own duplicate of `to_vec` that directly fills a `RocList<u8>`.
+            // This adds an extra O(n) copy.
+            let received = received.to_vec();
+            stream.consume(received.len());
 
-                RocResult::ok(RocList::from(&received[..]))
-            }
-            Err(err) => RocResult::err(to_tcp_stream_err(err)),
+            RocResult::ok(RocList::from(&received[..]))
         }
-    })
+        Err(err) => RocResult::err(to_tcp_stream_err(err)),
+    }
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpReadExactly(
-    stream_id: u64,
+    stream: RocBox<()>,
     bytes_to_read: u64,
 ) -> RocResult<RocList<u8>, RocStr> {
-    TCP_STREAMS.with(|tcp_streams_local| {
-        let mut streams_mut = tcp_streams_local.borrow_mut();
-        let Some(stream) = streams_mut.get_mut(&stream_id) else {
-            return RocResult::err(STREAM_NOT_FOUND_ERROR.into());
-        };
+    let stream: &mut BufReader<TcpStream> = RefcountedResourceHeap::box_to_resource(stream);
 
-        let mut buffer = Vec::with_capacity(bytes_to_read as usize);
-        let mut chunk = stream.take(bytes_to_read);
+    let mut buffer = Vec::with_capacity(bytes_to_read as usize);
+    let mut chunk = stream.take(bytes_to_read);
 
-        match chunk.read_to_end(&mut buffer) {
-            Ok(read) => {
-                if (read as u64) < bytes_to_read {
-                    RocResult::err(UNEXPECTED_EOF_ERROR.into())
-                } else {
-                    RocResult::ok(RocList::from(&buffer[..]))
-                }
+    // TODO: write our own duplicate of `read_to_end` that directly fills a `RocList<u8>`.
+    // This adds an extra O(n) copy.
+    match chunk.read_to_end(&mut buffer) {
+        Ok(read) => {
+            if (read as u64) < bytes_to_read {
+                RocResult::err(UNEXPECTED_EOF_ERROR.into())
+            } else {
+                RocResult::ok(RocList::from(&buffer[..]))
             }
-            Err(err) => RocResult::err(to_tcp_stream_err(err)),
         }
-    })
+        Err(err) => RocResult::err(to_tcp_stream_err(err)),
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpReadUntil(stream_id: u64, byte: u8) -> RocResult<RocList<u8>, RocStr> {
-    TCP_STREAMS.with(|tcp_streams_local| {
-        let mut streams_mut = tcp_streams_local.borrow_mut();
-        let Some(stream) = streams_mut.get_mut(&stream_id) else {
-            return RocResult::err(STREAM_NOT_FOUND_ERROR.into());
-        };
+pub extern "C" fn roc_fx_tcpReadUntil(
+    stream: RocBox<()>,
+    byte: u8,
+) -> RocResult<RocList<u8>, RocStr> {
+    let stream: &mut BufReader<TcpStream> = RefcountedResourceHeap::box_to_resource(stream);
 
-        let mut buffer = vec![];
-        match stream.read_until(byte, &mut buffer) {
-            Ok(_) => RocResult::ok(RocList::from(&buffer[..])),
-            Err(err) => RocResult::err(to_tcp_stream_err(err)),
-        }
-    })
+    // TODO: write our own duplicate of `read_until` that directly fills a `RocList<u8>`.
+    // This adds an extra O(n) copy.
+    let mut buffer = vec![];
+    match stream.read_until(byte, &mut buffer) {
+        Ok(_) => RocResult::ok(RocList::from(&buffer[..])),
+        Err(err) => RocResult::err(to_tcp_stream_err(err)),
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpWrite(stream_id: u64, msg: &RocList<u8>) -> RocResult<(), RocStr> {
-    TCP_STREAMS.with(|tcp_streams_local| {
-        let mut streams_mut = tcp_streams_local.borrow_mut();
-        let Some(stream) = streams_mut.get_mut(&stream_id) else {
-            return RocResult::err(STREAM_NOT_FOUND_ERROR.into());
-        };
+pub extern "C" fn roc_fx_tcpWrite(stream: RocBox<()>, msg: &RocList<u8>) -> RocResult<(), RocStr> {
+    let stream: &mut BufReader<TcpStream> = RefcountedResourceHeap::box_to_resource(stream);
 
-        match stream.get_mut().write_all(msg.as_slice()) {
-            Ok(()) => RocResult::ok(()),
-            Err(err) => RocResult::err(to_tcp_stream_err(err)),
-        }
-    })
+    match stream.get_mut().write_all(msg.as_slice()) {
+        Ok(()) => RocResult::ok(()),
+        Err(err) => RocResult::err(to_tcp_stream_err(err)),
+    }
 }
 
 fn to_tcp_connect_err(err: std::io::Error) -> RocStr {
