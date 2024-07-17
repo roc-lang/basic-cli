@@ -189,7 +189,7 @@ type : Str -> Task [IsFile, IsDir, IsSymLink] [PathErr MetadataErr]
 type = \path ->
     Path.type (Path.fromStr path)
 
-Reader := { reader : Box {}, path : Path }
+FileReader := { reader : Effect.FileReader, path : Path }
 
 ## Try to open a `File.Reader` for buffered (= part by part) reading given a path string.
 ## See [examples/file-read-buffered.roc](https://github.com/roc-lang/basic-cli/blob/main/examples/file-read-buffered.roc) for example usage.
