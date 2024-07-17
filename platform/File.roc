@@ -15,6 +15,7 @@ module [
     FileReader,
     getFileReader,
     readLine,
+    mmap,
 ]
 
 import Task exposing [Task]
@@ -224,3 +225,23 @@ readLine = \@FileReader { reader, path } ->
             Ok bytes -> Ok bytes
             Err err -> Err (FileReadErr path err)
     |> InternalTask.fromEffect
+
+## Loads a file into a copy on write mmap.
+## The file data will be loaded lazily from disk as it is accessed.
+## Mutations will not affect the file on disk.
+##
+## ```
+## # mmap `myfile.txt`.
+## File.mmap "myfile.txt"
+## ```
+mmap : Str -> Task (List U8) [FileReadErr Path ReadErr]
+mmap = \pathStr ->
+    path = Path.fromStr pathStr
+
+    Effect.fileMmap (Str.toUtf8 pathStr)
+    |> Effect.map \result ->
+        when result is
+            Ok bytes -> Ok bytes
+            Err err -> Err (FileReadErr path (InternalFile.handleReadErr err))
+    |> InternalTask.fromEffect
+

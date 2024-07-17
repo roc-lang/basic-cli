@@ -32,6 +32,7 @@ hosted Effect
         fileWriteBytes,
         fileReader,
         fileReadLine,
+        fileMmap,
         pathType,
         posixTime,
         tcpConnect,
@@ -69,6 +70,8 @@ fileReadBytes : List U8 -> Effect (Result (List U8) Str)
 
 fileReader : List U8 -> Effect (Result (Box {}) Str)
 fileReadLine : Box {} -> Effect (Result (List U8) Str)
+
+fileMmap : List U8 -> Effect (Result (List U8) Str)
 
 envDict : Effect (List (Str, Str))
 envVar : Str -> Effect (Result Str {})
