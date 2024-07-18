@@ -15,7 +15,7 @@ module [
     FileReader,
     getFileReader,
     readLine,
-    mmap,
+    mapMemoryAdvanced,
 ]
 
 import Task exposing [Task]
@@ -226,16 +226,23 @@ readLine = \@FileReader { reader, path } ->
             Err err -> Err (FileReadErr path err)
     |> InternalTask.fromEffect
 
-## Loads a file into a copy on write mmap.
-## The file data will be loaded lazily from disk as it is accessed.
-## Mutations will not affect the file on disk.
+## Loads a file into a copy on write memory map return to roc as bytes (`List U8`).
 ##
 ## ```
-## # mmap `myfile.txt`.
-## File.mmap "myfile.txt"
+## # memory map `myfile.txt`.
+## File.mapMemoryAdvanced "myfile.txt"
 ## ```
-mmap : Str -> Task (List U8) [FileReadErr Path ReadErr]
-mmap = \pathStr ->
+##
+## The file data will be loaded lazily from disk as it is accessed.
+## Mutations to the roc list will not affect the file on disk.
+##
+## Warning: Memory mapping has multiple sharp edges that are platform specific.
+## If the file is modified on disk while mapped, it is unspecified what will happen.
+## More info from the underlying [rust library](https://docs.rs/memmap2/latest/memmap2/struct.MmapMut.html#safety).
+##
+## Use [readUtf8] if you want to get the entire file contents at once without concerns of modification on disk.
+mapMemoryAdvanced : Str -> Task (List U8) [FileReadErr Path ReadErr]
+mapMemoryAdvanced = \pathStr ->
     path = Path.fromStr pathStr
 
     Effect.fileMmap (Str.toUtf8 pathStr)

@@ -21,7 +21,7 @@ main =
 
 run =
     fileName = "LICENSE"
-    contents = File.mmap! fileName
+    contents = File.mapMemoryAdvanced! fileName
     contentsStr = Str.fromUtf8 contents |> Task.fromResult!
     lines = Str.split contentsStr "\n"
 
