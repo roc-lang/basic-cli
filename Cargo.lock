@@ -525,6 +525,7 @@ dependencies = [
  "hyper",
  "hyper-rustls",
  "libc",
+ "memchr",
  "memmap2",
  "roc_std",
  "tokio",

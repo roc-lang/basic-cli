@@ -9,7 +9,6 @@ use roc_std::{RocBox, RocList, RocResult, RocStr};
 use std::borrow::{Borrow, Cow};
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::env;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
@@ -18,6 +17,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::OnceLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::{env, io};
 use tokio::runtime::Runtime;
 
 /// Implementation of the host.
@@ -650,7 +650,7 @@ pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocL
 pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<RocBox<()>, RocStr> {
     match File::open(path_from_roc_path(roc_path)) {
         Ok(file) => {
-            let buf_reader = BufReader::new(file);
+            let buf_reader = BufReader::with_capacity(2048 * 2048, file);
 
             let heap = file_heap();
             let alloc_result = heap.alloc_for(buf_reader);
@@ -667,15 +667,46 @@ pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<RocBox<
 pub extern "C" fn roc_fx_fileReadLine(data: RocBox<()>) -> RocResult<RocList<u8>, RocStr> {
     let buf_reader: &mut BufReader<File> = ThreadSafeRefcountedResourceHeap::box_to_resource(data);
 
-    // TODO: write our own duplicate of `read_line/read_until` that directly fills a `RocList<u8>`.
-    // This adds an extra O(n) copy.
-    let mut string_buffer = String::new();
-    match buf_reader.read_line(&mut string_buffer) {
+    let mut buffer = RocList::empty();
+    match read_until(buf_reader, '\n' as u8, &mut buffer) {
         Ok(..) => {
             // Note: this returns an empty list when no bytes were read, e.g. End Of File
-            RocResult::ok(RocList::from(string_buffer.as_bytes()))
+            RocResult::ok(buffer)
         }
         Err(err) => RocResult::err(err.to_string().as_str().into()),
+    }
+}
+
+fn read_until<R: BufRead + ?Sized>(
+    r: &mut R,
+    delim: u8,
+    buf: &mut RocList<u8>,
+) -> io::Result<usize> {
+    let mut read = 0;
+    loop {
+        let (done, used) = {
+            let available = match r.fill_buf() {
+                Ok(n) => n,
+                // TODO: Fix this case
+                // Err(ref e) if e.is_interrupted() => continue,
+                Err(e) => return Err(e),
+            };
+            match memchr::memchr(delim, available) {
+                Some(i) => {
+                    buf.extend_from_slice(&available[..=i]);
+                    (true, i + 1)
+                }
+                None => {
+                    buf.extend_from_slice(available);
+                    (false, available.len())
+                }
+            }
+        };
+        r.consume(used);
+        read += used;
+        if done || used == 0 {
+            return Ok(read);
+        }
     }
 }
 
