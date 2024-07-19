@@ -4,7 +4,6 @@ use core::alloc::Layout;
 use core::ffi::c_void;
 use core::mem::MaybeUninit;
 use heap::ThreadSafeRefcountedResourceHeap;
-use memmap2::{MmapMut, MmapOptions};
 use roc_std::{RocBox, RocList, RocResult, RocStr};
 use std::borrow::{Borrow, Cow};
 use std::cell::RefCell;
@@ -47,18 +46,6 @@ fn file_heap() -> &'static ThreadSafeRefcountedResourceHeap<BufReader<File>> {
             .unwrap_or(DEFAULT_MAX_FILES);
         ThreadSafeRefcountedResourceHeap::new(max_files)
             .expect("Failed to allocate mmap for file handle references.")
-    })
-}
-
-fn mmap_heap() -> &'static ThreadSafeRefcountedResourceHeap<MmapMut> {
-    static MMAP_HEAP: OnceLock<ThreadSafeRefcountedResourceHeap<MmapMut>> = OnceLock::new();
-    MMAP_HEAP.get_or_init(|| {
-        let DEFAULT_MAX_MMAPS = 65536;
-        let max_mmaps = env::var("ROC_BASIC_CLI_MAX_MMAPS")
-            .map(|v| v.parse().unwrap_or(DEFAULT_MAX_MMAPS))
-            .unwrap_or(DEFAULT_MAX_MMAPS);
-        ThreadSafeRefcountedResourceHeap::new(max_mmaps)
-            .expect("Failed to allocate mmap for mmap references.")
     })
 }
 
@@ -105,11 +92,6 @@ pub unsafe extern "C" fn roc_realloc(
 #[no_mangle]
 pub unsafe extern "C" fn roc_dealloc(c_ptr: *mut c_void, _alignment: u32) {
     let heap = file_heap();
-    if heap.in_range(c_ptr) {
-        heap.dealloc(c_ptr);
-        return;
-    }
-    let heap = mmap_heap();
     if heap.in_range(c_ptr) {
         heap.dealloc(c_ptr);
         return;
@@ -318,7 +300,6 @@ pub fn init() {
         roc_fx_fileWriteBytes as _,
         roc_fx_pathType as _,
         roc_fx_fileReadBytes as _,
-        roc_fx_fileMmap as _,
         roc_fx_fileReader as _,
         roc_fx_fileReadLine as _,
         roc_fx_fileDelete as _,
@@ -707,46 +688,6 @@ fn read_until<R: BufRead + ?Sized>(
         if done || used == 0 {
             return Ok(read);
         }
-    }
-}
-
-const SEAMLESS_SLICE_BIT: usize = isize::MIN as usize;
-
-#[no_mangle]
-pub extern "C" fn roc_fx_fileMmap(roc_path: &RocList<u8>) -> RocResult<RocList<u8>, RocStr> {
-    match File::open(path_from_roc_path(roc_path)) {
-        Ok(file) => {
-            let mut mmap = match unsafe { MmapOptions::new().map_copy(&file) } {
-                Ok(mmap) => mmap,
-                Err(err) => return RocResult::err(toRocReadError(err)),
-            };
-            let ptr = mmap.as_mut_ptr();
-            let len = mmap.len();
-
-            let heap = mmap_heap();
-            let alloc_result = heap.alloc_for(mmap);
-            let rc_box = match alloc_result {
-                Ok(out) => out,
-                Err(err) => return RocResult::err(toRocReadError(err)),
-            };
-
-            let ref_ptr = unsafe { std::mem::transmute::<RocBox<()>, usize>(rc_box) };
-
-            // TODO: probably make the internals of roc_std public and just build a roc list directly.
-            #[repr(C)]
-            struct SeamlessSlice {
-                elements: *mut u8,
-                length: usize,
-                ref_ptr: usize,
-            }
-            let slice = SeamlessSlice {
-                elements: ptr,
-                length: len,
-                ref_ptr: (ref_ptr >> 1) | SEAMLESS_SLICE_BIT,
-            };
-            RocResult::ok(unsafe { std::mem::transmute(slice) })
-        }
-        Err(err) => RocResult::err(toRocReadError(err)),
     }
 }
 
