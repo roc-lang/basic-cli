@@ -340,13 +340,19 @@ pub extern "C" fn rust_main() -> i32 {
     let layout = Layout::array::<u8>(size).unwrap();
 
     unsafe {
-        let buffer = std::alloc::alloc(layout);
+        let buffer = if size > 0 {
+            std::alloc::alloc(layout)
+        } else {
+            std::ptr::null()
+        } as *mut u8;
 
         roc_main(buffer);
 
         let out = call_the_closure(buffer);
 
-        std::alloc::dealloc(buffer, layout);
+        if size > 0 {
+            std::alloc::dealloc(buffer, layout);
+        }
 
         out
     }
