@@ -21,6 +21,12 @@ use std::{
 
 const REFCOUNT_ONE: usize = isize::MIN as usize;
 
+/// ThreadSafeRefcountedResourceHeap is a threadsafe version of the refcounted heap that can avoid a wrapping Mutex and RefCell.
+/// This is very important for dealloc performance.
+/// No lock is needed to check if a pointer is in range of the underlying mmap.
+/// This leads to a solid perf bump over the naive lock everywhere solution.
+/// Otherwise, alloc and dealloc, always use a mutex, but are much rarer to be called.
+/// If perf becomes a problem once basic-cli has threading, we should consider sharding the heap by thread.
 pub struct ThreadSafeRefcountedResourceHeap<T> {
     heap: UnsafeCell<RefcountedResourceHeap<T>>,
     guard: Mutex<()>,
