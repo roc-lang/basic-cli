@@ -8,12 +8,10 @@ import Arg.ErrorFormatter exposing [formatArgExtractErr]
 import Arg.Help exposing [helpText, usageHelp]
 
 ## Gives a list of the program's command-line arguments.
-## `{} ->` is a necessary workaround to make error accumulation/unification work.
-list : {} -> Task (List Str) []
-list = \_ ->
+list : Task (List Str) []_
+list =
     PlatformTask.args
-    |> Effect.map Ok
-    |> InternalTask.fromEffect
+    |> Task.mapErr \{} -> crash "unreachable Arg.list"
 
 ## Parse arguments using a CLI parser or show a useful message on failure.
 ##
@@ -81,9 +79,9 @@ list = \_ ->
 ##           example [OPTIONS]
 ##         """
 ## ```
-parse : CliParser state -> Task state [Exit I32 Str, StdoutErr Stdout.Err]
+parse : CliParser state -> Task state [Exit I32 Str, StdoutErr Stdout.Err]_
 parse = \parser ->
-    when parser.parser (list {})! is
+    when parser.parser (list!) is
         SuccessfullyParsed data ->
             Task.ok data
 

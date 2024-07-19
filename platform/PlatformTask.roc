@@ -39,6 +39,7 @@ hosted PlatformTask
         commandStatus,
         commandOutput,
         currentArchOS,
+        tempDir,
     ]
     imports [
         InternalHttp.{ Request, InternalResponse },
@@ -64,7 +65,7 @@ fileReader : List U8 -> Task U64 Str
 fileReadLine : U64 -> Task (List U8) Str
 closeFile : U64 -> Task {} {}
 
-envDict : Task (Dict Str Str) {}
+envDict : Task (List (Str, Str)) {}
 envVar : Str -> Task Str {}
 exePath : Task (List U8) {}
 setCwd : List U8 -> Task {} {}
@@ -99,3 +100,5 @@ dirDeleteEmpty : List U8 -> Task {} Str
 dirDeleteAll : List U8 -> Task {} Str
 
 currentArchOS : Task { arch : Str, os : Str } {}
+
+tempDir : Task (List U8) {}

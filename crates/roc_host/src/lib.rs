@@ -362,26 +362,22 @@ pub unsafe fn call_the_closure(closure_data_ptr: *const u8) -> i32 {
 #[no_mangle]
 pub extern "C" fn roc_fx_envDict() -> RocList<(RocStr, RocStr)> {
     // TODO: can we be more efficient about reusing the String's memory for RocStr?
-    RocResult::ok(
-        std::env::vars_os()
-            .map(|(key, val)| {
-                (
-                    RocStr::from(key.to_string_lossy().borrow()),
-                    RocStr::from(val.to_string_lossy().borrow()),
-                )
-            })
-            .collect(),
-    )
+    std::env::vars_os()
+        .map(|(key, val)| {
+            (
+                RocStr::from(key.to_string_lossy().borrow()),
+                RocStr::from(val.to_string_lossy().borrow()),
+            )
+        })
+        .collect()
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_args() -> RocResult<RocList<RocStr>, ()> {
+pub extern "C" fn roc_fx_args() -> RocList<RocStr> {
     // TODO: can we be more efficient about reusing the String's memory for RocStr?
-    RocResult::ok(
-        std::env::args_os()
-            .map(|os_str| RocStr::from(os_str.to_string_lossy().borrow()))
-            .collect(),
-    )
+    std::env::args_os()
+        .map(|os_str| RocStr::from(os_str.to_string_lossy().borrow()))
+        .collect()
 }
 
 #[no_mangle]
@@ -1338,12 +1334,7 @@ pub extern "C" fn roc_fx_currentArchOS() -> RocResult<ReturnArchOS, ()> {
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tempDir() -> RocList<u8> {
-    let path_os_string_bytes =
-        std::env::temp_dir()
-        .into_os_string()
-        .into_encoded_bytes();
+    let path_os_string_bytes = std::env::temp_dir().into_os_string().into_encoded_bytes();
 
-    RocList::from(
-        path_os_string_bytes.as_slice()
-    )
+    RocList::from(path_os_string_bytes.as_slice())
 }

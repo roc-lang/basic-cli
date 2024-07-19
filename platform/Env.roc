@@ -86,9 +86,8 @@ decode = \name ->
 dict : Task (Dict Str Str) []_
 dict =
     PlatformTask.envDict
-    |> Effect.map Dict.fromList
-    |> Effect.map Ok
-    |> InternalTask.fromEffect
+    |> Task.map Dict.fromList
+    |> Task.mapErr \{} -> crash "unreachable"
 
 # ## Walks over the process's environment variables as key-value arguments to the walking function.
 # ##
@@ -155,8 +154,7 @@ platform =
             "windows" -> WINDOWS
             _ -> OTHER fromRust.os
 
-        Ok { arch, os }
-    |> InternalTask.fromEffect
+    Task.ok { arch, os }
 
 ## This uses rust's [`std::env::temp_dir()`](https://doc.rust-lang.org/std/env/fn.temp_dir.html)
 ##
@@ -169,6 +167,6 @@ platform =
 ##
 tempDir : Task Path []_
 tempDir =
-    Effect.tempDir
-    |> Effect.map (\pathOSStringBytes -> Ok (InternalPath.fromOsBytes pathOSStringBytes))
-    |> InternalTask.fromEffect
+    PlatformTask.tempDir
+    |> Task.map (\pathOSStringBytes -> (InternalPath.fromOsBytes pathOSStringBytes))
+    |> Task.mapErr \{} -> crash "unreachable"

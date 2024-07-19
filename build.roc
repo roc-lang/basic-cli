@@ -1,8 +1,8 @@
 app [main] {
-    cli: platform "platform/main.roc", # TODO use basic-cli 0.13 url
+    # TODO use basic-cli 0.14 url -- or Task as builtin compatible
+    cli: platform "platform/main.roc",
 }
 
-import cli.Task exposing [Task]
 import cli.Cmd
 import cli.Stdout
 import cli.Env
@@ -29,7 +29,7 @@ main =
         }
         |> Arg.Cli.assertValid
 
-    when Arg.Cli.parseOrDisplayMessage cliParser (Arg.list! {}) is
+    when Arg.Cli.parseOrDisplayMessage cliParser (Arg.list!) is
         Ok args -> run args
         Err errMsg -> Task.err (Exit 1 errMsg)
 
@@ -40,7 +40,8 @@ run = \maybeRoc ->
 
     rocVersion! rocCmd
 
-    generateGlue! rocCmd
+    # TODO fix this??
+    #generateGlue! rocCmd
 
     # target is MacosArm64, LinuxX64,...
     target = getNativeTarget!
@@ -65,18 +66,19 @@ rocVersion = \rocCmd ->
         |> Cmd.exec  ["version"]
         |> Task.mapErr! RocVersionCheckFailed
 
-generateGlue : Str -> Task {} _
-generateGlue = \rocCmd ->
-    info! "Generating glue for builtins ..."
+# TODO fix this
+#generateGlue : Str -> Task {} _
+#generateGlue = \rocCmd ->
+#    info! "Generating glue for builtins ..."
 
-    rocCmd
-        |> Cmd.exec  ["glue", "glue.roc", "crates/", "platform/main.roc"]
-        |> Task.mapErr! ErrGeneratingGlue
+#    rocCmd
+#        |> Cmd.exec  ["glue", "glue.roc", "crates/", "platform/main.roc"]
+#        |> Task.mapErr! ErrGeneratingGlue
 
 getNativeTarget : Task RocTarget _
 getNativeTarget =
     info! "Getting the native target ..."
-    
+
     Env.platform
     |> Task.await convertNativeTarget
 
@@ -147,7 +149,7 @@ preprocessHost : Str, Str -> Task {} _
 preprocessHost = \rocCmd, stubLibPath ->
     info! "Preprocessing surgical host ..."
     surgicalBuildPath = "target/release/host"
-    
+
     rocCmd
         |> Cmd.exec  ["preprocess-host", surgicalBuildPath, "platform/main.roc", stubLibPath]
         |> Task.mapErr! ErrPreprocessingSurgicalBinary
