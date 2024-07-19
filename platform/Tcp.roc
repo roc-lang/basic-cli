@@ -102,7 +102,7 @@ connect = \host, port ->
         |> Task.map @Stream
         |> Task.mapErr! parseConnectErr
 
-close : Stream -> Task {} []_
+close : Stream -> Task {} []
 close = \@Stream stream ->
     PlatformTask.tcpClose stream
         |> Task.result!

@@ -28,7 +28,7 @@
         # get current working directory
         cwd = builtins.toString ./.;
         rust =
-          pkgs.rust-bin.fromRustupToolchainFile "${cwd}/platform/rust-toolchain.toml";
+          pkgs.rust-bin.fromRustupToolchainFile "${toString ./rust-toolchain.toml}";
 
         linuxInputs = with pkgs;
           lib.optionals stdenv.isLinux [
@@ -38,6 +38,7 @@
         darwinInputs = with pkgs;
           lib.optionals stdenv.isDarwin
           (with pkgs.darwin.apple_sdk.frameworks; [
+            Security
           ]);
 
         sharedInputs = (with pkgs; [

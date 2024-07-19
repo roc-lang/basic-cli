@@ -8,12 +8,12 @@ import Arg.ErrorFormatter exposing [formatArgExtractErr]
 import Arg.Help exposing [helpText, usageHelp]
 
 ## Gives a list of the program's command-line arguments.
-list : Task (List Str) []_
-list = 
+## `{} ->` is a necessary workaround to make error accumulation/unification work.
+list : {} -> Task (List Str) []
+list = \_ ->
     PlatformTask.args
-        |> Task.result!
-        |> Result.withDefault []
-        |> Task.ok
+    |> Effect.map Ok
+    |> InternalTask.fromEffect
 
 ## Parse arguments using a CLI parser or show a useful message on failure.
 ##
@@ -30,8 +30,9 @@ list =
 ##
 ## ```roc
 ## exampleCli =
-##     Cli.build {
-##         verbosity: <- Opt.count { short: "v", help: "How verbose our logs should be." },
+##     { Cli.combine <-
+##         verbosity: Opt.count { short: "v", help: "How verbose our logs should be." },
+##         alpha: Opt.mapbeU64 { short: "a", help: "Set the alpha level." },
 ##     }
 ##     |> Cli.finish {
 ##         name: "example",
@@ -54,6 +55,7 @@ list =
 ##
 ##         Options:
 ##           -v             How verbose our logs should be.
+##           -a             Set the alpha level.
 ##           -h, --help     Show this help page.
 ##           -V, --version  Show the version.
 ##         """
@@ -81,7 +83,7 @@ list =
 ## ```
 parse : CliParser state -> Task state [Exit I32 Str, StdoutErr Stdout.Err]
 parse = \parser ->
-    when parser.parser (list!) is
+    when parser.parser (list {})! is
         SuccessfullyParsed data ->
             Task.ok data
 

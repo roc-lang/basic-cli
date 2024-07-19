@@ -3,7 +3,7 @@
 use core::alloc::Layout;
 use core::ffi::c_void;
 use core::mem::MaybeUninit;
-use roc_std::{RocDict, RocList, RocResult, RocStr};
+use roc_std::{RocList, RocResult, RocStr};
 use std::borrow::{Borrow, Cow};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -16,6 +16,11 @@ use std::rc::Rc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::runtime::Runtime;
+
+/// Implementation of the host.
+/// The host contains code that calls the Roc main function and provides the
+/// Roc app with functions to allocate memory and execute effects such as
+/// writing to stdio or making HTTP requests.
 
 trait CustomBuffered: BufRead + Read + Seek {}
 
@@ -50,10 +55,6 @@ extern "C" {
 
     #[link_name = "roc__mainForHost_0_caller"]
     fn call_Fx(flags: *const u8, closure_data: *const u8, output: *mut RocResult<(), i32>);
-
-    #[allow(dead_code)]
-    #[link_name = "roc__mainForHost_0_size"]
-    fn size_Fx() -> i64;
 }
 
 /// # Safety
@@ -307,6 +308,7 @@ pub fn init() {
         roc_fx_dirDeleteEmpty as _,
         roc_fx_dirDeleteAll as _,
         roc_fx_currentArchOS as _,
+        roc_fx_tempDir as _,
     ];
     #[allow(forgetting_references)]
     std::mem::forget(std::hint::black_box(funcs));
@@ -347,7 +349,7 @@ pub unsafe fn call_the_closure(closure_data_ptr: *const u8) -> i32 {
     call_Fx(
         // This flags pointer will never get dereferenced
         MaybeUninit::uninit().as_ptr(),
-        closure_data_ptr as *const u8,
+        closure_data_ptr,
         &mut out,
     );
 
@@ -358,7 +360,7 @@ pub unsafe fn call_the_closure(closure_data_ptr: *const u8) -> i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_envDict() -> RocResult<RocDict<RocStr, RocStr>, ()> {
+pub extern "C" fn roc_fx_envDict() -> RocList<(RocStr, RocStr)> {
     // TODO: can we be more efficient about reusing the String's memory for RocStr?
     RocResult::ok(
         std::env::vars_os()
@@ -768,6 +770,20 @@ pub struct Header {
     value: RocStr,
 }
 
+impl roc_std::RocRefcounted for Header {
+    fn inc(&mut self) {
+        self.key.inc();
+        self.value.inc();
+    }
+    fn dec(&mut self) {
+        self.key.dec();
+        self.value.dec();
+    }
+    fn is_refcounted() -> bool {
+        true
+    }
+}
+
 #[repr(C)]
 pub struct Metadata {
     headers: RocList<Header>,
@@ -841,7 +857,7 @@ impl InternalResponse {
 
 #[no_mangle]
 pub extern "C" fn roc_fx_sendRequest(roc_request: &Request) -> InternalResponse {
-    let method = parse_http_method(&roc_request.method.as_str());
+    let method = parse_http_method(roc_request.method.as_str());
     let mut req_builder = hyper::Request::builder()
         .method(method)
         .uri(roc_request.url.as_str());
@@ -955,7 +971,7 @@ fn toRocWriteError(err: std::io::Error) -> RocStr {
         ErrorKind::PermissionDenied => "ErrorKind::PermissionDenied".into(),
         ErrorKind::TimedOut => "ErrorKind::TimedOut".into(),
         ErrorKind::WriteZero => "ErrorKind::WriteZero".into(),
-        _ => RocStr::from(RocStr::from(format!("{:?}", err).as_str())),
+        _ => format!("{:?}", err).as_str().into(),
     }
 }
 
@@ -966,7 +982,7 @@ fn toRocReadError(err: std::io::Error) -> RocStr {
         ErrorKind::OutOfMemory => "ErrorKind::OutOfMemory".into(),
         ErrorKind::PermissionDenied => "ErrorKind::PermissionDenied".into(),
         ErrorKind::TimedOut => "ErrorKind::TimedOut".into(),
-        _ => RocStr::from(RocStr::from(format!("{:?}", err).as_str())),
+        _ => format!("{:?}", err).as_str().into(),
     }
 }
 
@@ -996,12 +1012,10 @@ pub extern "C" fn roc_fx_tcpConnect(host: &RocStr, port: u16) -> RocResult<u64, 
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tcpClose(stream_id: u64) -> RocResult<(), ()> {
+pub extern "C" fn roc_fx_tcpClose(stream_id: u64) {
     TCP_STREAMS.with(|tcp_streams_local| {
         tcp_streams_local.borrow_mut().remove(&stream_id);
-    });
-
-    RocResult::ok(())
+    })
 }
 
 #[no_mangle]
@@ -1320,4 +1334,16 @@ pub extern "C" fn roc_fx_currentArchOS() -> RocResult<ReturnArchOS, ()> {
         arch: std::env::consts::ARCH.into(),
         os: std::env::consts::OS.into(),
     })
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_tempDir() -> RocList<u8> {
+    let path_os_string_bytes =
+        std::env::temp_dir()
+        .into_os_string()
+        .into_encoded_bytes();
+
+    RocList::from(
+        path_os_string_bytes.as_slice()
+    )
 }

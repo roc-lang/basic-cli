@@ -8,20 +8,17 @@ set timeout 7
 source ./ci/expect_scripts/shared-code.exp
 
 set env(EDITOR) nano
-set env(SHLVL) 2
 set env(LETTERS) a,c,e,j
 
-spawn $env(EXAMPLES_DIR)env
+spawn $env(EXAMPLES_DIR)env-var
 
 
 expect "Your favorite editor is nano!\r\n" {
-    expect "Your current shell level is 2!\r\n" {
         expect "Your favorite letters are: a c e j\r\n" {
             expect eof {
                 check_exit_and_segfault
             }
         }
-    }
 }
 
 puts stderr "\nError: output was different from expected value."

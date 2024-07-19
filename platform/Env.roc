@@ -1,4 +1,4 @@
-module [cwd, dict, var, decode, exePath, setCwd, platform]
+module [cwd, dict, var, decode, exePath, setCwd, platform, tempDir]
 
 import Path exposing [Path]
 import InternalPath
@@ -86,9 +86,9 @@ decode = \name ->
 dict : Task (Dict Str Str) []_
 dict =
     PlatformTask.envDict
-        |> Task.result!
-        |> Result.withDefault (Dict.empty {})
-        |> Task.ok
+    |> Effect.map Dict.fromList
+    |> Effect.map Ok
+    |> InternalTask.fromEffect
 
 # ## Walks over the process's environment variables as key-value arguments to the walking function.
 # ##
@@ -133,7 +133,7 @@ OS : [LINUX, MACOS, WINDOWS, OTHER Str]
 ##
 ## Note these values are constants from when the platform is built.
 ##
-platform : Task { arch : ARCH, os : OS } []_
+platform : Task { arch : ARCH, os : OS } *
 platform =
     fromRust =
         PlatformTask.currentArchOS
@@ -155,4 +155,20 @@ platform =
             "windows" -> WINDOWS
             _ -> OTHER fromRust.os
 
-    Task.ok { arch, os }
+        Ok { arch, os }
+    |> InternalTask.fromEffect
+
+## This uses rust's [`std::env::temp_dir()`](https://doc.rust-lang.org/std/env/fn.temp_dir.html)
+##
+## !! From the Rust documentation:
+##
+## The temporary directory may be shared among users, or between processes with different privileges;
+## thus, the creation of any files or directories in the temporary directory must use a secure method
+## to create a uniquely named file. Creating a file or directory with a fixed or predictable name may
+## result in “insecure temporary file” security vulnerabilities.
+##
+tempDir : Task Path []_
+tempDir =
+    Effect.tempDir
+    |> Effect.map (\pathOSStringBytes -> Ok (InternalPath.fromOsBytes pathOSStringBytes))
+    |> InternalTask.fromEffect
