@@ -675,8 +675,7 @@ fn read_until<R: BufRead + ?Sized>(
         let (done, used) = {
             let available = match r.fill_buf() {
                 Ok(n) => n,
-                // TODO: Fix this case
-                // Err(ref e) if e.is_interrupted() => continue,
+                Err(ref e) if matches!(e.kind(), ErrorKind::Interrupted) => continue,
                 Err(e) => return Err(e),
             };
             match memchr::memchr(delim, available) {
