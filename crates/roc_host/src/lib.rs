@@ -3,7 +3,7 @@
 use core::alloc::Layout;
 use core::ffi::c_void;
 use core::mem::MaybeUninit;
-use heap::RefcountedResourceHeap;
+use heap::ThreadSafeRefcountedResourceHeap;
 use memmap2::{MmapMut, MmapOptions};
 use roc_std::{RocBox, RocList, RocResult, RocStr};
 use std::borrow::{Borrow, Cow};
@@ -16,7 +16,7 @@ use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
 use std::net::TcpStream;
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Mutex, OnceLock};
+use std::sync::OnceLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::runtime::Runtime;
 
@@ -38,32 +38,27 @@ thread_local! {
        .unwrap();
 }
 
-fn file_heap() -> &'static Mutex<RefCell<RefcountedResourceHeap<BufReader<File>>>> {
-    static FILE_HEAP: OnceLock<Mutex<RefCell<RefcountedResourceHeap<BufReader<File>>>>> =
-        OnceLock::new();
+fn file_heap() -> &'static ThreadSafeRefcountedResourceHeap<BufReader<File>> {
+    static FILE_HEAP: OnceLock<ThreadSafeRefcountedResourceHeap<BufReader<File>>> = OnceLock::new();
     FILE_HEAP.get_or_init(|| {
         let DEFAULT_MAX_FILES = 65536;
         let max_files = env::var("ROC_BASIC_CLI_MAX_FILES")
             .map(|v| v.parse().unwrap_or(DEFAULT_MAX_FILES))
             .unwrap_or(DEFAULT_MAX_FILES);
-        Mutex::new(RefCell::new(
-            RefcountedResourceHeap::new(max_files)
-                .expect("Failed to allocate mmap for file handle references."),
-        ))
+        ThreadSafeRefcountedResourceHeap::new(max_files)
+            .expect("Failed to allocate mmap for file handle references.")
     })
 }
 
-fn mmap_heap() -> &'static Mutex<RefCell<RefcountedResourceHeap<MmapMut>>> {
-    static MMAP_HEAP: OnceLock<Mutex<RefCell<RefcountedResourceHeap<MmapMut>>>> = OnceLock::new();
+fn mmap_heap() -> &'static ThreadSafeRefcountedResourceHeap<MmapMut> {
+    static MMAP_HEAP: OnceLock<ThreadSafeRefcountedResourceHeap<MmapMut>> = OnceLock::new();
     MMAP_HEAP.get_or_init(|| {
         let DEFAULT_MAX_MMAPS = 65536;
         let max_mmaps = env::var("ROC_BASIC_CLI_MAX_MMAPS")
             .map(|v| v.parse().unwrap_or(DEFAULT_MAX_MMAPS))
             .unwrap_or(DEFAULT_MAX_MMAPS);
-        Mutex::new(RefCell::new(
-            RefcountedResourceHeap::new(max_mmaps)
-                .expect("Failed to allocate mmap for mmap references."),
-        ))
+        ThreadSafeRefcountedResourceHeap::new(max_mmaps)
+            .expect("Failed to allocate mmap for mmap references.")
     })
 }
 
@@ -109,21 +104,15 @@ pub unsafe extern "C" fn roc_realloc(
 /// This function is unsafe.
 #[no_mangle]
 pub unsafe extern "C" fn roc_dealloc(c_ptr: *mut c_void, _alignment: u32) {
-    {
-        let mut guard = file_heap().lock().unwrap();
-        let heap = guard.get_mut();
-        if heap.in_range(c_ptr) {
-            heap.dealloc(c_ptr);
-            return;
-        }
+    let heap = file_heap();
+    if heap.in_range(c_ptr) {
+        heap.dealloc(c_ptr);
+        return;
     }
-    {
-        let mut guard = mmap_heap().lock().unwrap();
-        let heap = guard.get_mut();
-        if heap.in_range(c_ptr) {
-            heap.dealloc(c_ptr);
-            return;
-        }
+    let heap = mmap_heap();
+    if heap.in_range(c_ptr) {
+        heap.dealloc(c_ptr);
+        return;
     }
     libc::free(c_ptr)
 }
@@ -663,12 +652,8 @@ pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<RocBox<
         Ok(file) => {
             let buf_reader = BufReader::new(file);
 
-            let alloc_result = {
-                let mut guard = file_heap().lock().unwrap();
-                let heap = guard.get_mut();
-
-                heap.alloc_for(buf_reader)
-            };
+            let heap = file_heap();
+            let alloc_result = heap.alloc_for(buf_reader);
             match alloc_result {
                 Ok(out) => RocResult::ok(out),
                 Err(err) => RocResult::err(toRocReadError(err)),
@@ -680,7 +665,7 @@ pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<RocBox<
 
 #[no_mangle]
 pub extern "C" fn roc_fx_fileReadLine(data: RocBox<()>) -> RocResult<RocList<u8>, RocStr> {
-    let buf_reader: &mut BufReader<File> = RefcountedResourceHeap::box_to_resource(data);
+    let buf_reader: &mut BufReader<File> = ThreadSafeRefcountedResourceHeap::box_to_resource(data);
 
     // TODO: write our own duplicate of `read_line/read_until` that directly fills a `RocList<u8>`.
     // This adds an extra O(n) copy.
@@ -707,12 +692,8 @@ pub extern "C" fn roc_fx_fileMmap(roc_path: &RocList<u8>) -> RocResult<RocList<u
             let ptr = mmap.as_mut_ptr();
             let len = mmap.len();
 
-            let alloc_result = {
-                let mut guard = mmap_heap().lock().unwrap();
-                let heap = guard.get_mut();
-
-                heap.alloc_for(mmap)
-            };
+            let heap = mmap_heap();
+            let alloc_result = heap.alloc_for(mmap);
             let rc_box = match alloc_result {
                 Ok(out) => out,
                 Err(err) => return RocResult::err(toRocReadError(err)),

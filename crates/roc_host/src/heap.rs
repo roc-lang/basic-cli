@@ -11,13 +11,51 @@
 use memmap2::MmapMut;
 use roc_std::RocBox;
 use std::{
+    cell::UnsafeCell,
     ffi::c_void,
     io::{Error, ErrorKind, Result},
     marker::PhantomData,
     mem, ptr,
+    sync::Mutex,
 };
 
 const REFCOUNT_ONE: usize = isize::MIN as usize;
+
+pub struct ThreadSafeRefcountedResourceHeap<T> {
+    heap: UnsafeCell<RefcountedResourceHeap<T>>,
+    guard: Mutex<()>,
+}
+
+impl<T> ThreadSafeRefcountedResourceHeap<T> {
+    pub fn new(max_elements: usize) -> Result<ThreadSafeRefcountedResourceHeap<T>> {
+        RefcountedResourceHeap::new(max_elements).map(|heap| ThreadSafeRefcountedResourceHeap {
+            heap: UnsafeCell::new(heap),
+            guard: Mutex::new(()),
+        })
+    }
+
+    pub fn alloc_for(self: &Self, data: T) -> Result<RocBox<()>> {
+        let _g = self.guard.lock().unwrap();
+        unsafe { &mut *self.heap.get() }.alloc_for(data)
+    }
+
+    pub fn dealloc<U>(self: &Self, ptr: *const U) {
+        let _g = self.guard.lock().unwrap();
+        unsafe { &mut *self.heap.get() }.dealloc(ptr)
+    }
+
+    // This is safe to call at any time with no lock!
+    pub fn in_range<U>(self: &Self, ptr: *const U) -> bool {
+        unsafe { &*self.heap.get() }.in_range(ptr)
+    }
+
+    pub fn box_to_resource<'a>(data: RocBox<()>) -> &'a mut T {
+        RefcountedResourceHeap::box_to_resource(data)
+    }
+}
+
+unsafe impl<T> Sync for ThreadSafeRefcountedResourceHeap<T> {}
+unsafe impl<T> Send for ThreadSafeRefcountedResourceHeap<T> {}
 
 #[repr(C)]
 struct Refcounted<T>(usize, T);
