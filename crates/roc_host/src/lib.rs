@@ -1053,6 +1053,7 @@ pub extern "C" fn roc_fx_tcpReadUpTo(
 
         let mut chunk = stream.take(bytes_to_read);
 
+        //TODO: fill a roc list directly. This is an extra O(n) copy.
         match chunk.fill_buf() {
             Ok(received) => {
                 let received = received.to_vec();
@@ -1079,6 +1080,7 @@ pub extern "C" fn roc_fx_tcpReadExactly(
         let mut buffer = Vec::with_capacity(bytes_to_read as usize);
         let mut chunk = stream.take(bytes_to_read);
 
+        //TODO: fill a roc list directly. This is an extra O(n) copy.
         match chunk.read_to_end(&mut buffer) {
             Ok(read) => {
                 if (read as u64) < bytes_to_read {
@@ -1100,9 +1102,9 @@ pub extern "C" fn roc_fx_tcpReadUntil(stream_id: u64, byte: u8) -> RocResult<Roc
             return RocResult::err(STREAM_NOT_FOUND_ERROR.into());
         };
 
-        let mut buffer = vec![];
-        match stream.read_until(byte, &mut buffer) {
-            Ok(_) => RocResult::ok(RocList::from(&buffer[..])),
+        let mut buffer = RocList::empty();
+        match read_until(stream, byte, &mut buffer) {
+            Ok(_) => RocResult::ok(buffer),
             Err(err) => RocResult::err(to_tcp_stream_err(err)),
         }
     })
