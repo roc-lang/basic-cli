@@ -67,7 +67,7 @@ fileWriteUtf8 : List U8, Str -> Effect (Result {} Str)
 fileDelete : List U8 -> Effect (Result {} Str)
 fileReadBytes : List U8 -> Effect (Result (List U8) Str)
 
-fileReader : List U8 -> Effect (Result (Box {}) Str)
+fileReader : List U8, U64 -> Effect (Result (Box {}) Str)
 fileReadLine : Box {} -> Effect (Result (List U8) Str)
 
 envDict : Effect (List (Str, Str))

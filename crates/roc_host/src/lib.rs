@@ -628,10 +628,17 @@ pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocL
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<RocBox<()>, RocStr> {
+pub extern "C" fn roc_fx_fileReader(
+    roc_path: &RocList<u8>,
+    size: u64,
+) -> RocResult<RocBox<()>, RocStr> {
     match File::open(path_from_roc_path(roc_path)) {
         Ok(file) => {
-            let buf_reader = BufReader::with_capacity(2048 * 2048, file);
+            let buf_reader = if size > 0 {
+                BufReader::with_capacity(size as usize, file)
+            } else {
+                BufReader::new(file)
+            };
 
             let heap = file_heap();
             let alloc_result = heap.alloc_for(buf_reader);

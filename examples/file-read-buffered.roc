@@ -18,7 +18,7 @@ import pf.File
 # See examples/file-read.roc if you want to read the full contents at once.
 
 main =
-    reader = File.getFileReader! "LICENSE"
+    reader = File.openReader! "LICENSE"
 
     readSummary = Task.loop!
         { linesRead: 0, bytesRead: 0 }
@@ -28,7 +28,7 @@ main =
 ReadSummary : { linesRead : U64, bytesRead : U64 }
 
 ## Count the number of lines and the number of bytes read.
-processLine : File.FileReader -> (ReadSummary -> Task [Step ReadSummary, Done ReadSummary] _)
+processLine : File.Reader -> (ReadSummary -> Task [Step ReadSummary, Done ReadSummary] _)
 processLine = \reader -> \{ linesRead, bytesRead } ->
         when File.readLine reader |> Task.result! is
             Ok bytes if List.len bytes == 0 ->
