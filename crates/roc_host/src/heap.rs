@@ -107,11 +107,6 @@ impl<T> RefcountedResourceHeap<T> {
 /// In the case of a `usize`, it is part of the freed list.
 /// The value of the `usize` is the next free node.
 ///
-/// To Decide: This impl is really unsafe.
-/// The free list will get messed up if someone double frees.
-/// It has no checks in general.
-/// Should we add some sort of tagging or chunk info to protect against this?
-///
 /// Note: If we ever need better multithreaded performance,
 /// we could shard the heap and lock individual shards.
 pub struct Heap<T> {
