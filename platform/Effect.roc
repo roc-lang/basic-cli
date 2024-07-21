@@ -32,7 +32,6 @@ hosted Effect
         fileWriteBytes,
         fileReader,
         fileReadLine,
-        closeFile,
         pathType,
         posixTime,
         tcpConnect,
@@ -68,9 +67,8 @@ fileWriteUtf8 : List U8, Str -> Effect (Result {} Str)
 fileDelete : List U8 -> Effect (Result {} Str)
 fileReadBytes : List U8 -> Effect (Result (List U8) Str)
 
-fileReader : List U8 -> Effect (Result U64 Str)
-fileReadLine : U64 -> Effect (Result (List U8) Str)
-closeFile : U64 -> Effect {}
+fileReader : List U8, U64 -> Effect (Result (Box {}) Str)
+fileReadLine : Box {} -> Effect (Result (List U8) Str)
 
 envDict : Effect (List (Str, Str))
 envVar : Str -> Effect (Result Str {})
