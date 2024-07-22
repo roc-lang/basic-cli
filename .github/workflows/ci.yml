@@ -57,3 +57,7 @@ jobs:
       # Workaround for https://github.com/roc-lang/roc/issues/6688
       - name: Check if crash occurred
         run: grep -zqv "crashed" all_tests_output.log
+
+      - name: Test building with musl target
+        run: CARGO_BUILD_TARGET=x86_64-unknown-linux-musl ./build.roc --prebuilt-platform -- --roc ./roc_nightly/roc
+
