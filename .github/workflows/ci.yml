@@ -66,3 +66,8 @@ jobs:
       - name: Test building with musl target
         run: CARGO_BUILD_TARGET=x86_64-unknown-linux-musl ./roc_nightly/roc build.roc --prebuilt-platform -- --roc ./roc_nightly/roc
 
+      - name: Test using musl build
+        run:
+          ./roc_nightly/roc build ./examples/time.roc --prebuilt-platform
+          EXAMPLES_DIR=./examples/ expect ./ci/expect_scripts/time.exp
+
