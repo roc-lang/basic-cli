@@ -10,4 +10,6 @@ members = [
 [profile.release]
 lto = true
 strip = "debuginfo"
-codegen-units = 1
+# Enabling this triggered a segmentation fault (see issue github.com/roc-lang/roc/issues/6121).
+# That issue is notoriously fickle, so disableing this may just happen to shuffle the code enough to avoid it.
+# codegen-units = 1
