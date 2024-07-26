@@ -12,4 +12,6 @@ lto = true
 strip = "debuginfo"
 # Enabling this triggered a segmentation fault (see issue github.com/roc-lang/roc/issues/6121).
 # That issue is notoriously fickle, so disableing this may just happen to shuffle the code enough to avoid it.
+# Try re-enableing this again in the future after some code changes, it may no longer trigger this issue.
+# Setting it to 1 should improve execution speed by making things easier to optimize for LLVM.
 # codegen-units = 1
