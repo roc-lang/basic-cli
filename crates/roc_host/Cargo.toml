@@ -6,6 +6,8 @@ license = "UPL-1.0"
 edition = "2021"
 description = "This provides the [host](https://github.com/roc-lang/roc/wiki/Roc-concepts-explained#host) implementation for the platform."
 
+links = "app"
+
 [lib]
 name = "roc_host"
 path = "src/lib.rs"

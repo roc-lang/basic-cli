@@ -66,3 +66,9 @@ jobs:
       - name: Test building with musl target
         run: CARGO_BUILD_TARGET=x86_64-unknown-linux-musl ./roc_nightly/roc build.roc --prebuilt-platform -- --roc ./roc_nightly/roc
 
+      - name: Test using musl build
+        run: |
+          # no need to build platform anymore
+          sed -i '/build\.roc\|jump-start\.sh/d' ./ci/all_tests.sh
+          ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
+

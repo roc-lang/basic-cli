@@ -6,8 +6,6 @@ license = "UPL-1.0"
 edition = "2021"
 description = "This crate wraps roc_host to build an executable. This executable is used by `roc preprocess-host ...`. That command generates an .rh and .rm file, these files are used by the [surgical linker](https://github.com/roc-lang/roc/tree/main/crates/linker#the-roc-surgical-linker)."
 
-links = "app"
-
 [[bin]]
 name = "host"
 path = "src/main.rs"
