@@ -22,6 +22,10 @@ $ROC glue glue.roc crates ./platform/main.roc
 
 cargo build --release
 
-cp target/release/libhost.a ./platform/libhost.a
+if [ -n "$CARGO_BUILD_TARGET" ]; then
+    cp target/$CARGO_BUILD_TARGET/release/libhost.a ./platform/libhost.a
+else
+    cp target/release/libhost.a ./platform/libhost.a
+fi
 
 $ROC build --linker=legacy build.roc
