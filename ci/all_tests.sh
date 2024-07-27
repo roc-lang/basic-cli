@@ -114,7 +114,7 @@ find . -type d -name "roc_nightly" -prune -o -type f -name "*.roc" -print | whil
 
             # don't exit script if test_command fails
             set +e
-            test_command=$($ROC test "$file")
+            test_command=$($ROC test "$file" --prebuilt-platform)
             test_exit_code=$?
             set -e
 
