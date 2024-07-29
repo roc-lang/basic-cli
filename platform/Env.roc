@@ -9,9 +9,10 @@ import PlatformTask
 ## from the environment. File operations on relative [Path]s are relative to this directory.
 cwd : Task Path [CwdUnavailable]
 cwd =
-    bytes = PlatformTask.cwd
-        |> Task.result!
-        |> Result.withDefault []
+    bytes =
+        PlatformTask.cwd
+            |> Task.result!
+            |> Result.withDefault []
 
     if List.isEmpty bytes then
         Task.err CwdUnavailable
@@ -165,8 +166,8 @@ platform =
 ## to create a uniquely named file. Creating a file or directory with a fixed or predictable name may
 ## result in “insecure temporary file” security vulnerabilities.
 ##
-tempDir : Task Path []_
+tempDir : Task Path *
 tempDir =
     PlatformTask.tempDir
-    |> Task.map (\pathOSStringBytes -> (InternalPath.fromOsBytes pathOSStringBytes))
+    |> Task.map \pathOSStringBytes -> InternalPath.fromOsBytes pathOSStringBytes
     |> Task.mapErr \{} -> crash "unreachable"

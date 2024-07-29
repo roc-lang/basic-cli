@@ -26,7 +26,6 @@ hosted PlatformTask
         fileWriteBytes,
         fileReader,
         fileReadLine,
-        closeFile,
         pathType,
         posixTime,
         tcpConnect,
@@ -61,9 +60,8 @@ fileWriteUtf8 : List U8, Str -> Task {} Str
 fileDelete : List U8 -> Task {} Str
 fileReadBytes : List U8 -> Task (List U8) Str
 
-fileReader : List U8 -> Task U64 Str
-fileReadLine : U64 -> Task (List U8) Str
-closeFile : U64 -> Task {} {}
+fileReader : List U8, U64 -> Task (Box {}) Str
+fileReadLine : Box {} -> Task (List U8) Str
 
 envDict : Task (List (Str, Str)) {}
 envVar : Str -> Task Str {}

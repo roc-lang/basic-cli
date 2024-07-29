@@ -57,3 +57,18 @@ jobs:
       # Workaround for https://github.com/roc-lang/roc/issues/6688
       - name: Check if crash occurred
         run: grep -zqv "crashed" all_tests_output.log
+
+      - name: Install dependencies for musl build
+        run: |
+          sudo apt-get install -y musl-tools
+          rustup target add x86_64-unknown-linux-musl
+
+      - name: Test building with musl target
+        run: CARGO_BUILD_TARGET=x86_64-unknown-linux-musl ./roc_nightly/roc build.roc --prebuilt-platform -- --roc ./roc_nightly/roc
+
+      - name: Test using musl build
+        run: |
+          # no need to build platform anymore
+          sed -i '/build\.roc\|jump-start\.sh/d' ./ci/all_tests.sh
+          ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
+

@@ -12,10 +12,10 @@ module [
     isFile,
     isSymLink,
     type,
-    FileReader,
-    getFileReader,
+    Reader,
+    openReader,
+    openReaderWithCapacity,
     readLine,
-    closeFileReader,
 ]
 
 import Path exposing [Path, MetadataErr]
@@ -187,26 +187,39 @@ type : Str -> Task [IsFile, IsDir, IsSymLink] [PathErr MetadataErr]
 type = \path ->
     Path.type (Path.fromStr path)
 
-FileReader := {readerID: U64, path: Path}
+Reader := { reader : Box {}, path : Path }
 
-## Try to create a `FileReader` for buffered (= part by part) reading given a path string.
+## Try to open a `File.Reader` for buffered (= part by part) reading given a path string.
 ## See [examples/file-read-buffered.roc](https://github.com/roc-lang/basic-cli/blob/main/examples/file-read-buffered.roc) for example usage.
 ##
 ## This uses [rust's std::io::BufReader](https://doc.rust-lang.org/std/io/struct.BufReader.html).
 ##
 ## Use [readUtf8] if you want to get the entire file contents at once.
-getFileReader : Str -> Task FileReader [GetFileReadErr Path ReadErr]
-getFileReader = \pathStr ->
+openReader : Str -> Task Reader [GetFileReadErr Path ReadErr]
+openReader = \pathStr ->
     path = Path.fromStr pathStr
-    result =
-        PlatformTask.fileReader (Str.toUtf8 pathStr)
-            |> Task.result!
 
-    when result is
-        Ok readerID -> Task.ok (@FileReader { readerID, path })
-        Err err -> Task.err (GetFileReadErr path (InternalFile.handleReadErr err))
+    # 0 means with default capacity
+    PlatformTask.fileReader (Str.toUtf8 pathStr) 0
+    |> Task.mapErr \err -> GetFileReadErr path (InternalFile.handleReadErr err)
+    |> Task.map \reader -> @Reader { reader, path }
 
-## Try to read a line from a file given a FileReader.
+## Try to open a `File.Reader` for buffered (= part by part) reading given a path string.
+## The buffer will be created with the specified capacity.
+## See [examples/file-read-buffered.roc](https://github.com/roc-lang/basic-cli/blob/main/examples/file-read-buffered.roc) for example usage.
+##
+## This uses [rust's std::io::BufReader](https://doc.rust-lang.org/std/io/struct.BufReader.html).
+##
+## Use [readUtf8] if you want to get the entire file contents at once.
+openReaderWithCapacity : Str, U64 -> Task Reader [GetFileReadErr Path ReadErr]
+openReaderWithCapacity = \pathStr, capacity ->
+    path = Path.fromStr pathStr
+
+    PlatformTask.fileReader (Str.toUtf8 pathStr) capacity
+    |> Task.mapErr \err -> GetFileReadErr path (InternalFile.handleReadErr err)
+    |> Task.map \reader -> @Reader { reader, path }
+
+## Try to read a line from a file given a Reader.
 ## The line will be provided as the list of bytes (`List U8`) until a newline (`0xA` byte).
 ## This list will be empty when we reached the end of the file.
 ## See [examples/file-read-buffered.roc](https://github.com/roc-lang/basic-cli/blob/main/examples/file-read-buffered.roc) for example usage.
@@ -214,18 +227,7 @@ getFileReader = \pathStr ->
 ## This uses [rust's `BufRead::read_line`](https://doc.rust-lang.org/std/io/trait.BufRead.html#method.read_line).
 ##
 ## Use [readUtf8] if you want to get the entire file contents at once.
-readLine : FileReader -> Task (List U8) [FileReadErr Path Str]
-readLine = \@FileReader { readerID, path } ->
-    PlatformTask.fileReadLine readerID
-        |> Task.mapErr \err -> FileReadErr path err
-
-## Close the file that was opened when creating the FileReader.
-## [Why you should close files.](https://stackoverflow.com/a/29536383)
-##
-## Calling [File.readLine] after the FileReader is closed will return an empty list.
-closeFileReader : FileReader -> Task {} *
-closeFileReader = \@FileReader { readerID } ->
-    PlatformTask.closeFile readerID
-        |> Task.result!
-        |> Result.withDefault {}
-        |> Task.ok
+readLine : Reader -> Task (List U8) [FileReadErr Path Str]
+readLine = \@Reader { reader, path } ->
+    PlatformTask.fileReadLine reader
+    |> Task.mapErr \err -> FileReadErr path err
