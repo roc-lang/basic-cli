@@ -215,7 +215,7 @@ batch = \current -> \next ->
         map current f
 
 ## Apply each task in a list sequentially, and return a [Task] with the list of the resulting values.
-## Each task will be awaited (see [Task.await]) before beginning the next task, 
+## Each task will be awaited (see [Task.await]) before beginning the next task,
 ## execution will stop if an error occurs.
 ##
 ## ```
@@ -226,11 +226,15 @@ batch = \current -> \next ->
 ## ```
 ##
 sequence : List (Task ok err) -> Task (List ok) err
-sequence = \tasks ->
-    List.walk tasks (InternalTask.ok []) \state, task ->
-        value <- task |> await
+sequence = \taskList ->
+    Task.loop (taskList, List.withCapacity (List.len taskList)) \(tasks, values) ->
+        when tasks is
+            [task, .. as rest] ->
+                value = task!
+                Task.ok (Step (rest, List.append values value))
 
-        state |> map \values -> List.append values value
+            [] ->
+                Task.ok (Done values)
 
 ## Apply a function that returns `Task {} _` for each item in a list.
 ## Each task will be awaited (see [Task.await]) before beginning the next task,
