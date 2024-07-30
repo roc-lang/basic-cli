@@ -69,7 +69,7 @@ fileDelete : List U8 -> Effect (Result {} Str)
 fileReadBytes : List U8 -> Effect (Result (List U8) Str)
 
 FileReader := Box {}
-fileReader : List U8 -> Effect (Result FileReader Str)
+fileReader : List U8, U64 -> Effect (Result FileReader Str)
 fileReadLine : FileReader -> Effect (Result (List U8) Str)
 
 envDict : Effect (List (Str, Str))
