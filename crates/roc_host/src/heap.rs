@@ -77,7 +77,7 @@ impl<T> RefcountedResourceHeap<T> {
 
     pub fn alloc_for(self: &mut Self, data: T) -> Result<RocBox<()>> {
         self.0.alloc().map(|alloc_ptr| {
-            unsafe { *alloc_ptr = Refcounted(REFCOUNT_ONE, data) };
+            unsafe { std::ptr::write(alloc_ptr, Refcounted(REFCOUNT_ONE, data)) };
             let box_ptr = alloc_ptr as usize + mem::size_of::<usize>();
             unsafe { std::mem::transmute(box_ptr) }
         })
