@@ -29,7 +29,7 @@ main =
         }
         |> Arg.Cli.assertValid
 
-    when Arg.Cli.parseOrDisplayMessage cliParser (Arg.list!) is
+    when Arg.Cli.parseOrDisplayMessage cliParser (Arg.list! {}) is
         Ok args -> run args
         Err errMsg -> Task.err (Exit 1 errMsg)
 

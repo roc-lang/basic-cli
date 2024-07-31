@@ -19,8 +19,8 @@ import PlatformTask
 ##
 ## Note: we plan on moving this function away from basic-cli in the future, see github.com/roc-lang/basic-cli/issues/73
 ##
-enableRawMode : Task {} []_
-enableRawMode =
+enableRawMode : {} -> Task {} *
+enableRawMode = \{} ->
     PlatformTask.ttyModeRaw
         |> Task.result!
         |> Result.withDefault {}

@@ -821,9 +821,9 @@ impl roc_std::RocRefcounted for Header {
 #[repr(C)]
 pub struct Metadata {
     headers: RocList<Header>,
+    statusText: RocStr,
     url: RocStr,
     statusCode: u16,
-    statusText: RocStr,
 }
 
 impl Metadata {

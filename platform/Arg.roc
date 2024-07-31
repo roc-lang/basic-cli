@@ -8,10 +8,10 @@ import Arg.ErrorFormatter exposing [formatArgExtractErr]
 import Arg.Help exposing [helpText, usageHelp]
 
 ## Gives a list of the program's command-line arguments.
-list : Task (List Str) []_
-list =
+list : {} -> Task (List Str) *
+list = \{} ->
     PlatformTask.args
-    |> Task.mapErr \{} -> crash "unreachable Arg.list"
+    |> PlatformTask.infallible
 
 ## Parse arguments using a CLI parser or show a useful message on failure.
 ##
@@ -79,9 +79,9 @@ list =
 ##           example [OPTIONS]
 ##         """
 ## ```
-parse : CliParser state -> Task state [Exit I32 Str, StdoutErr Stdout.Err]_
+parse : CliParser state -> Task state [Exit I32 Str, StdoutErr Stdout.Err]
 parse = \parser ->
-    when parser.parser (list!) is
+    when parser.parser (list! {}) is
         SuccessfullyParsed data ->
             Task.ok data
 

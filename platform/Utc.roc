@@ -15,12 +15,11 @@ import PlatformTask
 Utc := I128 implements [Inspect]
 
 ## Duration since UNIX EPOCH
-now : Task Utc []_
-now =
+now : {} -> Task Utc *
+now = \{} ->
     currentEpoch =
         PlatformTask.posixTime
-            |> Task.result!
-            |> Result.withDefault 0
+            |> PlatformTask.infallible!
             |> Num.toI128
 
     Task.ok (@Utc currentEpoch)

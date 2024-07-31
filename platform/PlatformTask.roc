@@ -39,6 +39,7 @@ hosted PlatformTask
         commandOutput,
         currentArchOS,
         tempDir,
+        infallible,
     ]
     imports [
         InternalHttp.{ Request, InternalResponse },
@@ -74,7 +75,7 @@ args : Task (List Str) {}
 
 cwd : Task (List U8) {}
 
-sendRequest : Box Request -> Task InternalResponse {}
+sendRequest : Box Request -> Task InternalResponse []
 
 tcpConnect : Str, U16 -> Task U64 Str
 tcpClose : U64 -> Task {} {}
@@ -89,7 +90,7 @@ posixTime : Task U128 {}
 sleepMillis : U64 -> Task {} {}
 
 commandStatus : Box InternalCommand.Command -> Task {} (List U8)
-commandOutput : Box InternalCommand.Command -> Task InternalCommand.Output {}
+commandOutput : Box InternalCommand.Command -> Task InternalCommand.Output []
 
 dirList : List U8 -> Task (List (List U8)) Str
 dirCreate : List U8 -> Task {} Str
@@ -100,3 +101,8 @@ dirDeleteAll : List U8 -> Task {} Str
 currentArchOS : Task { arch : Str, os : Str } {}
 
 tempDir : Task (List U8) {}
+
+infallible : Task ok err -> Task ok *
+infallible = \task ->
+    Task.mapErr task \_ ->
+        crash "Task was assumed infallible"

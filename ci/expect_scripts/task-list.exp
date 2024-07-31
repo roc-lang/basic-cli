@@ -9,7 +9,7 @@ source ./ci/expect_scripts/shared-code.exp
 
 spawn $env(EXAMPLES_DIR)task-list
 
-expect "Baz\r\nBar\r\nFoo\r\nFoo\r\nBar\r\nBaz\r\n" {
+expect "Foo\r\nBar\r\nBaz\r\nFoo\r\nBar\r\nBaz\r\n" {
     expect eof {
         check_exit_and_segfault
     }

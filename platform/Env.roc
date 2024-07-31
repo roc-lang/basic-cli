@@ -84,11 +84,11 @@ decode = \name ->
 ##
 ## If any key or value contains invalid Unicode, the [Unicode replacement character](https://unicode.org/glossary/#replacement_character)
 ## will be used in place of any parts of keys or values that are invalid Unicode.
-dict : Task (Dict Str Str) []_
-dict =
+dict : {} -> Task (Dict Str Str) *
+dict = \{} ->
     PlatformTask.envDict
     |> Task.map Dict.fromList
-    |> Task.mapErr \{} -> crash "unreachable"
+    |> PlatformTask.infallible
 
 # ## Walks over the process's environment variables as key-value arguments to the walking function.
 # ##
@@ -166,8 +166,8 @@ platform =
 ## to create a uniquely named file. Creating a file or directory with a fixed or predictable name may
 ## result in “insecure temporary file” security vulnerabilities.
 ##
-tempDir : Task Path *
-tempDir =
+tempDir : {} -> Task Path *
+tempDir = \{} ->
     PlatformTask.tempDir
     |> Task.map \pathOSStringBytes -> InternalPath.fromOsBytes pathOSStringBytes
-    |> Task.mapErr \{} -> crash "unreachable"
+    |> PlatformTask.infallible

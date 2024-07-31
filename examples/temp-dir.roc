@@ -15,5 +15,5 @@ main =
 
 run : Task {} _
 run =
-    tempDirStr = Path.display Env.tempDir!
+    tempDirStr = Path.display (Env.tempDir! {})
     Stdout.line! "The temp dir path is $(tempDirStr)"
