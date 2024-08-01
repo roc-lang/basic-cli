@@ -1,6 +1,6 @@
 module [
     Stream,
-    withConnect,
+    connect,
     readUpTo,
     readExactly,
     readUntil,
@@ -18,7 +18,7 @@ import PlatformTask
 unexpectedEofErrorMessage = "UnexpectedEof"
 
 ## Represents a TCP stream.
-Stream := U64
+Stream := PlatformTask.TcpStream
 
 ## Represents errors that can occur when connecting to a remote host.
 ConnectErr : [
@@ -68,46 +68,26 @@ parseStreamErr = \err ->
         "ErrorKind::BrokenPipe" -> BrokenPipe
         other -> Unrecognized other
 
-## Opens a TCP connection to a remote host and perform a [Task] with it.
+## Opens a TCP connection to a remote host.
 ##
 ## ```
-## # Connect to localhost:8080 and send "Hi from Roc!"
-## stream <- Tcp.withConnect "localhost" 8080
-## Tcp.writeUtf8 stream "Hi from Roc!"
+## # Connect to localhost:8080
+## stream = Tcp.connect! "localhost" 8080
 ## ```
 ##
-## The connection is automatically closed after the [Task] is completed. Examples of
+## The connection is automatically closed when the last reference to the stream is dropped.
+## Examples of
 ## valid hostnames:
 ##  - `127.0.0.1`
 ##  - `::1`
 ##  - `localhost`
 ##  - `roc-lang.org`
 ##
-withConnect : Str, U16, (Stream -> Task a err) -> Task a [TcpConnectErr ConnectErr, TcpPerformErr err]
-withConnect = \hostname, port, callback ->
-    stream =
-        connect hostname port
-            |> Task.mapErr! TcpConnectErr
-    result =
-        callback stream
-            |> Task.mapErr TcpPerformErr
-            |> Task.result!
-
-    close! stream
-    Task.fromResult result
-
 connect : Str, U16 -> Task Stream ConnectErr
 connect = \host, port ->
     PlatformTask.tcpConnect host port
         |> Task.map @Stream
         |> Task.mapErr! parseConnectErr
-
-close : Stream -> Task {} []
-close = \@Stream stream ->
-    PlatformTask.tcpClose stream
-        |> Task.result!
-        |> Result.withDefault {}
-        |> Task.ok
 
 ## Read up to a number of bytes from the TCP stream.
 ##
@@ -121,7 +101,7 @@ close = \@Stream stream ->
 readUpTo : Stream, U64 -> Task (List U8) [TcpReadErr StreamErr]
 readUpTo = \@Stream stream, bytesToRead ->
     PlatformTask.tcpReadUpTo stream bytesToRead
-        |> Task.mapErr \err -> TcpReadErr (parseStreamErr err)
+    |> Task.mapErr \err -> TcpReadErr (parseStreamErr err)
 
 ## Read an exact number of bytes or fail.
 ##

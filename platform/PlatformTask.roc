@@ -24,12 +24,13 @@ hosted PlatformTask
         fileDelete,
         fileWriteUtf8,
         fileWriteBytes,
+        FileReader,
         fileReader,
         fileReadLine,
         pathType,
         posixTime,
+        TcpStream,
         tcpConnect,
-        tcpClose,
         tcpReadUpTo,
         tcpReadExactly,
         tcpReadUntil,
@@ -61,8 +62,9 @@ fileWriteUtf8 : List U8, Str -> Task {} Str
 fileDelete : List U8 -> Task {} Str
 fileReadBytes : List U8 -> Task (List U8) Str
 
-fileReader : List U8, U64 -> Task (Box {}) Str
-fileReadLine : Box {} -> Task (List U8) Str
+FileReader := Box {}
+fileReader : List U8, U64 -> Task FileReader Str
+fileReadLine : FileReader -> Task (List U8) Str
 
 envDict : Task (List (Str, Str)) {}
 envVar : Str -> Task Str {}
@@ -77,12 +79,12 @@ cwd : Task (List U8) {}
 
 sendRequest : Box Request -> Task InternalResponse []
 
-tcpConnect : Str, U16 -> Task U64 Str
-tcpClose : U64 -> Task {} {}
-tcpReadUpTo : U64, U64 -> Task (List U8) Str
-tcpReadExactly : U64, U64 -> Task (List U8) Str
-tcpReadUntil : U64, U8 -> Task (List U8) Str
-tcpWrite : U64, List U8 -> Task {} Str
+TcpStream := Box {}
+tcpConnect : Str, U16 -> Task TcpStream Str
+tcpReadUpTo : TcpStream, U64 -> Task (List U8) Str
+tcpReadExactly : TcpStream, U64 -> Task (List U8) Str
+tcpReadUntil : TcpStream, U8 -> Task (List U8) Str
+tcpWrite : TcpStream, List U8 -> Task {} Str
 
 pathType : List U8 -> Task InternalPath.InternalPathType (List U8)
 
