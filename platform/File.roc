@@ -121,7 +121,7 @@ delete = \path ->
 ##
 ## ```
 ## # Read all the bytes in `myfile.txt`.
-## File.readBytes (Path.fromStr "myfile.txt")
+## File.readBytes "myfile.txt"
 ## ```
 ##
 ## This opens the file first and closes it after reading its contents.
@@ -137,7 +137,7 @@ readBytes = \path ->
 ##
 ## ```
 ## # Reads UTF-8 encoded text into a Str from the file "myfile.txt"
-## File.readUtf8 (Path.fromStr "myfile.txt")
+## File.readUtf8 "myfile.txt"
 ## ```
 ##
 ## This opens the file first and closes it after writing to it.
