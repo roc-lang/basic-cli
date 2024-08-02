@@ -7,8 +7,8 @@ import cli.Cmd
 import cli.Stdout
 import cli.Env
 import cli.Arg
-import cli.Arg.Opt
-import cli.Arg.Cli
+import cli.Arg.Opt as Opt
+import cli.Arg.Cli as Cli
 
 ## Builds the basic-cli [platform](https://www.roc-lang.org/platforms).
 ##
@@ -20,21 +20,24 @@ main : Task {} _
 main =
 
     cliParser =
-        Arg.Opt.maybeStr { short: "p", long: "roc", help: "Path to the roc executable. Can be just `roc` or a full path."}
-        |> Arg.Cli.finish {
+        { Cli.combine <-
+            debugMode: Opt.flag { short: "d", long: "debug", help: "Runs `cargo build` without `--release`." },
+            maybeRoc: Opt.maybeStr { short: "r", long: "roc", help: "Path to the roc executable. Can be just `roc` or a full path." },
+        }
+        |> Cli.finish {
             name: "basic-cli-builder",
             version: "",
             authors: ["Luke Boswell <https://github.com/lukewilliamboswell>"],
             description: "Generates all files needed by Roc to use this basic-cli platform.",
         }
-        |> Arg.Cli.assertValid
+        |> Cli.assertValid
 
-    when Arg.Cli.parseOrDisplayMessage cliParser (Arg.list! {}) is
+    when Cli.parseOrDisplayMessage cliParser (Arg.list! {}) is
         Ok args -> run args
         Err errMsg -> Task.err (Exit 1 errMsg)
 
-run : Result Str err -> Task {} _
-run = \maybeRoc ->
+run : {debugMode: Bool, maybeRoc: Result Str err} -> Task {} _
+run = \{debugMode, maybeRoc} ->
     # rocCmd may be a path or just roc
     rocCmd = maybeRoc |> Result.withDefault "roc"
 
@@ -48,9 +51,9 @@ run = \maybeRoc ->
 
     buildStubAppLib! rocCmd stubLibPath
 
-    cargoBuildHost!
+    cargoBuildHost! debugMode
 
-    rustTargetFolder = getRustTargetFolder!
+    rustTargetFolder = getRustTargetFolder! debugMode
 
     copyHostLib! osAndArch rustTargetFolder
 
@@ -123,28 +126,39 @@ prebuiltStaticLibFile = \osAndArch ->
         WindowsArm64 -> "windows-arm64.lib"
         WindowsX64 -> "windows-x64.lib"
 
-getRustTargetFolder : Task Str _
-getRustTargetFolder =
+getRustTargetFolder : Bool -> Task Str _
+getRustTargetFolder = \debugMode ->
+    debugOrRelease =
+        if debugMode then
+            "debug"
+        else
+            "release"
+
     when Env.var "CARGO_BUILD_TARGET" |> Task.result! is
         Ok targetEnvVar ->
             if Str.isEmpty targetEnvVar then
-                Task.ok "target/release/"
+                Task.ok "target/$(debugOrRelease)/"
             else
-                Task.ok "target/$(targetEnvVar)/release/"
+                Task.ok "target/$(targetEnvVar)/$(debugOrRelease)/"
         Err e -> 
             info! "Failed to get env var CARGO_BUILD_TARGET with error \(Inspect.toStr e). Assuming default CARGO_BUILD_TARGET (native)..."
             
-            Task.ok "target/release/"
+            Task.ok "target/$(debugOrRelease)/"
 
-cargoBuildHost : Task {} _
-cargoBuildHost =
-    cargoBuildArgs =
-        ["build", "--release"]
+cargoBuildHost : Bool -> Task {} _
+cargoBuildHost = \debugMode ->
+    cargoBuildArgsT =
+        if debugMode then
+            Task.map
+                (info "Building rust host in debug mode...")
+                \_ -> ["build"]
+        else
+            Task.map
+                (info "Building rust host ...")
+                \_ -> ["build", "--release"]
 
-
-    info! "Building rust host ..."
     "cargo"
-        |> Cmd.exec  cargoBuildArgs
+        |> Cmd.exec  cargoBuildArgsT!
         |> Task.mapErr! ErrBuildingHostBinaries
 
 copyHostLib : OSAndArch, Str -> Task {} _
