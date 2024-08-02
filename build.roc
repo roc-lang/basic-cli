@@ -21,8 +21,8 @@ main =
 
     cliParser =
         { Cli.combine <-
-            debugMode: Opt.flag { short: "d", long: "debug", help: "Runs `cargo build` without `--release`."},
-            maybeRoc: Opt.maybeStr { short: "c", long: "cli", help: "Path to the roc cli"},
+            debugMode: Opt.flag { short: "d", long: "debug", help: "Runs `cargo build` without `--release`." },
+            maybeRoc: Opt.maybeStr { short: "r", long: "roc", help: "Path to the roc executable. Can be just `roc` or a full path." },
         }
         |> Cli.finish {
             name: "basic-cli-builder",
@@ -53,7 +53,7 @@ run = \{debugMode, maybeRoc} ->
 
     cargoBuildHost! debugMode
 
-    rustTargetFolder = getRustTargetFolder!
+    rustTargetFolder = getRustTargetFolder! debugMode
 
     copyHostLib! osAndArch rustTargetFolder
 
@@ -126,18 +126,24 @@ prebuiltStaticLibFile = \osAndArch ->
         WindowsArm64 -> "windows-arm64.lib"
         WindowsX64 -> "windows-x64.lib"
 
-getRustTargetFolder : Task Str _
-getRustTargetFolder =
+getRustTargetFolder : Bool -> Task Str _
+getRustTargetFolder = \debugMode ->
+    debugOrRelease =
+        if debugMode then
+            "debug"
+        else
+            "release"
+
     when Env.var "CARGO_BUILD_TARGET" |> Task.result! is
         Ok targetEnvVar ->
             if Str.isEmpty targetEnvVar then
-                Task.ok "target/release/"
+                Task.ok "target/$(debugOrRelease)/"
             else
-                Task.ok "target/$(targetEnvVar)/release/"
+                Task.ok "target/$(targetEnvVar)/$(debugOrRelease)/"
         Err e -> 
             info! "Failed to get env var CARGO_BUILD_TARGET with error \(Inspect.toStr e). Assuming default CARGO_BUILD_TARGET (native)..."
             
-            Task.ok "target/release/"
+            Task.ok "target/$(debugOrRelease)/"
 
 cargoBuildHost : Bool -> Task {} _
 cargoBuildHost = \debugMode ->
