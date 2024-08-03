@@ -4,7 +4,6 @@ app [main] {
 
 import pf.Stdout
 import pf.Stderr
-import pf.Task exposing [Task]
 import pf.Arg.Cli as Cli
 import pf.Arg.SubCmd as SubCmd
 import pf.Arg.Opt as Opt

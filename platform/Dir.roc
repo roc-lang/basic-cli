@@ -8,7 +8,6 @@ module [
     deleteAll,
 ]
 
-import Task exposing [Task]
 import Path exposing [Path]
 
 ## **NotFound** - This error is raised when the specified path does not exist, typically during attempts to access or manipulate it, but also potentially when trying to create a directory and a parent directory does not exist.

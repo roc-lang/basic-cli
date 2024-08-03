@@ -1,7 +1,6 @@
 app [main] { pf: platform "../platform/main.roc" }
 
 import pf.Http
-import pf.Task exposing [Task]
 import pf.Stdout
 import pf.Stderr
 

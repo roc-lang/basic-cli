@@ -2,7 +2,6 @@ app [main] { pf: platform "../platform/main.roc" }
 
 # pf.Stdout,
 # pf.Stderr,
-import pf.Task exposing [Task]
 # pf.File,
 # pf.Path,
 # pf.Env,
