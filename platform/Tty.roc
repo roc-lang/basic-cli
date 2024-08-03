@@ -22,17 +22,13 @@ import PlatformTask
 enableRawMode : {} -> Task {} *
 enableRawMode = \{} ->
     PlatformTask.ttyModeRaw
-        |> Task.result!
-        |> Result.withDefault {}
-        |> Task.ok
+    |> PlatformTask.infallible
 
 ## Revert terminal to default behaviour
 ##
 ## Note: we plan on moving this function away from basic-cli in the future, see github.com/roc-lang/basic-cli/issues/73
 ##
-disableRawMode : Task {} *
-disableRawMode =
+disableRawMode : {} -> Task {} *
+disableRawMode = \{} ->
     PlatformTask.ttyModeCanonical
-        |> Task.result!
-        |> Result.withDefault {}
-        |> Task.ok
+    |> PlatformTask.infallible

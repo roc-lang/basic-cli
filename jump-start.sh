@@ -18,8 +18,7 @@ fi
 
 $ROC build --lib ./platform/libapp.roc
 
-# TODO fix this
-# $ROC glue glue.roc crates ./platform/main.roc
+$ROC glue glue.roc crates ./platform/main.roc
 
 cargo build --release
 

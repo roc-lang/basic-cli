@@ -40,8 +40,7 @@ run = \maybeRoc ->
 
     rocVersion! rocCmd
 
-    # TODO fix this??
-    #generateGlue! rocCmd
+    generateGlue! rocCmd
 
     osAndArch = getOSAndArch!
 
@@ -67,14 +66,13 @@ rocVersion = \rocCmd ->
         |> Cmd.exec  ["version"]
         |> Task.mapErr! RocVersionCheckFailed
 
-# TODO fix this
-#generateGlue : Str -> Task {} _
-#generateGlue = \rocCmd ->
-#    info! "Generating glue for builtins ..."
+generateGlue : Str -> Task {} _
+generateGlue = \rocCmd ->
+    info! "Generating glue for builtins ..."
 
-#    rocCmd
-#        |> Cmd.exec  ["glue", "glue.roc", "crates/", "platform/main.roc"]
-#        |> Task.mapErr! ErrGeneratingGlue
+    rocCmd
+        |> Cmd.exec  ["glue", "glue.roc", "crates/", "platform/main.roc"]
+        |> Task.mapErr! ErrGeneratingGlue
 
 getOSAndArch : Task OSAndArch _
 getOSAndArch =
