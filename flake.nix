@@ -41,6 +41,13 @@
             Security
           ]);
 
+        # Renames command for debug compiler to `rocdbg`.
+        # Debug compiler is built with `cargo build` instead of `cargo build --release`.
+        # This enables extra checks (debug_assert macro).
+        rocDbgWrapper = pkgs.writeShellScriptBin "rocdbg" ''
+          ${rocPkgs.cli-debug}/bin/roc "$@"
+        '';
+
         sharedInputs = (with pkgs; [
           jq
           rust
@@ -49,7 +56,9 @@
           expect
           nmap
           simple-http-server
-          rocPkgs.cli-debug
+          rocPkgs.cli
+          # available as `rocdbg`
+          #rocDbgWrapper
         ]);
       in {
 

@@ -45,5 +45,12 @@ jobs:
         env:
           RUST_BACKTRACE: 1
         run: |
-          sed -i 's/rocPkgs\.cli/rocPkgs.cli-debug/g' flake.nix
-          nix develop -c sh -c 'export ROC=roc && export EXAMPLES_DIR=./examples/ && ./ci/all_tests.sh'
+          sed -i 's/#rocDbgWrapper/rocDbgWrapper/' flake.nix
+          # workaround for github.com/roc-lang/basic-cli/issues/242
+          sed -i 's/\$ROC glue/roc glue/g' jump-start.sh
+          # workaround for github.com/roc-lang/basic-cli/issues/242
+          # this command replaces rocCmd with "roc" inside generateGlue
+          sed -i 's/rocCmd # leave this comment.*/"roc"/g' build.roc
+          # docs does not work with debug compiler
+          sed -i 's/\$ROC docs.*//g' ./ci/all_tests.sh
+          nix develop -c sh -c 'export ROC=rocdbg && export EXAMPLES_DIR=./examples/ && ./ci/all_tests.sh'
