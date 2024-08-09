@@ -49,7 +49,7 @@
           expect
           nmap
           simple-http-server
-          rocPkgs.cli
+          rocPkgs.cli-debug
         ]);
       in {
 
