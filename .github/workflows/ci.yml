@@ -68,7 +68,5 @@ jobs:
 
       - name: Test using musl build
         run: |
-          # no need to build platform anymore
-          sed -i '/build\.roc\|jump-start\.sh/d' ./ci/all_tests.sh
-          ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
+          NO_BUILD=1 ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
 
