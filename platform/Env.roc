@@ -88,7 +88,7 @@ dict : {} -> Task (Dict Str Str) *
 dict = \{} ->
     PlatformTask.envDict
     |> Task.map Dict.fromList
-    |> PlatformTask.infallible
+    |> (PlatformTask.infallible "Env.dict")
 
 # ## Walks over the process's environment variables as key-value arguments to the walking function.
 # ##
@@ -170,4 +170,4 @@ tempDir : {} -> Task Path *
 tempDir = \{} ->
     PlatformTask.tempDir
     |> Task.map \pathOSStringBytes -> InternalPath.fromOsBytes pathOSStringBytes
-    |> PlatformTask.infallible
+    |> (PlatformTask.infallible "End.tempDir")

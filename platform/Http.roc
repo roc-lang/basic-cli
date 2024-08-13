@@ -137,7 +137,7 @@ send = \req ->
     # TODO: Fix our C ABI codegen so that we don't this Box.box heap allocation
     { variant, body, metadata } =
         PlatformTask.sendRequest (Box.box internalRequest)
-            |> PlatformTask.infallible!
+            |> (PlatformTask.infallible "Http.send")!
     responseResult =
         when variant is
             "Timeout" -> Err (Timeout timeoutMs)

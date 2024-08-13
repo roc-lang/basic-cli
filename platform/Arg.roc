@@ -11,7 +11,7 @@ import Arg.Help exposing [helpText, usageHelp]
 list : {} -> Task (List Str) *
 list = \{} ->
     PlatformTask.args
-    |> PlatformTask.infallible
+    |> (PlatformTask.infallible "Arg.list")
 
 ## Parse arguments using a CLI parser or show a useful message on failure.
 ##

@@ -132,7 +132,7 @@ output : Cmd -> Task Output [CmdOutputError (Output, Err)]
 output = \@Cmd cmd ->
     internalOutput =
         PlatformTask.commandOutput (Box.box cmd)
-            |> PlatformTask.infallible!
+            |> (PlatformTask.infallible "Cmd.output")!
     out = {
         stdout: internalOutput.stdout,
         stderr: internalOutput.stderr,

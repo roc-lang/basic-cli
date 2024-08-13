@@ -22,7 +22,7 @@ import PlatformTask
 enableRawMode : {} -> Task {} *
 enableRawMode = \{} ->
     PlatformTask.ttyModeRaw
-    |> PlatformTask.infallible
+    |> (PlatformTask.infallible "Tty.enableRawMode")
 
 ## Revert terminal to default behaviour
 ##
@@ -31,4 +31,4 @@ enableRawMode = \{} ->
 disableRawMode : {} -> Task {} *
 disableRawMode = \{} ->
     PlatformTask.ttyModeCanonical
-    |> PlatformTask.infallible
+    |> (PlatformTask.infallible "Tty.disableRawMode")

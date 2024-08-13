@@ -104,7 +104,7 @@ currentArchOS : Task { arch : Str, os : Str } {}
 
 tempDir : Task (List U8) {}
 
-infallible : Task ok err -> Task ok *
-infallible = \task ->
+infallible : Str -> (Task ok err -> Task ok *)
+infallible = \from -> \task ->
     Task.mapErr task \_ ->
-        crash "Task was assumed infallible"
+        crash "Task was assumed infallible, called from $(from)"

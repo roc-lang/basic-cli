@@ -8,4 +8,4 @@ import PlatformTask
 millis : U64 -> Task {} *
 millis = \n ->
     PlatformTask.sleepMillis n
-    |> PlatformTask.infallible
+    |> (PlatformTask.infallible "Sleep.millis")

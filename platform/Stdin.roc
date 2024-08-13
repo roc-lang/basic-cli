@@ -67,4 +67,4 @@ bytes : {} -> Task (List U8) *
 bytes = \{} ->
     # will return an empty list if no bytes are available
     PlatformTask.stdinBytes
-    |> PlatformTask.infallible
+    |> (PlatformTask.infallible "Stdin.bytes")
