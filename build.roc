@@ -73,7 +73,7 @@ generateGlue : Str -> Task {} _
 generateGlue = \rocCmd ->
     info! "Generating glue for builtins ..."
 
-    rocCmd
+    rocCmd # leave this comment, it's used in ci_nix.yml
         |> Cmd.exec  ["glue", "glue.roc", "crates/", "platform/main.roc"]
         |> Task.mapErr! ErrGeneratingGlue
 
