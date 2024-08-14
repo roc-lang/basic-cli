@@ -20,10 +20,10 @@ if [ -z "${ROC}" ]; then
 fi
 
 # temporary; remove once build.roc uses basic-cli throuh a URL
-./jump-start.sh
+#./jump-start.sh
 
 # build the basic-cli platform
-$ROC ./build.roc --prebuilt-platform -- --roc $ROC
+#$ROC ./build.roc --prebuilt-platform -- --roc $ROC
 
 # roc check
 for roc_file in $EXAMPLES_DIR*.roc; do
