@@ -3,6 +3,8 @@
 
   inputs = {
     roc.url = "github:roc-lang/roc";
+    # to use a specific commit:
+    # roc.url = "github:roc-lang/roc?rev=635e6058cce4961e6c4fa7363545b794a44f1818";
 
     nixpkgs.follows = "roc/nixpkgs";
 

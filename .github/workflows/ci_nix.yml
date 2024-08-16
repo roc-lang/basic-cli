@@ -40,3 +40,14 @@ jobs:
       # Workaround for https://github.com/roc-lang/roc/issues/6688
       - name: Check if crash occurred
         run: grep -qv "crashed" all_tests_output.log
+
+      - name: Run all tests with debug compiler
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          # use debug compiler
+          sed -i.bak 's/rocPkgs\.cli/rocPkgs.cli-debug/g' flake.nix
+          # docs does not work with debug compiler
+          sed -i.bak 's/\$ROC docs.*//g' ./ci/all_tests.sh
+          # for SINGLE_TAG_GLUE_CHECK_OFF=1 see github.com/roc-lang/basic-cli/issues/242
+          nix develop -c sh -c 'export SINGLE_TAG_GLUE_CHECK_OFF=1 && export ROC=roc && export EXAMPLES_DIR=./examples/ && ./ci/all_tests.sh'
