@@ -107,10 +107,9 @@ errorToString = \err ->
 ##
 ## ```
 ## # Prints out the HTML of the Roc-lang website.
-## response <-
+## response =
 ##     { Http.defaultRequest & url: "https://www.roc-lang.org" }
-##     |> Http.send
-##     |> Task.await
+##     |> Http.send!
 ##
 ## response.body
 ## |> Str.fromUtf8

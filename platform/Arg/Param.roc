@@ -65,10 +65,8 @@ import Arg.Extract exposing [extractParamValues]
 builderWithParameterParser : ParameterConfig, (List Str -> Result data ArgExtractErr) -> CliBuilder data fromAction toAction
 builderWithParameterParser = \param, valueParser ->
     argParser = \args ->
-        { values, remainingArgs } <- extractParamValues { args, param }
-            |> Result.try
-        data <- valueParser values
-            |> Result.try
+        { values, remainingArgs } = extractParamValues? { args, param }
+        data = valueParser? values
 
         Ok { data, remainingArgs }
 

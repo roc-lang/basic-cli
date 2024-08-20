@@ -93,7 +93,7 @@ connect = \host, port ->
 ##
 ## ```
 ## # Read up to 64 bytes from the stream and convert to a Str
-## received <- File.readUpTo stream 64 |> Task.await
+## received = File.readUpTo! stream 64
 ## Str.fromUtf8 received
 ## ```
 ##
@@ -140,7 +140,7 @@ readUntil = \@Stream stream, byte ->
 ##
 ## ```
 ## # Read a line and then print it to `stdout`
-## lineStr <- File.readLine stream |> Task.await
+## lineStr = File.readLine! stream
 ## Stdout.line lineStr
 ## ```
 ##

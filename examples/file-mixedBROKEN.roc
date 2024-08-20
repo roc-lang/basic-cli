@@ -13,17 +13,17 @@ main =
 # TODO FIX
 # path = "out.txt"
 # task =
-#     cwd <- Env.cwd |> Task.await
+#     cwd = Env.cwd!
 #     cwdStr = Path.display cwd
 
-#     _ <- Stdout.line "cwd: $(cwdStr)" |> Task.await
-#     dirEntries <- Dir.list cwd |> Task.await
+#     Stdout.line! "cwd: $(cwdStr)"
+#     dirEntries = Dir.list! cwd
 #     contentsStr = Str.joinWith (List.map dirEntries Path.display) "\n    "
 
-#     _ <- Stdout.line "Directory contents:\n    $(contentsStr)\n" |> Task.await
-#     _ <- Stdout.line "Writing a string to out.txt" |> Task.await
-#     _ <- File.writeUtf8 path "a string!" |> Task.await
-#     contents <- File.readUtf8 path |> Task.await
+#     Stdout.line! "Directory contents:\n    $(contentsStr)\n"
+#     Stdout.line! "Writing a string to out.txt"
+#     File.writeUtf8! path "a string!"
+#     contents = File.readUtf8! path
 #     Stdout.line "I read the file back. Its contents: \"$(contents)\""
 
 # Task.attempt task \result ->
@@ -38,6 +38,6 @@ main =
 #                     FileReadErr _ _ -> "Error reading file"
 #                     _ -> "Uh oh, there was an error!"
 
-#             {} <- Stderr.line msg |> Task.await
+#             Stderr.line! msg
 
 #             Task.err 1 # 1 is an exit code to indicate failure

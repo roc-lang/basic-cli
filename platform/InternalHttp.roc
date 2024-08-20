@@ -72,10 +72,10 @@ ErrorBody := List U8 implements [
 
 errorBodyToInspector : ErrorBody -> _
 errorBodyToInspector = \@ErrorBody val ->
-    fmt <- Inspect.custom
-    when val |> List.takeFirst 50 |> Str.fromUtf8 is
-        Ok str -> Inspect.apply (Inspect.str str) fmt
-        Err _ -> Inspect.apply (Inspect.str "Invalid UTF-8 data") fmt
+    Inspect.custom \fmt ->
+        when val |> List.takeFirst 50 |> Str.fromUtf8 is
+            Ok str -> Inspect.apply (Inspect.str str) fmt
+            Err _ -> Inspect.apply (Inspect.str "Invalid UTF-8 data") fmt
 
 errorBodyToUtf8 : ErrorBody -> List U8
 errorBodyToUtf8 = \@ErrorBody body -> body

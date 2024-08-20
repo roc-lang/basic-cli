@@ -19,7 +19,7 @@ now : {} -> Task Utc *
 now = \{} ->
     currentEpoch =
         PlatformTask.posixTime
-            |> (PlatformTask.infallible! "Utc.now")
+            |> (PlatformTask.infallible "Utc.now")!
             |> Num.toI128
 
     Task.ok (@Utc currentEpoch)
