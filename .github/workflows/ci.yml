@@ -1,4 +1,4 @@
-on: 
+on:
   pull_request:
   workflow_dispatch:
 
@@ -8,7 +8,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   build-and-test-native:
     runs-on: ${{ matrix.operating-system }}
     strategy:
@@ -19,12 +18,12 @@ jobs:
 
       - name: Does init() in platform/src/lib.rs contain all roc_fx functions? (Imperfect check)
         run: cat platform/src/lib.rs | grep -oP 'roc_fx_[^(\s]*' | sort | uniq -u | grep -q . && exit 1 || exit 0
-          
+
       - id: try_fetching_testing_release
         continue-on-error: true
         run: |
           curl -fOL https://github.com/roc-lang/roc/releases/download/nightly/roc_nightly-linux_x86_64-TESTING.tar.gz
-    
+
       - name: There are no TESTING releases, checking regular releases instead
         if: steps.try_fetching_testing_release.outcome == 'failure'
         run: |
@@ -59,5 +58,15 @@ jobs:
       - name: Check if crash occurred
         run: grep -zqv "crashed" all_tests_output.log
 
-# TODO clippy, rustfmt, roc fmt check
+      - name: Install dependencies for musl build
+        run: |
+          sudo apt-get install -y musl-tools
+          rustup target add x86_64-unknown-linux-musl
+
+      - name: Test building with musl target
+        run: CARGO_BUILD_TARGET=x86_64-unknown-linux-musl ./roc_nightly/roc build.roc --prebuilt-platform -- --roc ./roc_nightly/roc
+
+      - name: Test using musl build
+        run: |
+          NO_BUILD=1 ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
 

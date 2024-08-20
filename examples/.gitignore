@@ -8,6 +8,8 @@ example-stdin
 file-mixed
 file-mixedBROKEN
 file-read
+file-read-buffered
+file-read-memory-map
 form
 hello-world
 http-get
@@ -15,9 +17,8 @@ out.txt
 path
 piping
 record-builder
+result
 stdin
+task-list
 tcp-client
 time
-task-list
-result
-file-read-buffered

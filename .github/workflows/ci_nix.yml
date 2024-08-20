@@ -1,44 +1,55 @@
-on: 
-    pull_request:
-    workflow_dispatch:
+on:
+  pull_request:
+  workflow_dispatch:
 
 # this cancels workflows currently in progress if you start a new one
 concurrency:
-    group: ${{ github.workflow }}-${{ github.ref }}
-    cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-    build-and-test-nix:
-        strategy:
-            fail-fast: false
-            matrix:
-              # macos-12 uses x86-64 machine, macos-14 uses aarch64  
-              os: [ macos-12, macos-14, ubuntu-22.04 ]
-        runs-on: ${{ matrix.os }}
-        steps:
-            - uses: actions/checkout@v3
+  build-and-test-nix:
+    strategy:
+      fail-fast: false
+      matrix:
+        # macos-12 uses x86-64 machine, macos-14 uses aarch64
+        os: [macos-12, macos-14, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
 
-            # install nix
-            - uses: cachix/install-nix-action@v23
-              with:
-                nix_path: nixpkgs=channel:nixos-unstable
+      # install nix
+      - uses: cachix/install-nix-action@v23
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
 
-            - uses: cachix/cachix-action@v12
-              with:
-                  name: enigmaticsunrise
-                  authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+      - uses: cachix/cachix-action@v12
+        with:
+          name: enigmaticsunrise
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
 
-            - name: print architecture
-              run: uname -m
+      - name: print architecture
+        run: uname -m
 
-            - name: Run all tests
-              run: nix develop -c sh -c 'export ROC=roc && export EXAMPLES_DIR=./examples/ && ./ci/all_tests.sh'
-            
-            - name: Run all tests and capture output to check for crash later
-              run: nix develop -c sh -c 'export ROC=roc && export EXAMPLES_DIR=./examples/ && ./ci/all_tests.sh 2>&1 | tee all_tests_output.log'
+      - name: Run all tests
+        run: nix develop -c sh -c 'export ROC=roc && export EXAMPLES_DIR=./examples/ && ./ci/all_tests.sh'
 
-            # Workaround for https://github.com/roc-lang/roc/issues/6688
-            - name: Check if crash occurred
-              run: grep -qv "crashed" all_tests_output.log
-    
-    
+      - name: Run all tests and capture output to check for crash later
+        run: nix develop -c sh -c 'export ROC=roc && export EXAMPLES_DIR=./examples/ && ./ci/all_tests.sh 2>&1 | tee all_tests_output.log'
+
+      # Workaround for https://github.com/roc-lang/roc/issues/6688
+      - name: Check if crash occurred
+        run: grep -qv "crashed" all_tests_output.log
+
+      - name: Run all tests with debug compiler
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          # use debug compiler
+          sed -i.bak 's/rocPkgs\.cli/rocPkgs.cli-debug/g' flake.nix
+          # make sure substitution was made
+          grep -q "rocPkgs.cli-debug" flake.nix
+          # docs does not work with debug compiler
+          sed -i.bak 's/\$ROC docs.*//g' ./ci/all_tests.sh
+          # for SINGLE_TAG_GLUE_CHECK_OFF=1 see github.com/roc-lang/basic-cli/issues/242
+          nix develop -c sh -c 'export SINGLE_TAG_GLUE_CHECK_OFF=1 && export ROC=roc && export EXAMPLES_DIR=./examples/ && ./ci/all_tests.sh'

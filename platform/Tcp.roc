@@ -1,6 +1,6 @@
 module [
     Stream,
-    withConnect,
+    connect,
     readUpTo,
     readExactly,
     readUntil,
@@ -20,7 +20,7 @@ import InternalTask
 unexpectedEofErrorMessage = "UnexpectedEof"
 
 ## Represents a TCP stream.
-Stream := U64
+Stream := Effect.TcpStream
 
 ## Represents errors that can occur when connecting to a remote host.
 ConnectErr : [
@@ -70,39 +70,21 @@ parseStreamErr = \err ->
         "ErrorKind::BrokenPipe" -> BrokenPipe
         other -> Unrecognized other
 
-## Opens a TCP connection to a remote host and perform a [Task] with it.
+## Opens a TCP connection to a remote host.
 ##
 ## ```
-## # Connect to localhost:8080 and send "Hi from Roc!"
-## stream <- Tcp.withConnect "localhost" 8080
-## Tcp.writeUtf8 "Hi from Roc!" stream
+## # Connect to localhost:8080
+## stream = Tcp.connect! "localhost" 8080
 ## ```
 ##
-## The connection is automatically closed after the [Task] is completed. Examples of
+## The connection is automatically closed when the last reference to the stream is dropped.
+## Examples of
 ## valid hostnames:
 ##  - `127.0.0.1`
 ##  - `::1`
 ##  - `localhost`
 ##  - `roc-lang.org`
 ##
-withConnect : Str, U16, (Stream -> Task a err) -> Task a [TcpConnectErr ConnectErr, TcpPerformErr err]
-withConnect = \hostname, port, callback ->
-    stream =
-        connect hostname port
-            |> Task.mapErr! TcpConnectErr
-
-    result =
-        callback stream
-            |> Task.mapErr TcpPerformErr
-            |> Task.onErr!
-                (\err ->
-                    _ = close! stream
-                    Task.err err
-                )
-
-    close stream
-    |> Task.map \_ -> result
-
 connect : Str, U16 -> Task Stream ConnectErr
 connect = \host, port ->
     Effect.tcpConnect host port
@@ -110,11 +92,6 @@ connect = \host, port ->
         res
         |> Result.map @Stream
         |> Result.mapErr parseConnectErr
-    |> InternalTask.fromEffect
-
-close : Stream -> Task {} *
-close = \@Stream stream ->
-    Effect.tcpClose stream
     |> InternalTask.fromEffect
 
 ## Read up to a number of bytes from the TCP stream.

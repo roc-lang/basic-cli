@@ -5,7 +5,7 @@ set -exo pipefail
 
 if [ -z "${EXAMPLES_DIR}" ]; then
   echo "ERROR: The EXAMPLES_DIR environment variable is not set." >&2
-  
+
   exit 1
 fi
 
@@ -19,6 +19,14 @@ if [ -z "${ROC}" ]; then
   exit 1
 fi
 
+if [ "$NO_BUILD" != "1" ]; then
+  # temporary; remove once build.roc uses basic-cli throuh a URL
+  ./jump-start.sh
+  
+  # build the basic-cli platform
+  $ROC ./build.roc --prebuilt-platform -- --roc $ROC
+fi
+
 # roc check
 for roc_file in $EXAMPLES_DIR*.roc; do
     $ROC check $roc_file
@@ -30,12 +38,17 @@ architecture=$(uname -m)
 for roc_file in $EXAMPLES_DIR*.roc; do
     base_file=$(basename "$roc_file")
 
-    # Skip env.roc when on aarch64
-    if [ "$architecture" == "aarch64" ] && [ "$base_file" == "env.roc" ]; then
+    # Skip env-var.roc when on aarch64
+    if [ "$architecture" == "aarch64" ] && [ "$base_file" == "env-var.roc" ]; then
         continue
     fi
 
-    $ROC build $roc_file $ROC_BUILD_FLAGS
+    if [ "$base_file" == "temp-dir.roc" ]; then
+        $ROC build --prebuilt-platform $roc_file $ROC_BUILD_FLAGS --linker=legacy
+    else
+        $ROC build --prebuilt-platform $roc_file $ROC_BUILD_FLAGS
+    fi
+    
 done
 
 # prep for next step
@@ -47,8 +60,8 @@ cd ../..
 for roc_file in $EXAMPLES_DIR*.roc; do
     base_file=$(basename "$roc_file")
 
-    # Skip env.roc when on aarch64
-    if [ "$architecture" == "aarch64" ] && [ "$base_file" == "env.roc" ]; then
+    # Skip env-var.roc when on aarch64
+    if [ "$architecture" == "aarch64" ] && [ "$base_file" == "env-var.roc" ]; then
         continue
     fi
 
@@ -67,7 +80,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     base_file=$(basename "$roc_file")
 
     # countdown, echo, form, piping... all require user input or special setup
-    ignore_list=("countdown.roc" "echo.roc" "form.roc" "piping.roc" "stdin.roc" "args.roc" "http-get-json.roc")
+    ignore_list=("countdown.roc" "echo.roc" "form.roc" "piping.roc" "stdin.roc" "args.roc" "http-get-json.roc" "env-var.roc")
 
     # check if base_file matches something from ignore_list
     for file in "${ignore_list[@]}"; do
@@ -76,19 +89,16 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         fi
     done
 
-    # Skip env.roc when on aarch64
-    if [ "$architecture" == "aarch64" ] && [ "$base_file" == "env.roc" ]; then
-        continue
-    fi
-
     # For path.roc we need be inside the EXAMPLES_DIR
     if [ "$base_file" == "path.roc" ]; then
         absolute_roc=$(which $ROC | xargs realpath)
         cd $EXAMPLES_DIR
-        $absolute_roc dev $base_file $ROC_BUILD_FLAGS
+        $absolute_roc dev --prebuilt-platform $base_file $ROC_BUILD_FLAGS
         cd ..
+    elif [ "$base_file" == "temp-dir.roc" ]; then
+        $ROC dev --prebuilt-platform $roc_file $ROC_BUILD_FLAGS --linker=legacy
     else
-        $ROC dev $roc_file $ROC_BUILD_FLAGS
+        $ROC dev --prebuilt-platform $roc_file $ROC_BUILD_FLAGS
     fi
 done
 
@@ -106,7 +116,7 @@ find . -type d -name "roc_nightly" -prune -o -type f -name "*.roc" -print | whil
 
             # don't exit script if test_command fails
             set +e
-            test_command=$($ROC test "$file")
+            test_command=$($ROC test "$file" --prebuilt-platform)
             test_exit_code=$?
             set -e
 

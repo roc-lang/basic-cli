@@ -1,0 +1,15 @@
+[package]
+name = "host"
+version = "0.0.1"
+authors = ["The Roc Contributors"]
+license = "UPL-1.0"
+edition = "2021"
+description = "This crate wraps roc_host and produces a static library (.a file). This .a file is used for legacy linking. Legacy linking refers to using a typical linker like ld or ldd instead of the Roc surgical linker."
+
+[lib]
+name = "host"
+path = "src/lib.rs"
+crate-type = ["staticlib"]
+
+[dependencies]
+roc_host = { path = "../roc_host" }

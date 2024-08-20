@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 hyper = { version = "=0.14.27", features = ["full"]}
 tokio = { version = "=1.31.0", features = ["full"]}
+
+[workspace]

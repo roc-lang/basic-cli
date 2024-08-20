@@ -3,6 +3,8 @@
 
   inputs = {
     roc.url = "github:roc-lang/roc";
+    # to use a specific commit:
+    # roc.url = "github:roc-lang/roc?rev=635e6058cce4961e6c4fa7363545b794a44f1818";
 
     nixpkgs.follows = "roc/nixpkgs";
 
@@ -28,7 +30,7 @@
         # get current working directory
         cwd = builtins.toString ./.;
         rust =
-          pkgs.rust-bin.fromRustupToolchainFile "${cwd}/platform/rust-toolchain.toml";
+          pkgs.rust-bin.fromRustupToolchainFile "${toString ./rust-toolchain.toml}";
 
         linuxInputs = with pkgs;
           lib.optionals stdenv.isLinux [
@@ -38,6 +40,7 @@
         darwinInputs = with pkgs;
           lib.optionals stdenv.isDarwin
           (with pkgs.darwin.apple_sdk.frameworks; [
+            Security
           ]);
 
         sharedInputs = (with pkgs; [
