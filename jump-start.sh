@@ -11,7 +11,7 @@
 set -exo pipefail
 
 if [ -z "${ROC}" ]; then
-  echo "Warning: ROC environment variable is not set... I'll try with just roc."
+  echo "Warning: ROC environment variable is not set... I'll try with just 'roc'."
 
   ROC="roc"
 fi
