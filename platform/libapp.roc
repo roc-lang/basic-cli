@@ -1,14 +1,13 @@
-app "stub"
-    packages { pf: "main.roc" }
-    imports [pf.Task.{ Task }]
-    provides [main] to pf
+app [main] { pf: platform "main.roc" }
 
-# Throw an error here so we can easily confirm the host 
+import pf.Task exposing [Task]
+
+# Throw an error here so we can easily confirm the host
 # executable built correctly just by running it.
 #
-# e.g. 
+# e.g.
 # ```
-# $ ./target/debug/host 
+# $ ./target/debug/host
 # Program exited early with error: JustAStub
 # ```
 main = Task.err (JustAStub)

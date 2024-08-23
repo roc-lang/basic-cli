@@ -123,14 +123,15 @@ send : Request -> Task Response [HttpErr Err]
 send = \req ->
     internalReq : InternalHttp.Request
     internalReq = {
-        method : InternalHttp.methodToStr req.method,
-        headers : req.headers,
-        url : req.url,
-        mimeType : req.mimeType,
-        body : req.body,
-        timeoutMs : when req.timeout is
+        method: InternalHttp.methodToStr req.method,
+        headers: req.headers,
+        url: req.url,
+        mimeType: req.mimeType,
+        body: req.body,
+        timeoutMs:
+        when req.timeout is
             NoTimeout -> 0
-            TimeoutMilliseconds ms -> ms
+            TimeoutMilliseconds ms -> ms,
     }
 
     # TODO: Fix our C ABI codegen so that we don't this Box.box heap allocation
