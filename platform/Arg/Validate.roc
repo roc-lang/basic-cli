@@ -70,30 +70,24 @@ validateCommand :
     }
     -> Result {} CliValidationErr
 validateCommand = \{ name, options, parentOptions, parameters, subcommands, subcommandPath } ->
-    {} <- ensureCommandIsWellNamed { name, subcommandPath }
-        |> Result.try
-    _ <- options
-        |> List.mapTry \option ->
-            {} <- ensureOptionIsWellNamed { option, subcommandPath }
-                |> Result.try
-            {} <- ensureOptionValueTypeIsWellNamed { option, subcommandPath }
-                |> Result.try
+
+    ensureCommandIsWellNamed? { name, subcommandPath }
+
+    _ = options
+        |> List.mapTry? \option ->
+            ensureOptionIsWellNamed? { option, subcommandPath }
+            ensureOptionValueTypeIsWellNamed? { option, subcommandPath }
 
             Ok {}
-        |> Result.try
 
-    _ <- parameters
-        |> List.mapTry \param ->
-            {} <- ensureParamIsWellNamed { name: param.name, subcommandPath }
-                |> Result.try
-            {} <- ensureParamValueTypeIsWellNamed { param, subcommandPath }
-                |> Result.try
+    _ = parameters
+        |> List.mapTry? \param ->
+            ensureParamIsWellNamed? { name: param.name, subcommandPath }
+            ensureParamValueTypeIsWellNamed? { param, subcommandPath }
 
             Ok {}
-        |> Result.try
 
-    {} <- checkIfThereAreOverlappingParameters parameters subcommandPath
-        |> Result.try
+    checkIfThereAreOverlappingParameters? parameters subcommandPath
 
     when subcommands is
         HasSubcommands subcommandConfigs if !(Dict.isEmpty subcommandConfigs) ->

@@ -1,6 +1,6 @@
 app [main] {
     pf: platform "../platform/main.roc",
-    json: "https://github.com/lukewilliamboswell/roc-json/releases/download/0.10.0/KbIfTNbxShRX1A1FgXei1SpO5Jn8sgP6HP6PXbi-xyA.tar.br",
+    json: "https://github.com/lukewilliamboswell/roc-json/releases/download/0.10.1/jozYCvOqoYa-cV6OdTcxw3uDGn61cLvzr5dK1iKf1ag.tar.br",
 }
 
 import pf.Http
@@ -21,5 +21,3 @@ run =
     { foo } = Http.get! "http://localhost:8000" Json.utf8
 
     Stdout.line! "The json I received was: { foo: \"$(foo)\" }"
-
-    
