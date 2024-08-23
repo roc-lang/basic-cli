@@ -422,7 +422,7 @@ display = \path ->
 ## > [`File.isDir`](File#isDir) does the same thing, except it takes a [Str] instead of a [Path].
 isDir : Path -> Task Bool [PathErr MetadataErr]
 isDir = \path ->
-    res <- type path |> Task.await
+    res = type! path
     Task.ok (res == IsDir)
 
 ## Returns true if the path exists on disk and is pointing at a regular file.
@@ -432,7 +432,7 @@ isDir = \path ->
 ## > [`File.isFile`](File#isFile) does the same thing, except it takes a [Str] instead of a [Path].
 isFile : Path -> Task Bool [PathErr MetadataErr]
 isFile = \path ->
-    res <- type path |> Task.await
+    res = type! path
     Task.ok (res == IsFile)
 
 ## Returns true if the path exists on disk and is pointing at a symbolic link.
@@ -441,7 +441,7 @@ isFile = \path ->
 ## > [`File.isSymLink`](File#isSymLink) does the same thing, except it takes a [Str] instead of a [Path].
 isSymLink : Path -> Task Bool [PathErr MetadataErr]
 isSymLink = \path ->
-    res <- type path |> Task.await
+    res = type! path
     Task.ok (res == IsSymLink)
 
 ## Return the type of the path if the path exists on disk.

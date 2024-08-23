@@ -14,7 +14,7 @@ run : Task {} _
 run =
     editor =
         Env.decode "EDITOR"
-        |> Task.mapErr! \_ -> FailedToGetEnvVarEDITOR
+            |> Task.mapErr! \_ -> FailedToGetEnvVarEDITOR
 
     Stdout.line! "Your favorite editor is $(editor)!"
 
@@ -23,7 +23,7 @@ run =
     # Here `Str.joinWith` forces the type that Env.decode! returns to be `List Str`
     letters =
         Env.decode "LETTERS"
-        |> Task.mapErr! \_ -> FailedToGetEnvVarLETTERS
+            |> Task.mapErr! \_ -> FailedToGetEnvVarLETTERS
     joinedLetters = Str.joinWith letters " "
 
     Stdout.line! "Your favorite letters are: $(joinedLetters)"

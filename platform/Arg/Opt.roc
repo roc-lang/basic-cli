@@ -64,10 +64,10 @@ import Arg.Parser exposing [ArgValue]
 builderWithOptionParser : OptionConfig, (List ArgValue -> Result data ArgExtractErr) -> CliBuilder data fromAction toAction
 builderWithOptionParser = \option, valueParser ->
     argParser = \args ->
-        { values, remainingArgs } <- extractOptionValues { args, option }
-            |> Result.try
-        data <- valueParser values
-            |> Result.try
+
+        { values, remainingArgs } = extractOptionValues? { args, option }
+
+        data = valueParser? values
 
         Ok { data, remainingArgs }
 
@@ -123,11 +123,8 @@ single = \{ parser, type, short ? "", long ? "", help ? "" } ->
     option = { expectedValue: ExpectsValue type, plurality: One, short, long, help }
 
     valueParser = \values ->
-        argValue <- getSingleValue values option
-            |> Result.try
-        value <- argValue
-            |> Result.mapErr \NoValue -> NoValueProvidedForOption option
-            |> Result.try
+        argValue = getSingleValue? values option
+        value = argValue |> Result.mapErr? \NoValue -> NoValueProvidedForOption option
 
         parser value
         |> Result.mapErr \err -> InvalidOptionValue err option
@@ -170,10 +167,7 @@ maybe = \{ parser, type, short ? "", long ? "", help ? "" } ->
     option = { expectedValue: ExpectsValue type, plurality: Optional, short, long, help }
 
     valueParser = \values ->
-        value <- getMaybeValue values option
-            |> Result.try
-
-        when value is
+        when getMaybeValue? values option is
             Err NoValue -> Ok (Err NoValue)
             Ok (Err NoValue) -> Err (NoValueProvidedForOption option)
             Ok (Ok val) ->
@@ -248,10 +242,7 @@ flag = \{ short ? "", long ? "", help ? "" } ->
     option = { expectedValue: NothingExpected, plurality: Optional, short, long, help }
 
     valueParser = \values ->
-        value <- getMaybeValue values option
-            |> Result.try
-
-        when value is
+        when getMaybeValue? values option is
             Err NoValue -> Ok Bool.false
             Ok (Err NoValue) -> Ok Bool.true
             Ok (Ok _val) -> Err (OptionDoesNotExpectValue option)

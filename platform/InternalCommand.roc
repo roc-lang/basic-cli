@@ -14,12 +14,11 @@ CommandErr : [
 handleCommandErr : List U8 -> CommandErr
 handleCommandErr = \err ->
     when err is
-        ['E','C',.. as rest] ->
+        ['E', 'C', .. as rest] ->
             code = rest |> Str.fromUtf8 |> Result.try Str.toI32 |> Result.withDefault -99
             ExitCode code
 
-        ['K','S'] -> KilledBySignal
-
+        ['K', 'S'] -> KilledBySignal
         other ->
             msg = Str.fromUtf8 other |> Result.withDefault "BadUtf8 from host"
 

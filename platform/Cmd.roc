@@ -155,7 +155,6 @@ status = \@Cmd cmd ->
             Err bytes -> Err (CmdError (InternalCommand.handleCommandErr bytes))
     |> InternalTask.fromEffect
 
-
 ## Execute command and inherit stdin, stdout and stderr from parent
 ##
 ## ```

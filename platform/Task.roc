@@ -210,12 +210,12 @@ fromResult = \res ->
 ## ```
 batch : Task a c -> (Task (a -> b) c -> Task b c)
 batch = \current -> \next ->
-        f <- next |> await
+        f = next!
 
         map current f
 
 ## Apply each task in a list sequentially, and return a [Task] with the list of the resulting values.
-## Each task will be awaited (see [Task.await]) before beginning the next task, 
+## Each task will be awaited (see [Task.await]) before beginning the next task,
 ## execution will stop if an error occurs.
 ##
 ## ```
@@ -228,7 +228,7 @@ batch = \current -> \next ->
 sequence : List (Task ok err) -> Task (List ok) err
 sequence = \tasks ->
     List.walk tasks (InternalTask.ok []) \state, task ->
-        value <- task |> await
+        value = task!
 
         state |> map \values -> List.append values value
 
