@@ -1,7 +1,4 @@
-app "stub"
-    packages { pf: "main.roc" }
-    imports []
-    provides [main] to pf
+app [main] { pf: platform "main.roc" }
 
 # Throw an error here so we can easily confirm the host
 # executable built correctly just by running it.

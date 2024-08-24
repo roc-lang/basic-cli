@@ -70,20 +70,24 @@ validateCommand :
     }
     -> Result {} CliValidationErr
 validateCommand = \{ name, options, parentOptions, parameters, subcommands, subcommandPath } ->
+
     ensureCommandIsWellNamed? { name, subcommandPath }
-    _ = options
-        |> List.mapTry? \option ->
-            ensureOptionIsWellNamed? { option, subcommandPath }
-            ensureOptionValueTypeIsWellNamed? { option, subcommandPath }
 
-            Ok {}
+    _ =
+        options
+            |> List.mapTry? \option ->
+                ensureOptionIsWellNamed? { option, subcommandPath }
+                ensureOptionValueTypeIsWellNamed? { option, subcommandPath }
 
-    _ = parameters
-        |> List.mapTry? \param ->
-            ensureParamIsWellNamed? { name: param.name, subcommandPath }
-            ensureParamValueTypeIsWellNamed? { param, subcommandPath }
+                Ok {}
 
-            Ok {}
+    _ =
+        parameters
+            |> List.mapTry? \param ->
+                ensureParamIsWellNamed? { name: param.name, subcommandPath }
+                ensureParamValueTypeIsWellNamed? { param, subcommandPath }
+
+                Ok {}
 
     checkIfThereAreOverlappingParameters? parameters subcommandPath
 

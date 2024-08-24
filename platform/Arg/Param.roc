@@ -66,6 +66,7 @@ builderWithParameterParser : ParameterConfig, (List Str -> Result data ArgExtrac
 builderWithParameterParser = \param, valueParser ->
     argParser = \args ->
         { values, remainingArgs } = extractParamValues? { args, param }
+        
         data = valueParser? values
 
         Ok { data, remainingArgs }
