@@ -2,8 +2,8 @@
   description = "Basic cli devShell flake";
 
   inputs = {
-    # TODO change this back to github:roc-lang/roc
-    roc.url = "github:smores56/roc?rev=9511334167c75b6f0504e966381037ac77a20461";
+    # This commit is for the builtin-task branch, remove after it is merged into main
+    roc.url = "github:roc/roc?rev=6db429ff17b66a1ebe62e79f099d82fad6704d9d";
 
     nixpkgs.follows = "roc/nixpkgs";
 
