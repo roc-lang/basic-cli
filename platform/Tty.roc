@@ -7,7 +7,7 @@ module [
     enableRawMode,
 ]
 
-import PlatformTask
+import PlatformTasks
 
 ## Enable terminal raw mode which disables some default terminal bevahiour.
 ##
@@ -21,8 +21,8 @@ import PlatformTask
 ##
 enableRawMode : {} -> Task {} *
 enableRawMode = \{} ->
-    PlatformTask.ttyModeRaw
-    |> (PlatformTask.infallible "Tty.enableRawMode")
+    PlatformTasks.ttyModeRaw
+    |> Task.mapErr \_ -> crash "unreachable"
 
 ## Revert terminal to default behaviour
 ##
@@ -30,5 +30,5 @@ enableRawMode = \{} ->
 ##
 disableRawMode : {} -> Task {} *
 disableRawMode = \{} ->
-    PlatformTask.ttyModeCanonical
-    |> (PlatformTask.infallible "Tty.disableRawMode")
+    PlatformTasks.ttyModeCanonical
+    |> Task.mapErr \_ -> crash "unreachable"

@@ -20,7 +20,7 @@ module [
 
 import Path exposing [Path, MetadataErr]
 import InternalFile
-import PlatformTask
+import PlatformTasks
 
 ## Tag union of possible errors when reading a file or directory.
 ##
@@ -187,7 +187,7 @@ type : Str -> Task [IsFile, IsDir, IsSymLink] [PathErr MetadataErr]
 type = \path ->
     Path.type (Path.fromStr path)
 
-Reader := { reader : PlatformTask.FileReader, path : Path }
+Reader := { reader : PlatformTasks.FileReader, path : Path }
 
 ## Try to open a `File.Reader` for buffered (= part by part) reading given a path string.
 ## See [examples/file-read-buffered.roc](https://github.com/roc-lang/basic-cli/blob/main/examples/file-read-buffered.roc) for example usage.
@@ -200,7 +200,7 @@ openReader = \pathStr ->
     path = Path.fromStr pathStr
 
     # 0 means with default capacity
-    PlatformTask.fileReader (Str.toUtf8 pathStr) 0
+    PlatformTasks.fileReader (Str.toUtf8 pathStr) 0
     |> Task.mapErr \err -> GetFileReadErr path (InternalFile.handleReadErr err)
     |> Task.map \reader -> @Reader { reader, path }
 
@@ -215,7 +215,7 @@ openReaderWithCapacity : Str, U64 -> Task Reader [GetFileReadErr Path ReadErr]
 openReaderWithCapacity = \pathStr, capacity ->
     path = Path.fromStr pathStr
 
-    PlatformTask.fileReader (Str.toUtf8 pathStr) capacity
+    PlatformTasks.fileReader (Str.toUtf8 pathStr) capacity
     |> Task.mapErr \err -> GetFileReadErr path (InternalFile.handleReadErr err)
     |> Task.map \reader -> @Reader { reader, path }
 
@@ -229,5 +229,5 @@ openReaderWithCapacity = \pathStr, capacity ->
 ## Use [readUtf8] if you want to get the entire file contents at once.
 readLine : Reader -> Task (List U8) [FileReadErr Path Str]
 readLine = \@Reader { reader, path } ->
-    PlatformTask.fileReadLine reader
+    PlatformTasks.fileReadLine reader
     |> Task.mapErr \err -> FileReadErr path err

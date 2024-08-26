@@ -37,7 +37,7 @@ module [
 import InternalPath
 import InternalFile
 import FileMetadata exposing [FileMetadata]
-import PlatformTask
+import PlatformTasks
 
 ## An error when reading a path's file metadata from disk.
 MetadataErr : InternalPath.GetMetadataErr
@@ -149,7 +149,7 @@ write = \path, val, fmt ->
 writeBytes : Path, List U8 -> Task {} [FileWriteErr Path WriteErr]
 writeBytes = \path, bytes ->
     pathBytes = InternalPath.toBytes path
-    PlatformTask.fileWriteBytes pathBytes bytes
+    PlatformTasks.fileWriteBytes pathBytes bytes
     |> Task.mapErr \err -> FileWriteErr path (InternalFile.handleWriteErr err)
 
 ## Writes a [Str] to a file, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
@@ -165,7 +165,7 @@ writeBytes = \path, bytes ->
 writeUtf8 : Path, Str -> Task {} [FileWriteErr Path WriteErr]
 writeUtf8 = \path, str ->
     pathBytes = InternalPath.toBytes path
-    PlatformTask.fileWriteUtf8 pathBytes str
+    PlatformTasks.fileWriteUtf8 pathBytes str
     |> Task.mapErr \err -> FileWriteErr path (InternalFile.handleWriteErr err)
 
 ## Represents an error that can happen when canonicalizing a path.
@@ -451,7 +451,7 @@ isSymLink = \path ->
 type : Path -> Task [IsFile, IsDir, IsSymLink] [PathErr MetadataErr]
 type = \path ->
     InternalPath.toBytes path
-    |> PlatformTask.pathType
+    |> PlatformTasks.pathType
     |> Task.mapErr \err -> PathErr (InternalPath.handlerGetMetadataErr err)
     |> Task.map \pathType ->
         if pathType.isSymLink then
@@ -525,7 +525,7 @@ withExtension = \path, extension ->
 delete : Path -> Task {} [FileWriteErr Path WriteErr]
 delete = \path ->
     pathBytes = InternalPath.toBytes path
-    PlatformTask.fileDelete pathBytes
+    PlatformTasks.fileDelete pathBytes
     |> Task.mapErr \err -> FileWriteErr path (InternalFile.handleWriteErr err)
 
 # read : Path, fmt -> Task contents [FileReadErr Path ReadErr, FileReadDecodingFailed] where contents implements Decoding, fmt implements DecoderFormatting
@@ -562,7 +562,7 @@ delete = \path ->
 readUtf8 : Path -> Task Str [FileReadErr Path ReadErr, FileReadUtf8Err Path _]
 readUtf8 = \path ->
     bytes =
-        PlatformTask.fileReadBytes (InternalPath.toBytes path)
+        PlatformTasks.fileReadBytes (InternalPath.toBytes path)
             |> Task.mapErr! \readErr -> FileReadErr path (InternalFile.handleReadErr readErr)
 
     Str.fromUtf8 bytes
@@ -584,7 +584,7 @@ readUtf8 = \path ->
 readBytes : Path -> Task (List U8) [FileReadErr Path ReadErr]
 readBytes = \path ->
     pathBytes = InternalPath.toBytes path
-    PlatformTask.fileReadBytes pathBytes
+    PlatformTasks.fileReadBytes pathBytes
     |> Task.mapErr \err -> FileReadErr path (InternalFile.handleReadErr err)
 
 ## Lists the files and directories inside the directory.
@@ -594,7 +594,7 @@ listDir : Path -> Task (List Path) [DirErr DirErr]
 listDir = \path ->
     result =
         InternalPath.toBytes path
-            |> PlatformTask.dirList
+            |> PlatformTasks.dirList
             |> Task.result!
 
     when result is
@@ -613,7 +613,7 @@ listDir = \path ->
 deleteEmpty : Path -> Task {} [DirErr DirErr]
 deleteEmpty = \path ->
     InternalPath.toBytes path
-    |> PlatformTask.dirDeleteEmpty
+    |> PlatformTasks.dirDeleteEmpty
     |> Task.mapErr handleErr
 
 ## Recursively deletes a directory as well as all files and directories
@@ -629,7 +629,7 @@ deleteEmpty = \path ->
 deleteAll : Path -> Task {} [DirErr DirErr]
 deleteAll = \path ->
     InternalPath.toBytes path
-    |> PlatformTask.dirDeleteAll
+    |> PlatformTasks.dirDeleteAll
     |> Task.mapErr handleErr
 
 ## Creates a directory
@@ -643,7 +643,7 @@ deleteAll = \path ->
 createDir : Path -> Task {} [DirErr DirErr]
 createDir = \path ->
     InternalPath.toBytes path
-    |> PlatformTask.dirCreate
+    |> PlatformTasks.dirCreate
     |> Task.mapErr handleErr
 
 ## Creates a directory recursively adding any missing parent directories.
@@ -656,7 +656,7 @@ createDir = \path ->
 createAll : Path -> Task {} [DirErr DirErr]
 createAll = \path ->
     InternalPath.toBytes path
-    |> PlatformTask.dirCreateAll
+    |> PlatformTasks.dirCreateAll
     |> Task.mapErr handleErr
 
 # There are othe errors which may be useful, however they are currently unstable

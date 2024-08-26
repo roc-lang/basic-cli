@@ -15,7 +15,7 @@ module [
 ]
 
 import InternalCommand
-import PlatformTask
+import PlatformTasks
 
 ## Represents a command to be executed in a child process.
 Cmd := InternalCommand.Command implements [Inspect]
@@ -131,8 +131,8 @@ clearEnvs = \@Cmd cmd ->
 output : Cmd -> Task Output [CmdOutputError (Output, Err)]
 output = \@Cmd cmd ->
     internalOutput =
-        PlatformTask.commandOutput (Box.box cmd)
-            |> (PlatformTask.infallible "Cmd.output")!
+        PlatformTasks.commandOutput (Box.box cmd)
+            |> Task.mapErr! \_ -> crash "unreachable"
     out = {
         stdout: internalOutput.stdout,
         stderr: internalOutput.stderr,
@@ -146,7 +146,7 @@ output = \@Cmd cmd ->
 ##
 status : Cmd -> Task {} [CmdError Err]
 status = \@Cmd cmd ->
-    PlatformTask.commandStatus (Box.box cmd)
+    PlatformTasks.commandStatus (Box.box cmd)
     |> Task.mapErr \bytes ->
         CmdError (InternalCommand.handleCommandErr bytes)
 

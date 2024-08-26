@@ -1,6 +1,6 @@
 module [list, parse]
 
-import PlatformTask
+import PlatformTasks
 import Stdout
 
 import Arg.Cli exposing [CliParser]
@@ -10,8 +10,8 @@ import Arg.Help exposing [helpText, usageHelp]
 ## Gives a list of the program's command-line arguments.
 list : {} -> Task (List Str) *
 list = \{} ->
-    PlatformTask.args
-    |> (PlatformTask.infallible "Arg.list")
+    PlatformTasks.args
+    |> Task.mapErr \_ -> crash "unreachable"
 
 ## Parse arguments using a CLI parser or show a useful message on failure.
 ##

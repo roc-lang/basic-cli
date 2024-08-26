@@ -9,7 +9,7 @@ module [
     deltaAsNanos,
 ]
 
-import PlatformTask
+import PlatformTasks
 
 ## Stores a timestamp as nanoseconds since UNIX EPOCH
 Utc := I128 implements [Inspect]
@@ -18,8 +18,8 @@ Utc := I128 implements [Inspect]
 now : {} -> Task Utc *
 now = \{} ->
     currentEpoch =
-        PlatformTask.posixTime
-            |> (PlatformTask.infallible "Utc.now")!
+        PlatformTasks.posixTime
+            |> Task.mapErr! \_ -> crash "unreachable"
             |> Num.toI128
 
     Task.ok (@Utc currentEpoch)

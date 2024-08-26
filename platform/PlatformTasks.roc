@@ -1,4 +1,4 @@
-hosted PlatformTask
+hosted PlatformTasks
     exposes [
         args,
         dirList,
@@ -40,7 +40,6 @@ hosted PlatformTask
         commandOutput,
         currentArchOS,
         tempDir,
-        infallible,
     ]
     imports [
         InternalHttp.{ Request, InternalResponse },
@@ -103,8 +102,3 @@ dirDeleteAll : List U8 -> Task {} Str
 currentArchOS : Task { arch : Str, os : Str } {}
 
 tempDir : Task (List U8) {}
-
-infallible : Str -> (Task ok err -> Task ok *)
-infallible = \from -> \task ->
-    Task.mapErr task \_ ->
-        crash "Task was assumed infallible, called from $(from)"

@@ -1,6 +1,6 @@
 module [line, write, Err]
 
-import PlatformTask
+import PlatformTasks
 
 ## **BrokenPipe** - This error can occur when writing to a stdout that is no longer connected
 ## to a valid input. For example, if the process on the receiving end of a pipe closes its
@@ -49,7 +49,7 @@ handleErr = \err ->
 ##
 line : Str -> Task {} [StdoutErr Err]
 line = \str ->
-    PlatformTask.stdoutLine str
+    PlatformTasks.stdoutLine str
     |> Task.mapErr handleErr
 
 ## Write the given string to [standard output](https://en.wikipedia.org/wiki/Standard_streams#Standard_output_(stdout)).
@@ -60,5 +60,5 @@ line = \str ->
 ## > To write to `stdout` with a newline at the end, see [Stdout.line].
 write : Str -> Task {} [StdoutErr Err]
 write = \str ->
-    PlatformTask.stdoutWrite str
+    PlatformTasks.stdoutWrite str
     |> Task.mapErr handleErr

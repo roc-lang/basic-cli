@@ -15,7 +15,7 @@ module [
 ]
 
 import InternalHttp exposing [errorBodyToUtf8, errorBodyFromUtf8]
-import PlatformTask
+import PlatformTasks
 
 ## Represents an HTTP request.
 Request : {
@@ -135,8 +135,8 @@ send = \req ->
 
     # TODO: Fix our C ABI codegen so that we don't this Box.box heap allocation
     { variant, body, metadata } =
-        PlatformTask.sendRequest (Box.box internalRequest)
-            |> (PlatformTask.infallible "Http.send")!
+        PlatformTasks.sendRequest (Box.box internalRequest)
+            |> Task.mapErr! \_ -> crash "unreachable"
     responseResult =
         when variant is
             "Timeout" -> Err (Timeout timeoutMs)
