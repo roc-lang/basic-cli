@@ -3,7 +3,6 @@ app [main] { pf: platform "../platform/main.roc" }
 import pf.Stdout
 import pf.Stderr
 import pf.Stdin
-import pf.Task exposing [Task]
 
 main =
     Stdout.line! "Enter a series of number characters (0-9):"
@@ -21,8 +20,7 @@ main =
 
 takeNumberBytes : Task (List U8) _
 takeNumberBytes =
-
-    bytesRead = Stdin.bytes!
+    bytesRead = Stdin.bytes! {}
 
     numberBytes =
         List.walk bytesRead [] \bytes, b ->

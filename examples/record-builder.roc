@@ -3,10 +3,8 @@ app [main] {
 }
 
 import pf.Stdout
-import pf.Task exposing [Task]
 
 main =
-    myrecord : Task { apples : List Str, oranges : List Str } []_
     myrecord = { sequenceTasks <-
         apples: getFruit Apples,
         oranges: getFruit Oranges,
@@ -21,7 +19,7 @@ main =
     |> Str.concat (Str.joinWith oranges ", ")
     |> Stdout.line
 
-getFruit : [Apples, Oranges] -> Task (List Str) []_
+getFruit : [Apples, Oranges] -> Task (List Str) *
 getFruit = \request ->
     when request is
         Apples -> Task.ok ["Granny Smith", "Pink Lady", "Golden Delicious"]
