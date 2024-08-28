@@ -1,6 +1,8 @@
 module [list, parse]
 
-import PlatformTasks
+import Task exposing [Task]
+import InternalTask
+import Effect
 import Stdout
 
 import Arg.Cli exposing [CliParser]
@@ -8,10 +10,12 @@ import Arg.ErrorFormatter exposing [formatArgExtractErr]
 import Arg.Help exposing [helpText, usageHelp]
 
 ## Gives a list of the program's command-line arguments.
-list : {} -> Task (List Str) *
-list = \{} ->
-    PlatformTasks.args
-    |> Task.mapErr \_ -> crash "unreachable"
+## `{} ->` is a necessary workaround to make error accumulation/unification work.
+list : {} -> Task (List Str) []
+list = \_ ->
+    Effect.args
+    |> Effect.map Ok
+    |> InternalTask.fromEffect
 
 ## Parse arguments using a CLI parser or show a useful message on failure.
 ##
@@ -81,7 +85,7 @@ list = \{} ->
 ## ```
 parse : CliParser state -> Task state [Exit I32 Str, StdoutErr Stdout.Err]
 parse = \parser ->
-    when parser.parser (list! {}) is
+    when parser.parser (list {})! is
         SuccessfullyParsed data ->
             Task.ok data
 

@@ -1,6 +1,8 @@
 module [line, write, Err]
 
-import PlatformTasks
+import Effect
+import Task exposing [Task]
+import InternalTask
 
 ## **BrokenPipe** - This error can occur when writing to a stdout that is no longer connected
 ## to a valid input. For example, if the process on the receiving end of a pipe closes its
@@ -49,8 +51,9 @@ handleErr = \err ->
 ##
 line : Str -> Task {} [StdoutErr Err]
 line = \str ->
-    PlatformTasks.stdoutLine str
-    |> Task.mapErr handleErr
+    Effect.stdoutLine str
+    |> Effect.map \res -> Result.mapErr res handleErr
+    |> InternalTask.fromEffect
 
 ## Write the given string to [standard output](https://en.wikipedia.org/wiki/Standard_streams#Standard_output_(stdout)).
 ##
@@ -60,5 +63,6 @@ line = \str ->
 ## > To write to `stdout` with a newline at the end, see [Stdout.line].
 write : Str -> Task {} [StdoutErr Err]
 write = \str ->
-    PlatformTasks.stdoutWrite str
-    |> Task.mapErr handleErr
+    Effect.stdoutWrite str
+    |> Effect.map \res -> Result.mapErr res handleErr
+    |> InternalTask.fromEffect

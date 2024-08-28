@@ -1,6 +1,7 @@
 app [main] { pf: platform "../platform/main.roc" }
 
 import pf.Stdout
+import pf.Task exposing [Task]
 
 # This example demonstrates the use of `Task.result`.
 # It transforms a task that can either succeed with `ok`, or fail with `err`, into

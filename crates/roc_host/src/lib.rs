@@ -237,6 +237,7 @@ fn print_backtrace() {
 fn should_show_in_backtrace(fn_name: &str) -> bool {
     let is_from_rust = fn_name.contains("::");
     let is_host_fn = fn_name.starts_with("roc_panic")
+        || fn_name.starts_with("_Effect_effect")
         || fn_name.starts_with("_roc__")
         || fn_name.starts_with("rust_main")
         || fn_name == "_main";
@@ -401,13 +402,11 @@ pub extern "C" fn roc_fx_envDict() -> RocList<(RocStr, RocStr)> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_args() -> RocResult<RocList<RocStr>, ()> {
+pub extern "C" fn roc_fx_args() -> RocList<RocStr> {
     // TODO: can we be more efficient about reusing the String's memory for RocStr?
-    RocResult::ok(
-        std::env::args_os()
-            .map(|os_str| RocStr::from(os_str.to_string_lossy().borrow()))
-            .collect(),
-    )
+    std::env::args_os()
+        .map(|os_str| RocStr::from(os_str.to_string_lossy().borrow()))
+        .collect()
 }
 
 #[no_mangle]
@@ -460,13 +459,13 @@ pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, RocStr> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdinBytes() -> RocResult<RocList<u8>, ()> {
+pub extern "C" fn roc_fx_stdinBytes() -> RocList<u8> {
     let stdin = std::io::stdin();
     let mut buffer: [u8; 256] = [0; 256];
 
     match stdin.lock().read(&mut buffer) {
-        Ok(bytes_read) => RocResult::ok(RocList::from(&buffer[0..bytes_read])),
-        Err(_) => RocResult::ok(RocList::from(([]).as_slice())),
+        Ok(bytes_read) => RocList::from(&buffer[0..bytes_read]),
+        Err(_) => RocList::from(([]).as_slice()),
     }
 }
 
@@ -551,17 +550,13 @@ pub extern "C" fn roc_fx_stderrWrite(text: &RocStr) -> RocResult<(), RocStr> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_ttyModeCanonical() -> RocResult<(), ()> {
+pub extern "C" fn roc_fx_ttyModeCanonical() {
     crossterm::terminal::disable_raw_mode().expect("failed to disable raw mode");
-
-    RocResult::ok(())
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_ttyModeRaw() -> RocResult<(), ()> {
+pub extern "C" fn roc_fx_ttyModeRaw() {
     crossterm::terminal::enable_raw_mode().expect("failed to enable raw mode");
-
-    RocResult::ok(())
 }
 
 #[no_mangle]
@@ -727,33 +722,31 @@ pub extern "C" fn roc_fx_fileDelete(roc_path: &RocList<u8>) -> RocResult<(), Roc
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_cwd() -> RocResult<RocList<u8>, ()> {
+pub extern "C" fn roc_fx_cwd() -> RocList<u8> {
     // TODO instead, call getcwd on UNIX and GetCurrentDirectory on Windows
     match std::env::current_dir() {
-        Ok(path_buf) => RocResult::ok(os_str_to_roc_path(path_buf.into_os_string().as_os_str())),
+        Ok(path_buf) => os_str_to_roc_path(path_buf.into_os_string().as_os_str()),
         Err(_) => {
             // Default to empty path
-            RocResult::ok(RocList::empty())
+            RocList::empty()
         }
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_posixTime() -> RocResult<roc_std::U128, ()> {
+pub extern "C" fn roc_fx_posixTime() -> roc_std::U128 {
     // TODO in future may be able to avoid this panic by using C APIs
     let since_epoch = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("time went backwards");
 
-    RocResult::ok(roc_std::U128::from(since_epoch.as_nanos()))
+    roc_std::U128::from(since_epoch.as_nanos())
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_sleepMillis(milliseconds: u64) -> RocResult<(), ()> {
+pub extern "C" fn roc_fx_sleepMillis(milliseconds: u64) {
     let duration = Duration::from_millis(milliseconds);
     std::thread::sleep(duration);
-
-    RocResult::ok(())
 }
 
 #[no_mangle]
@@ -831,9 +824,9 @@ impl roc_std::RocRefcounted for Header {
 #[repr(C)]
 pub struct Metadata {
     headers: RocList<Header>,
-    statusText: RocStr,
     url: RocStr,
     statusCode: u16,
+    statusText: RocStr,
 }
 
 impl Metadata {
@@ -1355,16 +1348,16 @@ pub struct ReturnArchOS {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_currentArchOS() -> RocResult<ReturnArchOS, ()> {
-    RocResult::ok(ReturnArchOS {
+pub extern "C" fn roc_fx_currentArchOS() -> ReturnArchOS {
+    ReturnArchOS {
         arch: std::env::consts::ARCH.into(),
         os: std::env::consts::OS.into(),
-    })
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tempDir() -> RocResult<RocList<u8>, ()> {
+pub extern "C" fn roc_fx_tempDir() -> RocList<u8> {
     let path_os_string_bytes = std::env::temp_dir().into_os_string().into_encoded_bytes();
 
-    RocResult::ok(RocList::from(path_os_string_bytes.as_slice()))
+    RocList::from(path_os_string_bytes.as_slice())
 }

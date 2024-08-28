@@ -2,9 +2,9 @@
   description = "Basic cli devShell flake";
 
   inputs = {
-
-    # This commit is for the builtin-task branch, remove after it is merged into main
-    roc.url = "github:smores56/roc?rev=6db429ff17b66a1ebe62e79f099d82fad6704d9d";
+    roc.url = "github:roc-lang/roc";
+    # to use a specific commit:
+    # roc.url = "github:roc-lang/roc?rev=635e6058cce4961e6c4fa7363545b794a44f1818";
 
     nixpkgs.follows = "roc/nixpkgs";
 
@@ -59,10 +59,6 @@
           buildInputs = sharedInputs ++ darwinInputs ++ linuxInputs;
 
           # nix does not store libs in /usr/lib or /lib
-          # for libgcc_s.so.1
-          NIX_LIBGCC_S_PATH =
-            if pkgs.stdenv.isLinux then "${pkgs.stdenv.cc.cc.lib}/lib" else "";
-          # for crti.o, crtn.o, and Scrt1.o
           NIX_GLIBC_PATH =
             if pkgs.stdenv.isLinux then "${pkgs.glibc.out}/lib" else "";
         };

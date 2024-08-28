@@ -1,8 +1,8 @@
 app [main] {
-    # TODO use basic-cli 0.14 url -- or Task as builtin compatible
-    cli: platform "platform/main.roc",
+    cli: platform "platform/main.roc", # TODO use basic-cli 0.13 url
 }
 
+import cli.Task exposing [Task]
 import cli.Cmd
 import cli.Stdout
 import cli.Env

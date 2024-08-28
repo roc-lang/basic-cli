@@ -9,20 +9,21 @@ module [
     deltaAsNanos,
 ]
 
-import PlatformTasks
+import Effect
+import InternalTask
+import Task exposing [Task]
 
 ## Stores a timestamp as nanoseconds since UNIX EPOCH
 Utc := I128 implements [Inspect]
 
 ## Duration since UNIX EPOCH
-now : {} -> Task Utc *
-now = \{} ->
-    currentEpoch =
-        PlatformTasks.posixTime
-            |> Task.mapErr! \_ -> crash "unreachable"
-            |> Num.toI128
-
-    Task.ok (@Utc currentEpoch)
+now : Task Utc *
+now =
+    Effect.posixTime
+    |> Effect.map Num.toI128
+    |> Effect.map @Utc
+    |> Effect.map Ok
+    |> InternalTask.fromEffect
 
 # Constant number of nanoseconds in a millisecond
 nanosPerMilli = 1_000_000

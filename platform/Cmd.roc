@@ -14,8 +14,10 @@ module [
     exec,
 ]
 
+import Task exposing [Task]
+import InternalTask
 import InternalCommand
-import PlatformTasks
+import Effect
 
 ## Represents a command to be executed in a child process.
 Cmd := InternalCommand.Command implements [Inspect]
@@ -130,25 +132,28 @@ clearEnvs = \@Cmd cmd ->
 ##
 output : Cmd -> Task Output [CmdOutputError (Output, Err)]
 output = \@Cmd cmd ->
-    internalOutput =
-        PlatformTasks.commandOutput (Box.box cmd)
-            |> Task.mapErr! \_ -> crash "unreachable"
-    out = {
-        stdout: internalOutput.stdout,
-        stderr: internalOutput.stderr,
-    }
+    Effect.commandOutput (Box.box cmd)
+    |> Effect.map \internalOutput ->
+        out = {
+            stdout: internalOutput.stdout,
+            stderr: internalOutput.stderr,
+        }
 
-    when internalOutput.status is
-        Ok {} -> Task.ok out
-        Err bytes -> Task.err (CmdOutputError (out, InternalCommand.handleCommandErr bytes))
+        when internalOutput.status is
+            Ok {} -> Ok (out)
+            Err bytes -> Err (CmdOutputError (out, InternalCommand.handleCommandErr bytes))
+    |> InternalTask.fromEffect
 
 ## Execute command and inherit stdin, stdout and stderr from parent
 ##
 status : Cmd -> Task {} [CmdError Err]
 status = \@Cmd cmd ->
-    PlatformTasks.commandStatus (Box.box cmd)
-    |> Task.mapErr \bytes ->
-        CmdError (InternalCommand.handleCommandErr bytes)
+    Effect.commandStatus (Box.box cmd)
+    |> Effect.map \result ->
+        when result is
+            Ok a -> Ok a
+            Err bytes -> Err (CmdError (InternalCommand.handleCommandErr bytes))
+    |> InternalTask.fromEffect
 
 ## Execute command and inherit stdin, stdout and stderr from parent
 ##
@@ -158,6 +163,12 @@ status = \@Cmd cmd ->
 ## ```
 exec : Str, List Str -> Task {} [CmdError Err]
 exec = \program, arguments ->
-    new program
-    |> args arguments
-    |> status
+
+    (@Cmd cmd) = new program |> args arguments
+
+    Effect.commandStatus (Box.box cmd)
+    |> Effect.map \result ->
+        when result is
+            Ok a -> Ok a
+            Err bytes -> Err (CmdError (InternalCommand.handleCommandErr bytes))
+    |> InternalTask.fromEffect

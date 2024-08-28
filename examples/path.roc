@@ -2,6 +2,7 @@ app [main] { pf: platform "../platform/main.roc" }
 
 import pf.Stdout
 import pf.Path
+import pf.Task exposing [Task]
 
 main = run |> Task.onErr \err -> crash "ERROR: $(Inspect.toStr err)"
 

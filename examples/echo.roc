@@ -2,6 +2,7 @@ app [main] { pf: platform "../platform/main.roc" }
 
 import pf.Stdin
 import pf.Stdout
+import pf.Task exposing [Task]
 
 main =
     Stdout.line! "Shout into this cave and hear the echo!"
@@ -11,17 +12,9 @@ main =
 tick : {} -> Task [Step {}, Done {}] _
 tick = \{} ->
     when Stdin.line |> Task.result! is
-        Ok str ->
-            Stdout.line! (echo str)
-            Task.ok (Step {})
-
-        Err (StdinErr EndOfFile) ->
-            Stdout.line! (echo "Received end of input (EOF).")
-            Task.ok (Done {})
-
-        Err (StdinErr err) ->
-            Stdout.line! (echo "Unable to read input $(Inspect.toStr err)")
-            Task.ok (Done {})
+        Ok str -> Stdout.line (echo str) |> Task.map Step
+        Err (StdinErr EndOfFile) -> Stdout.line (echo "Received end of input (EOF).") |> Task.map Done
+        Err (StdinErr err) -> Stdout.line (echo "Unable to read input $(Inspect.toStr err)") |> Task.map Done
 
 echo : Str -> Str
 echo = \shout ->
@@ -39,9 +32,3 @@ echo = \shout ->
     |> List.join
     |> Str.fromUtf8
     |> Result.withDefault ""
-
-expect
-    message = "hello!"
-    echoedMessage = echo message
-
-    echoedMessage == "            hello!     hello    hell   hel  he h"

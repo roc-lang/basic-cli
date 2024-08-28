@@ -7,7 +7,9 @@ module [
     enableRawMode,
 ]
 
-import PlatformTasks
+import Effect
+import Task exposing [Task]
+import InternalTask
 
 ## Enable terminal raw mode which disables some default terminal bevahiour.
 ##
@@ -19,16 +21,18 @@ import PlatformTasks
 ##
 ## Note: we plan on moving this function away from basic-cli in the future, see github.com/roc-lang/basic-cli/issues/73
 ##
-enableRawMode : {} -> Task {} *
-enableRawMode = \{} ->
-    PlatformTasks.ttyModeRaw
-    |> Task.mapErr \_ -> crash "unreachable"
+enableRawMode : Task {} *
+enableRawMode =
+    Effect.ttyModeRaw
+    |> Effect.map Ok
+    |> InternalTask.fromEffect
 
 ## Revert terminal to default behaviour
 ##
 ## Note: we plan on moving this function away from basic-cli in the future, see github.com/roc-lang/basic-cli/issues/73
 ##
-disableRawMode : {} -> Task {} *
-disableRawMode = \{} ->
-    PlatformTasks.ttyModeCanonical
-    |> Task.mapErr \_ -> crash "unreachable"
+disableRawMode : Task {} *
+disableRawMode =
+    Effect.ttyModeCanonical
+    |> Effect.map Ok
+    |> InternalTask.fromEffect

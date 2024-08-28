@@ -18,9 +18,11 @@ module [
     readLine,
 ]
 
+import Task exposing [Task]
 import Path exposing [Path, MetadataErr]
+import Effect
+import InternalTask
 import InternalFile
-import PlatformTasks
 
 ## Tag union of possible errors when reading a file or directory.
 ##
@@ -187,7 +189,7 @@ type : Str -> Task [IsFile, IsDir, IsSymLink] [PathErr MetadataErr]
 type = \path ->
     Path.type (Path.fromStr path)
 
-Reader := { reader : PlatformTasks.FileReader, path : Path }
+Reader := { reader : Effect.FileReader, path : Path }
 
 ## Try to open a `File.Reader` for buffered (= part by part) reading given a path string.
 ## See [examples/file-read-buffered.roc](https://github.com/roc-lang/basic-cli/blob/main/examples/file-read-buffered.roc) for example usage.
@@ -200,9 +202,12 @@ openReader = \pathStr ->
     path = Path.fromStr pathStr
 
     # 0 means with default capacity
-    PlatformTasks.fileReader (Str.toUtf8 pathStr) 0
-    |> Task.mapErr \err -> GetFileReadErr path (InternalFile.handleReadErr err)
-    |> Task.map \reader -> @Reader { reader, path }
+    Effect.fileReader (Str.toUtf8 pathStr) 0
+    |> Effect.map \result ->
+        when result is
+            Ok reader -> Ok (@Reader { reader, path })
+            Err err -> Err (GetFileReadErr path (InternalFile.handleReadErr err))
+    |> InternalTask.fromEffect
 
 ## Try to open a `File.Reader` for buffered (= part by part) reading given a path string.
 ## The buffer will be created with the specified capacity.
@@ -215,9 +220,12 @@ openReaderWithCapacity : Str, U64 -> Task Reader [GetFileReadErr Path ReadErr]
 openReaderWithCapacity = \pathStr, capacity ->
     path = Path.fromStr pathStr
 
-    PlatformTasks.fileReader (Str.toUtf8 pathStr) capacity
-    |> Task.mapErr \err -> GetFileReadErr path (InternalFile.handleReadErr err)
-    |> Task.map \reader -> @Reader { reader, path }
+    Effect.fileReader (Str.toUtf8 pathStr) capacity
+    |> Effect.map \result ->
+        when result is
+            Ok reader -> Ok (@Reader { reader, path })
+            Err err -> Err (GetFileReadErr path (InternalFile.handleReadErr err))
+    |> InternalTask.fromEffect
 
 ## Try to read a line from a file given a Reader.
 ## The line will be provided as the list of bytes (`List U8`) until a newline (`0xA` byte).
@@ -229,5 +237,10 @@ openReaderWithCapacity = \pathStr, capacity ->
 ## Use [readUtf8] if you want to get the entire file contents at once.
 readLine : Reader -> Task (List U8) [FileReadErr Path Str]
 readLine = \@Reader { reader, path } ->
-    PlatformTasks.fileReadLine reader
-    |> Task.mapErr \err -> FileReadErr path err
+
+    Effect.fileReadLine reader
+    |> Effect.map \result ->
+        when result is
+            Ok bytes -> Ok bytes
+            Err err -> Err (FileReadErr path err)
+    |> InternalTask.fromEffect

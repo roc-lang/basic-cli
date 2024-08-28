@@ -14,8 +14,10 @@ module [
     get,
 ]
 
+import Effect
+import InternalTask
+import Task exposing [Task]
 import InternalHttp exposing [errorBodyToUtf8, errorBodyFromUtf8]
-import PlatformTasks
 
 ## Represents an HTTP request.
 Request : {
@@ -107,9 +109,10 @@ errorToString = \err ->
 ##
 ## ```
 ## # Prints out the HTML of the Roc-lang website.
-## response =
+## response <-
 ##     { Http.defaultRequest & url: "https://www.roc-lang.org" }
-##     |> Http.send!
+##     |> Http.send
+##     |> Task.await
 ##
 ## response.body
 ## |> Str.fromUtf8
@@ -118,31 +121,29 @@ errorToString = \err ->
 ## ```
 send : Request -> Task Response [HttpErr Err]
 send = \req ->
-    timeoutMs =
-        when req.timeout is
-            NoTimeout -> 0
-            TimeoutMilliseconds ms -> ms
-
-    internalRequest : InternalHttp.Request
-    internalRequest = {
+    internalReq : InternalHttp.Request
+    internalReq = {
         method: InternalHttp.methodToStr req.method,
         headers: req.headers,
         url: req.url,
         mimeType: req.mimeType,
         body: req.body,
-        timeoutMs,
+        timeoutMs:
+        when req.timeout is
+            NoTimeout -> 0
+            TimeoutMilliseconds ms -> ms,
     }
 
     # TODO: Fix our C ABI codegen so that we don't this Box.box heap allocation
-    { variant, body, metadata } =
-        PlatformTasks.sendRequest (Box.box internalRequest)
-            |> Task.mapErr! \_ -> crash "unreachable"
-    responseResult =
+    Effect.sendRequest (Box.box internalReq)
+    |> Effect.map Ok
+    |> InternalTask.fromEffect
+    |> Task.await \{ variant, body, metadata } ->
         when variant is
-            "Timeout" -> Err (Timeout timeoutMs)
-            "NetworkErr" -> Err NetworkError
+            "Timeout" -> Task.err (Timeout internalReq.timeoutMs)
+            "NetworkErr" -> Task.err NetworkError
             "BadStatus" ->
-                Err
+                Task.err
                     (
                         BadStatus {
                             code: metadata.statusCode,
@@ -151,7 +152,7 @@ send = \req ->
                     )
 
             "GoodStatus" ->
-                Ok {
+                Task.ok {
                     url: metadata.url,
                     statusCode: metadata.statusCode,
                     statusText: metadata.statusText,
@@ -159,11 +160,8 @@ send = \req ->
                     body,
                 }
 
-            "BadRequest" | _other -> Err (BadRequest metadata.statusText)
-
-    responseResult
-    |> Result.mapErr HttpErr
-    |> Task.fromResult
+            "BadRequest" | _other -> Task.err (BadRequest metadata.statusText)
+    |> Task.mapErr HttpErr
 
 ## Try to perform an HTTP get request and convert (decode) the received bytes into a Roc type.
 ## Very useful for working with Json.

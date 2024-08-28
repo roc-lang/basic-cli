@@ -2,6 +2,7 @@ app [main] { pf: platform "../platform/main.roc" }
 
 import pf.Stdout
 import pf.Cmd
+import pf.Task exposing [Task]
 
 main =
     statusExample |> Task.mapErr! StatusErr

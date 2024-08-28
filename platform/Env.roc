@@ -1,39 +1,43 @@
 module [cwd, dict, var, decode, exePath, setCwd, platform, tempDir]
 
+import Task exposing [Task]
 import Path exposing [Path]
 import InternalPath
+import Effect
+import InternalTask
 import EnvDecoding
-import PlatformTasks
 
 ## Reads the [current working directory](https://en.wikipedia.org/wiki/Working_directory)
 ## from the environment. File operations on relative [Path]s are relative to this directory.
 cwd : Task Path [CwdUnavailable]
 cwd =
-    bytes =
-        PlatformTasks.cwd
-            |> Task.result!
-            |> Result.withDefault []
+    effect = Effect.map Effect.cwd \bytes ->
+        if List.isEmpty bytes then
+            Err CwdUnavailable
+        else
+            Ok (InternalPath.fromArbitraryBytes bytes)
 
-    if List.isEmpty bytes then
-        Task.err CwdUnavailable
-    else
-        Task.ok (InternalPath.fromArbitraryBytes bytes)
+    InternalTask.fromEffect effect
 
 ## Sets the [current working directory](https://en.wikipedia.org/wiki/Working_directory)
 ## in the environment. After changing it, file operations on relative [Path]s will be relative
 ## to this directory.
 setCwd : Path -> Task {} [InvalidCwd]
 setCwd = \path ->
-    PlatformTasks.setCwd (InternalPath.toBytes path)
-    |> Task.mapErr \{} -> InvalidCwd
+    Effect.setCwd (InternalPath.toBytes path)
+    |> Effect.map (\result -> Result.mapErr result \{} -> InvalidCwd)
+    |> InternalTask.fromEffect
 
 ## Gets the path to the currently-running executable.
 exePath : Task Path [ExePathUnavailable]
 exePath =
-    result = PlatformTasks.exePath |> Task.result!
-    when result is
-        Ok bytes -> Task.ok (InternalPath.fromOsBytes bytes)
-        Err {} -> Task.err ExePathUnavailable
+    effect =
+        Effect.map Effect.exePath \result ->
+            when result is
+                Ok bytes -> Ok (InternalPath.fromOsBytes bytes)
+                Err {} -> Err ExePathUnavailable
+
+    InternalTask.fromEffect effect
 
 ## Reads the given environment variable.
 ##
@@ -41,8 +45,9 @@ exePath =
 ## [Unicode replacement character](https://unicode.org/glossary/#replacement_character) ('�').
 var : Str -> Task Str [VarNotFound]
 var = \name ->
-    PlatformTasks.envVar name
-    |> Task.mapErr \{} -> VarNotFound
+    Effect.envVar name
+    |> Effect.map (\result -> Result.mapErr result \{} -> VarNotFound)
+    |> InternalTask.fromEffect
 
 ## Reads the given environment variable and attempts to decode it.
 ##
@@ -71,24 +76,28 @@ var = \name ->
 ##
 decode : Str -> Task val [VarNotFound, DecodeErr DecodeError] where val implements Decoding
 decode = \name ->
-    result = PlatformTasks.envVar name |> Task.result!
-    when result is
-        Err {} -> Task.err VarNotFound
-        Ok varStr ->
-            Str.toUtf8 varStr
-            |> Decode.fromBytes (EnvDecoding.format {})
-            |> Result.mapErr (\_ -> DecodeErr TooShort)
-            |> Task.fromResult
+    Effect.envVar name
+    |> Effect.map
+        (
+            \result ->
+                result
+                |> Result.mapErr (\{} -> VarNotFound)
+                |> Result.try
+                    (\varStr ->
+                        Decode.fromBytes (Str.toUtf8 varStr) (EnvDecoding.format {})
+                        |> Result.mapErr (\_ -> DecodeErr TooShort)))
+    |> InternalTask.fromEffect
 
 ## Reads all the process's environment variables into a [Dict].
 ##
 ## If any key or value contains invalid Unicode, the [Unicode replacement character](https://unicode.org/glossary/#replacement_character)
 ## will be used in place of any parts of keys or values that are invalid Unicode.
-dict : {} -> Task (Dict Str Str) *
-dict = \{} ->
-    PlatformTasks.envDict
-    |> Task.map Dict.fromList
-    |> Task.mapErr \_ -> crash "unreachable"
+dict : Task (Dict Str Str) *
+dict =
+    Effect.envDict
+    |> Effect.map Dict.fromList
+    |> Effect.map Ok
+    |> InternalTask.fromEffect
 
 # ## Walks over the process's environment variables as key-value arguments to the walking function.
 # ##
@@ -135,27 +144,26 @@ OS : [LINUX, MACOS, WINDOWS, OTHER Str]
 ##
 platform : Task { arch : ARCH, os : OS } *
 platform =
-    fromRust =
-        PlatformTasks.currentArchOS
-            |> Task.result!
-            |> Result.withDefault { arch: "", os: "" }
+    Effect.currentArchOS
+    |> Effect.map \fromRust ->
 
-    arch =
-        when fromRust.arch is
-            "x86" -> X86
-            "x86_64" -> X64
-            "arm" -> ARM
-            "aarch64" -> AARCH64
-            _ -> OTHER fromRust.arch
+        arch =
+            when fromRust.arch is
+                "x86" -> X86
+                "x86_64" -> X64
+                "arm" -> ARM
+                "aarch64" -> AARCH64
+                _ -> OTHER fromRust.arch
 
-    os =
-        when fromRust.os is
-            "linux" -> LINUX
-            "macos" -> MACOS
-            "windows" -> WINDOWS
-            _ -> OTHER fromRust.os
+        os =
+            when fromRust.os is
+                "linux" -> LINUX
+                "macos" -> MACOS
+                "windows" -> WINDOWS
+                _ -> OTHER fromRust.os
 
-    Task.ok { arch, os }
+        Ok { arch, os }
+    |> InternalTask.fromEffect
 
 ## This uses rust's [`std::env::temp_dir()`](https://doc.rust-lang.org/std/env/fn.temp_dir.html)
 ##
@@ -166,8 +174,8 @@ platform =
 ## to create a uniquely named file. Creating a file or directory with a fixed or predictable name may
 ## result in “insecure temporary file” security vulnerabilities.
 ##
-tempDir : {} -> Task Path *
-tempDir = \{} ->
-    PlatformTasks.tempDir
-    |> Task.map \pathOSStringBytes -> InternalPath.fromOsBytes pathOSStringBytes
-    |> Task.mapErr \_ -> crash "unreachable"
+tempDir : Task Path []_
+tempDir =
+    Effect.tempDir
+    |> Effect.map (\pathOSStringBytes -> Ok (InternalPath.fromOsBytes pathOSStringBytes))
+    |> InternalTask.fromEffect
