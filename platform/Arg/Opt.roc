@@ -64,9 +64,7 @@ import Arg.Parser exposing [ArgValue]
 builderWithOptionParser : OptionConfig, (List ArgValue -> Result data ArgExtractErr) -> CliBuilder data fromAction toAction
 builderWithOptionParser = \option, valueParser ->
     argParser = \args ->
-
         { values, remainingArgs } = extractOptionValues? { args, option }
-
         data = valueParser? values
 
         Ok { data, remainingArgs }

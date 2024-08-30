@@ -13,14 +13,12 @@ module [
     streamErrToStr,
 ]
 
-import Effect
-import Task exposing [Task]
-import InternalTask
+import PlatformTasks
 
 unexpectedEofErrorMessage = "UnexpectedEof"
 
 ## Represents a TCP stream.
-Stream := Effect.TcpStream
+Stream := PlatformTasks.TcpStream
 
 ## Represents errors that can occur when connecting to a remote host.
 ConnectErr : [
@@ -87,56 +85,46 @@ parseStreamErr = \err ->
 ##
 connect : Str, U16 -> Task Stream ConnectErr
 connect = \host, port ->
-    Effect.tcpConnect host port
-    |> Effect.map \res ->
-        res
-        |> Result.map @Stream
-        |> Result.mapErr parseConnectErr
-    |> InternalTask.fromEffect
+    PlatformTasks.tcpConnect host port
+        |> Task.map @Stream
+        |> Task.mapErr! parseConnectErr
 
 ## Read up to a number of bytes from the TCP stream.
 ##
 ## ```
 ## # Read up to 64 bytes from the stream and convert to a Str
-## received <- File.readUpTo 64 stream |> Task.await
+## received = File.readUpTo! stream 64
 ## Str.fromUtf8 received
 ## ```
 ##
 ## > To read an exact number of bytes or fail, you can use [Tcp.readExactly] instead.
 readUpTo : Stream, U64 -> Task (List U8) [TcpReadErr StreamErr]
 readUpTo = \@Stream stream, bytesToRead ->
-    Effect.tcpReadUpTo stream bytesToRead
-    |> Effect.map \res ->
-        res
-        |> Result.mapErr parseStreamErr
-        |> Result.mapErr TcpReadErr
-    |> InternalTask.fromEffect
+    PlatformTasks.tcpReadUpTo stream bytesToRead
+    |> Task.mapErr \err -> TcpReadErr (parseStreamErr err)
 
 ## Read an exact number of bytes or fail.
 ##
 ## ```
-## File.readExactly 64 stream
+## File.readExactly stream 64
 ## ```
 ##
 ## `TcpUnexpectedEOF` is returned if the stream ends before the specfied number of bytes is reached.
 ##
 readExactly : Stream, U64 -> Task (List U8) [TcpReadErr StreamErr, TcpUnexpectedEOF]
 readExactly = \@Stream stream, bytesToRead ->
-    Effect.tcpReadExactly stream bytesToRead
-    |> Effect.map \res ->
-        res
-        |> Result.mapErr \err ->
-            if err == unexpectedEofErrorMessage then
-                TcpUnexpectedEOF
-            else
-                TcpReadErr (parseStreamErr err)
-    |> InternalTask.fromEffect
+    PlatformTasks.tcpReadExactly stream bytesToRead
+    |> Task.mapErr \err ->
+        if err == unexpectedEofErrorMessage then
+            TcpUnexpectedEOF
+        else
+            TcpReadErr (parseStreamErr err)
 
 ## Read until a delimiter or EOF is reached.
 ##
 ## ```
 ## # Read until null terminator
-## File.readUntil 0 stream
+## File.readUntil stream 0
 ## ```
 ##
 ## If found, the delimiter is included as the last byte.
@@ -145,18 +133,14 @@ readExactly = \@Stream stream, bytesToRead ->
 ## conveniently decodes to a [Str].
 readUntil : Stream, U8 -> Task (List U8) [TcpReadErr StreamErr]
 readUntil = \@Stream stream, byte ->
-    Effect.tcpReadUntil stream byte
-    |> Effect.map \res ->
-        res
-        |> Result.mapErr parseStreamErr
-        |> Result.mapErr TcpReadErr
-    |> InternalTask.fromEffect
+    PlatformTasks.tcpReadUntil stream byte
+        |> Task.mapErr! \err -> TcpReadErr (parseStreamErr err)
 
 ## Read until a newline or EOF is reached.
 ##
 ## ```
 ## # Read a line and then print it to `stdout`
-## lineStr <- File.readLine stream |> Task.await
+## lineStr = File.readLine! stream
 ## Stdout.line lineStr
 ## ```
 ##
@@ -174,24 +158,20 @@ readLine = \stream ->
 ##
 ## ```
 ## # Writes the bytes 1, 2, 3
-## Tcp.writeBytes [1, 2, 3] stream
+## Tcp.writeBytes stream [1, 2, 3]
 ## ```
 ##
 ## > To write a [Str], you can use [Tcp.writeUtf8] instead.
 write : Stream, List U8 -> Task {} [TcpWriteErr StreamErr]
 write = \@Stream stream, bytes ->
-    Effect.tcpWrite stream bytes
-    |> Effect.map \res ->
-        res
-        |> Result.mapErr parseStreamErr
-        |> Result.mapErr TcpWriteErr
-    |> InternalTask.fromEffect
+    PlatformTasks.tcpWrite stream bytes
+        |> Task.mapErr! \err -> TcpWriteErr (parseStreamErr err)
 
 ## Writes a [Str] to a TCP stream, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##
 ## ```
 ## # Write "Hi from Roc!" encoded as UTF-8
-## Tcp.writeUtf8 "Hi from Roc!" stream
+## Tcp.writeUtf8 stream "Hi from Roc!"
 ## ```
 ##
 ## > To write unformatted bytes, you can use [Tcp.write] instead.
@@ -217,8 +197,7 @@ connectErrToStr = \err ->
         Interrupted -> "Interrupted"
         TimedOut -> "TimedOut"
         Unsupported -> "Unsupported"
-        Unrecognized message ->
-            "Unrecognized Error: $(message)"
+        Unrecognized message -> "Unrecognized Error: $(message)"
 
 ## Convert a [StreamErr] to a [Str] you can print.
 ##
@@ -243,5 +222,4 @@ streamErrToStr = \err ->
         Interrupted -> "Interrupted"
         OutOfMemory -> "OutOfMemory"
         BrokenPipe -> "BrokenPipe"
-        Unrecognized message ->
-            "Unrecognized Error: $(message)"
+        Unrecognized message -> "Unrecognized Error: $(message)"

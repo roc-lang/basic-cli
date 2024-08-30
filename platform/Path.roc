@@ -36,11 +36,8 @@ module [
 
 import InternalPath
 import InternalFile
-import Effect
-import InternalTask
-import Task exposing [Task]
-import Effect exposing [Effect]
 import FileMetadata exposing [FileMetadata]
+import PlatformTasks
 
 ## An error when reading a path's file metadata from disk.
 MetadataErr : InternalPath.GetMetadataErr
@@ -151,7 +148,9 @@ write = \path, val, fmt ->
 ## > To format data before writing it to a file, you can use [Path.write] instead.
 writeBytes : Path, List U8 -> Task {} [FileWriteErr Path WriteErr]
 writeBytes = \path, bytes ->
-    toWriteTask path \pathBytes -> Effect.fileWriteBytes pathBytes bytes
+    pathBytes = InternalPath.toBytes path
+    PlatformTasks.fileWriteBytes pathBytes bytes
+    |> Task.mapErr \err -> FileWriteErr path (InternalFile.handleWriteErr err)
 
 ## Writes a [Str] to a file, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##
@@ -165,7 +164,9 @@ writeBytes = \path, bytes ->
 ## > To write unformatted bytes to a file, you can use [Path.writeBytes] instead.
 writeUtf8 : Path, Str -> Task {} [FileWriteErr Path WriteErr]
 writeUtf8 = \path, str ->
-    toWriteTask path \bytes -> Effect.fileWriteUtf8 bytes str
+    pathBytes = InternalPath.toBytes path
+    PlatformTasks.fileWriteUtf8 pathBytes str
+    |> Task.mapErr \err -> FileWriteErr path (InternalFile.handleWriteErr err)
 
 ## Represents an error that can happen when canonicalizing a path.
 # CanonicalizeErr a : [
@@ -449,20 +450,16 @@ isSymLink = \path ->
 ## > [`File.type`](File#type) does the same thing, except it takes a [Str] instead of a [Path].
 type : Path -> Task [IsFile, IsDir, IsSymLink] [PathErr MetadataErr]
 type = \path ->
-    Effect.pathType (InternalPath.toBytes path)
-    |> Effect.map \result ->
-        when result is
-            Ok pathType ->
-                if pathType.isSymLink then
-                    Ok IsSymLink
-                else if pathType.isDir then
-                    Ok IsDir
-                else
-                    Ok IsFile
-
-            Err bytes ->
-                Err (PathErr (InternalPath.handlerGetMetadataErr bytes))
-    |> InternalTask.fromEffect
+    InternalPath.toBytes path
+    |> PlatformTasks.pathType
+    |> Task.mapErr \err -> PathErr (InternalPath.handlerGetMetadataErr err)
+    |> Task.map \pathType ->
+        if pathType.isSymLink then
+            IsSymLink
+        else if pathType.isDir then
+            IsDir
+        else
+            IsFile
 
 ## If the last component of this path has no `.`, appends `.` followed by the given string.
 ## Otherwise, replaces everything after the last `.` with the given string.
@@ -527,7 +524,9 @@ withExtension = \path, extension ->
 ## > [`File.delete`](File#delete) does the same thing, except it takes a [Str] instead of a [Path].
 delete : Path -> Task {} [FileWriteErr Path WriteErr]
 delete = \path ->
-    toWriteTask path \bytes -> Effect.fileDelete bytes
+    pathBytes = InternalPath.toBytes path
+    PlatformTasks.fileDelete pathBytes
+    |> Task.mapErr \err -> FileWriteErr path (InternalFile.handleWriteErr err)
 
 # read : Path, fmt -> Task contents [FileReadErr Path ReadErr, FileReadDecodingFailed] where contents implements Decoding, fmt implements DecoderFormatting
 # read = \path, fmt ->
@@ -562,15 +561,13 @@ delete = \path ->
 ## > [`File.readUtf8`](File#readUtf8) does the same thing, except it takes a [Str] instead of a [Path].
 readUtf8 : Path -> Task Str [FileReadErr Path ReadErr, FileReadUtf8Err Path _]
 readUtf8 = \path ->
-    effect = Effect.map (Effect.fileReadBytes (InternalPath.toBytes path)) \result ->
-        when result is
-            Ok bytes ->
-                Str.fromUtf8 bytes
-                |> Result.mapErr \err -> FileReadUtf8Err path err
+    bytes =
+        PlatformTasks.fileReadBytes (InternalPath.toBytes path)
+            |> Task.mapErr! \readErr -> FileReadErr path (InternalFile.handleReadErr readErr)
 
-            Err readErr -> Err (FileReadErr path (InternalFile.handleReadErr readErr))
-
-    InternalTask.fromEffect effect
+    Str.fromUtf8 bytes
+    |> Result.mapErr \err -> FileReadUtf8Err path err
+    |> Task.fromResult
 
 ## Reads all the bytes in a file.
 ##
@@ -586,20 +583,23 @@ readUtf8 = \path ->
 ## > [`File.readBytes`](File#readBytes) does the same thing, except it takes a [Str] instead of a [Path].
 readBytes : Path -> Task (List U8) [FileReadErr Path ReadErr]
 readBytes = \path ->
-    toReadTask path \bytes -> Effect.fileReadBytes bytes
+    pathBytes = InternalPath.toBytes path
+    PlatformTasks.fileReadBytes pathBytes
+    |> Task.mapErr \err -> FileReadErr path (InternalFile.handleReadErr err)
 
 ## Lists the files and directories inside the directory.
 ##
 ## > [`Dir.list`](Dir#list) does the same thing, except it takes a [Str] instead of a [Path].
 listDir : Path -> Task (List Path) [DirErr DirErr]
 listDir = \path ->
-    InternalPath.toBytes path
-    |> Effect.dirList
-    |> Effect.map \result ->
-        when result is
-            Ok entries -> Ok (List.map entries InternalPath.fromOsBytes)
-            Err err -> Err (handleErr err)
-    |> InternalTask.fromEffect
+    result =
+        InternalPath.toBytes path
+            |> PlatformTasks.dirList
+            |> Task.result!
+
+    when result is
+        Ok entries -> Task.ok (List.map entries InternalPath.fromOsBytes)
+        Err err -> Task.err (handleErr err)
 
 ## Deletes a directory if it's empty
 ##
@@ -613,9 +613,8 @@ listDir = \path ->
 deleteEmpty : Path -> Task {} [DirErr DirErr]
 deleteEmpty = \path ->
     InternalPath.toBytes path
-    |> Effect.dirDeleteEmpty
-    |> Effect.map \res -> Result.mapErr res handleErr
-    |> InternalTask.fromEffect
+    |> PlatformTasks.dirDeleteEmpty
+    |> Task.mapErr handleErr
 
 ## Recursively deletes a directory as well as all files and directories
 ## inside it.
@@ -630,9 +629,8 @@ deleteEmpty = \path ->
 deleteAll : Path -> Task {} [DirErr DirErr]
 deleteAll = \path ->
     InternalPath.toBytes path
-    |> Effect.dirDeleteAll
-    |> Effect.map \res -> Result.mapErr res handleErr
-    |> InternalTask.fromEffect
+    |> PlatformTasks.dirDeleteAll
+    |> Task.mapErr handleErr
 
 ## Creates a directory
 ##
@@ -645,9 +643,8 @@ deleteAll = \path ->
 createDir : Path -> Task {} [DirErr DirErr]
 createDir = \path ->
     InternalPath.toBytes path
-    |> Effect.dirCreate
-    |> Effect.map \res -> Result.mapErr res handleErr
-    |> InternalTask.fromEffect
+    |> PlatformTasks.dirCreate
+    |> Task.mapErr handleErr
 
 ## Creates a directory recursively adding any missing parent directories.
 ##
@@ -659,23 +656,8 @@ createDir = \path ->
 createAll : Path -> Task {} [DirErr DirErr]
 createAll = \path ->
     InternalPath.toBytes path
-    |> Effect.dirCreateAll
-    |> Effect.map \res -> Result.mapErr res handleErr
-    |> InternalTask.fromEffect
-
-toWriteTask : Path, (List U8 -> Effect (Result ok Str)) -> Task ok [FileWriteErr Path WriteErr]
-toWriteTask = \path, toEffect ->
-    InternalPath.toBytes path
-    |> toEffect
-    |> InternalTask.fromEffect
-    |> Task.mapErr \err -> FileWriteErr path (InternalFile.handleWriteErr err)
-
-toReadTask : Path, (List U8 -> Effect (Result ok Str)) -> Task ok [FileReadErr Path ReadErr]
-toReadTask = \path, toEffect ->
-    InternalPath.toBytes path
-    |> toEffect
-    |> InternalTask.fromEffect
-    |> Task.mapErr \err -> FileReadErr path (InternalFile.handleReadErr err)
+    |> PlatformTasks.dirCreateAll
+    |> Task.mapErr handleErr
 
 # There are othe errors which may be useful, however they are currently unstable
 # features see https://github.com/rust-lang/rust/issues/86442

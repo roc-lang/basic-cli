@@ -1,8 +1,6 @@
 module [line, bytes, Err]
 
-import Effect
-import Task exposing [Task]
-import InternalTask
+import PlatformTasks
 
 ## **EndOfFile** - This error occurs when an end-of-file (EOF) condition is met unexpectedly
 ## during input operations. Typically indicates that no more data is available for reading.
@@ -57,17 +55,16 @@ handleErr = \err ->
 ## the user knows it's necessary to enter something before the program will continue.
 line : Task Str [StdinErr Err]
 line =
-    Effect.stdinLine
-    |> Effect.map \res -> Result.mapErr res handleErr
-    |> InternalTask.fromEffect
+    PlatformTasks.stdinLine
+    |> Task.mapErr handleErr
 
 ## Read bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
 ##
 ## > This is typically used in combintation with [Tty.enableRawMode],
 ## which disables defaults terminal bevahiour and allows reading input
 ## without buffering until Enter key is pressed.
-bytes : Task (List U8) *
-bytes =
-    Effect.stdinBytes
-    |> Effect.map Ok
-    |> InternalTask.fromEffect
+bytes : {} -> Task (List U8) *
+bytes = \{} ->
+    # will return an empty list if no bytes are available
+    PlatformTasks.stdinBytes
+    |> Task.mapErr \_ -> crash "unreachable"

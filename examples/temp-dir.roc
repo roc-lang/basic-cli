@@ -2,7 +2,6 @@ app [main] { pf: platform "../platform/main.roc" }
 
 import pf.Stdout
 import pf.Env
-import pf.Task exposing [Task]
 import pf.Path
 
 ## Prints the default temp dir
@@ -16,5 +15,5 @@ main =
 
 run : Task {} _
 run =
-    tempDirStr = Path.display Env.tempDir!
+    tempDirStr = Path.display (Env.tempDir! {})
     Stdout.line! "The temp dir path is $(tempDirStr)"

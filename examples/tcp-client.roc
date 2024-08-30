@@ -1,7 +1,6 @@
 app [main] { pf: platform "../platform/main.roc" }
 
 import pf.Tcp
-import pf.Task exposing [Task, await]
 import pf.Stdout
 import pf.Stdin
 import pf.Stderr
