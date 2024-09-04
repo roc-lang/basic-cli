@@ -30,7 +30,7 @@ list = \{} ->
 ## exampleCli =
 ##     { Cli.combine <-
 ##         verbosity: Opt.count { short: "v", help: "How verbose our logs should be." },
-##         alpha: Opt.mapbeU64 { short: "a", help: "Set the alpha level." },
+##         alpha: Opt.maybeU64 { short: "a", help: "Set the alpha level." },
 ##     }
 ##     |> Cli.finish {
 ##         name: "example",
