@@ -1,6 +1,5 @@
 app [main] {
-    # TODO use basic-cli 0.14 url -- or Task as builtin compatible
-    cli: platform "platform/main.roc",
+    cli: platform "https://github.com/roc-lang/basic-cli/releases/download/0.15.0/SlwdbJ-3GR7uBWQo6zlmYWNYOxnvo8r6YABXD-45UOw.tar.br",
 }
 
 import cli.Cmd
@@ -36,8 +35,8 @@ main =
         Ok args -> run args
         Err errMsg -> Task.err (Exit 1 errMsg)
 
-run : {debugMode: Bool, maybeRoc: Result Str err} -> Task {} _
-run = \{debugMode, maybeRoc} ->
+run : { debugMode : Bool, maybeRoc : Result Str err } -> Task {} _
+run = \{ debugMode, maybeRoc } ->
     # rocCmd may be a path or just roc
     rocCmd = maybeRoc |> Result.withDefault "roc"
 
@@ -66,7 +65,7 @@ rocVersion = \rocCmd ->
     info! "Checking provided roc; executing `$(rocCmd) version`:"
 
     rocCmd
-        |> Cmd.exec  ["version"]
+        |> Cmd.exec ["version"]
         |> Task.mapErr! RocVersionCheckFailed
 
 generateGlue : Str -> Task {} _
@@ -74,13 +73,13 @@ generateGlue = \rocCmd ->
     info! "Generating glue for builtins ..."
 
     rocCmd
-        |> Cmd.exec  ["glue", "glue.roc", "crates/", "platform/main.roc"]
+        |> Cmd.exec ["glue", "glue.roc", "crates/", "platform/main.roc"]
         |> Task.mapErr! ErrGeneratingGlue
 
 getOSAndArch : Task OSAndArch _
 getOSAndArch =
     info! "Getting the native operating system and architecture ..."
-    
+
     Env.platform
     |> Task.await convertOSAndArch
 
@@ -94,7 +93,7 @@ OSAndArch : [
 ]
 
 convertOSAndArch : _ -> Task OSAndArch _
-convertOSAndArch =\{os, arch} ->
+convertOSAndArch = \{ os, arch } ->
     when (os, arch) is
         (MACOS, AARCH64) -> Task.ok MacosArm64
         (MACOS, X64) -> Task.ok MacosX64
@@ -106,15 +105,15 @@ buildStubAppLib : Str, Str -> Task {} _
 buildStubAppLib = \rocCmd, stubLibPath ->
     info! "Building stubbed app shared library ..."
     rocCmd
-        |> Cmd.exec  ["build", "--lib", "platform/libapp.roc", "--output", stubLibPath, "--optimize"]
+        |> Cmd.exec ["build", "--lib", "platform/libapp.roc", "--output", stubLibPath, "--optimize"]
         |> Task.mapErr! ErrBuildingAppStub
 
 stubFileExtension : OSAndArch -> Str
 stubFileExtension = \osAndArch ->
     when osAndArch is
         MacosX64 | MacosArm64 -> "dylib"
-        LinuxArm64 | LinuxX64-> "so"
-        WindowsX64| WindowsArm64 -> "dll"
+        LinuxArm64 | LinuxX64 -> "so"
+        WindowsX64 | WindowsArm64 -> "dll"
 
 prebuiltStaticLibFile : OSAndArch -> Str
 prebuiltStaticLibFile = \osAndArch ->
@@ -140,9 +139,10 @@ getRustTargetFolder = \debugMode ->
                 Task.ok "target/$(debugOrRelease)/"
             else
                 Task.ok "target/$(targetEnvVar)/$(debugOrRelease)/"
-        Err e -> 
-            info! "Failed to get env var CARGO_BUILD_TARGET with error \(Inspect.toStr e). Assuming default CARGO_BUILD_TARGET (native)..."
-            
+
+        Err e ->
+            info! "Failed to get env var CARGO_BUILD_TARGET with error $(Inspect.toStr e). Assuming default CARGO_BUILD_TARGET (native)..."
+
             Task.ok "target/$(debugOrRelease)/"
 
 cargoBuildHost : Bool -> Task {} _
@@ -158,7 +158,7 @@ cargoBuildHost = \debugMode ->
                 \_ -> ["build", "--release"]
 
     "cargo"
-        |> Cmd.exec  cargoBuildArgsT!
+        |> Cmd.exec cargoBuildArgsT!
         |> Task.mapErr! ErrBuildingHostBinaries
 
 copyHostLib : OSAndArch, Str -> Task {} _
@@ -170,16 +170,16 @@ copyHostLib = \osAndArch, rustTargetFolder ->
 
     info! "Moving the prebuilt binary from $(hostBuildPath) to $(hostDestPath) ..."
     "cp"
-        |> Cmd.exec  [hostBuildPath, hostDestPath]
+        |> Cmd.exec [hostBuildPath, hostDestPath]
         |> Task.mapErr! ErrMovingPrebuiltLegacyBinary
 
 preprocessHost : Str, Str, Str -> Task {} _
 preprocessHost = \rocCmd, stubLibPath, rustTargetFolder ->
     info! "Preprocessing surgical host ..."
     surgicalBuildPath = "$(rustTargetFolder)host"
-    
+
     rocCmd
-        |> Cmd.exec  ["preprocess-host", surgicalBuildPath, "platform/main.roc", stubLibPath]
+        |> Cmd.exec ["preprocess-host", surgicalBuildPath, "platform/main.roc", stubLibPath]
         |> Task.mapErr! ErrPreprocessingSurgicalBinary
 
 info : Str -> Task {} _
