@@ -1,0 +1,17 @@
+on:
+  pull_request: # temporary for testing
+  schedule:
+    - cron: "0 9 * * *"
+
+# this cancels workflows in progress if you start a new one
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    check-basic-cli-docs-broken-links:
+        runs-on: [ubuntu-20.04]
+        steps:
+          - uses: actions/checkout@v3
+
+          - run: ./ci/link_check.sh
