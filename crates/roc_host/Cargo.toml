@@ -13,12 +13,20 @@ name = "roc_host"
 path = "src/lib.rs"
 
 [dependencies]
-roc_std = { path = "../roc_std" }
-libc = "=0.2.155"
-backtrace = "=0.3.69"
-hyper = { version = "=0.14.27", default-features = false, features = ["http1", "client"] }
-hyper-rustls = { version = "=0.24.2", default-features = false, features = ["http1", "tls12", "native-tokio"]}
-tokio = { version = "=1.31.0", default-features = false}
-crossterm = "=0.27.0"
-memmap2 = "=0.9.4"
-memchr = "=2.7.4"
+roc_std.workspace = true
+roc_std_heap.workspace = true
+libc = "0.2.155"
+backtrace = "0.3.69"
+hyper = { version = "0.14.27", default-features = false, features = [
+    "http1",
+    "client",
+] }
+hyper-rustls = { version = "0.24.2", default-features = false, features = [
+    "http1",
+    "tls12",
+    "native-tokio",
+] }
+tokio = { version = "1.31.0", default-features = false }
+crossterm = "0.27.0"
+memmap2 = "0.9.4"
+memchr = "2.7.4"

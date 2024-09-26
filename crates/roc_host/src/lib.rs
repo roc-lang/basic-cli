@@ -3,8 +3,8 @@
 use core::alloc::Layout;
 use core::ffi::c_void;
 use core::mem::MaybeUninit;
-use heap::ThreadSafeRefcountedResourceHeap;
 use roc_std::{RocBox, RocList, RocResult, RocStr};
+use roc_std_heap::ThreadSafeRefcountedResourceHeap;
 use std::borrow::{Borrow, Cow};
 use std::ffi::OsStr;
 use std::fs::File;
@@ -15,12 +15,6 @@ use std::sync::OnceLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{env, io};
 use tokio::runtime::Runtime;
-
-/// Implementation of the host.
-/// The host contains code that calls the Roc main function and provides the
-/// Roc app with functions to allocate memory and execute effects such as
-/// writing to stdio or making HTTP requests.
-mod heap;
 
 thread_local! {
    static TOKIO_RUNTIME: Runtime = tokio::runtime::Builder::new_current_thread()
