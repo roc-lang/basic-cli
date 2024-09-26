@@ -23,9 +23,9 @@ cwd =
 ## Sets the [current working directory](https://en.wikipedia.org/wiki/Working_directory)
 ## in the environment. After changing it, file operations on relative [Path]s will be relative
 ## to this directory.
-setCwd : Path -> Task {} [InvalidCwd]
+setCwd : Path2.Path -> Task {} [InvalidCwd]
 setCwd = \path ->
-    PlatformTasks.setCwd (InternalPath.toBytes path)
+    PlatformTasks.setCwd (Path2.toRaw path)
     |> Task.mapErr \{} -> InvalidCwd
 
 ## Gets the path to the currently-running executable.

@@ -20,6 +20,8 @@
 
 use roc_std::roc_refcounted_noop_impl;
 use roc_std::RocRefcounted;
+use std::ffi::OsStr;
+use std::path::PathBuf;
 
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
@@ -40,20 +42,20 @@ impl core::fmt::Debug for HostPathDiscriminant {
 roc_refcounted_noop_impl!(HostPathDiscriminant);
 
 #[repr(C, align(8))]
-pub union union_HostPath {
+pub union UnionHostPath {
     Unix: core::mem::ManuallyDrop<roc_std::RocList<u8>>,
     Windows: core::mem::ManuallyDrop<roc_std::RocList<u16>>,
 }
 
-const SIZE_CHECK_UNION_HOST_PATH: () = assert!(core::mem::size_of::<union_HostPath>() == 24);
-const ALIGN_CHECK_UNION_HOST_PATH: () = assert!(core::mem::align_of::<union_HostPath>() == 8);
+const SIZE_CHECK_UNION_HOST_PATH: () = assert!(core::mem::size_of::<UnionHostPath>() == 24);
+const ALIGN_CHECK_UNION_HOST_PATH: () = assert!(core::mem::align_of::<UnionHostPath>() == 8);
 
 const SIZE_CHECK_HOST_PATH: () = assert!(core::mem::size_of::<HostPath>() == 32);
 const ALIGN_CHECK_HOST_PATH: () = assert!(core::mem::align_of::<HostPath>() == 8);
 
 #[repr(C)]
 pub struct HostPath {
-    payload: union_HostPath,
+    payload: UnionHostPath,
     discriminant: HostPathDiscriminant,
 }
 
@@ -63,10 +65,10 @@ impl Clone for HostPath {
 
         let payload = unsafe {
             match self.discriminant {
-                Unix => union_HostPath {
+                Unix => UnionHostPath {
                     Unix: self.payload.Unix.clone(),
                 },
-                Windows => union_HostPath {
+                Windows => UnionHostPath {
                     Windows: self.payload.Windows.clone(),
                 },
             }
@@ -230,10 +232,53 @@ impl From<roc_std::RocList<u16>> for HostPath {
 }
 
 impl HostPath {
+    pub fn as_path_buf(&self) -> Result<PathBuf, ()> {
+        use HostPathDiscriminant::*;
+
+        match self.discriminant() {
+            Unix => {
+                #[cfg(target_family = "unix")]
+                {
+                    use std::os::unix::ffi::OsStrExt;
+                    let os_str =
+                        OsStr::from_bytes(self.clone().unwrap_unix().as_slice()).to_owned();
+
+                    return Ok(std::path::PathBuf::from(&os_str));
+                }
+
+                #[cfg(target_family = "windows")]
+                {
+                    return Err(());
+                }
+            }
+            Windows => {
+                #[cfg(target_family = "unix")]
+                {
+                    return Err(());
+                }
+
+                #[cfg(target_family = "windows")]
+                {
+                    use std::os::windows::ffi::OsStringExt;
+
+                    let bytes = self.unwrap_windows().as_slice();
+                    assert_eq!(bytes.len() % 2, 0);
+                    let characters: &[u16] = unsafe {
+                        std::slice::from_raw_parts(bytes.as_ptr().cast(), bytes.len() / 2)
+                    };
+
+                    let os_string = std::ffi::OsString::from_wide(characters);
+
+                    Ok(std::path::PathBuf::from(os_string))
+                }
+            }
+        }
+    }
+
     pub fn Unix(payload: roc_std::RocList<u8>) -> Self {
         Self {
             discriminant: HostPathDiscriminant::Unix,
-            payload: union_HostPath {
+            payload: UnionHostPath {
                 Unix: core::mem::ManuallyDrop::new(payload),
             },
         }
@@ -242,7 +287,7 @@ impl HostPath {
     pub fn Windows(payload: roc_std::RocList<u16>) -> Self {
         Self {
             discriminant: HostPathDiscriminant::Windows,
-            payload: union_HostPath {
+            payload: UnionHostPath {
                 Windows: core::mem::ManuallyDrop::new(payload),
             },
         }

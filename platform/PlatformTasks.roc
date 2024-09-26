@@ -70,7 +70,7 @@ fileReadLine : FileReader -> Task (List U8) Str
 envDict : Task (List (Str, Str)) {}
 envVar : Str -> Task Str {}
 exePath : Task HostPath {}
-setCwd : List U8 -> Task {} {}
+setCwd : HostPath -> Task {} {}
 
 # If we encounter a Unicode error in any of the args, it will be replaced with
 # the Unicode replacement char where necessary.
