@@ -1,3 +1,8 @@
+//! Implementation of the host.
+//! The host contains code that calls the Roc main function and provides the
+//! Roc app with functions to allocate memory and execute effects such as
+//! writing to stdio or making HTTP requests.
+
 #![allow(non_snake_case)]
 #![allow(improper_ctypes)]
 use core::alloc::Layout;
