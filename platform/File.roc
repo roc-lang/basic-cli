@@ -79,7 +79,7 @@ writeBytes = \path, bytes ->
 ##
 ## ```
 ## # Writes "Hello!" encoded as UTF-8 to the file `myfile.txt`.
-## File.writeUtf8 (Path.fromStr "myfile.txt") "Hello!"
+## File.writeUtf8 "myfile.txt" "Hello!"
 ## ```
 ##
 ## This opens the file first and closes it after writing to it.
