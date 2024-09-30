@@ -42,8 +42,6 @@ run = \{ debugMode, maybeRoc } ->
 
     rocVersion! rocCmd
 
-    generateGlue! rocCmd
-
     osAndArch = getOSAndArch!
 
     stubLibPath = "platform/libapp.$(stubFileExtension osAndArch)"
@@ -67,14 +65,6 @@ rocVersion = \rocCmd ->
     rocCmd
         |> Cmd.exec ["version"]
         |> Task.mapErr! RocVersionCheckFailed
-
-generateGlue : Str -> Task {} _
-generateGlue = \rocCmd ->
-    info! "Generating glue for builtins ..."
-
-    rocCmd
-        |> Cmd.exec ["glue", "glue.roc", "crates/", "platform/main.roc"]
-        |> Task.mapErr! ErrGeneratingGlue
 
 getOSAndArch : Task OSAndArch _
 getOSAndArch =
