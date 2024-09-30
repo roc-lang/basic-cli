@@ -363,10 +363,7 @@ query = \@Url urlStr ->
 ##
 hasQuery : Url -> Bool
 hasQuery = \@Url urlStr ->
-    # TODO use Str.contains once it exists. It should have a "fast path"
-    # with SIMD iteration if the string is small enough to fit in a SIMD register.
-    Str.toUtf8 urlStr
-    |> List.contains (Num.toU8 '?')
+    Str.contains urlStr "?"
 
 ## Returns the URL's [fragment](https://en.wikipedia.org/wiki/URL#Syntax)—the part after
 ## the `#`, if it has one.
@@ -440,10 +437,7 @@ withFragment = \@Url urlStr, fragmentStr ->
 ##
 hasFragment : Url -> Bool
 hasFragment = \@Url urlStr ->
-    # TODO use Str.contains once it exists. It should have a "fast path"
-    # with SIMD iteration if the string is small enough to fit in a SIMD register.
-    Str.toUtf8 urlStr
-    |> List.contains (Num.toU8 '#')
+    Str.contains urlStr "#"
 
 # Adapted from the percent-encoding crate, © The rust-url developers, Apache2-licensed
 #
