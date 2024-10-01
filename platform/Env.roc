@@ -4,6 +4,7 @@ import Path exposing [Path]
 import InternalPath
 import EnvDecoding
 import PlatformTasks
+import path.Path as Path2
 
 ## Reads the [current working directory](https://en.wikipedia.org/wiki/Working_directory)
 ## from the environment. File operations on relative [Path]s are relative to this directory.
@@ -22,17 +23,17 @@ cwd =
 ## Sets the [current working directory](https://en.wikipedia.org/wiki/Working_directory)
 ## in the environment. After changing it, file operations on relative [Path]s will be relative
 ## to this directory.
-setCwd : Path -> Task {} [InvalidCwd]
+setCwd : Path2.Path -> Task {} [InvalidCwd]
 setCwd = \path ->
-    PlatformTasks.setCwd (InternalPath.toBytes path)
+    PlatformTasks.setCwd (Path2.toRaw path)
     |> Task.mapErr \{} -> InvalidCwd
 
 ## Gets the path to the currently-running executable.
-exePath : Task Path [ExePathUnavailable]
+exePath : Task Path2.Path [ExePathUnavailable]
 exePath =
     result = PlatformTasks.exePath |> Task.result!
     when result is
-        Ok bytes -> Task.ok (InternalPath.fromOsBytes bytes)
+        Ok rawPath -> Task.ok (Path2.fromRaw rawPath)
         Err {} -> Task.err ExePathUnavailable
 
 ## Reads the given environment variable.

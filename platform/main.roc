@@ -18,7 +18,9 @@ platform "cli"
         Cmd,
         Tty,
     ]
-    packages {}
+    packages {
+        path: "../../path/package/main.roc"
+    }
     imports []
     provides [mainForHost]
 

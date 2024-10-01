@@ -47,6 +47,8 @@ hosted PlatformTasks
         InternalPath,
     ]
 
+HostPath : [Windows (List U16), Unix (List U8)]
+
 stdoutLine : Str -> Task {} Str
 stdoutWrite : Str -> Task {} Str
 stderrLine : Str -> Task {} Str
@@ -67,8 +69,8 @@ fileReadLine : FileReader -> Task (List U8) Str
 
 envDict : Task (List (Str, Str)) {}
 envVar : Str -> Task Str {}
-exePath : Task (List U8) {}
-setCwd : List U8 -> Task {} {}
+exePath : Task HostPath {}
+setCwd : HostPath -> Task {} {}
 
 # If we encounter a Unicode error in any of the args, it will be replaced with
 # the Unicode replacement char where necessary.

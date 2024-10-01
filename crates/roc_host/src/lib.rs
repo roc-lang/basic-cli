@@ -21,6 +21,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{env, io};
 use tokio::runtime::Runtime;
 
+mod path;
+
 thread_local! {
    static TOKIO_RUNTIME: Runtime = tokio::runtime::Builder::new_current_thread()
        .enable_io()
@@ -419,17 +421,22 @@ pub extern "C" fn roc_fx_envVar(roc_str: &RocStr) -> RocResult<RocStr, ()> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_setCwd(roc_path: &RocList<u8>) -> RocResult<(), ()> {
-    match std::env::set_current_dir(path_from_roc_path(roc_path)) {
-        Ok(()) => RocResult::ok(()),
+pub extern "C" fn roc_fx_setCwd(roc_path: &path::HostPath) -> RocResult<(), ()> {
+    match roc_path.as_path_buf() {
+        Ok(path_buf) => match std::env::set_current_dir(path_buf) {
+            Ok(()) => RocResult::ok(()),
+            Err(_) => RocResult::err(()),
+        },
         Err(_) => RocResult::err(()),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_exePath(_roc_str: &RocStr) -> RocResult<RocList<u8>, ()> {
+pub extern "C" fn roc_fx_exePath() -> RocResult<path::HostPath, ()> {
     match std::env::current_exe() {
-        Ok(path_buf) => RocResult::ok(os_str_to_roc_path(path_buf.as_path().as_os_str())),
+        Ok(path_buf) => RocResult::ok(path::HostPath::Unix(RocList::from(
+            path_buf.as_os_str().as_encoded_bytes(),
+        ))),
         Err(_) => RocResult::err(()),
     }
 }
