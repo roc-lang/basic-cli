@@ -8,4 +8,4 @@ app [main] { pf: platform "main.roc" }
 # $ ./target/debug/host
 # Program exited early with error: JustAStub
 # ```
-main = Task.err (JustAStub)
+main = \{} -> Err (JustAStub)

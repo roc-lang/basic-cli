@@ -1,5 +1,5 @@
 platform "cli"
-    requires {} { main : Task {} [Exit I32 Str]_ }
+    requires {} { main : {} => Result {} [Exit I32 Str]_ }
     exposes [
         Path,
         Arg,
@@ -24,18 +24,18 @@ platform "cli"
 
 import Stderr
 
-mainForHost : Task {} I32 as Fx
-mainForHost =
+mainForHost : {} => Result {} I32
+mainForHost = \{} ->
     Task.attempt main \res ->
         when res is
-            Ok {} -> Task.ok {}
+            Ok {} -> Ok {}
             Err (Exit code str) ->
                 if Str.isEmpty str then
-                    Task.err code
+                    Err code
                 else
                     Stderr.line str
-                    |> Task.onErr \_ -> Task.err code
-                    |> Task.await \{} -> Task.err code
+                    |> Task.onErr \_ -> Err code
+                    |> Task.await \{} -> Err code
 
             Err err ->
                 Stderr.line
@@ -46,5 +46,5 @@ mainForHost =
                     Tip: If you do not want to exit on this error, use `Task.mapErr` to handle the error.
                     Docs for `Task.mapErr`: <https://www.roc-lang.org/packages/basic-cli/Task#mapErr>
                     """
-                |> Task.onErr \_ -> Task.err 1
-                |> Task.await \_ -> Task.err 1
+                |> Task.onErr \_ -> Err 1
+                |> Task.await \_ -> Err 1

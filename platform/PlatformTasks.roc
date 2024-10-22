@@ -88,7 +88,7 @@ tcpWrite! : TcpStream, List U8 => Result {} Str
 pathType! : List U8 => Result InternalPath.InternalPathType (List U8)
 
 posixTime! : {} => Result U128 {}
-sleepMillis! : U64 => Result {} {}
+sleepMillis! : U64 => {}
 
 commandStatus! : Box InternalCommand.Command => Result {} (List U8)
 commandOutput! : Box InternalCommand.Command => InternalCommand.Output
