@@ -1,6 +1,6 @@
 module [
     Utc,
-    now,
+    now!,
     toMillisSinceEpoch,
     fromMillisSinceEpoch,
     toNanosSinceEpoch,
@@ -15,14 +15,11 @@ import PlatformTasks
 Utc := I128 implements [Inspect]
 
 ## Duration since UNIX EPOCH
-now : {} -> Task Utc *
-now = \{} ->
-    currentEpoch =
-        PlatformTasks.posixTime
-            |> Task.mapErr! \_ -> crash "unreachable"
-            |> Num.toI128
+now! : {} => Utc
+now! = \{} ->
+    currentEpoch = PlatformTasks.posixTime! {} |> Num.toI128
 
-    Task.ok (@Utc currentEpoch)
+    @Utc currentEpoch
 
 # Constant number of nanoseconds in a millisecond
 nanosPerMilli = 1_000_000

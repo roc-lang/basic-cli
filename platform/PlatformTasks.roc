@@ -53,6 +53,7 @@ stderrLine! : Str => Result {} Str
 stderrWrite! : Str => Result {} Str
 stdinLine! : {} => Result Str Str
 stdinBytes! : {} => List U8
+
 ttyModeCanonical! : {} => {}
 ttyModeRaw! : {} => {}
 
@@ -87,7 +88,9 @@ tcpWrite! : TcpStream, List U8 => Result {} Str
 
 pathType! : List U8 => Result InternalPath.InternalPathType (List U8)
 
-posixTime! : {} => Result U128 {}
+# TODO why is this a U128 but then getting converted to a I128 in Utc.roc?
+posixTime! : {} => U128
+
 sleepMillis! : U64 => {}
 
 commandStatus! : Box InternalCommand.Command => Result {} (List U8)
