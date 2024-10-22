@@ -57,7 +57,7 @@ var! = \name ->
 ## ```
 ## # Reads "NUM_THINGS" and decodes into a U16
 ## getU16Var : Str -> Task U16 [VarNotFound, DecodeErr DecodeError] [Read [Env]]
-## getU16Var = \var -> Env.decode var
+## getU16Var = \var -> Env.decode! var
 ## ```
 ##
 ## If `NUM_THINGS=123` then `getU16Var` succeeds with the value of `123u16`.
