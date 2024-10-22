@@ -1,4 +1,4 @@
-module [list, parse]
+module [list!, parse!]
 
 import PlatformTasks
 import Stdout
@@ -8,10 +8,9 @@ import Arg.ErrorFormatter exposing [formatArgExtractErr]
 import Arg.Help exposing [helpText, usageHelp]
 
 ## Gives a list of the program's command-line arguments.
-list : {} -> Task (List Str) *
-list = \{} ->
-    PlatformTasks.args
-    |> Task.mapErr \_ -> crash "unreachable"
+list! : {} => List Str
+list! = \{} ->
+    PlatformTasks.args!
 
 ## Parse arguments using a CLI parser or show a useful message on failure.
 ##
@@ -79,21 +78,21 @@ list = \{} ->
 ##           example [OPTIONS]
 ##         """
 ## ```
-parse : CliParser state -> Task state [Exit I32 Str, StdoutErr Stdout.Err]
-parse = \parser ->
+parse! : CliParser state => Result state [Exit I32 Str, StdoutErr Stdout.Err]
+parse! = \parser ->
     when parser.parser (list! {}) is
         SuccessfullyParsed data ->
-            Task.ok data
+            Ok data
 
         ShowHelp { subcommandPath } ->
             helpMessage =
                 helpText parser.config subcommandPath parser.textStyle
             Stdout.line! helpMessage
-            Task.err (Exit 0 "")
+            Err (Exit 0 "")
 
         ShowVersion ->
             Stdout.line! parser.config.version
-            Task.err (Exit 0 "")
+            Err (Exit 0 "")
 
         IncorrectUsage err { subcommandPath } ->
             incorrectUsageMessage =
@@ -103,4 +102,4 @@ parse = \parser ->
                 $(usageHelp parser.config subcommandPath parser.textStyle)
                 """
             Stdout.line! incorrectUsageMessage
-            Task.err (Exit 1 "")
+            Err (Exit 1 "")

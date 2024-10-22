@@ -102,15 +102,16 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1725034359,
-        "narHash": "sha256-czBBSb5vEjJjgVIw4yQRhSGXT2yMOJ5THqj3pYO92sU=",
+        "lastModified": 1729567641,
+        "narHash": "sha256-nUcd92jGIg2Hl5wf1W68EMPGeDuZaODzeYCGquEXSQQ=",
         "owner": "roc-lang",
         "repo": "roc",
-        "rev": "f6c969af293270feb90dfdc8fcc3ffbe18f9b268",
+        "rev": "f11c8b4ce16060aa89d5846778314c45b205b722",
         "type": "github"
       },
       "original": {
         "owner": "roc-lang",
+        "ref": "purity-inference",
         "repo": "roc",
         "type": "github"
       }

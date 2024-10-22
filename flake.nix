@@ -2,7 +2,7 @@
   description = "Basic cli devShell flake";
 
   inputs = {
-    roc.url = "github:roc-lang/roc";
+    roc.url = "github:roc-lang/roc?ref=purity-inference";
 
     nixpkgs.follows = "roc/nixpkgs";
 
