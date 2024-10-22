@@ -76,7 +76,7 @@ args! : {} => List Str
 
 cwd! : {} => Result (List U8) {}
 
-sendRequest! : Box Request => Result InternalResponse []
+sendRequest! : Box Request => InternalResponse
 
 TcpStream := Box {}
 tcpConnect! : Str, U16 => Result TcpStream Str
