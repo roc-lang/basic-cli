@@ -1,4 +1,4 @@
-module [line, bytes, Err]
+module [line!, bytes!, Err]
 
 import PlatformTasks
 
@@ -53,18 +53,17 @@ handleErr = \err ->
 ## (e.g. because the user pressed Enter in the terminal), so using it can result in the appearance of the
 ## programming having gotten stuck. It's often helpful to print a prompt first, so
 ## the user knows it's necessary to enter something before the program will continue.
-line : Task Str [StdinErr Err]
-line =
-    PlatformTasks.stdinLine
-    |> Task.mapErr handleErr
+line! : {} => Result Str [StdinErr Err]
+line! = \{} ->
+    PlatformTasks.stdinLine! {}
+    |> Result.mapErr handleErr
 
 ## Read bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
 ##
 ## > This is typically used in combintation with [Tty.enableRawMode],
 ## which disables defaults terminal bevahiour and allows reading input
 ## without buffering until Enter key is pressed.
-bytes : {} -> Task (List U8) *
-bytes = \{} ->
+bytes! : {} => List U8
+bytes! = \{} ->
     # will return an empty list if no bytes are available
-    PlatformTasks.stdinBytes
-    |> Task.mapErr \_ -> crash "unreachable"
+    PlatformTasks.stdinBytes! {}

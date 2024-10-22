@@ -1,4 +1,4 @@
-module [line, write, Err]
+module [line!, write!, Err]
 
 import PlatformTasks
 
@@ -47,10 +47,10 @@ handleErr = \err ->
 ##
 ## > To write to `stdout` without the newline, see [Stdout.write].
 ##
-line : Str -> Task {} [StdoutErr Err]
-line = \str ->
-    PlatformTasks.stdoutLine str
-    |> Task.mapErr handleErr
+line! : Str => Result {} [StdoutErr Err]
+line! = \str ->
+    PlatformTasks.stdoutLine! str
+    |> Result.mapErr handleErr
 
 ## Write the given string to [standard output](https://en.wikipedia.org/wiki/Standard_streams#Standard_output_(stdout)).
 ##
@@ -58,7 +58,7 @@ line = \str ->
 ## so this may appear to do nothing until you write a newline!
 ##
 ## > To write to `stdout` with a newline at the end, see [Stdout.line].
-write : Str -> Task {} [StdoutErr Err]
-write = \str ->
-    PlatformTasks.stdoutWrite str
-    |> Task.mapErr handleErr
+write! : Str => Result {} [StdoutErr Err]
+write! = \str ->
+    PlatformTasks.stdoutWrite! str
+    |> Result.mapErr handleErr
