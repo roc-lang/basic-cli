@@ -18,12 +18,12 @@ import PlatformTasks
 ##
 enableRawMode! : {} => {}
 enableRawMode! = \{} ->
-    PlatformTasks.ttyModeRaw!
+    PlatformTasks.ttyModeRaw! {}
 
 ## Revert terminal to default behaviour
 ##
 ## Note: we plan on moving this function away from basic-cli in the future, see github.com/roc-lang/basic-cli/issues/73
 ##
-disableRawMode : {} => {}
-disableRawMode = \{} ->
-    PlatformTasks.ttyModeCanonical!
+disableRawMode! : {} => {}
+disableRawMode! = \{} ->
+    PlatformTasks.ttyModeCanonical! {}
