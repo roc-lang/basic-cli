@@ -24,8 +24,8 @@ platform "cli"
 
 import Stderr
 
-mainForHost! : {} => Result {} I32
-mainForHost! = \{} ->
+mainForHost! : I32 => Result {} I32
+mainForHost! = \_ ->
     main! {}
     |> \result ->
         when result is
