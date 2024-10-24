@@ -1,38 +1,43 @@
-app [main] { pf: platform "../platform/main.roc" }
+app [main!] { pf: platform "../platform/main.roc" }
 
 import pf.Stdout
 import pf.Dir
 import pf.Path
 
-main =
+main! =
 
     # Create a directory
-    Dir.create "dirExampleE"
-        |> Task.mapErr! UnableToCreateFirstDir
+    Dir.create! "dirExampleE"
+    |> Result.mapErr? UnableToCreateFirstDir
+
     # Create a directory and its parents
-    Dir.createAll "dirExampleA/b/c/child"
-        |> Task.mapErr! UnableToCreateSubDirs
+    Dir.createAll! "dirExampleA/b/c/child"
+    |> Result.mapErr? UnableToCreateSubDirs
+
     # Create a child directory
-    Dir.create "dirExampleA/child"
-        |> Task.mapErr! UnableToCreateChildDir
+    Dir.create! "dirExampleA/child"
+    |> Result.mapErr? UnableToCreateChildDir
 
     # List the contents of a directory
     paths =
-        "dirExampleA"
-            |> Dir.list
-            |> Task.mapErr! FailedToListDir
+        Dir.list! "dirExampleA"
+        |> Result.mapErr? FailedToListDir
 
     pathsAsStr = List.map paths Path.display
 
     # Check the contents of the directory
     expect (Set.fromList pathsAsStr) == (Set.fromList ["dirExampleA/b", "dirExampleA/child"])
+
     # Try to create a directory without a parent (should fail, ignore error)
-    Dir.create "dirExampleD/child"
-        |> Task.onErr! \_ -> Task.ok {}
+    Dir.create! "dirExampleD/child"
+    |> Result.onErr? \_ -> Ok {}
+
     # Delete an empty directory
-    Dir.deleteEmpty "dirExampleE"
-        |> Task.mapErr! UnableToDeleteEmptyDirectory
+    Dir.deleteEmpty! "dirExampleE"
+    |> Result.mapErr? UnableToDeleteEmptyDirectory
+
     # Delete all directories recursively
-    Dir.deleteAll "dirExampleA"
-        |> Task.mapErr! UnableToDeleteRecursively
+    Dir.deleteAll! "dirExampleA"
+    |> Result.mapErr? UnableToDeleteRecursively
+
     Stdout.line! "Success!"
