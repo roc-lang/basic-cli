@@ -40,6 +40,8 @@ hosted PlatformTasks
         commandOutput,
         currentArchOS,
         tempDir,
+        getLocale,
+        getLocales,
     ]
     imports [
         InternalHttp.{ Request, InternalResponse },
@@ -102,3 +104,6 @@ dirDeleteAll : List U8 -> Task {} Str
 currentArchOS : Task { arch : Str, os : Str } {}
 
 tempDir : Task (List U8) {}
+
+getLocale : Task Str {}
+getLocales : Task (List Str) {}
