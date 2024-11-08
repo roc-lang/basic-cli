@@ -1,4 +1,9 @@
-module [line, bytes, Err]
+module [
+    Err,
+    line,
+    bytes,
+    readToEnd,
+]
 
 import PlatformTasks
 
@@ -68,3 +73,19 @@ bytes = \{} ->
     # will return an empty list if no bytes are available
     PlatformTasks.stdinBytes
     |> Task.mapErr \_ -> crash "unreachable"
+
+## Read all bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)) until EOF in this source.
+readToEnd : {} -> Task (List U8) [StdinErr Err]
+readToEnd = \{} ->
+    PlatformTasks.stdinReadToEnd
+    |> Task.mapErr \internalErr ->
+        when internalErr.tag is
+            BrokenPipe -> StdinErr BrokenPipe
+            WouldBlock -> StdinErr (Other "WouldBlock")
+            WriteZero -> StdinErr (Other "WriteZero")
+            Unsupported -> StdinErr Unsupported
+            Interrupted -> StdinErr Interrupted
+            OutOfMemory -> StdinErr OutOfMemory
+            UnexpectedEof -> StdinErr UnexpectedEof
+            InvalidInput -> StdinErr InvalidInput
+            Other -> StdinErr (Other internalErr.msg)

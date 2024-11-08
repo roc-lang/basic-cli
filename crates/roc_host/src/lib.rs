@@ -21,6 +21,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{env, io};
 use tokio::runtime::Runtime;
 
+mod glue;
+
 thread_local! {
    static TOKIO_RUNTIME: Runtime = tokio::runtime::Builder::new_current_thread()
        .enable_io()
@@ -466,6 +468,16 @@ pub extern "C" fn roc_fx_stdinBytes() -> RocResult<RocList<u8>, ()> {
     match stdin.lock().read(&mut buffer) {
         Ok(bytes_read) => RocResult::ok(RocList::from(&buffer[0..bytes_read])),
         Err(_) => RocResult::ok(RocList::from(([]).as_slice())),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_stdinReadToEnd() -> RocResult<RocList<u8>, glue::InternalIOErr> {
+    let stdin = std::io::stdin();
+    let mut buf = Vec::new();
+    match stdin.lock().read_to_end(&mut buf) {
+        Ok(bytes_read) => RocResult::ok(RocList::from(&buf[0..bytes_read])),
+        Err(err) => RocResult::err(err.into()),
     }
 }
 
