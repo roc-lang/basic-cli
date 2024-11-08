@@ -18,8 +18,6 @@ fi
 
 $ROC build --lib ./platform/libapp.roc
 
-$ROC glue glue.roc crates ./platform/main.roc
-
 cargo build --release
 
 if [ -n "$CARGO_BUILD_TARGET" ]; then
