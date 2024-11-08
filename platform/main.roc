@@ -47,8 +47,8 @@ mainForHost! = \_ ->
                     Program exited with error:
                         $(Inspect.toStr msg)
 
-                    Tip: If you do not want to exit on this error, use `Task.mapErr` to handle the error.
-                    Docs for `Task.mapErr`: <https://www.roc-lang.org/packages/basic-cli/Task#mapErr>
+                    Tip: If you do not want to exit on this error, use `Result.mapErr` to handle the error.
+                    Docs for `Result.mapErr`: <https://www.roc-lang.org/builtins/Result#mapErr>
                     """
 
                 when Stderr.line! helpMsg is
