@@ -1,5 +1,6 @@
 hosted PlatformTasks
     exposes [
+        InternalIOErr,
         args,
         dirList,
         dirCreate,
@@ -17,6 +18,7 @@ hosted PlatformTasks
         stderrWrite,
         stdinLine,
         stdinBytes,
+        stdinReadToEnd,
         ttyModeCanonical,
         ttyModeRaw,
         sendRequest,
@@ -49,12 +51,28 @@ hosted PlatformTasks
         InternalPath,
     ]
 
+InternalIOErr : {
+    tag : [
+        BrokenPipe,
+        WouldBlock,
+        WriteZero,
+        Unsupported,
+        Interrupted,
+        OutOfMemory,
+        UnexpectedEof,
+        InvalidInput,
+        Other,
+    ],
+    msg : Str,
+}
+
 stdoutLine : Str -> Task {} Str
 stdoutWrite : Str -> Task {} Str
 stderrLine : Str -> Task {} Str
 stderrWrite : Str -> Task {} Str
-stdinLine :  Task Str Str
+stdinLine : Task Str Str
 stdinBytes : Task (List U8) {}
+stdinReadToEnd : Task (List U8) InternalIOErr
 ttyModeCanonical : Task {} {}
 ttyModeRaw : Task {} {}
 
