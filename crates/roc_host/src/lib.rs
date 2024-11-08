@@ -1379,3 +1379,22 @@ pub extern "C" fn roc_fx_tempDir() -> RocResult<RocList<u8>, ()> {
 
     RocResult::ok(RocList::from(path_os_string_bytes.as_slice()))
 }
+
+#[no_mangle]
+pub extern "C" fn roc_fx_getLocale() -> RocResult<RocStr, ()> {
+    sys_locale::get_locale().map_or_else(
+        || RocResult::err(()),
+        |locale| RocResult::ok(locale.to_string().as_str().into()),
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_getLocales() -> RocResult<RocList<RocStr>, ()> {
+    const DEFAULT_MAX_LOCALES: usize = 10;
+    let locales = sys_locale::get_locales();
+    let mut roc_locales = RocList::with_capacity(DEFAULT_MAX_LOCALES);
+    for l in locales {
+        roc_locales.push(l.to_string().as_str().into());
+    }
+    RocResult::ok(roc_locales)
+}
