@@ -1,4 +1,4 @@
-app [main] { pf: platform "../platform/main.roc" }
+app [main!] { pf: platform "../platform/main.roc" }
 
 import pf.Stdout
 import pf.Stderr
@@ -9,24 +9,29 @@ import pf.Dir
 
 outTxtPath = "out.txt"
 
-task =
-    cwd = Env.cwd!
-    cwdStr = Path.display cwd
-    Stdout.line! "cwd: $(cwdStr)"
+task! = \{} ->
 
-    dirEntries = Dir.list! cwdStr
+    cwdStr = Path.display (try Env.cwd! {})
+
+    try Stdout.line! "cwd: $(cwdStr)"
+
+    dirEntries = try Dir.list! cwdStr
+
     dirEntriesStr = Str.joinWith (List.map dirEntries Path.display) "\n    "
-    Stdout.line! "Directory contents:\n    $(dirEntriesStr)\n"
 
-    Stdout.line! "Writing a string to out.txt"
-    File.writeUtf8! outTxtPath "a string!"
+    try Stdout.line! "Directory contents:\n    $(dirEntriesStr)\n"
 
-    outTxtContents = File.readUtf8! outTxtPath
-    Stdout.line "I read the file back. Its contents: \"$(outTxtContents)\""
+    try Stdout.line! "Writing a string to out.txt"
 
-main =
-    when Task.result! task is
-        Ok {} -> Stdout.line "Successfully wrote a string to out.txt"
+    try File.writeUtf8! outTxtPath "a string!"
+
+    outTxtContents = try File.readUtf8! outTxtPath
+
+    Stdout.line! "I read the file back. Its contents: \"$(outTxtContents)\""
+
+main! = \{} ->
+    when task! {} is
+        Ok {} -> Stdout.line! "Successfully wrote a string to out.txt"
         Err err ->
             msg =
                 when err is
@@ -36,6 +41,6 @@ main =
                     FileReadErr _ _ -> "Error reading file"
                     _ -> "Uh oh, there was an error!"
 
-            Stderr.line! msg
+            try Stderr.line! msg
 
-            Task.err (Exit 1 "unable to write file: $(msg)") # non-zero exit code to indicate failure
+            Err (Exit 1 "unable to write file: $(msg)") # non-zero exit code to indicate failure
