@@ -20,6 +20,7 @@ hosted PlatformTasks
         stderrWrite!,
         stdinLine!,
         stdinBytes!,
+        stdinReadToEnd!,
         ttyModeCanonical!,
         ttyModeRaw!,
         sendRequest!,
@@ -71,6 +72,7 @@ stderrLine! : Str => Result {} Str
 stderrWrite! : Str => Result {} Str
 stdinLine! : {} => Result Str Str
 stdinBytes! : {} => List U8
+stdinReadToEnd! : {} => Result (List U8) InternalIOErr
 
 ttyModeCanonical! : {} => {}
 ttyModeRaw! : {} => {}
