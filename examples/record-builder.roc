@@ -1,33 +1,24 @@
-app [main] {
+app [main!] {
     pf: platform "../platform/main.roc",
 }
 
 import pf.Stdout
 
-main =
-    myrecord = { sequenceTasks <-
-        apples: getFruit Apples,
-        oranges: getFruit Oranges,
-    }
+main! = \{} ->
+    { apples, oranges } = try
+        { Result.map2 <-
+            apples: getFruit! Apples |> Result.map joinStrs,
+            oranges: getFruit! Oranges |> Result.map joinStrs,
+        }
 
-    { apples, oranges } = myrecord!
+    Stdout.line! "Apples: $(apples)\nOranges: $(oranges)"
 
-    "Apples: "
-    |> Str.concat (Str.joinWith apples ", ")
-    |> Str.concat "\n"
-    |> Str.concat "Oranges: "
-    |> Str.concat (Str.joinWith oranges ", ")
-    |> Stdout.line
+joinStrs = \fruits -> Str.joinWith fruits ", "
 
-getFruit : [Apples, Oranges] -> Task (List Str) *
-getFruit = \request ->
+## This doesn't actually perform any effects, but we can imagine that it does
+## for the sake of this example, maybe it fetches data from a server or reads a file.
+getFruit! : [Apples, Oranges] => Result (List Str) []
+getFruit! = \request ->
     when request is
-        Apples -> Task.ok ["Granny Smith", "Pink Lady", "Golden Delicious"]
-        Oranges -> Task.ok ["Navel", "Blood Orange", "Clementine"]
-
-sequenceTasks : Task a err, Task b err, (a, b -> c) -> Task c err
-sequenceTasks = \firstTask, secondTask, mapper ->
-    first = firstTask!
-    second = secondTask!
-
-    Task.ok (mapper first second)
+        Apples -> Ok ["Granny Smith", "Pink Lady", "Golden Delicious"]
+        Oranges -> Ok ["Navel", "Blood Orange", "Clementine"]
