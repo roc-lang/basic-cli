@@ -1,25 +1,26 @@
-app [main] { pf: platform "../platform/main.roc" }
+app [main!] { pf: platform "../platform/main.roc" }
 
 import pf.Stdout
 import pf.Stderr
 import pf.Stdin
 
-main =
-    Stdout.line! "Enter a series of number characters (0-9):"
-    numberBytes = takeNumberBytes!
+main! = \{} ->
+    try Stdout.line! "Enter a series of number characters (0-9):"
+
+    numberBytes = try takeNumberBytes! {}
 
     if List.isEmpty numberBytes then
-        Stderr.line "Expected a series of number characters (0-9)"
+        Stderr.line! "Expected a series of number characters (0-9)"
     else
         when Str.fromUtf8 numberBytes is
             Ok nStr ->
-                Stdout.line "Got number $(nStr)"
+                Stdout.line! "Got number $(nStr)"
 
             Err _ ->
-                Stderr.line "Error, bad utf8"
+                Stderr.line! "Error, bad utf8"
 
-takeNumberBytes : Task (List U8) _
-takeNumberBytes =
+takeNumberBytes! : {} => Result (List U8) _
+takeNumberBytes! = \{} ->
     bytesRead = Stdin.bytes! {}
 
     numberBytes =
@@ -29,4 +30,4 @@ takeNumberBytes =
             else
                 bytes
 
-    Task.ok numberBytes
+    Ok numberBytes

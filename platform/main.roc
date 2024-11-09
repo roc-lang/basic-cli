@@ -1,5 +1,5 @@
 platform "cli"
-    requires {} { main : Task {} [Exit I32 Str]_ }
+    requires {} { main! : {} => Result {} [Exit I32 Str]_ }
     exposes [
         Path,
         Arg,
@@ -20,31 +20,37 @@ platform "cli"
     ]
     packages {}
     imports []
-    provides [mainForHost]
+    provides [mainForHost!]
 
 import Stderr
 
-mainForHost : Task {} I32 as Fx
-mainForHost =
-    Task.attempt main \res ->
-        when res is
-            Ok {} -> Task.ok {}
-            Err (Exit code str) ->
-                if Str.isEmpty str then
-                    Task.err code
-                else
-                    Stderr.line str
-                    |> Task.onErr \_ -> Task.err code
-                    |> Task.await \{} -> Task.err code
+mainForHost! : I32 => Result {} I32
+mainForHost! = \_ ->
+    main! {}
+    |> \result ->
+        when result is
 
-            Err err ->
-                Stderr.line
+            Ok {} -> Ok {}
+
+            Err (Exit code msg) ->
+                if Str.isEmpty msg then
+                        Err code
+                    else
+                        when Stderr.line! msg is
+                            Ok {} -> Err code
+                            Err (StderrErr _) -> Err code
+
+            Err msg ->
+
+                helpMsg =
                     """
                     Program exited with error:
-                        $(Inspect.toStr err)
+                        $(Inspect.toStr msg)
 
-                    Tip: If you do not want to exit on this error, use `Task.mapErr` to handle the error.
-                    Docs for `Task.mapErr`: <https://www.roc-lang.org/packages/basic-cli/Task#mapErr>
+                    Tip: If you do not want to exit on this error, use `Result.mapErr` to handle the error.
+                    Docs for `Result.mapErr`: <https://www.roc-lang.org/builtins/Result#mapErr>
                     """
-                |> Task.onErr \_ -> Task.err 1
-                |> Task.await \_ -> Task.err 1
+
+                when Stderr.line! helpMsg is
+                    Ok {} -> Err 1
+                    Err (StderrErr _) -> Err 1

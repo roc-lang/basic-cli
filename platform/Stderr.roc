@@ -1,4 +1,4 @@
-module [line, write, Err]
+module [line!, write!, Err]
 
 import PlatformTasks
 
@@ -46,10 +46,10 @@ handleErr = \err ->
 ## followed by a newline.
 ##
 ## > To write to `stderr` without the newline, see [Stderr.write].
-line : Str -> Task {} [StderrErr Err]
-line = \str ->
-    PlatformTasks.stderrLine str
-    |> Task.mapErr handleErr
+line! : Str => Result {} [StderrErr Err]
+line! = \str ->
+    PlatformTasks.stderrLine! str
+    |> Result.mapErr handleErr
 
 ## Write the given string to [standard error](https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)).
 ##
@@ -57,7 +57,7 @@ line = \str ->
 ## so this may appear to do nothing until you write a newline!
 ##
 ## > To write to `stderr` with a newline at the end, see [Stderr.line].
-write : Str -> Task {} [StderrErr Err]
-write = \str ->
-    PlatformTasks.stderrWrite str
-    |> Task.mapErr handleErr
+write! : Str => Result {} [StderrErr Err]
+write! = \str ->
+    PlatformTasks.stderrWrite! str
+    |> Result.mapErr handleErr

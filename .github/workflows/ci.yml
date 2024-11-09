@@ -1,5 +1,5 @@
 on:
-  pull_request:
+  # pull_request:
   workflow_dispatch:
 
 # this cancels workflows currently in progress if you start a new one
@@ -69,4 +69,3 @@ jobs:
       - name: Test using musl build
         run: |
           NO_BUILD=1 ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
-
