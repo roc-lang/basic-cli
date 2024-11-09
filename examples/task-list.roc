@@ -4,12 +4,12 @@ import pf.Stdout
 
 main! = \{} ->
     # Prints out each of the authors
-    forEach! [ "Foo", "Bar", "Baz" ] Stdout.line!
+    print! ["Foo", "Bar", "Baz"]
 
-forEach! : List a, (a => Result {} err) => Result {} err
-forEach! = \l, f! ->
-    when l is
+print! : List Str => Result {} _
+print! = \authors ->
+    when authors is
         [] -> Ok {}
-        [x, .. as xs] ->
-            try f! x
-            forEach! xs f!
+        [author, .. as rest] ->
+            try Stdout.line! author
+            print! rest
