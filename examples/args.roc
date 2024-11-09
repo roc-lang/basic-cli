@@ -1,19 +1,19 @@
-app [main] {
+app [main!] {
     pf: platform "../platform/main.roc",
+    weaver: "https://github.com/smores56/weaver/releases/download/0.3.1/CZWzZ3WIfkG5_rxdcwPQ0PqgrlZQFwKQUi2zyMYddXc.tar.br",
 }
 
 import pf.Stdout
 import pf.Stderr
-import pf.Arg.Cli as Cli
-import pf.Arg.SubCmd as SubCmd
-import pf.Arg.Opt as Opt
-import pf.Arg.Param as Param
 import pf.Arg
+import weaver.Cli
+import weaver.SubCmd
+import weaver.Opt
+import weaver.Param
 
-main =
-    args = Arg.list! {}
-
-    when Cli.parseOrDisplayMessage cli args is
+main! : {} => Result {} _
+main! = \{} ->
+    when Cli.parseOrDisplayMessage cli (Arg.list! {}) is
         Ok subcommand ->
             mathOutcome =
                 when subcommand is
@@ -25,12 +25,14 @@ main =
                     Div { dividend, divisor } ->
                         dividend / divisor
 
-            Stdout.line (Num.toStr mathOutcome)
+            try Stdout.line! (Num.toStr mathOutcome)
+
+            Ok {}
 
         Err message ->
-            Stderr.line! message
+            try Stderr.line! message
 
-            Task.err (Exit 1 "")
+            Err (Exit 1 "")
 
 cli =
     SubCmd.required [maxSubcommand, divideSubcommand]
@@ -42,7 +44,7 @@ cli =
     |> Cli.assertValid
 
 maxSubcommand =
-    { Cli.combine <-
+    { Cli.weave <-
         # ensure there's at least one parameter provided
         first: Param.dec { name: "first", help: "the first number to compare." },
         rest: Param.decList { name: "rest", help: "the other numbers to compare." },
@@ -54,7 +56,7 @@ maxSubcommand =
     }
 
 divideSubcommand =
-    { Cli.combine <-
+    { Cli.weave <-
         dividend: Opt.dec {
             short: "n",
             long: "dividend",
