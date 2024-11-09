@@ -2,45 +2,43 @@ module [line!, write!, Err]
 
 import PlatformTasks
 
-## **BrokenPipe** - This error can occur when writing to a stdout that is no longer connected
-## to a valid input. For example, if the process on the receiving end of a pipe closes its
-## end, any write to that pipe could lead to a BrokenPipe error.
+## **NotFound** - An entity was not found, often a file.
 ##
-## **WouldBlock** - This error might occur if stdout is set to non-blocking mode and the write
-## operation would block because the output buffer is full.
+## **PermissionDenied** - The operation lacked the necessary privileges to complete.
 ##
-## **WriteZero** - This indicates an attempt to write "zero" bytes which is technically a no-operation
-## (no-op), but if detected, it could be raised as an error.
+## **BrokenPipe** - The operation failed because a pipe was closed.
 ##
-## **Unsupported** - If the stdout operation involves writing data in a manner or format that is not
-## supported, this error could be raised.
+## **AlreadyExists** - An entity already exists, often a file.
 ##
-## **Interrupted** - This can happen if a signal interrupts the writing process before it completes.
+## **Interrupted** - This operation was interrupted. Interrupted operations can typically be retried.
 ##
-## **OutOfMemory** - This could occur if there is not enough memory available to buffer the data being
-## written to stdout.
+## **Unsupported** - This operation is unsupported on this platform. This means that the operation can never succeed.
 ##
-## **Other** - This is a catch-all for any error not specifically categorized by the other ErrorKind
-## variants.
+## **OutOfMemory** - An operation could not be completed, because it failed to allocate enough memory.
+##
+## **Other** - A custom error that does not fall under any other I/O error kind.
 Err : [
+    NotFound,
+    PermissionDenied,
     BrokenPipe,
-    WouldBlock,
-    WriteZero,
-    Unsupported,
+    AlreadyExists,
     Interrupted,
+    Unsupported,
     OutOfMemory,
     Other Str,
 ]
 
-handleErr = \err ->
-    when err is
-        e if e == "ErrorKind::BrokenPipe" -> StderrErr BrokenPipe
-        e if e == "ErrorKind::WouldBlock" -> StderrErr WouldBlock
-        e if e == "ErrorKind::WriteZero" -> StderrErr WriteZero
-        e if e == "ErrorKind::Unsupported" -> StderrErr Unsupported
-        e if e == "ErrorKind::Interrupted" -> StderrErr Interrupted
-        e if e == "ErrorKind::OutOfMemory" -> StderrErr OutOfMemory
-        str -> StderrErr (Other str)
+handleErr : PlatformTasks.InternalIOErr -> [StderrErr Err]
+handleErr = \{ tag, msg } ->
+    when tag is
+        NotFound -> StderrErr NotFound
+        PermissionDenied -> StderrErr PermissionDenied
+        BrokenPipe -> StderrErr BrokenPipe
+        AlreadyExists -> StderrErr AlreadyExists
+        Interrupted -> StderrErr Interrupted
+        Unsupported -> StderrErr Unsupported
+        OutOfMemory -> StderrErr OutOfMemory
+        Other | EndOfFile -> StderrErr (Other msg)
 
 ## Write the given string to [standard error](https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)),
 ## followed by a newline.

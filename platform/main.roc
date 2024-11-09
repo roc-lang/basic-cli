@@ -29,19 +29,17 @@ mainForHost! = \_ ->
     main! {}
     |> \result ->
         when result is
-
             Ok {} -> Ok {}
-
             Err (Exit code msg) ->
                 if Str.isEmpty msg then
-                        Err code
+                    Err code
                     else
-                        when Stderr.line! msg is
-                            Ok {} -> Err code
-                            Err (StderrErr _) -> Err code
+
+                when Stderr.line! msg is
+                    Ok {} -> Err code
+                    Err (StderrErr _) -> Err code
 
             Err msg ->
-
                 helpMsg =
                     """
                     Program exited with error:

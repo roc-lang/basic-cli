@@ -5,7 +5,6 @@ module [
     DirEntry,
     DirErr,
     MetadataErr,
-
     display,
     fromStr,
     fromBytes,

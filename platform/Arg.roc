@@ -2,10 +2,6 @@ module [list!]
 
 import PlatformTasks
 
-#import Arg.Cli exposing [CliParser]
-#import Arg.ErrorFormatter
-#import Arg.Help
-
 ## Gives a list of the program's command-line arguments.
 list! : {} => List Str
 list! = \{} ->

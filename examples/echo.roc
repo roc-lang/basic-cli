@@ -1,6 +1,6 @@
 app [main!] { pf: platform "../platform/main.roc" }
 
- import pf.Stdin
+import pf.Stdin
 import pf.Stdout
 
 main! = \{} -> tick! {}
@@ -11,7 +11,7 @@ tick! = \{} ->
             try Stdout.line! (echo str)
             tick! {}
 
-        Err (StdinErr EndOfFile) ->
+        Err EndOfFile ->
             try Stdout.line! (echo "Received end of input (EOF).")
             Ok {}
 

@@ -402,67 +402,44 @@ pub extern "C" fn roc_fx_exePath(_roc_str: &RocStr) -> RocResult<RocList<u8>, ()
     }
 }
 
-/// See docs in `platform/Stdin.roc` for descriptions
-fn handleStdinErr(io_err: std::io::Error) -> RocStr {
-    match io_err.kind() {
-        ErrorKind::BrokenPipe => "ErrorKind::BrokenPipe".into(),
-        ErrorKind::UnexpectedEof => "ErrorKind::UnexpectedEof".into(),
-        ErrorKind::InvalidInput => "ErrorKind::InvalidInput".into(),
-        ErrorKind::OutOfMemory => "ErrorKind::OutOfMemory".into(),
-        ErrorKind::Interrupted => "ErrorKind::Interrupted".into(),
-        ErrorKind::Unsupported => "ErrorKind::Unsupported".into(),
-        _ => format!("{:?}", io_err).as_str().into(),
-    }
-}
-
 #[no_mangle]
-pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, RocStr> {
+pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, glue::IOErr> {
     let stdin = std::io::stdin();
 
     match stdin.lock().lines().next() {
-        None => RocResult::err(RocStr::from("EOF")),
-        Some(Ok(str)) => RocResult::ok(RocStr::from(str.as_str())),
-        Some(Err(io_err)) => RocResult::err(handleStdinErr(io_err)),
+        None => RocResult::err(glue::IOErr {
+            msg: RocStr::empty(),
+            tag: glue::IOErrTag::EndOfFile,
+        }),
+        Some(Ok(str)) => RocResult::ok(str.as_str().into()),
+        Some(Err(io_err)) => RocResult::err(io_err.into()),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdinBytes() -> RocResult<RocList<u8>, ()> {
+pub extern "C" fn roc_fx_stdinBytes() -> RocResult<RocList<u8>, glue::IOErr> {
     const BUF_SIZE: usize = 16_384; // 16 KiB = 16 * 1024 = 16,384 bytes
     let stdin = std::io::stdin();
     let mut buffer: [u8; BUF_SIZE] = [0; BUF_SIZE];
 
     match stdin.lock().read(&mut buffer) {
         Ok(bytes_read) => RocResult::ok(RocList::from(&buffer[0..bytes_read])),
-        Err(_) => RocResult::ok(RocList::from(([]).as_slice())),
+        Err(io_err) => RocResult::err(io_err.into()),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdinReadToEnd() -> RocResult<RocList<u8>, glue::InternalIOErr> {
+pub extern "C" fn roc_fx_stdinReadToEnd() -> RocResult<RocList<u8>, glue::IOErr> {
     let stdin = std::io::stdin();
     let mut buf = Vec::new();
     match stdin.lock().read_to_end(&mut buf) {
         Ok(bytes_read) => RocResult::ok(RocList::from(&buf[0..bytes_read])),
-        Err(err) => RocResult::err(err.into()),
-    }
-}
-
-/// See docs in `platform/Stdout.roc` for descriptions
-fn handleStdoutErr(io_err: std::io::Error) -> RocStr {
-    match io_err.kind() {
-        ErrorKind::BrokenPipe => "ErrorKind::BrokenPipe".into(),
-        ErrorKind::WouldBlock => "ErrorKind::WouldBlock".into(),
-        ErrorKind::WriteZero => "ErrorKind::WriteZero".into(),
-        ErrorKind::Unsupported => "ErrorKind::Unsupported".into(),
-        ErrorKind::Interrupted => "ErrorKind::Interrupted".into(),
-        ErrorKind::OutOfMemory => "ErrorKind::OutOfMemory".into(),
-        _ => format!("{:?}", io_err).as_str().into(),
+        Err(io_err) => RocResult::err(io_err.into()),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdoutLine(line: &RocStr) -> RocResult<(), RocStr> {
+pub extern "C" fn roc_fx_stdoutLine(line: &RocStr) -> RocResult<(), glue::IOErr> {
     let stdout = std::io::stdout();
 
     let mut handle = stdout.lock();
@@ -471,60 +448,44 @@ pub extern "C" fn roc_fx_stdoutLine(line: &RocStr) -> RocResult<(), RocStr> {
         .write_all(line.as_bytes())
         .and_then(|()| handle.write_all("\n".as_bytes()))
         .and_then(|()| handle.flush())
-        .map_err(handleStdoutErr)
+        .map_err(|io_err| io_err.into())
         .into()
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdoutWrite(text: &RocStr) -> RocResult<(), RocStr> {
+pub extern "C" fn roc_fx_stdoutWrite(text: &RocStr) -> RocResult<(), glue::IOErr> {
     let stdout = std::io::stdout();
-
     let mut handle = stdout.lock();
 
     handle
         .write_all(text.as_bytes())
         .and_then(|()| handle.flush())
-        .map_err(handleStdoutErr)
+        .map_err(|io_err| io_err.into())
         .into()
 }
 
-/// See docs in `platform/Stdout.roc` for descriptions
-fn handleStderrErr(io_err: std::io::Error) -> RocStr {
-    match io_err.kind() {
-        ErrorKind::BrokenPipe => "ErrorKind::BrokenPipe".into(),
-        ErrorKind::WouldBlock => "ErrorKind::WouldBlock".into(),
-        ErrorKind::WriteZero => "ErrorKind::WriteZero".into(),
-        ErrorKind::Unsupported => "ErrorKind::Unsupported".into(),
-        ErrorKind::Interrupted => "ErrorKind::Interrupted".into(),
-        ErrorKind::OutOfMemory => "ErrorKind::OutOfMemory".into(),
-        _ => format!("{:?}", io_err).as_str().into(),
-    }
-}
-
 #[no_mangle]
-pub extern "C" fn roc_fx_stderrLine(line: &RocStr) -> RocResult<(), RocStr> {
+pub extern "C" fn roc_fx_stderrLine(line: &RocStr) -> RocResult<(), glue::IOErr> {
     let stderr = std::io::stderr();
-
     let mut handle = stderr.lock();
 
     handle
         .write_all(line.as_bytes())
         .and_then(|()| handle.write_all("\n".as_bytes()))
         .and_then(|()| handle.flush())
-        .map_err(handleStderrErr)
+        .map_err(|io_err| io_err.into())
         .into()
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stderrWrite(text: &RocStr) -> RocResult<(), RocStr> {
+pub extern "C" fn roc_fx_stderrWrite(text: &RocStr) -> RocResult<(), glue::IOErr> {
     let stderr = std::io::stderr();
-
     let mut handle = stderr.lock();
 
     handle
         .write_all(text.as_bytes())
         .and_then(|()| handle.flush())
-        .map_err(handleStderrErr)
+        .map_err(|io_err| io_err.into())
         .into()
 }
 

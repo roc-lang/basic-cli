@@ -53,25 +53,25 @@ hosted PlatformTasks
 
 InternalIOErr : {
     tag : [
+        EndOfFile,
+        NotFound,
+        PermissionDenied,
         BrokenPipe,
-        WouldBlock,
-        WriteZero,
-        Unsupported,
+        AlreadyExists,
         Interrupted,
+        Unsupported,
         OutOfMemory,
-        UnexpectedEof,
-        InvalidInput,
         Other,
     ],
     msg : Str,
 }
 
-stdoutLine! : Str => Result {} Str
-stdoutWrite! : Str => Result {} Str
-stderrLine! : Str => Result {} Str
-stderrWrite! : Str => Result {} Str
-stdinLine! : {} => Result Str Str
-stdinBytes! : {} => List U8
+stdoutLine! : Str => Result {} InternalIOErr
+stdoutWrite! : Str => Result {} InternalIOErr
+stderrLine! : Str => Result {} InternalIOErr
+stderrWrite! : Str => Result {} InternalIOErr
+stdinLine! : {} => Result Str InternalIOErr
+stdinBytes! : {} => Result (List U8) InternalIOErr
 stdinReadToEnd! : {} => Result (List U8) InternalIOErr
 
 ttyModeCanonical! : {} => {}

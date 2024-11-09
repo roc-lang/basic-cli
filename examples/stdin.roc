@@ -21,7 +21,7 @@ main! = \{} ->
 
 takeNumberBytes! : {} => Result (List U8) _
 takeNumberBytes! = \{} ->
-    bytesRead = Stdin.bytes! {}
+    bytesRead = try Stdin.bytes! {}
 
     numberBytes =
         List.walk bytesRead [] \bytes, b ->
