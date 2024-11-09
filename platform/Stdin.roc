@@ -77,7 +77,7 @@ bytes! = \{} ->
 ## Read all bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)) until EOF in this source.
 readToEnd! : {} => Result (List U8) [StdinErr Err]
 readToEnd! = \{} ->
-    PlatformTasks.stdinReadToEnd!
+    PlatformTasks.stdinReadToEnd! {}
     |> Result.mapErr \internalErr ->
         when internalErr.tag is
             BrokenPipe -> StdinErr BrokenPipe
