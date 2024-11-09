@@ -2,6 +2,7 @@ hosted PlatformTasks
     exposes [
         TcpStream,
         FileReader,
+        InternalIOErr,
         args!,
         dirList!,
         dirCreate!,
@@ -40,12 +41,29 @@ hosted PlatformTasks
         commandOutput!,
         currentArchOS!,
         tempDir!,
+        getLocale!,
+        getLocales!,
     ]
     imports [
         InternalHttp.{ Request, InternalResponse },
         InternalCommand,
         InternalPath,
     ]
+
+InternalIOErr : {
+    tag : [
+        BrokenPipe,
+        WouldBlock,
+        WriteZero,
+        Unsupported,
+        Interrupted,
+        OutOfMemory,
+        UnexpectedEof,
+        InvalidInput,
+        Other,
+    ],
+    msg : Str,
+}
 
 stdoutLine! : Str => Result {} Str
 stdoutWrite! : Str => Result {} Str
@@ -105,3 +123,6 @@ dirDeleteAll! : List U8 => Result {} Str
 currentArchOS! : {} => { arch : Str, os : Str }
 
 tempDir! : {} => List U8
+
+getLocale! : {} => Result Str {}
+getLocales! : {} => Result (List Str) {}

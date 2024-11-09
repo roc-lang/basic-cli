@@ -1,4 +1,9 @@
-module [line!, bytes!, Err]
+module [
+    Err,
+    line!,
+    bytes!,
+    readToEnd!,
+]
 
 import PlatformTasks
 
@@ -59,6 +64,7 @@ line! = \{} ->
     |> Result.mapErr handleErr
 
 ## Read bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
+## ‼️ This function can read no more than 256 bytes at a time. Use [readToEnd] if you need more.
 ##
 ## > This is typically used in combintation with [Tty.enableRawMode],
 ## which disables defaults terminal bevahiour and allows reading input
@@ -67,3 +73,19 @@ bytes! : {} => List U8
 bytes! = \{} ->
     # will return an empty list if no bytes are available
     PlatformTasks.stdinBytes! {}
+
+## Read all bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)) until EOF in this source.
+readToEnd! : {} => Result (List U8) [StdinErr Err]
+readToEnd! = \{} ->
+    PlatformTasks.stdinReadToEnd!
+    |> Result.mapErr \internalErr ->
+        when internalErr.tag is
+            BrokenPipe -> StdinErr BrokenPipe
+            WouldBlock -> StdinErr (Other "WouldBlock")
+            WriteZero -> StdinErr (Other "WriteZero")
+            Unsupported -> StdinErr Unsupported
+            Interrupted -> StdinErr Interrupted
+            OutOfMemory -> StdinErr OutOfMemory
+            UnexpectedEof -> StdinErr UnexpectedEof
+            InvalidInput -> StdinErr InvalidInput
+            Other -> StdinErr (Other internalErr.msg)

@@ -19,6 +19,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{env, io};
 use tokio::runtime::Runtime;
 
+mod glue;
+
 thread_local! {
    static TOKIO_RUNTIME: Runtime = tokio::runtime::Builder::new_current_thread()
        .enable_io()
@@ -432,6 +434,16 @@ pub extern "C" fn roc_fx_stdinBytes() -> RocResult<RocList<u8>, ()> {
     match stdin.lock().read(&mut buffer) {
         Ok(bytes_read) => RocResult::ok(RocList::from(&buffer[0..bytes_read])),
         Err(_) => RocResult::ok(RocList::from(([]).as_slice())),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_stdinReadToEnd() -> RocResult<RocList<u8>, glue::InternalIOErr> {
+    let stdin = std::io::stdin();
+    let mut buf = Vec::new();
+    match stdin.lock().read_to_end(&mut buf) {
+        Ok(bytes_read) => RocResult::ok(RocList::from(&buf[0..bytes_read])),
+        Err(err) => RocResult::err(err.into()),
     }
 }
 
@@ -1330,4 +1342,23 @@ pub extern "C" fn roc_fx_tempDir() -> RocResult<RocList<u8>, ()> {
     let path_os_string_bytes = std::env::temp_dir().into_os_string().into_encoded_bytes();
 
     RocResult::ok(RocList::from(path_os_string_bytes.as_slice()))
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_getLocale() -> RocResult<RocStr, ()> {
+    sys_locale::get_locale().map_or_else(
+        || RocResult::err(()),
+        |locale| RocResult::ok(locale.to_string().as_str().into()),
+    )
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_getLocales() -> RocResult<RocList<RocStr>, ()> {
+    const DEFAULT_MAX_LOCALES: usize = 10;
+    let locales = sys_locale::get_locales();
+    let mut roc_locales = RocList::with_capacity(DEFAULT_MAX_LOCALES);
+    for l in locales {
+        roc_locales.push(l.to_string().as_str().into());
+    }
+    RocResult::ok(roc_locales)
 }

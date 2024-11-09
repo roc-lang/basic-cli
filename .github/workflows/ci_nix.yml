@@ -53,3 +53,6 @@ jobs:
           sed -i.bak 's/\$ROC docs.*//g' ./ci/all_tests.sh
           # for SINGLE_TAG_GLUE_CHECK_OFF=1 see github.com/roc-lang/basic-cli/issues/242
           nix develop -c sh -c 'export SINGLE_TAG_GLUE_CHECK_OFF=1 && export ROC=roc && export EXAMPLES_DIR=./examples/ && ./ci/all_tests.sh'
+
+      - name: Check if jump-start script still works
+        run: nix develop -c sh -c 'export ROC=roc && bash ./jump-start.sh'
