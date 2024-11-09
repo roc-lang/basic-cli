@@ -4,40 +4,35 @@ import pf.Stdout
 import pf.Dir
 import pf.Path
 
-main! =
+main! = \{} ->
 
     # Create a directory
-    Dir.create! "dirExampleE"
-    |> Result.mapErr? UnableToCreateFirstDir
+    try Dir.create! "dirExampleE"
 
     # Create a directory and its parents
-    Dir.createAll! "dirExampleA/b/c/child"
-    |> Result.mapErr? UnableToCreateSubDirs
+    try Dir.createAll! "dirExampleA/b/c/child"
 
     # Create a child directory
-    Dir.create! "dirExampleA/child"
-    |> Result.mapErr? UnableToCreateChildDir
+    try Dir.create! "dirExampleA/child"
 
     # List the contents of a directory
-    paths =
+    pathsAsStr =
         Dir.list! "dirExampleA"
-        |> Result.mapErr? FailedToListDir
-
-    pathsAsStr = List.map paths Path.display
+        |> Result.map \paths -> List.map paths Path.display
+        |> try
 
     # Check the contents of the directory
     expect (Set.fromList pathsAsStr) == (Set.fromList ["dirExampleA/b", "dirExampleA/child"])
 
     # Try to create a directory without a parent (should fail, ignore error)
-    Dir.create! "dirExampleD/child"
-    |> Result.onErr? \_ -> Ok {}
+    when Dir.create! "dirExampleD/child" is
+        Ok {} -> {}
+        Err _ -> {}
 
     # Delete an empty directory
-    Dir.deleteEmpty! "dirExampleE"
-    |> Result.mapErr? UnableToDeleteEmptyDirectory
+    try Dir.deleteEmpty! "dirExampleE"
 
     # Delete all directories recursively
-    Dir.deleteAll! "dirExampleA"
-    |> Result.mapErr? UnableToDeleteRecursively
+    try Dir.deleteAll! "dirExampleA"
 
     Stdout.line! "Success!"
