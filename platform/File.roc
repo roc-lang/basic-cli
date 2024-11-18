@@ -44,8 +44,8 @@ WriteErr : Path.WriteErr
 ## ```
 ## # Writes `{"some":"json stuff"}` to the file `output.json`:
 ## File.write
-##     (Path.fromStr "output.json")
 ##     { some: "json stuff" }
+##     (Path.fromStr "output.json")
 ##     Json.toCompactUtf8
 ## ```
 ##
@@ -55,15 +55,15 @@ WriteErr : Path.WriteErr
 ## > To write unformatted bytes to a file, you can use [File.writeBytes] instead.
 ## >
 ## > [Path.write] does the same thing, except it takes a [Path] instead of a [Str].
-write : Str, val, fmt -> Task {} [FileWriteErr Path WriteErr] where val implements Encoding, fmt implements EncoderFormatting
-write = \path, val, fmt ->
-    Path.write (Path.fromStr path) val fmt
+write : val, Str, fmt -> Task {} [FileWriteErr Path WriteErr] where val implements Encoding, fmt implements EncoderFormatting
+write = \val, path, fmt ->
+    Path.write val (Path.fromStr path) fmt
 
 ## Writes bytes to a file.
 ##
 ## ```
 ## # Writes the bytes 1, 2, 3 to the file `myfile.dat`.
-## File.writeBytes (Path.fromStr "myfile.dat") [1, 2, 3]
+## File.writeBytes [1, 2, 3] (Path.fromStr "myfile.dat")
 ## ```
 ##
 ## This opens the file first and closes it after writing to it.
@@ -71,15 +71,15 @@ write = \path, val, fmt ->
 ## > To format data before writing it to a file, you can use [File.write] instead.
 ## >
 ## > [Path.writeBytes] does the same thing, except it takes a [Path] instead of a [Str].
-writeBytes : Str, List U8 -> Task {} [FileWriteErr Path WriteErr]
-writeBytes = \path, bytes ->
-    Path.writeBytes (Path.fromStr path) bytes
+writeBytes : List U8, Str -> Task {} [FileWriteErr Path WriteErr]
+writeBytes = \bytes, path ->
+    Path.writeBytes bytes (Path.fromStr path)
 
 ## Writes a [Str] to a file, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##
 ## ```
 ## # Writes "Hello!" encoded as UTF-8 to the file `myfile.txt`.
-## File.writeUtf8 "myfile.txt" "Hello!"
+## File.writeUtf8 "Hello!" "myfile.txt"
 ## ```
 ##
 ## This opens the file first and closes it after writing to it.
@@ -88,8 +88,8 @@ writeBytes = \path, bytes ->
 ## >
 ## > [Path.writeUtf8] does the same thing, except it takes a [Path] instead of a [Str].
 writeUtf8 : Str, Str -> Task {} [FileWriteErr Path WriteErr]
-writeUtf8 = \path, str ->
-    Path.writeUtf8 (Path.fromStr path) str
+writeUtf8 = \str, path ->
+    Path.writeUtf8 str (Path.fromStr path)
 
 ## Deletes a file from the filesystem.
 ##
