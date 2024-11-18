@@ -120,8 +120,8 @@ DirErr : [
 ## ```
 ## # Writes `{"some":"json stuff"}` to the file `output.json`:
 ## Path.write
-##     (Path.fromStr "output.json")
 ##     { some: "json stuff" }
+##     (Path.fromStr "output.json")
 ##     Json.toCompactUtf8
 ## ```
 ##
@@ -129,25 +129,25 @@ DirErr : [
 ## If writing to the file fails, for example because of a file permissions issue, the task fails with [WriteErr].
 ##
 ## > To write unformatted bytes to a file, you can use [Path.writeBytes] instead.
-write : Path, val, fmt -> Task {} [FileWriteErr Path WriteErr] where val implements Encoding, fmt implements EncoderFormatting
-write = \path, val, fmt ->
+write : val, Path, fmt -> Task {} [FileWriteErr Path WriteErr] where val implements Encoding, fmt implements EncoderFormatting
+write = \val, path, fmt ->
     bytes = Encode.toBytes val fmt
 
     # TODO handle encoding errors here, once they exist
-    writeBytes path bytes
+    writeBytes bytes path
 
 ## Writes bytes to a file.
 ##
 ## ```
 ## # Writes the bytes 1, 2, 3 to the file `myfile.dat`.
-## Path.writeBytes (Path.fromStr "myfile.dat") [1, 2, 3]
+## Path.writeBytes [1, 2, 3] (Path.fromStr "myfile.dat")
 ## ```
 ##
 ## This opens the file first and closes it after writing to it.
 ##
 ## > To format data before writing it to a file, you can use [Path.write] instead.
-writeBytes : Path, List U8 -> Task {} [FileWriteErr Path WriteErr]
-writeBytes = \path, bytes ->
+writeBytes : List U8, Path -> Task {} [FileWriteErr Path WriteErr]
+writeBytes = \bytes, path ->
     pathBytes = InternalPath.toBytes path
     PlatformTasks.fileWriteBytes pathBytes bytes
     |> Task.mapErr \err -> FileWriteErr path (InternalFile.handleWriteErr err)
@@ -156,14 +156,14 @@ writeBytes = \path, bytes ->
 ##
 ## ```
 ## # Writes "Hello!" encoded as UTF-8 to the file `myfile.txt`.
-## Path.writeUtf8 (Path.fromStr "myfile.txt") "Hello!"
+## Path.writeUtf8 "Hello!" (Path.fromStr "myfile.txt")
 ## ```
 ##
 ## This opens the file first and closes it after writing to it.
 ##
 ## > To write unformatted bytes to a file, you can use [Path.writeBytes] instead.
-writeUtf8 : Path, Str -> Task {} [FileWriteErr Path WriteErr]
-writeUtf8 = \path, str ->
+writeUtf8 : Str, Path -> Task {} [FileWriteErr Path WriteErr]
+writeUtf8 = \str, path ->
     pathBytes = InternalPath.toBytes path
     PlatformTasks.fileWriteUtf8 pathBytes str
     |> Task.mapErr \err -> FileWriteErr path (InternalFile.handleWriteErr err)
@@ -563,7 +563,7 @@ readUtf8 : Path -> Task Str [FileReadErr Path ReadErr, FileReadUtf8Err Path _]
 readUtf8 = \path ->
     bytes =
         PlatformTasks.fileReadBytes (InternalPath.toBytes path)
-            |> Task.mapErr! \readErr -> FileReadErr path (InternalFile.handleReadErr readErr)
+        |> Task.mapErr! \readErr -> FileReadErr path (InternalFile.handleReadErr readErr)
 
     Str.fromUtf8 bytes
     |> Result.mapErr \err -> FileReadUtf8Err path err
@@ -594,8 +594,8 @@ listDir : Path -> Task (List Path) [DirErr DirErr]
 listDir = \path ->
     result =
         InternalPath.toBytes path
-            |> PlatformTasks.dirList
-            |> Task.result!
+        |> PlatformTasks.dirList
+        |> Task.result!
 
     when result is
         Ok entries -> Task.ok (List.map entries InternalPath.fromOsBytes)

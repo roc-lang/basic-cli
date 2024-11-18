@@ -19,7 +19,7 @@ task =
     Stdout.line! "Directory contents:\n    $(dirEntriesStr)\n"
 
     Stdout.line! "Writing a string to out.txt"
-    File.writeUtf8! outTxtPath "a string!"
+    File.writeUtf8! "a string!" outTxtPath
 
     outTxtContents = File.readUtf8! outTxtPath
     Stdout.line "I read the file back. Its contents: \"$(outTxtContents)\""
