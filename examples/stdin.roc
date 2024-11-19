@@ -20,7 +20,7 @@ main =
 
 readNumberBytes : Task (List U8) _
 readNumberBytes =
-    bytesRead = Stdin.readToEnd! {}
+    bytesRead = Stdin.bytes! {}
 
     numberBytes =
         List.walk bytesRead [] \bytes, b ->

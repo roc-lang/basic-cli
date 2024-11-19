@@ -463,8 +463,9 @@ pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, RocStr> {
 
 #[no_mangle]
 pub extern "C" fn roc_fx_stdinBytes() -> RocResult<RocList<u8>, ()> {
+    const BUF_SIZE: usize = 16_384; // 16 KiB = 16 * 1024 = 16,384 bytes
     let stdin = std::io::stdin();
-    let mut buffer: [u8; 256] = [0; 256];
+    let mut buffer: [u8; BUF_SIZE] = [0; BUF_SIZE];
 
     match stdin.lock().read(&mut buffer) {
         Ok(bytes_read) => RocResult::ok(RocList::from(&buffer[0..bytes_read])),
