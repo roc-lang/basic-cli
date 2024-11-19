@@ -6,7 +6,7 @@ import pf.Stdin
 
 main =
     Stdout.line! "Enter a series of number characters (0-9):"
-    numberBytes = takeNumberBytes!
+    numberBytes = readNumberBytes!
 
     if List.isEmpty numberBytes then
         Stderr.line "Expected a series of number characters (0-9)"
@@ -18,9 +18,9 @@ main =
             Err _ ->
                 Stderr.line "Error, bad utf8"
 
-takeNumberBytes : Task (List U8) _
-takeNumberBytes =
-    bytesRead = Stdin.bytes! {}
+readNumberBytes : Task (List U8) _
+readNumberBytes =
+    bytesRead = Stdin.readToEnd! {}
 
     numberBytes =
         List.walk bytesRead [] \bytes, b ->
