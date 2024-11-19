@@ -21,7 +21,7 @@ fi
 
 if [ "$NO_BUILD" != "1" ]; then
   # May be needed for breaking roc changes. Also replace platform in build.roc with `cli: platform "platform/main.roc",`  
-  #./jump-start.sh
+  ./jump-start.sh
   
   # build the basic-cli platform
   $ROC ./build.roc -- --roc $ROC

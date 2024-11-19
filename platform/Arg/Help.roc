@@ -339,7 +339,7 @@ indentMultilineStringBy = \string, indentAmount ->
     indentation = Str.repeat " " indentAmount
 
     string
-    |> Str.split "\n"
+    |> Str.splitOn "\n"
     |> List.mapWithIndex \line, index ->
         if index == 0 then
             line
