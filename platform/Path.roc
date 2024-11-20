@@ -418,7 +418,10 @@ display = \path ->
 # Path.isDir, etc.
 
 ## Returns true if the path exists on disk and is pointing at a directory.
-## Any error will return false.
+## Returns `Task.ok false` if the path exists and it is not a directory. If the path does not exist,
+## this function will return `Task.err PathErr PathDoesNotExist`.
+##
+## This uses [rust's std::path::is_dir](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_dir).
 ##
 ## > [`File.isDir`](File#isDir) does the same thing, except it takes a [Str] instead of a [Path].
 isDir : Path -> Task Bool [PathErr MetadataErr]
@@ -427,7 +430,9 @@ isDir = \path ->
     Task.ok (res == IsDir)
 
 ## Returns true if the path exists on disk and is pointing at a regular file.
-## Any error will return false.
+## Returns `Task.ok false` if the path exists and it is not a file. If the path does not exist,
+## this function will return `Task.err PathErr PathDoesNotExist`.
+##
 ## This uses [rust's std::path::is_file](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_file).
 ##
 ## > [`File.isFile`](File#isFile) does the same thing, except it takes a [Str] instead of a [Path].
@@ -437,7 +442,10 @@ isFile = \path ->
     Task.ok (res == IsFile)
 
 ## Returns true if the path exists on disk and is pointing at a symbolic link.
-## Any error will return false.
+## Returns `Task.ok false` if the path exists and it is not a symbolic link. If the path does not exist,
+## this function will return `Task.err PathErr PathDoesNotExist`.
+##
+## This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
 ##
 ## > [`File.isSymLink`](File#isSymLink) does the same thing, except it takes a [Str] instead of a [Path].
 isSymLink : Path -> Task Bool [PathErr MetadataErr]
