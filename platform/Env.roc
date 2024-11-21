@@ -69,7 +69,7 @@ var = \name ->
 ## fail with [DecodeErr](https://www.roc-lang.org/builtins/Decode#DecodeError)
 ## because `123456789` is too large to fit in a [U16](https://www.roc-lang.org/builtins/Num#U16).
 ##
-decode : Str -> Task val [VarNotFound, DecodeErr DecodeError] where val implements Decoding
+decode : Str -> Task val [VarNotFound, DecodeErr [TooShort]] where val implements Decoding
 decode = \name ->
     result = PlatformTasks.envVar name |> Task.result!
     when result is
