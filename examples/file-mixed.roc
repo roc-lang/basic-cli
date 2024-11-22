@@ -23,7 +23,7 @@ task! = \{} ->
 
     try Stdout.line! "Writing a string to out.txt"
 
-    try File.writeUtf8! outTxtPath "a string!"
+    try File.writeUtf8! "a string!" outTxtPath
 
     outTxtContents = try File.readUtf8! outTxtPath
 

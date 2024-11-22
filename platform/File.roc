@@ -87,7 +87,7 @@ writeBytes! = \bytes, path ->
 ## > To write unformatted bytes to a file, you can use [File.writeBytes!] instead.
 ## >
 ## > [Path.writeUtf8!] does the same thing, except it takes a [Path] instead of a [Str].
-writeUtf8! : Str, Str => Result [FileWriteErr Path WriteErr]
+writeUtf8! : Str, Str => Result {} [FileWriteErr Path WriteErr]
 writeUtf8! = \str, path ->
     Path.writeUtf8! str (Path.fromStr path)
 

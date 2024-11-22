@@ -20,6 +20,6 @@ main! = \{} ->
 run! = \{} ->
     fileName = "LICENSE"
     contents = try File.readUtf8! fileName
-    lines = Str.split contents "\n"
+    lines = Str.splitOn contents "\n"
 
     Stdout.line! (Str.concat "First line of $(fileName): " (List.first lines |> Result.withDefault "err"))

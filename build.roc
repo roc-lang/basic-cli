@@ -1,13 +1,10 @@
 app [main] {
-    cli: platform "https://github.com/roc-lang/basic-cli/releases/download/0.15.0/SlwdbJ-3GR7uBWQo6zlmYWNYOxnvo8r6YABXD-45UOw.tar.br",
+    cli: platform "https://github.com/roc-lang/basic-cli/releases/download/0.16.0/O00IPk-Krg_diNS2dVWlI0ZQP794Vctxzv0ha96mK0E.tar.br",
 }
 
 import cli.Cmd
 import cli.Stdout
 import cli.Env
-import cli.Arg
-import cli.Arg.Opt as Opt
-import cli.Arg.Cli as Cli
 
 ## Builds the basic-cli [platform](https://www.roc-lang.org/platforms).
 ##
@@ -18,27 +15,23 @@ import cli.Arg.Cli as Cli
 main : Task {} _
 main =
 
-    cliParser =
-        { Cli.combine <-
-            debugMode: Opt.flag { short: "d", long: "debug", help: "Runs `cargo build` without `--release`." },
-            maybeRoc: Opt.maybeStr { short: "r", long: "roc", help: "Path to the roc executable. Can be just `roc` or a full path." },
-        }
-        |> Cli.finish {
-            name: "basic-cli-builder",
-            version: "",
-            authors: ["Luke Boswell <https://github.com/lukewilliamboswell>"],
-            description: "Generates all files needed by Roc to use this basic-cli platform.",
-        }
-        |> Cli.assertValid
+    rocCmd =
+        Env.var "ROC"
+        |> Task.result!
+        |> Result.withDefault "roc"
 
-    when Cli.parseOrDisplayMessage cliParser (Arg.list! {}) is
-        Ok args -> run args
-        Err errMsg -> Task.err (Exit 1 errMsg)
+    debugMode =
+        Env.var "DEBUG"
+        |> Task.result!
+        |> \result ->
+            when result is
+                Ok str if !(Str.isEmpty str) -> Bool.true
+                _ -> Bool.false
 
-run : { debugMode : Bool, maybeRoc : Result Str err } -> Task {} _
-run = \{ debugMode, maybeRoc } ->
-    # rocCmd may be a path or just roc
-    rocCmd = maybeRoc |> Result.withDefault "roc"
+    run { debugMode, rocCmd }
+
+run : { debugMode : Bool, rocCmd : Str } -> Task {} _
+run = \{ debugMode, rocCmd } ->
 
     rocVersion! rocCmd
 

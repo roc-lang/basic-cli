@@ -5,12 +5,12 @@
 
 set timeout 7
 
-spawn $env(EXAMPLES_DIR)/args div -n 5 -d 20
+spawn $env(EXAMPLES_DIR)/args foo
 
 source ./ci/expect_scripts/shared-code.exp
 
 
-expect "0.25\r\n" {
+expect "received argument: foo\r\n" {
     expect eof {
         check_exit_and_segfault
     }
