@@ -24,7 +24,7 @@ if [ "$NO_BUILD" != "1" ]; then
   #./jump-start.sh
   
   # build the basic-cli platform
-  $ROC ./build.roc --prebuilt-platform -- --roc $ROC
+  $ROC ./build.roc -- --roc $ROC
 fi
 
 # roc check
@@ -44,9 +44,9 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     fi
 
     if [ "$base_file" == "temp-dir.roc" ]; then
-        $ROC build --prebuilt-platform $roc_file $ROC_BUILD_FLAGS --linker=legacy
+        $ROC build $roc_file $ROC_BUILD_FLAGS --linker=legacy
     else
-        $ROC build --prebuilt-platform $roc_file $ROC_BUILD_FLAGS
+        $ROC build $roc_file $ROC_BUILD_FLAGS
     fi
     
 done
@@ -93,12 +93,12 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     if [ "$base_file" == "path.roc" ]; then
         absolute_roc=$(which $ROC | xargs realpath)
         cd $EXAMPLES_DIR
-        $absolute_roc dev --prebuilt-platform $base_file $ROC_BUILD_FLAGS
+        $absolute_roc dev $base_file $ROC_BUILD_FLAGS
         cd ..
     elif [ "$base_file" == "temp-dir.roc" ]; then
-        $ROC dev --prebuilt-platform $roc_file $ROC_BUILD_FLAGS --linker=legacy
+        $ROC dev $roc_file $ROC_BUILD_FLAGS --linker=legacy
     else
-        $ROC dev --prebuilt-platform $roc_file $ROC_BUILD_FLAGS
+        $ROC dev $roc_file $ROC_BUILD_FLAGS
     fi
 done
 
@@ -116,7 +116,7 @@ find . -type d -name "roc_nightly" -prune -o -type f -name "*.roc" -print | whil
 
             # don't exit script if test_command fails
             set +e
-            test_command=$($ROC test "$file" --prebuilt-platform)
+            test_command=$($ROC test "$file")
             test_exit_code=$?
             set -e
 

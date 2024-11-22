@@ -288,6 +288,7 @@ pub fn init() {
         roc_fx_exePath as _,
         roc_fx_stdinLine as _,
         roc_fx_stdinBytes as _,
+        roc_fx_stdinReadToEnd as _,
         roc_fx_stdoutLine as _,
         roc_fx_stdoutWrite as _,
         roc_fx_stderrLine as _,

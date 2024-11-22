@@ -58,10 +58,7 @@ line! = \{} ->
     |> Result.mapErr handleErr
 
 ## Read bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
-##
-## This function can read no more than 16 KiB at a time. Use [readToEnd] if you want to read all the bytes until `EOF`.
-##
-## This will return an empty list if NIL bytes are currently available.
+## ‼️ This function can read no more than 16,384 bytes at a time. Use [readToEnd] if you need more.
 ##
 ## > This is typically used in combintation with [Tty.enableRawMode],
 ## which disables defaults terminal bevahiour and allows reading input

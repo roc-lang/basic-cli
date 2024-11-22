@@ -22,6 +22,6 @@ roc build.roc
 ```
 Then you can run like usual:
 ```sh
-$ roc --prebuilt-platform examples/hello-world.roc
+$ roc examples/hello-world.roc
 Hello, World!
 ```

@@ -90,8 +90,8 @@ DirErr : [
 ## ```
 ## # Writes `{"some":"json stuff"}` to the file `output.json`:
 ## Path.write
-##     (Path.fromStr "output.json")
 ##     { some: "json stuff" }
+##     (Path.fromStr "output.json")
 ##     Json.toCompactUtf8
 ## ```
 ##
@@ -99,25 +99,25 @@ DirErr : [
 ## If writing to the file fails, for example because of a file permissions issue, the task fails with [WriteErr].
 ##
 ## > To write unformatted bytes to a file, you can use [Path.writeBytes] instead.
-write! : Path, val, fmt => Result {} [FileWriteErr Path WriteErr] where val implements Encoding, fmt implements EncoderFormatting
-write! = \path, val, fmt ->
+write! : val, Path, fmt => Result {} [FileWriteErr Path WriteErr] where val implements Encoding, fmt implements EncoderFormatting
+write! = \val, path, fmt ->
     bytes = Encode.toBytes val fmt
 
     # TODO handle encoding errors here, once they exist
-    writeBytes! path bytes
+    writeBytes! bytes path
 
 ## Writes bytes to a file.
 ##
 ## ```
 ## # Writes the bytes 1, 2, 3 to the file `myfile.dat`.
-## Path.writeBytes (Path.fromStr "myfile.dat") [1, 2, 3]
+## Path.writeBytes! [1, 2, 3] (Path.fromStr "myfile.dat")
 ## ```
 ##
 ## This opens the file first and closes it after writing to it.
 ##
 ## > To format data before writing it to a file, you can use [Path.write] instead.
-writeBytes! : Path, List U8 => Result {} [FileWriteErr Path WriteErr]
-writeBytes! = \path, bytes ->
+writeBytes! : List U8, Path => Result [FileWriteErr Path WriteErr]
+writeBytes! = \bytes, path ->
     pathBytes = InternalPath.toBytes path
 
     PlatformTasks.fileWriteBytes! pathBytes bytes
@@ -127,14 +127,14 @@ writeBytes! = \path, bytes ->
 ##
 ## ```
 ## # Writes "Hello!" encoded as UTF-8 to the file `myfile.txt`.
-## Path.writeUtf8 (Path.fromStr "myfile.txt") "Hello!"
+## Path.writeUtf8! "Hello!" (Path.fromStr "myfile.txt")
 ## ```
 ##
 ## This opens the file first and closes it after writing to it.
 ##
 ## > To write unformatted bytes to a file, you can use [Path.writeBytes] instead.
-writeUtf8! : Path, Str => Result {} [FileWriteErr Path WriteErr]
-writeUtf8! = \path, str ->
+writeUtf8! : Str, Path => Result {} [FileWriteErr Path WriteErr]
+writeUtf8! = \str, path ->
     pathBytes = InternalPath.toBytes path
 
     PlatformTasks.fileWriteUtf8! pathBytes str
@@ -206,7 +206,10 @@ display = \path ->
                 Err _ -> "�"
 
 ## Returns true if the path exists on disk and is pointing at a directory.
-## Any error will return false.
+## Returns `Task.ok false` if the path exists and it is not a directory. If the path does not exist,
+## this function will return `Task.err PathErr PathDoesNotExist`.
+##
+## This uses [rust's std::path::is_dir](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_dir).
 ##
 ## > [`File.isDir`](File#isDir) does the same thing, except it takes a [Str] instead of a [Path].
 isDir! : Path => Result Bool [PathErr MetadataErr]
@@ -215,7 +218,9 @@ isDir! = \path ->
     Ok (res == IsDir)
 
 ## Returns true if the path exists on disk and is pointing at a regular file.
-## Any error will return false.
+## Returns `Task.ok false` if the path exists and it is not a file. If the path does not exist,
+## this function will return `Task.err PathErr PathDoesNotExist`.
+##
 ## This uses [rust's std::path::is_file](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_file).
 ##
 ## > [`File.isFile`](File#isFile) does the same thing, except it takes a [Str] instead of a [Path].
@@ -225,7 +230,10 @@ isFile! = \path ->
     Ok (res == IsFile)
 
 ## Returns true if the path exists on disk and is pointing at a symbolic link.
-## Any error will return false.
+## Returns `Task.ok false` if the path exists and it is not a symbolic link. If the path does not exist,
+## this function will return `Task.err PathErr PathDoesNotExist`.
+##
+## This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
 ##
 ## > [`File.isSymLink`](File#isSymLink) does the same thing, except it takes a [Str] instead of a [Path].
 isSymLink! : Path => Result Bool [PathErr MetadataErr]
@@ -328,7 +336,7 @@ readUtf8! : Path => Result Str [FileReadErr Path ReadErr, FileReadUtf8Err Path _
 readUtf8! = \path ->
     bytes =
         PlatformTasks.fileReadBytes! (InternalPath.toBytes path)
-            |> Result.mapErr? \readErr -> FileReadErr path (InternalFile.handleReadErr readErr)
+        |> Result.mapErr! \readErr -> FileReadErr path (InternalFile.handleReadErr readErr)
 
     Str.fromUtf8 bytes
     |> Result.mapErr \err -> FileReadUtf8Err path err
