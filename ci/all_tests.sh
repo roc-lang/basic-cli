@@ -20,11 +20,11 @@ if [ -z "${ROC}" ]; then
 fi
 
 if [ "$NO_BUILD" != "1" ]; then
-  # May be needed for breaking roc changes. Also replace platform in build.roc with `cli: platform "platform/main.roc",`  
+  # May be needed for breaking roc changes. Also replace platform in build.roc with `cli: platform "platform/main.roc",`
   #./jump-start.sh
-  
+
   # build the basic-cli platform
-  $ROC ./build.roc -- --roc $ROC
+  $ROC ./build.roc
 fi
 
 # roc check
@@ -48,7 +48,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     else
         $ROC build $roc_file $ROC_BUILD_FLAGS
     fi
-    
+
 done
 
 # prep for next step

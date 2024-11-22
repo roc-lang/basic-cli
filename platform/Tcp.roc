@@ -164,7 +164,7 @@ readLine! = \stream ->
 write! : Stream, List U8 => Result {} [TcpWriteErr StreamErr]
 write! = \@Stream stream, bytes ->
     PlatformTasks.tcpWrite! stream bytes
-        |> Result.mapErr \err -> TcpWriteErr (parseStreamErr err)
+    |> Result.mapErr \err -> TcpWriteErr (parseStreamErr err)
 
 ## Writes a [Str] to a TCP stream, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##

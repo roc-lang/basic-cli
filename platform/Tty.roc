@@ -2,7 +2,7 @@
 ##
 ## Note: we plan on moving this file away from basic-cli in the future, see github.com/roc-lang/basic-cli/issues/73
 ##
-module [disableRawMode!,enableRawMode!]
+module [disableRawMode!, enableRawMode!]
 
 import PlatformTasks
 

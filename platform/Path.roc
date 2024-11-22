@@ -336,7 +336,7 @@ readUtf8! : Path => Result Str [FileReadErr Path ReadErr, FileReadUtf8Err Path _
 readUtf8! = \path ->
     bytes =
         PlatformTasks.fileReadBytes! (InternalPath.toBytes path)
-        |> Result.mapErr? \readErr -> FileReadErr path (InternalFile.handleReadErr readErr)
+            |> Result.mapErr? \readErr -> FileReadErr path (InternalFile.handleReadErr readErr)
 
     Str.fromUtf8 bytes
     |> Result.mapErr \err -> FileReadUtf8Err path err

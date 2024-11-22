@@ -64,7 +64,7 @@ jobs:
           rustup target add x86_64-unknown-linux-musl
 
       - name: Test building with musl target
-        run: CARGO_BUILD_TARGET=x86_64-unknown-linux-musl ./roc_nightly/roc build.roc -- --roc ./roc_nightly/roc
+        run: ROC=./roc_nightly/roc CARGO_BUILD_TARGET=x86_64-unknown-linux-musl ./roc_nightly/roc build.roc
 
       - name: Test using musl build
         run: |
