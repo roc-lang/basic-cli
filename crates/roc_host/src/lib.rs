@@ -132,6 +132,29 @@ pub unsafe extern "C" fn roc_dbg(loc: &RocStr, msg: &RocStr, src: &RocStr) {
 /// # Safety
 ///
 /// This function is unsafe.
+#[no_mangle]
+pub unsafe extern "C" fn roc_expect_failed(
+    loc: &RocStr,
+    src: &RocStr,
+    variables: &RocList<glue::Variable>,
+) {
+    eprintln!("\nExpectation failed at {}:", loc.as_str());
+    eprintln!("\nExpression:\n\t{}\n", src.as_str());
+
+    if !variables.is_empty() {
+        eprintln!("With values:");
+        for var in variables.iter() {
+            eprintln!("\t{} = {}", var.name.as_str(), var.value.as_str());
+        }
+        eprintln!();
+    }
+
+    std::process::exit(1);
+}
+
+/// # Safety
+///
+/// This function is unsafe.
 #[cfg(unix)]
 #[no_mangle]
 pub unsafe extern "C" fn roc_getppid() -> libc::pid_t {
