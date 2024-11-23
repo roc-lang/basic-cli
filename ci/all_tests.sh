@@ -20,11 +20,11 @@ if [ -z "${ROC}" ]; then
 fi
 
 if [ "$NO_BUILD" != "1" ]; then
-  # May be needed for breaking roc changes. Also replace platform in build.roc with `cli: platform "platform/main.roc",`
-  #./jump-start.sh
-
+  # May be needed for breaking roc changes. Also replace platform in build.roc with `cli: platform "platform/main.roc",`  
+  ./jump-start.sh
+  
   # build the basic-cli platform
-  $ROC ./build.roc
+  $ROC ./build.roc --linker=legacy -- --roc $ROC
 fi
 
 # roc check
