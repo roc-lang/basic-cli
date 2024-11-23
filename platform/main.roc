@@ -27,29 +27,27 @@ import Stderr
 
 mainForHost! : I32 => Result {} I32
 mainForHost! = \_ ->
-    main! {}
-    |> \result ->
-        when result is
-            Ok {} -> Ok {}
-            Err (Exit code msg) ->
-                if Str.isEmpty msg then
-                    Err code
-                    else
+    when main! {} is
+        Ok {} -> Ok {}
+        Err (Exit code msg) ->
+            if Str.isEmpty msg then
+                Err code
+                else
 
-                when Stderr.line! msg is
-                    Ok {} -> Err code
-                    Err (StderrErr _) -> Err code
+            when Stderr.line! msg is
+                Ok {} -> Err code
+                Err (StderrErr _) -> Err code
 
-            Err msg ->
-                helpMsg =
-                    """
-                    Program exited with error:
-                        $(Inspect.toStr msg)
+        Err msg ->
+            helpMsg =
+                """
+                Program exited with error:
+                    $(Inspect.toStr msg)
 
-                    Tip: If you do not want to exit on this error, use `Result.mapErr` to handle the error.
-                    Docs for `Result.mapErr`: <https://www.roc-lang.org/builtins/Result#mapErr>
-                    """
+                Tip: If you do not want to exit on this error, use `Result.mapErr` to handle the error.
+                Docs for `Result.mapErr`: <https://www.roc-lang.org/builtins/Result#mapErr>
+                """
 
-                when Stderr.line! helpMsg is
-                    Ok {} -> Err 1
-                    Err (StderrErr _) -> Err 1
+            when Stderr.line! helpMsg is
+                Ok {} -> Err 1
+                Err (StderrErr _) -> Err 1

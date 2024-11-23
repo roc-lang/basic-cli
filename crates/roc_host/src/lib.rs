@@ -334,10 +334,7 @@ pub fn init() {
 #[no_mangle]
 pub extern "C" fn rust_main() -> i32 {
     init();
-    call_roc_init()
-}
 
-pub fn call_roc_init() -> i32 {
     extern "C" {
         #[link_name = "roc__mainForHost_1_exposed"]
         pub fn roc_main_for_host_caller(not_used: i32) -> i32;
@@ -346,13 +343,13 @@ pub fn call_roc_init() -> i32 {
         pub fn roc_main__for_host_size() -> usize;
     }
 
+    let exit_code: i32 = unsafe { roc_main_for_host_caller(0) };
+
     unsafe {
-        let exit_code: i32 = roc_main_for_host_caller(0);
-
         debug_assert_eq!(std::mem::size_of_val(&exit_code), roc_main__for_host_size());
-
-        exit_code
     }
+
+    exit_code
 }
 
 #[no_mangle]
