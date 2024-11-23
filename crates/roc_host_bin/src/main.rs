@@ -1,4 +1,4 @@
-use roc_std::{RocList, RocStr, ReadOnlyRocList, ReadOnlyRocStr};
+use roc_std::{ReadOnlyRocList, ReadOnlyRocStr, RocList, RocStr};
 use std::borrow::Borrow;
 
 fn main() {
