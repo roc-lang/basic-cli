@@ -5,6 +5,7 @@ import pf.Stdout
 
 main! = \{} -> tick! {}
 
+tick! : {} => Result {} [StdoutErr _]
 tick! = \{} ->
     when Stdin.line! {} is
         Ok str ->
