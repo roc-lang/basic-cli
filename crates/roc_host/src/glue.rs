@@ -81,3 +81,23 @@ impl From<std::io::Error> for IOErr {
         }
     }
 }
+
+#[repr(C)]
+pub struct Variable {
+    pub name: RocStr,
+    pub value: RocStr,
+}
+
+impl roc_std::RocRefcounted for Variable {
+    fn inc(&mut self) {
+        self.name.inc();
+        self.value.inc();
+    }
+    fn dec(&mut self) {
+        self.name.dec();
+        self.value.dec();
+    }
+    fn is_refcounted() -> bool {
+        true
+    }
+}
