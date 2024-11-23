@@ -77,18 +77,7 @@ impl From<std::io::Error> for IOErr {
             std::io::ErrorKind::Interrupted => with_empty_msg(IOErrTag::Interrupted),
             std::io::ErrorKind::Unsupported => with_empty_msg(IOErrTag::Unsupported),
             std::io::ErrorKind::OutOfMemory => with_empty_msg(IOErrTag::OutOfMemory),
-            std::io::ErrorKind::TimedOut
-            | std::io::ErrorKind::ConnectionRefused
-            | std::io::ErrorKind::ConnectionReset
-            | std::io::ErrorKind::ConnectionAborted
-            | std::io::ErrorKind::NotConnected
-            | std::io::ErrorKind::AddrInUse
-            | std::io::ErrorKind::AddrNotAvailable
-            | std::io::ErrorKind::WouldBlock
-            | std::io::ErrorKind::WriteZero
-            | std::io::ErrorKind::UnexpectedEof
-            | std::io::ErrorKind::Other
-            | _ => other(),
+            _ => other(),
         }
     }
 }

@@ -614,7 +614,7 @@ pub extern "C" fn roc_fx_fileReadLine(data: RocBox<()>) -> RocResult<RocList<u8>
     let buf_reader: &mut BufReader<File> = ThreadSafeRefcountedResourceHeap::box_to_resource(data);
 
     let mut buffer = RocList::empty();
-    match read_until(buf_reader, '\n' as u8, &mut buffer) {
+    match read_until(buf_reader, b'\n', &mut buffer) {
         Ok(..) => {
             // Note: this returns an empty list when no bytes were read, e.g. End Of File
             RocResult::ok(buffer)
@@ -986,7 +986,7 @@ pub extern "C" fn roc_fx_tcpConnect(host: &RocStr, port: u16) -> RocResult<RocBo
                 Err(err) => RocResult::err(to_tcp_connect_err(err)),
             }
         }
-        Err(err) => return RocResult::err(to_tcp_connect_err(err)),
+        Err(err) => RocResult::err(to_tcp_connect_err(err)),
     }
 }
 
