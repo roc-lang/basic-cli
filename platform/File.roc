@@ -54,7 +54,7 @@ WriteErr : Path.WriteErr
 ##
 ## > To write unformatted bytes to a file, you can use [File.writeBytes!] instead.
 ## >
-## > [Path.write] does the same thing, except it takes a [Path] instead of a [Str].
+## > [Path.write!] does the same thing, except it takes a [Path] instead of a [Str].
 write! : val, Str, fmt => Result {} [FileWriteErr Path WriteErr] where val implements Encoding, fmt implements EncoderFormatting
 write! = \val, path, fmt ->
     Path.write! val (Path.fromStr path) fmt

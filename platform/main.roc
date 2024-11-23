@@ -17,6 +17,7 @@ platform "cli"
         Sleep,
         Cmd,
         Tty,
+        Locale,
     ]
     packages {}
     imports []

@@ -89,7 +89,7 @@ DirErr : [
 ##
 ## ```
 ## # Writes `{"some":"json stuff"}` to the file `output.json`:
-## Path.write
+## Path.write!
 ##     { some: "json stuff" }
 ##     (Path.fromStr "output.json")
 ##     Json.toCompactUtf8
@@ -98,7 +98,7 @@ DirErr : [
 ## This opens the file first and closes it after writing to it.
 ## If writing to the file fails, for example because of a file permissions issue, the task fails with [WriteErr].
 ##
-## > To write unformatted bytes to a file, you can use [Path.writeBytes] instead.
+## > To write unformatted bytes to a file, you can use [Path.writeBytes!] instead.
 write! : val, Path, fmt => Result {} [FileWriteErr Path WriteErr] where val implements Encoding, fmt implements EncoderFormatting
 write! = \val, path, fmt ->
     bytes = Encode.toBytes val fmt
@@ -115,7 +115,7 @@ write! = \val, path, fmt ->
 ##
 ## This opens the file first and closes it after writing to it.
 ##
-## > To format data before writing it to a file, you can use [Path.write] instead.
+## > To format data before writing it to a file, you can use [Path.write!] instead.
 writeBytes! : List U8, Path => Result {} [FileWriteErr Path WriteErr]
 writeBytes! = \bytes, path ->
     pathBytes = InternalPath.toBytes path
@@ -132,7 +132,7 @@ writeBytes! = \bytes, path ->
 ##
 ## This opens the file first and closes it after writing to it.
 ##
-## > To write unformatted bytes to a file, you can use [Path.writeBytes] instead.
+## > To write unformatted bytes to a file, you can use [Path.writeBytes!] instead.
 writeUtf8! : Str, Path => Result {} [FileWriteErr Path WriteErr]
 writeUtf8! = \str, path ->
     pathBytes = InternalPath.toBytes path
@@ -211,7 +211,7 @@ display = \path ->
 ##
 ## This uses [rust's std::path::is_dir](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_dir).
 ##
-## > [`File.isDir`](File#isDir) does the same thing, except it takes a [Str] instead of a [Path].
+## > [`File.isDir`](File#isDir!) does the same thing, except it takes a [Str] instead of a [Path].
 isDir! : Path => Result Bool [PathErr MetadataErr]
 isDir! = \path ->
     res = type!? path
@@ -223,7 +223,7 @@ isDir! = \path ->
 ##
 ## This uses [rust's std::path::is_file](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_file).
 ##
-## > [`File.isFile`](File#isFile) does the same thing, except it takes a [Str] instead of a [Path].
+## > [`File.isFile`](File#isFile!) does the same thing, except it takes a [Str] instead of a [Path].
 isFile! : Path => Result Bool [PathErr MetadataErr]
 isFile! = \path ->
     res = type!? path
@@ -235,7 +235,7 @@ isFile! = \path ->
 ##
 ## This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
 ##
-## > [`File.isSymLink`](File#isSymLink) does the same thing, except it takes a [Str] instead of a [Path].
+## > [`File.isSymLink`](File#isSymLink!) does the same thing, except it takes a [Str] instead of a [Path].
 isSymLink! : Path => Result Bool [PathErr MetadataErr]
 isSymLink! = \path ->
     res = type!? path
@@ -243,7 +243,7 @@ isSymLink! = \path ->
 
 ## Return the type of the path if the path exists on disk.
 ##
-## > [`File.type`](File#type) does the same thing, except it takes a [Str] instead of a [Path].
+## > [`File.type`](File#type!) does the same thing, except it takes a [Str] instead of a [Path].
 type! : Path => Result [IsFile, IsDir, IsSymLink] [PathErr MetadataErr]
 type! = \path ->
     PlatformTasks.pathType! (InternalPath.toBytes path)
@@ -313,7 +313,7 @@ withExtension = \path, extension ->
 ## the last file handle to it is closed, and on UNIX, it will not remove it until the last
 ## [hard link](https://en.wikipedia.org/wiki/Hard_link) to it has been deleted.
 ##
-## > [`File.delete`](File#delete) does the same thing, except it takes a [Str] instead of a [Path].
+## > [`File.delete`](File#delete!) does the same thing, except it takes a [Str] instead of a [Path].
 delete! : Path => Result {} [FileWriteErr Path WriteErr]
 delete! = \path ->
     PlatformTasks.fileDelete! (InternalPath.toBytes path)
@@ -329,9 +329,9 @@ delete! = \path ->
 ## This opens the file first and closes it after writing to it.
 ## The task will fail with `FileReadUtf8Err` if the given file contains invalid UTF-8.
 ##
-## > To read unformatted bytes from a file, you can use [Path.readBytes] instead.
+## > To read unformatted bytes from a file, you can use [Path.readBytes!] instead.
 ## >
-## > [`File.readUtf8`](File#readUtf8) does the same thing, except it takes a [Str] instead of a [Path].
+## > [`File.readUtf8`](File#readUtf8!) does the same thing, except it takes a [Str] instead of a [Path].
 readUtf8! : Path => Result Str [FileReadErr Path ReadErr, FileReadUtf8Err Path _]
 readUtf8! = \path ->
     bytes =
@@ -345,14 +345,14 @@ readUtf8! = \path ->
 ##
 ## ```
 ## # Read all the bytes in `myfile.txt`.
-## Path.readBytes (Path.fromStr "myfile.txt")
+## Path.readBytes! (Path.fromStr "myfile.txt")
 ## ```
 ##
 ## This opens the file first and closes it after reading its contents.
 ##
 ## > To read and decode data from a file, you can use `Path.read` instead.
 ## >
-## > [`File.readBytes`](File#readBytes) does the same thing, except it takes a [Str] instead of a [Path].
+## > [`File.readBytes`](File#readBytes!) does the same thing, except it takes a [Str] instead of a [Path].
 readBytes! : Path => Result (List U8) [FileReadErr Path ReadErr]
 readBytes! = \path ->
     PlatformTasks.fileReadBytes! (InternalPath.toBytes path)
@@ -360,7 +360,7 @@ readBytes! = \path ->
 
 ## Lists the files and directories inside the directory.
 ##
-## > [`Dir.list`](Dir#list) does the same thing, except it takes a [Str] instead of a [Path].
+## > [`Dir.list`](Dir#list!) does the same thing, except it takes a [Str] instead of a [Path].
 listDir! : Path => Result (List Path) [DirErr DirErr]
 listDir! = \path ->
     when PlatformTasks.dirList! (InternalPath.toBytes path) is
@@ -375,7 +375,7 @@ listDir! = \path ->
 ##   - the directory is not empty
 ##   - the user lacks permission to remove the directory.
 ##
-## > [`Dir.deleteEmpty`](Dir#deleteEmpty) does the same thing, except it takes a [Str] instead of a [Path].
+## > [`Dir.deleteEmpty`](Dir#deleteEmpty!) does the same thing, except it takes a [Str] instead of a [Path].
 deleteEmpty! : Path => Result {} [DirErr DirErr]
 deleteEmpty! = \path ->
     PlatformTasks.dirDeleteEmpty! (InternalPath.toBytes path)
@@ -390,7 +390,7 @@ deleteEmpty! = \path ->
 ##   - the directory is not empty
 ##   - the user lacks permission to remove the directory.
 ##
-## > [`Dir.deleteAll`](Dir#deleteAll) does the same thing, except it takes a [Str] instead of a [Path].
+## > [`Dir.deleteAll`](Dir#deleteAll!) does the same thing, except it takes a [Str] instead of a [Path].
 deleteAll! : Path => Result {} [DirErr DirErr]
 deleteAll! = \path ->
     PlatformTasks.dirDeleteAll! (InternalPath.toBytes path)
@@ -403,7 +403,7 @@ deleteAll! = \path ->
 ##   - the user lacks permission to create a directory there
 ##   - the path already exists.
 ##
-## > [`Dir.create`](Dir#create) does the same thing, except it takes a [Str] instead of a [Path].
+## > [`Dir.create`](Dir#create!) does the same thing, except it takes a [Str] instead of a [Path].
 createDir! : Path => Result {} [DirErr DirErr]
 createDir! = \path ->
     PlatformTasks.dirCreate! (InternalPath.toBytes path)
@@ -415,7 +415,7 @@ createDir! = \path ->
 ##   - the user lacks permission to create a directory there
 ##   - the path already exists
 ##
-## > [`Dir.createAll`](Dir#createAll) does the same thing, except it takes a [Str] instead of a [Path].
+## > [`Dir.createAll`](Dir#createAll!) does the same thing, except it takes a [Str] instead of a [Path].
 createAll! : Path => Result {} [DirErr DirErr]
 createAll! = \path ->
     PlatformTasks.dirCreateAll! (InternalPath.toBytes path)

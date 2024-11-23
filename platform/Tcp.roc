@@ -129,7 +129,7 @@ readExactly! = \@Stream stream, bytesToRead ->
 ##
 ## If found, the delimiter is included as the last byte.
 ##
-## > To read until a newline is found, you can use [Tcp.readLine] which
+## > To read until a newline is found, you can use [Tcp.readLine!] which
 ## conveniently decodes to a [Str].
 readUntil! : Stream, U8 => Result (List U8) [TcpReadErr StreamErr]
 readUntil! = \@Stream stream, byte ->
@@ -173,7 +173,7 @@ write! = \@Stream stream, bytes ->
 ## Tcp.writeUtf8! stream "Hi from Roc!"
 ## ```
 ##
-## > To write unformatted bytes, you can use [Tcp.write] instead.
+## > To write unformatted bytes, you can use [Tcp.write!] instead.
 writeUtf8! : Stream, Str => Result {} [TcpWriteErr StreamErr]
 writeUtf8! = \stream, str ->
     write! stream (Str.toUtf8 str)

@@ -127,4 +127,4 @@ currentArchOS! : {} => { arch : Str, os : Str }
 tempDir! : {} => List U8
 
 getLocale! : {} => Result Str {}
-getLocales! : {} => Result (List Str) {}
+getLocales! : {} => List Str

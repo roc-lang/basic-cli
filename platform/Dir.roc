@@ -26,7 +26,7 @@ DirEntry : Path.DirEntry
 
 ## Lists the files and directories inside the directory.
 ##
-## > [Path.listDir] does the same thing, except it takes a [Path] instead of a [Str].
+## > [Path.listDir!] does the same thing, except it takes a [Path] instead of a [Str].
 list! : Str => Result (List Path) [DirErr Err]
 list! = \path ->
     Path.listDir! (Path.fromStr path)
@@ -39,7 +39,7 @@ list! = \path ->
 ##   - the directory is not empty
 ##   - the user lacks permission to remove the directory.
 ##
-## > [Path.deleteEmpty] does the same thing, except it takes a [Path] instead of a [Str].
+## > [Path.deleteEmpty!] does the same thing, except it takes a [Path] instead of a [Str].
 deleteEmpty! : Str => Result {} [DirErr Err]
 deleteEmpty! = \path ->
     Path.deleteEmpty! (Path.fromStr path)
@@ -53,7 +53,7 @@ deleteEmpty! = \path ->
 ##   - the directory is not empty
 ##   - the user lacks permission to remove the directory.
 ##
-## > [Path.deleteAll] does the same thing, except it takes a [Path] instead of a [Str].
+## > [Path.deleteAll!] does the same thing, except it takes a [Path] instead of a [Str].
 deleteAll! : Str => Result {} [DirErr Err]
 deleteAll! = \path ->
     Path.deleteAll! (Path.fromStr path)
@@ -65,7 +65,7 @@ deleteAll! = \path ->
 ##   - the user lacks permission to create a directory there
 ##   - the path already exists.
 ##
-## > [Path.createDir] does the same thing, except it takes a [Path] instead of a [Str].
+## > [Path.createDir!] does the same thing, except it takes a [Path] instead of a [Str].
 create! : Str => Result {} [DirErr Err]
 create! = \path ->
     Path.createDir! (Path.fromStr path)
@@ -76,7 +76,7 @@ create! = \path ->
 ##   - the user lacks permission to create a directory there
 ##   - the path already exists
 ##
-## > [Path.createAll] does the same thing, except it takes a [Path] instead of a [Str].
+## > [Path.createAll!] does the same thing, except it takes a [Path] instead of a [Str].
 createAll! : Str => Result {} [DirErr Err]
 createAll! = \path ->
     Path.createAll! (Path.fromStr path)

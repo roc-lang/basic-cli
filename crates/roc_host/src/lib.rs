@@ -1316,12 +1316,12 @@ pub extern "C" fn roc_fx_getLocale() -> RocResult<RocStr, ()> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_getLocales() -> RocResult<RocList<RocStr>, ()> {
+pub extern "C" fn roc_fx_getLocales() -> RocList<RocStr> {
     const DEFAULT_MAX_LOCALES: usize = 10;
     let locales = sys_locale::get_locales();
     let mut roc_locales = RocList::with_capacity(DEFAULT_MAX_LOCALES);
     for l in locales {
         roc_locales.push(l.to_string().as_str().into());
     }
-    RocResult::ok(roc_locales)
+    roc_locales
 }

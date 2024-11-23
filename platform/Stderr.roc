@@ -43,7 +43,7 @@ handleErr = \{ tag, msg } ->
 ## Write the given string to [standard error](https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)),
 ## followed by a newline.
 ##
-## > To write to `stderr` without the newline, see [Stderr.write].
+## > To write to `stderr` without the newline, see [Stderr.write!].
 line! : Str => Result {} [StderrErr Err]
 line! = \str ->
     PlatformTasks.stderrLine! str
@@ -54,7 +54,7 @@ line! = \str ->
 ## Most terminals will not actually display strings that are written to them until they receive a newline,
 ## so this may appear to do nothing until you write a newline!
 ##
-## > To write to `stderr` with a newline at the end, see [Stderr.line].
+## > To write to `stderr` with a newline at the end, see [Stderr.line!].
 write! : Str => Result {} [StderrErr Err]
 write! = \str ->
     PlatformTasks.stderrWrite! str
