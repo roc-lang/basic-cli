@@ -3,7 +3,10 @@ app [main!] { pf: platform "../platform/main.roc" }
 import pf.Stdin
 import pf.Stdout
 
-main! = \{} -> tick! {}
+main! = \{} ->
+    try Stdout.line! "Shout into this cave and hear the echo!"
+
+    tick! {}
 
 tick! : {} => Result {} [StdoutErr _]
 tick! = \{} ->
