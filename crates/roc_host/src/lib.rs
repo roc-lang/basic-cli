@@ -320,6 +320,8 @@ pub fn init() {
         roc_fx_dirDeleteAll as _,
         roc_fx_currentArchOS as _,
         roc_fx_tempDir as _,
+        roc_fx_getLocale as _,
+        roc_fx_getLocales as _,
     ];
     #[allow(forgetting_references)]
     std::mem::forget(std::hint::black_box(funcs));
@@ -345,6 +347,8 @@ pub extern "C" fn rust_main() -> i32 {
 
     let exit_code: i32 = unsafe { roc_main_for_host_caller(0) };
 
+    dbg!(exit_code);
+
     unsafe {
         debug_assert_eq!(std::mem::size_of_val(&exit_code), roc_main__for_host_size());
     }
@@ -366,13 +370,12 @@ pub extern "C" fn roc_fx_envDict() -> RocList<(RocStr, RocStr)> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_args() -> RocResult<RocList<RocStr>, ()> {
-    // TODO: can we be more efficient about reusing the String's memory for RocStr?
-    RocResult::ok(
-        std::env::args_os()
-            .map(|os_str| RocStr::from(os_str.to_string_lossy().borrow()))
-            .collect(),
-    )
+pub extern "C" fn roc_fx_args() -> RocList<RocStr> {
+    // TODO: can we be more efficient about re_using the String's memory for RocStr?
+
+    std::env::args_os()
+        .map(|os_str| RocStr::from(os_str.to_string_lossy().borrow()))
+        .collect()
 }
 
 #[no_mangle]
@@ -488,17 +491,17 @@ pub extern "C" fn roc_fx_stderrWrite(text: &RocStr) -> RocResult<(), glue::IOErr
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_ttyModeCanonical() -> RocResult<(), ()> {
+pub extern "C" fn roc_fx_ttyModeCanonical() -> () {
     crossterm::terminal::disable_raw_mode().expect("failed to disable raw mode");
 
-    RocResult::ok(())
+    ()
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_ttyModeRaw() -> RocResult<(), ()> {
+pub extern "C" fn roc_fx_ttyModeRaw() -> () {
     crossterm::terminal::enable_raw_mode().expect("failed to enable raw mode");
 
-    RocResult::ok(())
+    ()
 }
 
 #[no_mangle]
@@ -686,9 +689,11 @@ pub extern "C" fn roc_fx_posixTime() -> roc_std::U128 {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_sleepMillis(milliseconds: u64) {
+pub extern "C" fn roc_fx_sleepMillis(milliseconds: u64) -> () {
     let duration = Duration::from_millis(milliseconds);
     std::thread::sleep(duration);
+
+    ()
 }
 
 #[no_mangle]
@@ -1283,6 +1288,7 @@ fn handleDirError(io_err: std::io::Error) -> RocStr {
     }
 }
 
+#[derive(Debug)]
 #[repr(C)]
 pub struct ReturnArchOS {
     arch: RocStr,
@@ -1290,18 +1296,18 @@ pub struct ReturnArchOS {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_currentArchOS() -> RocResult<ReturnArchOS, ()> {
-    RocResult::ok(ReturnArchOS {
+pub extern "C" fn roc_fx_currentArchOS() -> ReturnArchOS {
+    ReturnArchOS {
         arch: std::env::consts::ARCH.into(),
         os: std::env::consts::OS.into(),
-    })
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tempDir() -> RocResult<RocList<u8>, ()> {
+pub extern "C" fn roc_fx_tempDir() -> RocList<u8> {
     let path_os_string_bytes = std::env::temp_dir().into_os_string().into_encoded_bytes();
 
-    RocResult::ok(RocList::from(path_os_string_bytes.as_slice()))
+    RocList::from(path_os_string_bytes.as_slice())
 }
 
 #[no_mangle]

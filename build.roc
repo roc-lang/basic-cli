@@ -54,7 +54,9 @@ getOSAndArch! : {} => Result OSAndArch _
 getOSAndArch! = \{} ->
     try info! "Getting the native operating system and architecture ..."
 
-    convertOSAndArch! (Env.platform! {})
+    {os, arch} = Env.platform! {}
+
+    convertOSAndArch! {os, arch}
 
 OSAndArch : [
     MacosArm64,

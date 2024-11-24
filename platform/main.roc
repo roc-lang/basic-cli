@@ -29,23 +29,23 @@ mainForHost! : I32 => Result {} I32
 mainForHost! = \_ ->
     when main! {} is
         Ok {} -> Ok {}
+
         Err (Exit code msg) ->
             if Str.isEmpty msg then
                 Err code
-                else
-
-            when Stderr.line! msg is
-                Ok {} -> Err code
-                Err (StderrErr _) -> Err code
+            else
+                when Stderr.line! msg is
+                    Ok {} -> Err code
+                    Err (StderrErr _) -> Err code
 
         Err msg ->
+
             helpMsg =
                 """
                 Program exited with error:
                     $(Inspect.toStr msg)
 
-                Tip: If you do not want to exit on this error, use `Result.mapErr` to handle the error.
-                Docs for `Result.mapErr`: <https://www.roc-lang.org/builtins/Result#mapErr>
+                Tip: If you do not want to exit on this error, use `Result.mapErr` to handle the error. Docs for `Result.mapErr`: <https://www.roc-lang.org/builtins/Result#mapErr>
                 """
 
             when Stderr.line! helpMsg is
