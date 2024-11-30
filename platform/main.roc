@@ -34,9 +34,8 @@ mainForHost! = \_ ->
             if Str.isEmpty msg then
                 code
             else
-                when Stderr.line! msg is
-                    Ok {} -> code
-                    Err (StderrErr _) -> code
+                _= Stderr.line! msg
+                code
 
         Err msg ->
 
@@ -48,6 +47,5 @@ mainForHost! = \_ ->
                 Tip: If you do not want to exit on this error, use `Result.mapErr` to handle the error. Docs for `Result.mapErr`: <https://www.roc-lang.org/builtins/Result#mapErr>
                 """
 
-            when Stderr.line! helpMsg is
-                Ok {} -> 1
-                Err (StderrErr _) -> 1
+            _= Stderr.line! helpMsg
+            1
