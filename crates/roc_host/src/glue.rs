@@ -87,9 +87,6 @@ impl From<std::io::Error> for IOErr {
 pub struct ReturnArchOS {
     pub arch: RocStr,
     pub os: RocStr,
-    pub xx: RocStr,
-    pub yy: RocStr,
-    pub zz: RocStr,
 }
 
 roc_refcounted_noop_impl!(ReturnArchOS);

@@ -1293,9 +1293,6 @@ pub extern "C" fn roc_fx_currentArchOS() -> glue::ReturnArchOS {
     glue::ReturnArchOS {
         arch: std::env::consts::ARCH.into(),
         os: std::env::consts::OS.into(),
-        xx: RocStr::empty(),
-        yy: RocStr::empty(),
-        zz: RocStr::empty(),
     }
 }
 

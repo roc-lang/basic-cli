@@ -122,7 +122,7 @@ dirCreateAll! : List U8 => Result {} Str
 dirDeleteEmpty! : List U8 => Result {} Str
 dirDeleteAll! : List U8 => Result {} Str
 
-currentArchOS! : {} => { arch : Str, os : Str, xx : Str, yy : Str, zz : Str }
+currentArchOS! : {} => { arch : Str, os : Str }
 
 tempDir! : {} => List U8
 

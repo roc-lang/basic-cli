@@ -25,18 +25,18 @@ platform "cli"
 
 import Stderr
 
-mainForHost! : I32 => Result {} I32
+mainForHost! : I32 => I32
 mainForHost! = \_ ->
     when main! {} is
-        Ok {} -> Ok {}
+        Ok {} -> 0
 
         Err (Exit code msg) ->
             if Str.isEmpty msg then
-                Err code
+                code
             else
                 when Stderr.line! msg is
-                    Ok {} -> Err code
-                    Err (StderrErr _) -> Err code
+                    Ok {} -> code
+                    Err (StderrErr _) -> code
 
         Err msg ->
 
@@ -49,5 +49,5 @@ mainForHost! = \_ ->
                 """
 
             when Stderr.line! helpMsg is
-                Ok {} -> Err 1
-                Err (StderrErr _) -> Err 1
+                Ok {} -> 1
+                Err (StderrErr _) -> 1
