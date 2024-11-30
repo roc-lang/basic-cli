@@ -347,8 +347,6 @@ pub extern "C" fn rust_main() -> i32 {
 
     let exit_code: i32 = unsafe { roc_main_for_host_caller(0) };
 
-    dbg!(exit_code);
-
     unsafe {
         debug_assert_eq!(std::mem::size_of_val(&exit_code), roc_main__for_host_size());
     }
