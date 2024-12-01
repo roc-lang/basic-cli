@@ -2,10 +2,7 @@
 ##
 ## Note: we plan on moving this file away from basic-cli in the future, see github.com/roc-lang/basic-cli/issues/73
 ##
-module [
-    disableRawMode,
-    enableRawMode,
-]
+module [disableRawMode!, enableRawMode!]
 
 import PlatformTasks
 
@@ -19,16 +16,14 @@ import PlatformTasks
 ##
 ## Note: we plan on moving this function away from basic-cli in the future, see github.com/roc-lang/basic-cli/issues/73
 ##
-enableRawMode : {} -> Task {} *
-enableRawMode = \{} ->
-    PlatformTasks.ttyModeRaw
-    |> Task.mapErr \_ -> crash "unreachable"
+enableRawMode! : {} => {}
+enableRawMode! = \{} ->
+    PlatformTasks.ttyModeRaw! {}
 
 ## Revert terminal to default behaviour
 ##
 ## Note: we plan on moving this function away from basic-cli in the future, see github.com/roc-lang/basic-cli/issues/73
 ##
-disableRawMode : {} -> Task {} *
-disableRawMode = \{} ->
-    PlatformTasks.ttyModeCanonical
-    |> Task.mapErr \_ -> crash "unreachable"
+disableRawMode! : {} => {}
+disableRawMode! = \{} ->
+    PlatformTasks.ttyModeCanonical! {}

@@ -7,7 +7,7 @@ lto = true
 strip = "debuginfo"
 # You can comment this out if you hit a segmentation fault similar to the one in see issue github.com/roc-lang/roc/issues/6121
 # Setting this to 1 should improve execution speed by making things easier to optimize for LLVM.
-codegen-units = 1
+# codegen-units = 1
 
 [workspace.dependencies]
 roc_std = { git = "https://github.com/roc-lang/roc.git" }

@@ -1,20 +1,15 @@
-app [main] { pf: platform "../platform/main.roc" }
+app [main!] { pf: platform "../platform/main.roc" }
 
 import pf.Stdout
 
-main =
+main! = \{} ->
+    # Prints out each of the authors
+    print! ["Foo", "Bar", "Baz"]
 
-    authors : List Str
-    authors = [
-        "Foo",
-        "Bar",
-        "Baz",
-    ]
-
-    # Print out each of the authors (in reverse)
-    _ =
-        authors
-            |> List.map Stdout.line
-            |> Task.sequence!
-    # Also prints out each of the authors
-    Task.forEach! authors Stdout.line
+print! : List Str => Result {} _
+print! = \authors ->
+    when authors is
+        [] -> Ok {}
+        [author, .. as rest] ->
+            try Stdout.line! author
+            print! rest

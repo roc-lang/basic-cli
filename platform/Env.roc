@@ -1,4 +1,4 @@
-module [cwd, dict, var, decode, exePath, setCwd, platform, tempDir]
+module [cwd!, dict!, var!, decode!, exePath!, setCwd!, platform!, tempDir!]
 
 import Path exposing [Path]
 import InternalPath
@@ -7,42 +7,38 @@ import PlatformTasks
 
 ## Reads the [current working directory](https://en.wikipedia.org/wiki/Working_directory)
 ## from the environment. File operations on relative [Path]s are relative to this directory.
-cwd : Task Path [CwdUnavailable]
-cwd =
-    bytes =
-        PlatformTasks.cwd
-            |> Task.result!
-            |> Result.withDefault []
+cwd! : {} => Result Path [CwdUnavailable]
+cwd! = \{} ->
+    bytes = PlatformTasks.cwd! {} |> Result.withDefault []
 
     if List.isEmpty bytes then
-        Task.err CwdUnavailable
+        Err CwdUnavailable
     else
-        Task.ok (InternalPath.fromArbitraryBytes bytes)
+        Ok (InternalPath.fromArbitraryBytes bytes)
 
 ## Sets the [current working directory](https://en.wikipedia.org/wiki/Working_directory)
 ## in the environment. After changing it, file operations on relative [Path]s will be relative
 ## to this directory.
-setCwd : Path -> Task {} [InvalidCwd]
-setCwd = \path ->
-    PlatformTasks.setCwd (InternalPath.toBytes path)
-    |> Task.mapErr \{} -> InvalidCwd
+setCwd! : Path => Result {} [InvalidCwd]
+setCwd! = \path ->
+    PlatformTasks.setCwd! (InternalPath.toBytes path)
+    |> Result.mapErr \{} -> InvalidCwd
 
 ## Gets the path to the currently-running executable.
-exePath : Task Path [ExePathUnavailable]
-exePath =
-    result = PlatformTasks.exePath |> Task.result!
-    when result is
-        Ok bytes -> Task.ok (InternalPath.fromOsBytes bytes)
-        Err {} -> Task.err ExePathUnavailable
+exePath! : {} => Result Path [ExePathUnavailable]
+exePath! = \{} ->
+    when PlatformTasks.exePath! {} is
+        Ok bytes -> Ok (InternalPath.fromOsBytes bytes)
+        Err {} -> Err ExePathUnavailable
 
 ## Reads the given environment variable.
 ##
 ## If the value is invalid Unicode, the invalid parts will be replaced with the
 ## [Unicode replacement character](https://unicode.org/glossary/#replacement_character) ('�').
-var : Str -> Task Str [VarNotFound]
-var = \name ->
-    PlatformTasks.envVar name
-    |> Task.mapErr \{} -> VarNotFound
+var! : Str => Result Str [VarNotFound]
+var! = \name ->
+    PlatformTasks.envVar! name
+    |> Result.mapErr \{} -> VarNotFound
 
 ## Reads the given environment variable and attempts to decode it.
 ##
@@ -61,7 +57,7 @@ var = \name ->
 ## ```
 ## # Reads "NUM_THINGS" and decodes into a U16
 ## getU16Var : Str -> Task U16 [VarNotFound, DecodeErr DecodeError] [Read [Env]]
-## getU16Var = \var -> Env.decode var
+## getU16Var = \var -> Env.decode! var
 ## ```
 ##
 ## If `NUM_THINGS=123` then `getU16Var` succeeds with the value of `123u16`.
@@ -69,26 +65,23 @@ var = \name ->
 ## fail with [DecodeErr](https://www.roc-lang.org/builtins/Decode#DecodeError)
 ## because `123456789` is too large to fit in a [U16](https://www.roc-lang.org/builtins/Num#U16).
 ##
-decode : Str -> Task val [VarNotFound, DecodeErr DecodeError] where val implements Decoding
-decode = \name ->
-    result = PlatformTasks.envVar name |> Task.result!
-    when result is
-        Err {} -> Task.err VarNotFound
+decode! : Str => Result val [VarNotFound, DecodeErr DecodeError] where val implements Decoding
+decode! = \name ->
+    when PlatformTasks.envVar! name is
+        Err {} -> Err VarNotFound
         Ok varStr ->
             Str.toUtf8 varStr
             |> Decode.fromBytes (EnvDecoding.format {})
             |> Result.mapErr (\_ -> DecodeErr TooShort)
-            |> Task.fromResult
 
 ## Reads all the process's environment variables into a [Dict].
 ##
 ## If any key or value contains invalid Unicode, the [Unicode replacement character](https://unicode.org/glossary/#replacement_character)
 ## will be used in place of any parts of keys or values that are invalid Unicode.
-dict : {} -> Task (Dict Str Str) *
-dict = \{} ->
-    PlatformTasks.envDict
-    |> Task.map Dict.fromList
-    |> Task.mapErr \_ -> crash "unreachable"
+dict! : {} => Dict Str Str
+dict! = \{} ->
+    PlatformTasks.envDict! {}
+    |> Dict.fromList
 
 # ## Walks over the process's environment variables as key-value arguments to the walking function.
 # ##
@@ -133,12 +126,10 @@ OS : [LINUX, MACOS, WINDOWS, OTHER Str]
 ##
 ## Note these values are constants from when the platform is built.
 ##
-platform : Task { arch : ARCH, os : OS } *
-platform =
-    fromRust =
-        PlatformTasks.currentArchOS
-            |> Task.result!
-            |> Result.withDefault { arch: "", os: "" }
+platform! : {} => { arch : ARCH, os : OS }
+platform! = \{} ->
+
+    fromRust = PlatformTasks.currentArchOS! {}
 
     arch =
         when fromRust.arch is
@@ -155,7 +146,7 @@ platform =
             "windows" -> WINDOWS
             _ -> OTHER fromRust.os
 
-    Task.ok { arch, os }
+    { arch, os }
 
 ## This uses rust's [`std::env::temp_dir()`](https://doc.rust-lang.org/std/env/fn.temp_dir.html)
 ##
@@ -166,8 +157,7 @@ platform =
 ## to create a uniquely named file. Creating a file or directory with a fixed or predictable name may
 ## result in “insecure temporary file” security vulnerabilities.
 ##
-tempDir : {} -> Task Path *
-tempDir = \{} ->
-    PlatformTasks.tempDir
-    |> Task.map \pathOSStringBytes -> InternalPath.fromOsBytes pathOSStringBytes
-    |> Task.mapErr \_ -> crash "unreachable"
+tempDir! : {} => Path
+tempDir! = \{} ->
+    PlatformTasks.tempDir! {}
+    |> \pathOSStringBytes -> InternalPath.fromOsBytes pathOSStringBytes

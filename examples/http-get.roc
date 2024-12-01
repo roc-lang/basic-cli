@@ -1,13 +1,13 @@
-app [main] { pf: platform "../platform/main.roc" }
+app [main!] { pf: platform "../platform/main.roc" }
 
 import pf.Http
 import pf.Stdout
-import pf.Stderr
 
 # Basic HTTP GET request
 
-main =
-    request = {
+main! = \{} ->
+
+    response = try Http.send! {
         method: Get,
         headers: [],
         url: "http://www.example.com",
@@ -16,16 +16,6 @@ main =
         timeout: TimeoutMilliseconds 5000,
     }
 
-    sendResult =
-        Http.send request
-            |> Task.result!
+    body = try Http.handleStringResponse response
 
-    processedSendResult =
-        Result.try sendResult Http.handleStringResponse
-
-    when processedSendResult is
-        Ok body ->
-            Stdout.line "Response body:\n\t$(body)."
-
-        Err err ->
-            Stderr.line (Inspect.toStr err)
+    Stdout.line! "Response body:\n\t$(body)."

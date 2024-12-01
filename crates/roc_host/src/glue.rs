@@ -4,44 +4,44 @@ use roc_std::RocStr;
 
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
-pub enum InternalIOErrTag {
-    BrokenPipe = 0,
-    Interrupted = 1,
-    InvalidInput = 2,
-    Other = 3,
-    OutOfMemory = 4,
-    UnexpectedEof = 5,
-    Unsupported = 6,
-    WouldBlock = 7,
-    WriteZero = 8,
+pub enum IOErrTag {
+    AlreadyExists = 0,
+    BrokenPipe = 1,
+    EndOfFile = 2,
+    Interrupted = 3,
+    NotFound = 4,
+    Other = 5,
+    OutOfMemory = 6,
+    PermissionDenied = 7,
+    Unsupported = 8,
 }
 
-impl core::fmt::Debug for InternalIOErrTag {
+impl core::fmt::Debug for IOErrTag {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Self::BrokenPipe => f.write_str("InternalIOErr::BrokenPipe"),
-            Self::Interrupted => f.write_str("InternalIOErr::Interrupted"),
-            Self::InvalidInput => f.write_str("InternalIOErr::InvalidInput"),
-            Self::Other => f.write_str("InternalIOErr::Other"),
-            Self::OutOfMemory => f.write_str("InternalIOErr::OutOfMemory"),
-            Self::UnexpectedEof => f.write_str("InternalIOErr::UnexpectedEof"),
-            Self::Unsupported => f.write_str("InternalIOErr::Unsupported"),
-            Self::WouldBlock => f.write_str("InternalIOErr::WouldBlock"),
-            Self::WriteZero => f.write_str("InternalIOErr::WriteZero"),
+            Self::AlreadyExists => f.write_str("IOErrTag::AlreadyExists"),
+            Self::BrokenPipe => f.write_str("IOErrTag::BrokenPipe"),
+            Self::EndOfFile => f.write_str("IOErrTag::EndOfFile"),
+            Self::Interrupted => f.write_str("IOErrTag::Interrupted"),
+            Self::NotFound => f.write_str("IOErrTag::NotFound"),
+            Self::Other => f.write_str("IOErrTag::Other"),
+            Self::OutOfMemory => f.write_str("IOErrTag::OutOfMemory"),
+            Self::PermissionDenied => f.write_str("IOErrTag::PermissionDenied"),
+            Self::Unsupported => f.write_str("IOErrTag::Unsupported"),
         }
     }
 }
 
-roc_refcounted_noop_impl!(InternalIOErrTag);
+roc_refcounted_noop_impl!(IOErrTag);
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
-pub struct InternalIOErr {
+pub struct IOErr {
     pub msg: roc_std::RocStr,
-    pub tag: InternalIOErrTag,
+    pub tag: IOErrTag,
 }
 
-impl roc_std::RocRefcounted for InternalIOErr {
+impl roc_std::RocRefcounted for IOErr {
     fn inc(&mut self) {
         self.msg.inc();
     }
@@ -53,52 +53,40 @@ impl roc_std::RocRefcounted for InternalIOErr {
     }
 }
 
-impl From<std::io::Error> for InternalIOErr {
+impl From<std::io::Error> for IOErr {
     fn from(e: std::io::Error) -> Self {
-        match e.kind() {
-            std::io::ErrorKind::BrokenPipe => InternalIOErr {
-                tag: InternalIOErrTag::BrokenPipe,
-                msg: RocStr::empty(),
-            },
-            std::io::ErrorKind::OutOfMemory => InternalIOErr {
-                tag: InternalIOErrTag::OutOfMemory,
-                msg: RocStr::empty(),
-            },
-            std::io::ErrorKind::WriteZero => InternalIOErr {
-                tag: InternalIOErrTag::WriteZero,
-                msg: RocStr::empty(),
-            },
-            std::io::ErrorKind::ConnectionAborted
-            | std::io::ErrorKind::ConnectionReset
-            | std::io::ErrorKind::NotConnected
-            | std::io::ErrorKind::UnexpectedEof => InternalIOErr {
-                tag: InternalIOErrTag::UnexpectedEof,
-                msg: RocStr::empty(),
-            },
-            std::io::ErrorKind::Interrupted => InternalIOErr {
-                tag: InternalIOErrTag::Interrupted,
-                msg: RocStr::empty(),
-            },
-            std::io::ErrorKind::InvalidData | std::io::ErrorKind::InvalidInput => InternalIOErr {
-                tag: InternalIOErrTag::InvalidInput,
-                msg: RocStr::empty(),
-            },
-            std::io::ErrorKind::TimedOut => InternalIOErr {
-                tag: InternalIOErrTag::WouldBlock,
-                msg: RocStr::empty(),
-            },
-            std::io::ErrorKind::WouldBlock => InternalIOErr {
-                tag: InternalIOErrTag::WouldBlock,
-                msg: RocStr::empty(),
-            },
-            std::io::ErrorKind::AddrInUse | std::io::ErrorKind::AddrNotAvailable => InternalIOErr {
-                tag: InternalIOErrTag::Unsupported,
-                msg: RocStr::empty(),
-            },
-            _ => InternalIOErr {
-                tag: InternalIOErrTag::Other,
+        let other = || -> IOErr {
+            IOErr {
+                tag: IOErrTag::Other,
                 msg: format!("{}", e).as_str().into(),
-            },
+            }
+        };
+
+        let with_empty_msg = |tag: IOErrTag| -> IOErr {
+            IOErr {
+                tag,
+                msg: RocStr::empty(),
+            }
+        };
+
+        match e.kind() {
+            std::io::ErrorKind::NotFound => with_empty_msg(IOErrTag::NotFound),
+            std::io::ErrorKind::PermissionDenied => with_empty_msg(IOErrTag::PermissionDenied),
+            std::io::ErrorKind::BrokenPipe => with_empty_msg(IOErrTag::BrokenPipe),
+            std::io::ErrorKind::AlreadyExists => with_empty_msg(IOErrTag::AlreadyExists),
+            std::io::ErrorKind::Interrupted => with_empty_msg(IOErrTag::Interrupted),
+            std::io::ErrorKind::Unsupported => with_empty_msg(IOErrTag::Unsupported),
+            std::io::ErrorKind::OutOfMemory => with_empty_msg(IOErrTag::OutOfMemory),
+            _ => other(),
         }
     }
 }
+
+#[derive(Debug)]
+#[repr(C)]
+pub struct ReturnArchOS {
+    pub arch: RocStr,
+    pub os: RocStr,
+}
+
+roc_refcounted_noop_impl!(ReturnArchOS);

@@ -10,8 +10,8 @@ module [
     defaultRequest,
     errorToString,
     errorBodyToBytes,
-    send,
-    get,
+    send!,
+    get!,
 ]
 
 import InternalHttp exposing [errorBodyToUtf8, errorBodyFromUtf8]
@@ -102,7 +102,7 @@ errorToString = \err ->
 
         BadBody details -> "Request failed: Invalid body: $(details)"
 
-## Task to send an HTTP request, succeeds with a value of [Str] or fails with an
+## Send an HTTP request, succeeds with a value of [Str] or fails with an
 ## [Err].
 ##
 ## ```
@@ -116,8 +116,8 @@ errorToString = \err ->
 ## |> Result.withDefault "Invalid UTF-8"
 ## |> Stdout.line
 ## ```
-send : Request -> Task Response [HttpErr Err]
-send = \req ->
+send! : Request => Result Response [HttpErr Err]
+send! = \req ->
     timeoutMs =
         when req.timeout is
             NoTimeout -> 0
@@ -134,9 +134,8 @@ send = \req ->
     }
 
     # TODO: Fix our C ABI codegen so that we don't this Box.box heap allocation
-    { variant, body, metadata } =
-        PlatformTasks.sendRequest (Box.box internalRequest)
-            |> Task.mapErr! \_ -> crash "unreachable"
+    { variant, body, metadata } = PlatformTasks.sendRequest! (Box.box internalRequest)
+
     responseResult =
         when variant is
             "Timeout" -> Err (Timeout timeoutMs)
@@ -161,9 +160,7 @@ send = \req ->
 
             "BadRequest" | _other -> Err (BadRequest metadata.statusText)
 
-    responseResult
-    |> Result.mapErr HttpErr
-    |> Task.fromResult
+    responseResult |> Result.mapErr HttpErr
 
 ## Try to perform an HTTP get request and convert (decode) the received bytes into a Roc type.
 ## Very useful for working with Json.
@@ -174,10 +171,9 @@ send = \req ->
 ## # On the server side we send `Encode.toBytes {foo: "Hello Json!"} Json.utf8`
 ## { foo } = Http.get! "http://localhost:8000" Json.utf8
 ## ```
-get : Str, fmt -> Task body [HttpErr Http.Err, HttpDecodingFailed] where body implements Decoding, fmt implements DecoderFormatting
-get = \url, fmt ->
-    response = send! { defaultRequest & url }
+get! : Str, fmt => Result body [HttpErr Http.Err, HttpDecodingFailed] where body implements Decoding, fmt implements DecoderFormatting
+get! = \url, fmt ->
+    response = send!? { defaultRequest & url }
 
     Decode.fromBytes response.body fmt
     |> Result.mapErr \_ -> HttpDecodingFailed
-    |> Task.fromResult

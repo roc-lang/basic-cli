@@ -20,11 +20,11 @@ if [ -z "${ROC}" ]; then
 fi
 
 if [ "$NO_BUILD" != "1" ]; then
-  # May be needed for breaking roc changes. Also replace platform in build.roc with `cli: platform "platform/main.roc",`  
+  # May be needed for breaking roc changes. Also replace platform in build.roc with `cli: platform "platform/main.roc",`
   ./jump-start.sh
-  
+
   # build the basic-cli platform
-  $ROC ./build.roc --linker=legacy -- --roc $ROC
+  $ROC dev ./build.roc --linker=legacy
 fi
 
 # roc check
@@ -48,7 +48,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     else
         $ROC build $roc_file $ROC_BUILD_FLAGS
     fi
-    
+
 done
 
 # prep for next step
@@ -67,6 +67,10 @@ for roc_file in $EXAMPLES_DIR*.roc; do
 
     roc_file_only="$(basename "$roc_file")"
     no_ext_name=${roc_file_only%.*}
+
+    if [ "$no_ext_name" == "args" ]; then
+        valgrind $EXAMPLES_DIR/args div -n 5 -d 20
+    fi
     expect ci/expect_scripts/$no_ext_name.exp
 done
 
