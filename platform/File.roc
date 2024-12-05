@@ -16,6 +16,7 @@ module [
     openReader!,
     openReaderWithCapacity!,
     readLine!,
+    readBytesBuf!,
 ]
 
 import Path exposing [Path, MetadataErr]
@@ -236,4 +237,9 @@ openReaderWithCapacity! = \pathStr, capacity ->
 readLine! : Reader => Result (List U8) [FileReadErr Path Str]
 readLine! = \@Reader { reader, path } ->
     PlatformTasks.fileReadLine! reader
+    |> Result.mapErr \err -> FileReadErr path err
+
+readBytesBuf! : Reader,List U8 => Result (List U8) [FileReadErr Path Str]
+readBytesBuf! = \@Reader { reader, path },buf ->
+    PlatformTasks.fileReadByteBuf! reader buf
     |> Result.mapErr \err -> FileReadErr path err

@@ -6,12 +6,15 @@
 #![allow(non_snake_case)]
 #![allow(improper_ctypes)]
 use core::ffi::c_void;
-use roc_std::{RocBox, RocList, RocResult, RocStr};
+use hyper::body::Buf;
+use roc_std::{RocBox, RocList, RocRefcounted, RocResult, RocStr};
 use roc_std_heap::ThreadSafeRefcountedResourceHeap;
 use std::borrow::{Borrow, Cow};
 use std::ffi::OsStr;
+use std::fmt::Debug;
 use std::fs::File;
 use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
+use std::mem::ManuallyDrop;
 use std::net::TcpStream;
 use std::path::Path;
 use std::sync::OnceLock;
@@ -301,6 +304,7 @@ pub fn init() {
         roc_fx_fileReadBytes as _,
         roc_fx_fileReader as _,
         roc_fx_fileReadLine as _,
+        roc_fx_fileReadByteBuf as _,
         roc_fx_fileDelete as _,
         roc_fx_cwd as _,
         roc_fx_posixTime as _,
@@ -621,6 +625,41 @@ pub extern "C" fn roc_fx_fileReadLine(data: RocBox<()>) -> RocResult<RocList<u8>
             RocResult::ok(buffer)
         }
         Err(err) => RocResult::err(err.to_string().as_str().into()),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_fileReadByteBuf(
+    data: RocBox<()>,
+    buf: &mut RocList<u8>,
+) -> RocResult<RocList<u8>, RocStr> {
+    let buf_reader: &mut BufReader<File> = ThreadSafeRefcountedResourceHeap::box_to_resource(data);
+
+    loop {
+        let available = match buf_reader.fill_buf() {
+            Ok(n) => n,
+            Err(ref e) if matches!(e.kind(), ErrorKind::Interrupted) => continue,
+            Err(e) => return RocResult::err(e.to_string().as_str().into()),
+        };
+        // We should be able to ask the user to "return" their buffer. So that if they do they get the same buffer back and we don't have to re-allocate. Should be a nice optimization.
+        // TODO: If the capacity is larger but the len isn't right we should be able to extend the len to match. I don't have access to a function that does that though
+        if buf.is_unique() || !buf.is_readonly() {
+            if buf.capacity() >= available.len() {
+                unsafe {
+                    // We inc the refence count because roc will think after we return the reference count should be zero.
+                    // buf.inc();
+                    let roc_list =
+                        RocList::from_raw_parts(buf.as_mut_ptr(), buf.len(), buf.capacity());
+                    let len = available.len();
+                    buf_reader.consume(len);
+                    return RocResult::ok(roc_list);
+                }
+            }
+        }
+        let list = RocResult::ok(RocList::from_slice(available));
+        let len = available.len();
+        buf_reader.consume(len);
+        return list;
     }
 }
 

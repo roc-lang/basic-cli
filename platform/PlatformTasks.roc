@@ -30,6 +30,7 @@ hosted PlatformTasks
         fileWriteBytes!,
         fileReader!,
         fileReadLine!,
+        fileReadByteBuf!,
         pathType!,
         posixTime!,
         tcpConnect!,
@@ -85,6 +86,7 @@ fileReadBytes! : List U8 => Result (List U8) Str
 FileReader := Box {}
 fileReader! : List U8, U64 => Result FileReader Str
 fileReadLine! : FileReader => Result (List U8) Str
+fileReadByteBuf! : FileReader, List U8 => Result (List U8) Str
 
 envDict! : {} => List (Str, Str)
 envVar! : Str => Result Str {}
