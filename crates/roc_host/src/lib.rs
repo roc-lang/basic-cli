@@ -13,7 +13,7 @@ use std::borrow::{Borrow, Cow};
 use std::ffi::OsStr;
 use std::fmt::Debug;
 use std::fs::File;
-use std::io::{BufRead, BufReader, ErrorKind, Read, Seek, Write};
+use std::io::{BufRead, BufReader, ErrorKind, IsTerminal, Read, Seek, Write};
 use std::mem::ManuallyDrop;
 use std::net::TcpStream;
 use std::path::Path;
@@ -631,6 +631,15 @@ pub struct RocReader<R: ?Sized> {
     reader: R,
 }
 
+// impl<T> Drop for RocReader<T>
+// where
+//     T: ?Sized,
+// {
+//     fn drop(&mut self) {
+//         self.internalList.dec()
+//     }
+// }
+
 #[no_mangle]
 pub extern "C" fn roc_fx_fileReaderRocBuf(
     roc_path: &RocList<u8>,
@@ -676,23 +685,32 @@ pub extern "C" fn roc_fx_fileReadByteBuf(
     data: RocBox<()>,
     buf: &mut RocList<u8>,
 ) -> RocResult<RocList<u8>, RocStr> {
+    let mut data = data;
+    //If I don't do this roc just silently crashes after the file goes out of scope. I suspect that's because it's de-allocating the list inside?
+    data.inc();
     let buf_reader: &mut RocReader<File> = ThreadSafeRefcountedResourceHeap::box_to_resource(data);
 
     let canUseInternal =
-        buf_reader.internalList.is_unique() || !buf_reader.internalList.is_readonly();
+        // buf_reader.internalList.is_unique() || !buf_reader.internalList.is_readonly();
+        //If the given list is the same as the internal buff re-use otherwise don't re-use
+         buf_reader.internalList.as_ptr()== buf.as_ptr();
 
     if canUseInternal {
-        let buf_slice = buf_reader.internalList.as_mut_slice();
-        loop {
-            let read = match buf_reader.reader.read(buf_slice) {
-                Ok(n) => n,
-                Err(ref e) if matches!(e.kind(), ErrorKind::Interrupted) => continue,
-                Err(e) => return RocResult::err(e.to_string().as_str().into()),
-            };
-            unsafe {
-                // We inc the refence count because roc will think after we return the reference count should be zero.
-                // buf.inc();
-
+        // We inc the refence count because roc will think after we return the reference count should be zero.
+        buf_reader.internalList.inc();
+        unsafe {
+            //This ensures we always expand the buffer to the full capacity of the list
+            let buf_slice: &mut [u8] = std::slice::from_raw_parts_mut(
+                buf_reader.internalList.as_mut_ptr(),
+                buf_reader.internalList.capacity(),
+            );
+            loop {
+                let read = match buf_reader.reader.read(buf_slice) {
+                    // Ok(n) if n < buf_len => return RocResult::err("no more bytes".into()),
+                    Ok(n) => n,
+                    Err(ref e) if matches!(e.kind(), ErrorKind::Interrupted) => continue,
+                    Err(e) => return RocResult::err(e.to_string().as_str().into()),
+                };
                 let roc_list = RocList::from_raw_parts(
                     buf_reader.internalList.as_mut_ptr(),
                     read,
@@ -702,16 +720,26 @@ pub extern "C" fn roc_fx_fileReadByteBuf(
             }
         }
     } else {
-        let mut list = RocList::with_capacity(buf_reader.internalList.capacity());
-
-        loop {
-            unsafe {
-                let read = match buf_reader.reader.read(list.as_mut_slice()) {
+        unsafe {
+            //Make a new list
+            let mut list = RocList::with_capacity(buf_reader.internalList.capacity());
+            list.inc();
+            //get a slice to the full memmory of the list
+            let slice: &mut [u8] =
+                std::slice::from_raw_parts_mut(list.as_mut_ptr(), list.capacity());
+            buf_reader.internalList = list;
+            loop {
+                let read = match buf_reader.reader.read(slice) {
                     Ok(n) => n,
                     Err(ref e) if matches!(e.kind(), ErrorKind::Interrupted) => continue,
                     Err(e) => return RocResult::err(e.to_string().as_str().into()),
                 };
-                let roc_list = RocList::from_raw_parts(list.as_mut_ptr(), read, list.capacity());
+                //update the length based on amount read
+                let roc_list = RocList::from_raw_parts(
+                    buf_reader.internalList.as_mut_ptr(),
+                    read,
+                    buf_reader.internalList.capacity(),
+                );
                 return RocResult::ok(roc_list);
             }
         }
