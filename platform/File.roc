@@ -15,6 +15,7 @@ module [
     Reader,
     openReader!,
     openReaderWithCapacity!,
+    openReaderWithBuf!,
     readLine!,
     readBytesBuf!,
 ]
@@ -243,3 +244,13 @@ readBytesBuf! : Reader,List U8 => Result (List U8) [FileReadErr Path Str]
 readBytesBuf! = \@Reader { reader, path },buf ->
     PlatformTasks.fileReadByteBuf! reader buf
     |> Result.mapErr \err -> FileReadErr path err
+
+# TODO! This returns a FIle but isn't actually the same as other readers so it would break if i use it in another reader    
+openReaderWithBuf! : Str, List U8 => Result Reader [GetFileReadErr Path ReadErr]
+openReaderWithBuf! = \pathStr, capacity ->
+    path = Path.fromStr pathStr
+
+    PlatformTasks.fileReaderRocBuf! (Str.toUtf8 pathStr) capacity
+    |> Result.mapErr \err -> GetFileReadErr path (InternalFile.handleReadErr err)
+    |> Result.map \reader -> @Reader { reader, path }
+

@@ -13,7 +13,7 @@ use std::borrow::{Borrow, Cow};
 use std::ffi::OsStr;
 use std::fmt::Debug;
 use std::fs::File;
-use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
+use std::io::{BufRead, BufReader, ErrorKind, Read, Seek, Write};
 use std::mem::ManuallyDrop;
 use std::net::TcpStream;
 use std::path::Path;
@@ -34,6 +34,17 @@ thread_local! {
 
 fn file_heap() -> &'static ThreadSafeRefcountedResourceHeap<BufReader<File>> {
     static FILE_HEAP: OnceLock<ThreadSafeRefcountedResourceHeap<BufReader<File>>> = OnceLock::new();
+    FILE_HEAP.get_or_init(|| {
+        let DEFAULT_MAX_FILES = 65536;
+        let max_files = env::var("ROC_BASIC_CLI_MAX_FILES")
+            .map(|v| v.parse().unwrap_or(DEFAULT_MAX_FILES))
+            .unwrap_or(DEFAULT_MAX_FILES);
+        ThreadSafeRefcountedResourceHeap::new(max_files)
+            .expect("Failed to allocate mmap for file handle references.")
+    })
+}
+fn reader_heap() -> &'static ThreadSafeRefcountedResourceHeap<RocReader<File>> {
+    static FILE_HEAP: OnceLock<ThreadSafeRefcountedResourceHeap<RocReader<File>>> = OnceLock::new();
     FILE_HEAP.get_or_init(|| {
         let DEFAULT_MAX_FILES = 65536;
         let max_files = env::var("ROC_BASIC_CLI_MAX_FILES")
@@ -303,6 +314,7 @@ pub fn init() {
         roc_fx_pathType as _,
         roc_fx_fileReadBytes as _,
         roc_fx_fileReader as _,
+        roc_fx_fileReaderRocBuf as _,
         roc_fx_fileReadLine as _,
         roc_fx_fileReadByteBuf as _,
         roc_fx_fileDelete as _,
@@ -613,6 +625,35 @@ pub extern "C" fn roc_fx_fileReader(
         Err(err) => RocResult::err(toRocReadError(err)),
     }
 }
+#[repr(C)]
+pub struct RocReader<R: ?Sized> {
+    internalList: RocList<u8>,
+    reader: R,
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_fileReaderRocBuf(
+    roc_path: &RocList<u8>,
+    buf: &mut RocList<u8>,
+) -> RocResult<RocBox<()>, RocStr> {
+    match File::open(path_from_roc_path(roc_path)) {
+        Ok(file) => unsafe {
+            let internalList = RocList::from_raw_parts(buf.as_mut_ptr(), buf.len(), buf.capacity());
+            let roc_reader = RocReader {
+                reader: file,
+                internalList,
+            };
+            let heap = reader_heap();
+            buf.inc();
+            let alloc_result = heap.alloc_for(roc_reader);
+            match alloc_result {
+                Ok(out) => RocResult::ok(out),
+                Err(err) => RocResult::err(toRocReadError(err)),
+            }
+        },
+        Err(err) => RocResult::err(toRocReadError(err)),
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn roc_fx_fileReadLine(data: RocBox<()>) -> RocResult<RocList<u8>, RocStr> {
@@ -628,38 +669,52 @@ pub extern "C" fn roc_fx_fileReadLine(data: RocBox<()>) -> RocResult<RocList<u8>
     }
 }
 
+// We should be able to ask the user to "return" their buffer. So that if they do they get the same buffer back and we don't have to re-allocate. Should be a nice optimization.
+// TODO: If the capacity is larger but the len isn't right we should be able to extend the len to match. I don't have access to a function that does that though
 #[no_mangle]
 pub extern "C" fn roc_fx_fileReadByteBuf(
     data: RocBox<()>,
     buf: &mut RocList<u8>,
 ) -> RocResult<RocList<u8>, RocStr> {
-    let buf_reader: &mut BufReader<File> = ThreadSafeRefcountedResourceHeap::box_to_resource(data);
+    let buf_reader: &mut RocReader<File> = ThreadSafeRefcountedResourceHeap::box_to_resource(data);
 
-    loop {
-        let available = match buf_reader.fill_buf() {
-            Ok(n) => n,
-            Err(ref e) if matches!(e.kind(), ErrorKind::Interrupted) => continue,
-            Err(e) => return RocResult::err(e.to_string().as_str().into()),
-        };
-        // We should be able to ask the user to "return" their buffer. So that if they do they get the same buffer back and we don't have to re-allocate. Should be a nice optimization.
-        // TODO: If the capacity is larger but the len isn't right we should be able to extend the len to match. I don't have access to a function that does that though
-        if buf.is_unique() || !buf.is_readonly() {
-            if buf.capacity() >= available.len() {
-                unsafe {
-                    // We inc the refence count because roc will think after we return the reference count should be zero.
-                    // buf.inc();
-                    let roc_list =
-                        RocList::from_raw_parts(buf.as_mut_ptr(), buf.len(), buf.capacity());
-                    let len = available.len();
-                    buf_reader.consume(len);
-                    return RocResult::ok(roc_list);
-                }
+    let canUseInternal =
+        buf_reader.internalList.is_unique() || !buf_reader.internalList.is_readonly();
+
+    if canUseInternal {
+        let buf_slice = buf_reader.internalList.as_mut_slice();
+        loop {
+            let read = match buf_reader.reader.read(buf_slice) {
+                Ok(n) => n,
+                Err(ref e) if matches!(e.kind(), ErrorKind::Interrupted) => continue,
+                Err(e) => return RocResult::err(e.to_string().as_str().into()),
+            };
+            unsafe {
+                // We inc the refence count because roc will think after we return the reference count should be zero.
+                // buf.inc();
+
+                let roc_list = RocList::from_raw_parts(
+                    buf_reader.internalList.as_mut_ptr(),
+                    read,
+                    buf_reader.internalList.capacity(),
+                );
+                return RocResult::ok(roc_list);
             }
         }
-        let list = RocResult::ok(RocList::from_slice(available));
-        let len = available.len();
-        buf_reader.consume(len);
-        return list;
+    } else {
+        let mut list = RocList::with_capacity(buf_reader.internalList.capacity());
+
+        loop {
+            unsafe {
+                let read = match buf_reader.reader.read(list.as_mut_slice()) {
+                    Ok(n) => n,
+                    Err(ref e) if matches!(e.kind(), ErrorKind::Interrupted) => continue,
+                    Err(e) => return RocResult::err(e.to_string().as_str().into()),
+                };
+                let roc_list = RocList::from_raw_parts(list.as_mut_ptr(), read, list.capacity());
+                return RocResult::ok(roc_list);
+            }
+        }
     }
 }
 

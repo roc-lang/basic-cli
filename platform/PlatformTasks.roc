@@ -29,6 +29,7 @@ hosted PlatformTasks
         fileWriteUtf8!,
         fileWriteBytes!,
         fileReader!,
+        fileReaderRocBuf!,
         fileReadLine!,
         fileReadByteBuf!,
         pathType!,
@@ -85,6 +86,7 @@ fileReadBytes! : List U8 => Result (List U8) Str
 
 FileReader := Box {}
 fileReader! : List U8, U64 => Result FileReader Str
+fileReaderRocBuf! : List U8,List U8=> Result FileReader Str
 fileReadLine! : FileReader => Result (List U8) Str
 fileReadByteBuf! : FileReader, List U8 => Result (List U8) Str
 
