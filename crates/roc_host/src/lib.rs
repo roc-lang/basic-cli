@@ -588,16 +588,35 @@ fn path_from_roc_path(bytes: &RocList<u8>) -> Cow<'_, Path> {
 }
 
 #[no_mangle]
+#[no_mangle]
 pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocList<u8>, RocStr> {
-    // TODO: write our own duplicate of `read_to_end` that directly fills a `RocList<u8>`.
-    // This adds an extra O(n) copy.
-    let mut bytes = Vec::new();
-
     match File::open(path_from_roc_path(roc_path)) {
-        Ok(mut file) => match file.read_to_end(&mut bytes) {
-            Ok(_bytes_read) => RocResult::ok(RocList::from(bytes.as_slice())),
-            Err(err) => RocResult::err(toRocReadError(err)),
-        },
+        Ok(mut file) => {
+            let size = file
+                .metadata()
+                .map(|m| m.len())
+                .expect("TODO: make robust: file has not size?");
+            let mut buf_list = RocList::with_capacity(size as usize);
+            let buf_slice: &mut [u8] = unsafe {
+                std::slice::from_raw_parts_mut(buf_list.as_mut_ptr(), buf_list.capacity())
+            };
+
+            match file.read_exact(buf_slice) {
+                Ok(()) => {
+                    let out_list = unsafe {
+                        RocList::from_raw_parts(
+                            buf_list.as_mut_ptr(),
+                            buf_list.capacity(),
+                            buf_list.capacity(),
+                        )
+                    };
+                    std::mem::forget(buf_list);
+
+                    RocResult::ok(out_list)
+                }
+                Err(err) => RocResult::err(toRocReadError(err)),
+            }
+        }
         Err(err) => RocResult::err(toRocReadError(err)),
     }
 }
