@@ -24,7 +24,7 @@ if [ "$NO_BUILD" != "1" ]; then
   # ./jump-start.sh
   
   # build the basic-cli platform
-  $ROC ./build.roc --linker=legacy -- --roc $ROC
+  $ROC ./build.roc -- --roc $ROC
 fi
 
 # roc check
