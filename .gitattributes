@@ -1,2 +1,0 @@
-# ignore glue generated files
-platform/src/main_glue/**/* linguist-generated=true
