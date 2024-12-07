@@ -6,6 +6,7 @@
 #![allow(non_snake_case)]
 #![allow(improper_ctypes)]
 use core::ffi::c_void;
+use core::panic;
 use hyper::body::Buf;
 use roc_std::{RocBox, RocList, RocRefcounted, RocResult, RocStr};
 use roc_std_heap::ThreadSafeRefcountedResourceHeap;
@@ -32,19 +33,8 @@ thread_local! {
        .unwrap();
 }
 
-fn file_heap() -> &'static ThreadSafeRefcountedResourceHeap<BufReader<File>> {
-    static FILE_HEAP: OnceLock<ThreadSafeRefcountedResourceHeap<BufReader<File>>> = OnceLock::new();
-    FILE_HEAP.get_or_init(|| {
-        let DEFAULT_MAX_FILES = 65536;
-        let max_files = env::var("ROC_BASIC_CLI_MAX_FILES")
-            .map(|v| v.parse().unwrap_or(DEFAULT_MAX_FILES))
-            .unwrap_or(DEFAULT_MAX_FILES);
-        ThreadSafeRefcountedResourceHeap::new(max_files)
-            .expect("Failed to allocate mmap for file handle references.")
-    })
-}
-fn reader_heap() -> &'static ThreadSafeRefcountedResourceHeap<RocReader<File>> {
-    static FILE_HEAP: OnceLock<ThreadSafeRefcountedResourceHeap<RocReader<File>>> = OnceLock::new();
+fn file_heap() -> &'static ThreadSafeRefcountedResourceHeap<File> {
+    static FILE_HEAP: OnceLock<ThreadSafeRefcountedResourceHeap<File>> = OnceLock::new();
     FILE_HEAP.get_or_init(|| {
         let DEFAULT_MAX_FILES = 65536;
         let max_files = env::var("ROC_BASIC_CLI_MAX_FILES")
@@ -314,7 +304,6 @@ pub fn init() {
         roc_fx_pathType as _,
         roc_fx_fileReadBytes as _,
         roc_fx_fileReader as _,
-        roc_fx_fileReaderRocBuf as _,
         roc_fx_fileReadLine as _,
         roc_fx_fileReadByteBuf as _,
         roc_fx_fileDelete as _,
@@ -588,7 +577,6 @@ fn path_from_roc_path(bytes: &RocList<u8>) -> Cow<'_, Path> {
 }
 
 #[no_mangle]
-#[no_mangle]
 pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocList<u8>, RocStr> {
     match File::open(path_from_roc_path(roc_path)) {
         Ok(mut file) => {
@@ -622,20 +610,11 @@ pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocL
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_fileReader(
-    roc_path: &RocList<u8>,
-    size: u64,
-) -> RocResult<RocBox<()>, RocStr> {
+pub extern "C" fn roc_fx_fileReader(roc_path: &RocList<u8>) -> RocResult<RocBox<()>, RocStr> {
     match File::open(path_from_roc_path(roc_path)) {
         Ok(file) => {
-            let buf_reader = if size > 0 {
-                BufReader::with_capacity(size as usize, file)
-            } else {
-                BufReader::new(file)
-            };
-
             let heap = file_heap();
-            let alloc_result = heap.alloc_for(buf_reader);
+            let alloc_result = heap.alloc_for(file);
             match alloc_result {
                 Ok(out) => RocResult::ok(out),
                 Err(err) => RocResult::err(toRocReadError(err)),
@@ -644,155 +623,121 @@ pub extern "C" fn roc_fx_fileReader(
         Err(err) => RocResult::err(toRocReadError(err)),
     }
 }
-#[repr(C)]
-pub struct RocReader<R: ?Sized> {
-    internalList: RocList<u8>,
-    reader: R,
-}
-
-// impl<T> Drop for RocReader<T>
-// where
-//     T: ?Sized,
-// {
-//     fn drop(&mut self) {
-//         self.internalList.dec()
-//     }
-// }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_fileReaderRocBuf(
-    roc_path: &RocList<u8>,
-    buf: &mut RocList<u8>,
-) -> RocResult<RocBox<()>, RocStr> {
-    match File::open(path_from_roc_path(roc_path)) {
-        Ok(file) => unsafe {
-            let internalList = RocList::from_raw_parts(buf.as_mut_ptr(), buf.len(), buf.capacity());
-            let roc_reader = RocReader {
-                reader: file,
-                internalList,
-            };
-            let heap = reader_heap();
-            buf.inc();
-            let alloc_result = heap.alloc_for(roc_reader);
-            match alloc_result {
-                Ok(out) => RocResult::ok(out),
-                Err(err) => RocResult::err(toRocReadError(err)),
-            }
-        },
-        Err(err) => RocResult::err(toRocReadError(err)),
-    }
-}
+pub extern "C" fn roc_fx_fileReadLine(
+    data: RocBox<()>,
+    //TODO: this would allow the internal buffer to get much much bigger, is this acceptable? SHould we maybe include a warning about that
+    buffer: RocList<u8>,
+) -> RocResult<RocList<u8>, RocStr> {
+    let file: &mut File = ThreadSafeRefcountedResourceHeap::box_to_resource(data);
 
-#[no_mangle]
-pub extern "C" fn roc_fx_fileReadLine(data: RocBox<()>) -> RocResult<RocList<u8>, RocStr> {
-    let buf_reader: &mut BufReader<File> = ThreadSafeRefcountedResourceHeap::box_to_resource(data);
-
-    let mut buffer = RocList::empty();
-    match read_until(buf_reader, b'\n', &mut buffer) {
-        Ok(..) => {
+    let buffer = if buffer.is_unique() {
+        buffer
+    } else {
+        RocList::with_capacity(8000)
+    };
+    match read_until(file, b'\n', buffer) {
+        Ok(mut buffer) => {
+            buffer.inc();
             // Note: this returns an empty list when no bytes were read, e.g. End Of File
             RocResult::ok(buffer)
         }
         Err(err) => RocResult::err(err.to_string().as_str().into()),
     }
 }
-
 // We should be able to ask the user to "return" their buffer. So that if they do they get the same buffer back and we don't have to re-allocate. Should be a nice optimization.
 // TODO: If the capacity is larger but the len isn't right we should be able to extend the len to match. I don't have access to a function that does that though
 #[no_mangle]
 pub extern "C" fn roc_fx_fileReadByteBuf(
-    data: RocBox<()>,
+    reader: RocBox<()>,
     buf: &mut RocList<u8>,
 ) -> RocResult<RocList<u8>, RocStr> {
-    let mut data = data;
-    //If I don't do this roc just silently crashes after the file goes out of scope. I suspect that's because it's de-allocating the list inside?
-    data.inc();
-    let buf_reader: &mut RocReader<File> = ThreadSafeRefcountedResourceHeap::box_to_resource(data);
+    let file: &mut File = ThreadSafeRefcountedResourceHeap::box_to_resource(reader);
 
-    let canUseInternal =
-        // buf_reader.internalList.is_unique() || !buf_reader.internalList.is_readonly();
-        //If the given list is the same as the internal buff re-use otherwise don't re-use
-         buf_reader.internalList.as_ptr()== buf.as_ptr();
+    let canUseInternal = buf.is_unique();
 
     if canUseInternal {
-        // We inc the refence count because roc will think after we return the reference count should be zero.
-        buf_reader.internalList.inc();
         unsafe {
             //This ensures we always expand the buffer to the full capacity of the list
-            let buf_slice: &mut [u8] = std::slice::from_raw_parts_mut(
-                buf_reader.internalList.as_mut_ptr(),
-                buf_reader.internalList.capacity(),
-            );
+            let buf_slice: &mut [u8] =
+                std::slice::from_raw_parts_mut(buf.as_mut_ptr(), buf.capacity());
             loop {
-                let read = match buf_reader.reader.read(buf_slice) {
-                    // Ok(n) if n < buf_len => return RocResult::err("no more bytes".into()),
+                let read = match file.read(buf_slice) {
                     Ok(n) => n,
                     Err(ref e) if matches!(e.kind(), ErrorKind::Interrupted) => continue,
                     Err(e) => return RocResult::err(e.to_string().as_str().into()),
                 };
-                let roc_list = RocList::from_raw_parts(
-                    buf_reader.internalList.as_mut_ptr(),
-                    read,
-                    buf_reader.internalList.capacity(),
-                );
+                let mut roc_list = RocList::from_raw_parts(buf.as_mut_ptr(), read, buf.capacity());
+                roc_list.inc();
+
                 return RocResult::ok(roc_list);
             }
         }
     } else {
+        // return RocResult::err("not unique".into());
         unsafe {
             //Make a new list
-            let mut list = RocList::with_capacity(buf_reader.internalList.capacity());
-            list.inc();
+            let mut list = RocList::with_capacity(buf.capacity());
             //get a slice to the full memmory of the list
             let slice: &mut [u8] =
                 std::slice::from_raw_parts_mut(list.as_mut_ptr(), list.capacity());
-            buf_reader.internalList = list;
             loop {
-                let read = match buf_reader.reader.read(slice) {
+                let read = match file.read(slice) {
                     Ok(n) => n,
                     Err(ref e) if matches!(e.kind(), ErrorKind::Interrupted) => continue,
                     Err(e) => return RocResult::err(e.to_string().as_str().into()),
                 };
                 //update the length based on amount read
-                let roc_list = RocList::from_raw_parts(
-                    buf_reader.internalList.as_mut_ptr(),
-                    read,
-                    buf_reader.internalList.capacity(),
-                );
+                let roc_list = RocList::from_raw_parts(list.as_mut_ptr(), read, list.capacity());
+                std::mem::forget(list);
                 return RocResult::ok(roc_list);
             }
         }
     }
 }
 
-fn read_until<R: BufRead + ?Sized>(
+/// Reads until the provided delim expanding the roc buffer as it goes. Returns a new reference to the same roc buffer but with a length exactly as long as the
+fn read_until<R: Read + ?Sized>(
     r: &mut R,
     delim: u8,
-    buf: &mut RocList<u8>,
-) -> io::Result<usize> {
+    mut buf: RocList<u8>,
+) -> io::Result<RocList<u8>> {
     let mut read = 0;
+    let og_capacity = buf.capacity();
     loop {
         let (done, used) = {
-            let available = match r.fill_buf() {
+            //get a slice between the end of the last read and the end of the buffer
+            let buf_slice: &mut [u8] = unsafe {
+                std::slice::from_raw_parts_mut(buf.as_mut_ptr().add(read), buf.capacity() - read)
+            };
+            let this_read = match r.read(buf_slice) {
                 Ok(n) => n,
                 Err(ref e) if matches!(e.kind(), ErrorKind::Interrupted) => continue,
                 Err(e) => return Err(e),
             };
-            match memchr::memchr(delim, available) {
-                Some(i) => {
-                    buf.extend_from_slice(&available[..=i]);
-                    (true, i + 1)
-                }
-                None => {
-                    buf.extend_from_slice(available);
-                    (false, available.len())
+            //if we read 0 bytes we are done because that's EOF
+            if this_read == 0 {
+                (true, 0)
+            } else {
+                let readSlice: &[u8] = &buf_slice[..this_read];
+                match memchr::memchr(delim, readSlice) {
+                    Some(i) => (true, i + 1),
+                    None => (false, this_read),
                 }
             }
         };
-        r.consume(used);
         read += used;
         if done || used == 0 {
-            return Ok(read);
+            let out = unsafe { RocList::from_raw_parts(buf.as_mut_ptr(), read, buf.capacity()) };
+            //Don't drop the buffer because we are returning it
+            std::mem::forget(buf);
+            return Ok(out);
+        }
+
+        // Ensure we have enough capacity for the next read
+        if buf.capacity() < read + og_capacity {
+            buf.reserve(og_capacity);
         }
     }
 }
@@ -1188,9 +1133,9 @@ pub extern "C" fn roc_fx_tcpReadUntil(
     let stream: &mut BufReader<TcpStream> =
         ThreadSafeRefcountedResourceHeap::box_to_resource(stream);
 
-    let mut buffer = RocList::empty();
-    match read_until(stream, byte, &mut buffer) {
-        Ok(_) => RocResult::ok(buffer),
+    let buffer = RocList::with_capacity(8000);
+    match read_until(stream, byte, buffer) {
+        Ok(buffer) => RocResult::ok(buffer),
         Err(err) => RocResult::err(to_tcp_stream_err(err)),
     }
 }
