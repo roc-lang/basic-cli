@@ -7,15 +7,12 @@
 #![allow(improper_ctypes)]
 use core::ffi::c_void;
 use core::panic;
-use hyper::body::Buf;
 use roc_std::{RocBox, RocList, RocRefcounted, RocResult, RocStr};
 use roc_std_heap::ThreadSafeRefcountedResourceHeap;
 use std::borrow::{Borrow, Cow};
 use std::ffi::OsStr;
-use std::fmt::Debug;
 use std::fs::File;
-use std::io::{BufRead, BufReader, ErrorKind, IsTerminal, Read, Seek, Write};
-use std::mem::ManuallyDrop;
+use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
 use std::net::TcpStream;
 use std::path::Path;
 use std::sync::OnceLock;
