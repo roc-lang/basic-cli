@@ -100,13 +100,7 @@ WriteErr : InternalFile.WriteErr
 ## **Other** - A catch-all for any other types of errors not explicitly listed above.
 ##
 ## > This is the same as [`Dir.Err`](Dir#Err).
-DirErr : [
-    NotFound,
-    PermissionDenied,
-    AlreadyExists,
-    NotADirectory,
-    Other Str,
-]
+DirErr : InternalPath.DirErr
 
 ## Write data to a file.
 ##
@@ -519,7 +513,7 @@ withExtension = \path, extension ->
 ## successfully deleted.
 ##
 ## ```
-## # Deletes the file named
+## # Deletes the file named `myfile.dat`
 ## Path.delete (Path.fromStr "myfile.dat") [1, 2, 3]
 ## ```
 ##
