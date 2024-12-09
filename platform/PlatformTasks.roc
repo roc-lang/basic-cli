@@ -1,49 +1,50 @@
 hosted PlatformTasks
     exposes [
-        InternalIOErr,
-        args,
-        dirList,
-        dirCreate,
-        dirCreateAll,
-        dirDeleteEmpty,
-        dirDeleteAll,
-        envDict,
-        envVar,
-        cwd,
-        setCwd,
-        exePath,
-        stdoutLine,
-        stdoutWrite,
-        stderrLine,
-        stderrWrite,
-        stdinLine,
-        stdinBytes,
-        stdinReadToEnd,
-        ttyModeCanonical,
-        ttyModeRaw,
-        sendRequest,
-        fileReadBytes,
-        fileDelete,
-        fileWriteUtf8,
-        fileWriteBytes,
-        FileReader,
-        fileReader,
-        fileReadLine,
-        pathType,
-        posixTime,
         TcpStream,
-        tcpConnect,
-        tcpReadUpTo,
-        tcpReadExactly,
-        tcpReadUntil,
-        tcpWrite,
-        sleepMillis,
-        commandStatus,
-        commandOutput,
-        currentArchOS,
-        tempDir,
-        getLocale,
-        getLocales,
+        FileReader,
+        InternalIOErr,
+        args!,
+        dirList!,
+        dirCreate!,
+        dirCreateAll!,
+        dirDeleteEmpty!,
+        dirDeleteAll!,
+        hardLink!,
+        envDict!,
+        envVar!,
+        cwd!,
+        setCwd!,
+        exePath!,
+        stdoutLine!,
+        stdoutWrite!,
+        stderrLine!,
+        stderrWrite!,
+        stdinLine!,
+        stdinBytes!,
+        stdinReadToEnd!,
+        ttyModeCanonical!,
+        ttyModeRaw!,
+        sendRequest!,
+        fileReadBytes!,
+        fileDelete!,
+        fileWriteUtf8!,
+        fileWriteBytes!,
+        fileReader!,
+        fileReadLine!,
+        pathType!,
+        posixTime!,
+        tcpConnect!,
+        tcpReadUpTo!,
+        tcpReadExactly!,
+        tcpReadUntil!,
+        tcpWrite!,
+        sleepMillis!,
+        commandStatus!,
+        commandOutput!,
+        currentArchOS!,
+        tempDir!,
+        getLocale!,
+        getLocales!,
     ]
     imports [
         InternalHttp.{ Request, InternalResponse },
@@ -53,75 +54,80 @@ hosted PlatformTasks
 
 InternalIOErr : {
     tag : [
+        EndOfFile,
+        NotFound,
+        PermissionDenied,
         BrokenPipe,
-        WouldBlock,
-        WriteZero,
-        Unsupported,
+        AlreadyExists,
         Interrupted,
+        Unsupported,
         OutOfMemory,
-        UnexpectedEof,
-        InvalidInput,
         Other,
     ],
     msg : Str,
 }
 
-stdoutLine : Str -> Task {} Str
-stdoutWrite : Str -> Task {} Str
-stderrLine : Str -> Task {} Str
-stderrWrite : Str -> Task {} Str
-stdinLine : Task Str Str
-stdinBytes : Task (List U8) {}
-stdinReadToEnd : Task (List U8) InternalIOErr
-ttyModeCanonical : Task {} {}
-ttyModeRaw : Task {} {}
+stdoutLine! : Str => Result {} InternalIOErr
+stdoutWrite! : Str => Result {} InternalIOErr
+stderrLine! : Str => Result {} InternalIOErr
+stderrWrite! : Str => Result {} InternalIOErr
+stdinLine! : {} => Result Str InternalIOErr
+stdinBytes! : {} => Result (List U8) InternalIOErr
+stdinReadToEnd! : {} => Result (List U8) InternalIOErr
 
-fileWriteBytes : List U8, List U8 -> Task {} Str
-fileWriteUtf8 : List U8, Str -> Task {} Str
-fileDelete : List U8 -> Task {} Str
-fileReadBytes : List U8 -> Task (List U8) Str
+ttyModeCanonical! : {} => {}
+ttyModeRaw! : {} => {}
+
+fileWriteBytes! : List U8, List U8 => Result {} Str
+fileWriteUtf8! : List U8, Str => Result {} Str
+fileDelete! : List U8 => Result {} Str
+fileReadBytes! : List U8 => Result (List U8) Str
 
 FileReader := Box {}
-fileReader : List U8, U64 -> Task FileReader Str
-fileReadLine : FileReader -> Task (List U8) Str
+fileReader! : List U8, U64 => Result FileReader Str
+fileReadLine! : FileReader => Result (List U8) Str
 
-envDict : Task (List (Str, Str)) {}
-envVar : Str -> Task Str {}
-exePath : Task (List U8) {}
-setCwd : List U8 -> Task {} {}
+envDict! : {} => List (Str, Str)
+envVar! : Str => Result Str {}
+exePath! : {} => Result (List U8) {}
+setCwd! : List U8 => Result {} {}
 
 # If we encounter a Unicode error in any of the args, it will be replaced with
 # the Unicode replacement char where necessary.
-args : Task (List Str) {}
+args! : {} => List Str
 
-cwd : Task (List U8) {}
+cwd! : {} => Result (List U8) {}
 
-sendRequest : Box Request -> Task InternalResponse []
+sendRequest! : Box Request => InternalResponse
 
 TcpStream := Box {}
-tcpConnect : Str, U16 -> Task TcpStream Str
-tcpReadUpTo : TcpStream, U64 -> Task (List U8) Str
-tcpReadExactly : TcpStream, U64 -> Task (List U8) Str
-tcpReadUntil : TcpStream, U8 -> Task (List U8) Str
-tcpWrite : TcpStream, List U8 -> Task {} Str
+tcpConnect! : Str, U16 => Result TcpStream Str
+tcpReadUpTo! : TcpStream, U64 => Result (List U8) Str
+tcpReadExactly! : TcpStream, U64 => Result (List U8) Str
+tcpReadUntil! : TcpStream, U8 => Result (List U8) Str
+tcpWrite! : TcpStream, List U8 => Result {} Str
 
-pathType : List U8 -> Task InternalPath.InternalPathType (List U8)
+pathType! : List U8 => Result InternalPath.InternalPathType (List U8)
 
-posixTime : Task U128 {}
-sleepMillis : U64 -> Task {} {}
+# TODO why is this a U128 but then getting converted to a I128 in Utc.roc?
+posixTime! : {} => U128
 
-commandStatus : Box InternalCommand.Command -> Task {} (List U8)
-commandOutput : Box InternalCommand.Command -> Task InternalCommand.Output []
+sleepMillis! : U64 => {}
 
-dirList : List U8 -> Task (List (List U8)) Str
-dirCreate : List U8 -> Task {} Str
-dirCreateAll : List U8 -> Task {} Str
-dirDeleteEmpty : List U8 -> Task {} Str
-dirDeleteAll : List U8 -> Task {} Str
+commandStatus! : Box InternalCommand.Command => Result {} (List U8)
+commandOutput! : Box InternalCommand.Command => InternalCommand.Output
 
-currentArchOS : Task { arch : Str, os : Str } {}
+dirList! : List U8 => Result (List (List U8)) Str
+dirCreate! : List U8 => Result {} Str
+dirCreateAll! : List U8 => Result {} Str
+dirDeleteEmpty! : List U8 => Result {} Str
+dirDeleteAll! : List U8 => Result {} Str
 
-tempDir : Task (List U8) {}
+hardLink! : List U8 => Result {} InternalIOErr
 
-getLocale : Task Str {}
-getLocales : Task (List Str) {}
+currentArchOS! : {} => { arch : Str, os : Str }
+
+tempDir! : {} => List U8
+
+getLocale! : {} => Result Str {}
+getLocales! : {} => List Str

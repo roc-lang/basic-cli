@@ -1,4 +1,4 @@
-app [main] { pf: platform "../platform/main.roc" }
+app [main!] { pf: platform "../platform/main.roc" }
 
 import pf.Stdout
 import pf.File
@@ -16,25 +16,27 @@ import pf.File
 #
 # See examples/file-read.roc if you want to read the full contents at once.
 
-main =
-    reader = File.openReader! "LICENSE"
+main! = \{} ->
+    reader = try File.openReader! "LICENSE"
 
-    readSummary = Task.loop!
-        { linesRead: 0, bytesRead: 0 }
-        (processLine reader)
+    readSummary = try processLine! reader { linesRead: 0, bytesRead: 0 }
+
     Stdout.line! "Done reading file: $(Inspect.toStr readSummary)"
 
 ReadSummary : { linesRead : U64, bytesRead : U64 }
 
 ## Count the number of lines and the number of bytes read.
-processLine : File.Reader -> (ReadSummary -> Task [Step ReadSummary, Done ReadSummary] _)
-processLine = \reader -> \{ linesRead, bytesRead } ->
-        when File.readLine reader |> Task.result! is
-            Ok bytes if List.len bytes == 0 ->
-                Task.ok (Done { linesRead, bytesRead })
+processLine! : File.Reader, ReadSummary => Result ReadSummary _
+processLine! = \reader, { linesRead, bytesRead } ->
+    when File.readLine! reader is
+        Ok bytes if List.len bytes == 0 ->
+            Ok { linesRead, bytesRead }
 
-            Ok bytes ->
-                Task.ok (Step { linesRead: linesRead + 1, bytesRead: bytesRead + (List.len bytes |> Num.intCast) })
+        Ok bytes ->
+            processLine! reader {
+                linesRead: linesRead + 1,
+                bytesRead: bytesRead + (List.len bytes |> Num.intCast),
+            }
 
-            Err err ->
-                Task.err (ErrorReadingLine (Inspect.toStr err))
+        Err err ->
+            Err (ErrorReadingLine (Inspect.toStr err))
