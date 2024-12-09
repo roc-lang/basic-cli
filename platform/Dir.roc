@@ -9,6 +9,7 @@ module [
 ]
 
 import Path exposing [Path]
+import InternalPath
 
 ## **NotFound** - This error is raised when the specified path does not exist, typically during attempts to access or manipulate it, but also potentially when trying to create a directory and a parent directory does not exist.
 ##
@@ -16,12 +17,12 @@ import Path exposing [Path]
 ##
 ## **Other** - A catch-all for any other types of errors not explicitly listed above.
 ##
-## > This is the same as [`Path.DirErr`].
-Err : Path.DirErr
+## > This is the same as [`Path.DirErr`](Path#DirErr).
+Err : InternalPath.DirErr
 
 ## Record which represents a directory
 ##
-## > This is the same as [`Path.DirEntry`].
+## > This is the same as [`Path.DirEntry`](Path#DirEntry).
 DirEntry : Path.DirEntry
 
 ## Lists the files and directories inside the directory.

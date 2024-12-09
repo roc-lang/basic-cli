@@ -24,12 +24,12 @@ import PlatformTasks
 
 ## Tag union of possible errors when reading a file or directory.
 ##
-## > This is the same as [`Path.ReadErr`].
+## > This is the same as [`Path.ReadErr`](Path#ReadErr).
 ReadErr : Path.ReadErr
 
 ## Tag union of possible errors when writing a file or directory.
 ##
-## > This is the same as [`Path.WriteErr`].
+## > This is the same as [`Path.WriteErr`](Path#WriteErr).
 WriteErr : Path.WriteErr
 
 ## Write data to a file.
@@ -100,7 +100,7 @@ writeUtf8! = \str, path ->
 ## successfully deleted.
 ##
 ## ```
-## # Deletes the file named
+## # Deletes the file named `myfile.dat`
 ## File.delete! (Path.fromStr "myfile.dat") [1, 2, 3]
 ## ```
 ##
