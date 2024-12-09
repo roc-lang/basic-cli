@@ -5,6 +5,7 @@ module [
     DirEntry,
     DirErr,
     MetadataErr,
+    LinkErr,
     display,
     fromStr,
     fromBytes,
@@ -27,6 +28,7 @@ module [
     createAll!,
     deleteEmpty!,
     deleteAll!,
+    hardLink!,
 ]
 
 import InternalPath
@@ -330,7 +332,7 @@ readUtf8! : Path => Result Str [FileReadErr Path ReadErr, FileReadUtf8Err Path _
 readUtf8! = \path ->
     bytes =
         PlatformTasks.fileReadBytes! (InternalPath.toBytes path)
-            |> Result.mapErr? \readErr -> FileReadErr path (InternalFile.handleReadErr readErr)
+        |> Result.mapErr? \readErr -> FileReadErr path (InternalFile.handleReadErr readErr)
 
     Str.fromUtf8 bytes
     |> Result.mapErr \err -> FileReadUtf8Err path err
@@ -433,3 +435,19 @@ handleErr = \err ->
         e if e == "ErrorKind::AlreadyExists" -> DirErr AlreadyExists
         e if e == "ErrorKind::NotADirectory" -> DirErr NotADirectory
         str -> DirErr (Other str)
+
+## Creates a new hard link on the filesystem.
+##
+## The link path will be a link pointing to the original path.
+## Note that systems often require these two paths to both be located on the same filesystem.
+##
+## This uses [rust's std::fs::hard_link](https://doc.rust-lang.org/std/fs/fn.hard_link.html).
+##
+## > [File.hardLink!] does the same thing, except it takes a [Str] instead of a [Path].
+hardLink! : Path => Result {} [LinkErr LinkErr]
+hardLink! = \path ->
+    PlatformTasks.hardLink! (InternalPath.toBytes path)
+    |> Result.mapErr LinkErr
+
+## Tag union of possible errors when linking a file or directory.
+LinkErr : PlatformTasks.InternalIOErr

@@ -9,6 +9,7 @@ hosted PlatformTasks
         dirCreateAll!,
         dirDeleteEmpty!,
         dirDeleteAll!,
+        hardLink!,
         envDict!,
         envVar!,
         cwd!,
@@ -121,6 +122,8 @@ dirCreate! : List U8 => Result {} Str
 dirCreateAll! : List U8 => Result {} Str
 dirDeleteEmpty! : List U8 => Result {} Str
 dirDeleteAll! : List U8 => Result {} Str
+
+hardLink! : List U8 => Result {} InternalIOErr
 
 currentArchOS! : {} => { arch : Str, os : Str }
 

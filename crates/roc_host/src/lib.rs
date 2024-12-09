@@ -1287,6 +1287,17 @@ fn handleDirError(io_err: std::io::Error) -> RocStr {
 }
 
 #[no_mangle]
+pub extern "C" fn roc_fx_hardLink(
+    path_from: &RocList<u8>,
+    path_to: &RocList<u8>,
+) -> RocResult<(), glue::IOErr> {
+    match std::fs::hard_link(path_from_roc_path(path_from), path_from_roc_path(path_to)) {
+        Ok(_) => RocResult::ok(()),
+        Err(err) => RocResult::err(err.into()),
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn roc_fx_currentArchOS() -> glue::ReturnArchOS {
     glue::ReturnArchOS {
         arch: std::env::consts::ARCH.into(),
