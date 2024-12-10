@@ -43,11 +43,14 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         continue
     fi
 
-    if [ "$base_file" == "temp-dir.roc" ]; then
-        $ROC build $roc_file $ROC_BUILD_FLAGS --linker=legacy
-    else
-        $ROC build $roc_file $ROC_BUILD_FLAGS
-    fi
+    # Try using legacy linker for all ... this might help isolate our args segfault to surgical linking
+    $ROC build $roc_file $ROC_BUILD_FLAGS --linker=legacy
+
+    # if [ "$base_file" == "temp-dir.roc" ]; then
+    #     $ROC build $roc_file $ROC_BUILD_FLAGS --linker=legacy
+    # else
+    #     $ROC build $roc_file $ROC_BUILD_FLAGS
+    # fi
 
 done
 

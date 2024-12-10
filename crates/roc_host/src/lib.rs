@@ -353,9 +353,6 @@ pub extern "C" fn rust_main() {
         code
     };
 
-    // Force cleanup of any thread-local storage
-    TOKIO_RUNTIME.with(|_| {});
-
     std::process::exit(exit_code);
 }
 
