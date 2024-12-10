@@ -63,8 +63,8 @@ rocVersion = \rocCmd ->
     info! "Checking provided roc; executing `$(rocCmd) version`:"
 
     rocCmd
-        |> Cmd.exec ["version"]
-        |> Task.mapErr! RocVersionCheckFailed
+    |> Cmd.exec ["version"]
+    |> Task.mapErr! RocVersionCheckFailed
 
 getOSAndArch : Task OSAndArch _
 getOSAndArch =
@@ -95,8 +95,8 @@ buildStubAppLib : Str, Str -> Task {} _
 buildStubAppLib = \rocCmd, stubLibPath ->
     info! "Building stubbed app shared library ..."
     rocCmd
-        |> Cmd.exec ["build", "--lib", "platform/libapp.roc", "--output", stubLibPath, "--optimize"]
-        |> Task.mapErr! ErrBuildingAppStub
+    |> Cmd.exec ["build", "--lib", "platform/libapp.roc", "--output", stubLibPath, "--optimize"]
+    |> Task.mapErr! ErrBuildingAppStub
 
 stubFileExtension : OSAndArch -> Str
 stubFileExtension = \osAndArch ->
@@ -148,8 +148,8 @@ cargoBuildHost = \debugMode ->
                 \_ -> ["build", "--release"]
 
     "cargo"
-        |> Cmd.exec cargoBuildArgsT!
-        |> Task.mapErr! ErrBuildingHostBinaries
+    |> Cmd.exec cargoBuildArgsT!
+    |> Task.mapErr! ErrBuildingHostBinaries
 
 copyHostLib : OSAndArch, Str -> Task {} _
 copyHostLib = \osAndArch, rustTargetFolder ->
@@ -160,8 +160,8 @@ copyHostLib = \osAndArch, rustTargetFolder ->
 
     info! "Moving the prebuilt binary from $(hostBuildPath) to $(hostDestPath) ..."
     "cp"
-        |> Cmd.exec [hostBuildPath, hostDestPath]
-        |> Task.mapErr! ErrMovingPrebuiltLegacyBinary
+    |> Cmd.exec [hostBuildPath, hostDestPath]
+    |> Task.mapErr! ErrMovingPrebuiltLegacyBinary
 
 preprocessHost : Str, Str, Str -> Task {} _
 preprocessHost = \rocCmd, stubLibPath, rustTargetFolder ->
@@ -169,8 +169,8 @@ preprocessHost = \rocCmd, stubLibPath, rustTargetFolder ->
     surgicalBuildPath = "$(rustTargetFolder)host"
 
     rocCmd
-        |> Cmd.exec ["preprocess-host", surgicalBuildPath, "platform/main.roc", stubLibPath]
-        |> Task.mapErr! ErrPreprocessingSurgicalBinary
+    |> Cmd.exec ["preprocess-host", surgicalBuildPath, "platform/main.roc", stubLibPath]
+    |> Task.mapErr! ErrPreprocessingSurgicalBinary
 
 info : Str -> Task {} _
 info = \msg ->

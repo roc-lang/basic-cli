@@ -18,7 +18,7 @@ main =
 
     sendResult =
         Http.send request
-            |> Task.result!
+        |> Task.result!
 
     processedSendResult =
         Result.try sendResult Http.handleStringResponse

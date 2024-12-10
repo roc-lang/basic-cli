@@ -11,8 +11,8 @@ cwd : Task Path [CwdUnavailable]
 cwd =
     bytes =
         PlatformTasks.cwd
-            |> Task.result!
-            |> Result.withDefault []
+        |> Task.result!
+        |> Result.withDefault []
 
     if List.isEmpty bytes then
         Task.err CwdUnavailable
@@ -137,8 +137,8 @@ platform : Task { arch : ARCH, os : OS } *
 platform =
     fromRust =
         PlatformTasks.currentArchOS
-            |> Task.result!
-            |> Result.withDefault { arch: "", os: "" }
+        |> Task.result!
+        |> Result.withDefault { arch: "", os: "" }
 
     arch =
         when fromRust.arch is
