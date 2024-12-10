@@ -334,7 +334,7 @@ pub fn init() {
 }
 
 #[no_mangle]
-pub extern "C" fn rust_main() -> i32 {
+pub extern "C" fn rust_main() {
     init();
 
     extern "C" {
@@ -345,13 +345,18 @@ pub extern "C" fn rust_main() -> i32 {
         pub fn roc_main__for_host_size() -> usize;
     }
 
-    let exit_code: i32 = unsafe { roc_main_for_host_caller(0) };
+    let exit_code: i32 = unsafe {
+        let code = roc_main_for_host_caller(0);
 
-    unsafe {
-        debug_assert_eq!(std::mem::size_of_val(&exit_code), roc_main__for_host_size());
-    }
+        debug_assert_eq!(std::mem::size_of_val(&code), roc_main__for_host_size());
 
-    exit_code
+        code
+    };
+
+    // Force cleanup of any thread-local storage
+    TOKIO_RUNTIME.with(|_| {});
+
+    std::process::exit(exit_code);
 }
 
 #[no_mangle]
@@ -489,17 +494,13 @@ pub extern "C" fn roc_fx_stderrWrite(text: &RocStr) -> RocResult<(), glue::IOErr
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_ttyModeCanonical() -> () {
+pub extern "C" fn roc_fx_ttyModeCanonical() {
     crossterm::terminal::disable_raw_mode().expect("failed to disable raw mode");
-
-    ()
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_ttyModeRaw() -> () {
+pub extern "C" fn roc_fx_ttyModeRaw() {
     crossterm::terminal::enable_raw_mode().expect("failed to enable raw mode");
-
-    ()
 }
 
 #[no_mangle]
@@ -687,11 +688,9 @@ pub extern "C" fn roc_fx_posixTime() -> roc_std::U128 {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_sleepMillis(milliseconds: u64) -> () {
+pub extern "C" fn roc_fx_sleepMillis(milliseconds: u64) {
     let duration = Duration::from_millis(milliseconds);
     std::thread::sleep(duration);
-
-    ()
 }
 
 #[no_mangle]

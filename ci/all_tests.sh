@@ -69,7 +69,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     no_ext_name=${roc_file_only%.*}
 
     if [ "$no_ext_name" == "args" ] && command -v valgrind &> /dev/null; then
-        valgrind $EXAMPLES_DIR/args argument
+        valgrind --main-stacksize=32777216 --track-origins=yes --leak-check=full --show-leak-kinds=all --verbose $EXAMPLES_DIR/args argument
     fi
     expect ci/expect_scripts/$no_ext_name.exp
 done
