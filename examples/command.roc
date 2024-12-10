@@ -30,11 +30,11 @@ outputExample : Task {} _
 outputExample =
     output =
         Cmd.new "env"
-            |> Cmd.clearEnvs
-            |> Cmd.env "FOO" "BAR"
-            |> Cmd.args ["-v"]
-            |> Cmd.output
-            |> Task.mapErr! \CmdOutputError err -> EnvFailed (Cmd.outputErrToStr err)
+        |> Cmd.clearEnvs
+        |> Cmd.env "FOO" "BAR"
+        |> Cmd.args ["-v"]
+        |> Cmd.output
+        |> Task.mapErr! \CmdOutputError err -> EnvFailed (Cmd.outputErrToStr err)
 
     output.stdout
     |> Str.fromUtf8

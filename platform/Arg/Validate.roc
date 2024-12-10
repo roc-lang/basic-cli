@@ -75,19 +75,19 @@ validateCommand = \{ name, options, parentOptions, parameters, subcommands, subc
 
     _ =
         options
-            |> List.mapTry? \option ->
-                ensureOptionIsWellNamed? { option, subcommandPath }
-                ensureOptionValueTypeIsWellNamed? { option, subcommandPath }
+        |> List.mapTry? \option ->
+            ensureOptionIsWellNamed? { option, subcommandPath }
+            ensureOptionValueTypeIsWellNamed? { option, subcommandPath }
 
-                Ok {}
+            Ok {}
 
     _ =
         parameters
-            |> List.mapTry? \param ->
-                ensureParamIsWellNamed? { name: param.name, subcommandPath }
-                ensureParamValueTypeIsWellNamed? { param, subcommandPath }
+        |> List.mapTry? \param ->
+            ensureParamIsWellNamed? { name: param.name, subcommandPath }
+            ensureParamValueTypeIsWellNamed? { param, subcommandPath }
 
-                Ok {}
+            Ok {}
 
     checkIfThereAreOverlappingParameters? parameters subcommandPath
 

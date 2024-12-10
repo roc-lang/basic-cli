@@ -86,8 +86,8 @@ parseStreamErr = \err ->
 connect : Str, U16 -> Task Stream ConnectErr
 connect = \host, port ->
     PlatformTasks.tcpConnect host port
-        |> Task.map @Stream
-        |> Task.mapErr! parseConnectErr
+    |> Task.map @Stream
+    |> Task.mapErr! parseConnectErr
 
 ## Read up to a number of bytes from the TCP stream.
 ##
@@ -134,7 +134,7 @@ readExactly = \@Stream stream, bytesToRead ->
 readUntil : Stream, U8 -> Task (List U8) [TcpReadErr StreamErr]
 readUntil = \@Stream stream, byte ->
     PlatformTasks.tcpReadUntil stream byte
-        |> Task.mapErr! \err -> TcpReadErr (parseStreamErr err)
+    |> Task.mapErr! \err -> TcpReadErr (parseStreamErr err)
 
 ## Read until a newline or EOF is reached.
 ##
@@ -165,7 +165,7 @@ readLine = \stream ->
 write : Stream, List U8 -> Task {} [TcpWriteErr StreamErr]
 write = \@Stream stream, bytes ->
     PlatformTasks.tcpWrite stream bytes
-        |> Task.mapErr! \err -> TcpWriteErr (parseStreamErr err)
+    |> Task.mapErr! \err -> TcpWriteErr (parseStreamErr err)
 
 ## Writes a [Str] to a TCP stream, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##

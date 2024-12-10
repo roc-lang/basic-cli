@@ -136,7 +136,7 @@ send = \req ->
     # TODO: Fix our C ABI codegen so that we don't this Box.box heap allocation
     { variant, body, metadata } =
         PlatformTasks.sendRequest (Box.box internalRequest)
-            |> Task.mapErr! \_ -> crash "unreachable"
+        |> Task.mapErr! \_ -> crash "unreachable"
     responseResult =
         when variant is
             "Timeout" -> Err (Timeout timeoutMs)

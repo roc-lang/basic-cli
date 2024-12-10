@@ -19,8 +19,8 @@ now : {} -> Task Utc *
 now = \{} ->
     currentEpoch =
         PlatformTasks.posixTime
-            |> Task.mapErr! \_ -> crash "unreachable"
-            |> Num.toI128
+        |> Task.mapErr! \_ -> crash "unreachable"
+        |> Num.toI128
 
     Task.ok (@Utc currentEpoch)
 

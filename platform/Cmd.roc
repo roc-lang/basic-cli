@@ -132,7 +132,7 @@ output : Cmd -> Task Output [CmdOutputError (Output, Err)]
 output = \@Cmd cmd ->
     internalOutput =
         PlatformTasks.commandOutput (Box.box cmd)
-            |> Task.mapErr! \_ -> crash "unreachable"
+        |> Task.mapErr! \_ -> crash "unreachable"
     out = {
         stdout: internalOutput.stdout,
         stderr: internalOutput.stderr,

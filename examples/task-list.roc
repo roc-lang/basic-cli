@@ -14,7 +14,7 @@ main =
     # Print out each of the authors (in reverse)
     _ =
         authors
-            |> List.map Stdout.line
-            |> Task.sequence!
+        |> List.map Stdout.line
+        |> Task.sequence!
     # Also prints out each of the authors
     Task.forEach! authors Stdout.line
