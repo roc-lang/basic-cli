@@ -68,6 +68,9 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     roc_file_only="$(basename "$roc_file")"
     no_ext_name=${roc_file_only%.*}
 
+    if [ "$no_ext_name" == "args" ] && command -v valgrind &> /dev/null; then
+        valgrind $EXAMPLES_DIR/args "some argument"
+    fi
     expect ci/expect_scripts/$no_ext_name.exp
 done
 
