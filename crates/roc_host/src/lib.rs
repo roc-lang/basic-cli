@@ -6,7 +6,7 @@
 #![allow(non_snake_case)]
 #![allow(improper_ctypes)]
 use core::ffi::c_void;
-use roc_std::{RocBox, RocList, RocResult, RocStr, ReadOnlyRocList, ReadOnlyRocStr};
+use roc_std::{ReadOnlyRocList, ReadOnlyRocStr, RocBox, RocList, RocResult, RocStr};
 use roc_std_heap::ThreadSafeRefcountedResourceHeap;
 use std::borrow::{Borrow, Cow};
 use std::ffi::OsStr;
@@ -29,7 +29,7 @@ thread_local! {
        .unwrap();
 }
 
-static ARGS : OnceLock<ReadOnlyRocList<ReadOnlyRocStr>> = OnceLock::new();
+static ARGS: OnceLock<ReadOnlyRocList<ReadOnlyRocStr>> = OnceLock::new();
 
 fn file_heap() -> &'static ThreadSafeRefcountedResourceHeap<BufReader<File>> {
     static FILE_HEAP: OnceLock<ThreadSafeRefcountedResourceHeap<BufReader<File>>> = OnceLock::new();
@@ -129,6 +129,29 @@ pub unsafe extern "C" fn roc_panic(msg: &RocStr, tag_id: u32) {
 #[no_mangle]
 pub unsafe extern "C" fn roc_dbg(loc: &RocStr, msg: &RocStr, src: &RocStr) {
     eprintln!("[{}] {} = {}", loc, src, msg);
+}
+
+/// # Safety
+///
+/// This function is unsafe.
+#[no_mangle]
+pub unsafe extern "C" fn roc_expect_failed(
+    loc: &RocStr,
+    src: &RocStr,
+    variables: &RocList<glue::Variable>,
+) {
+    eprintln!("\nExpectation failed at {}:", loc.as_str());
+    eprintln!("\nExpression:\n\t{}\n", src.as_str());
+
+    if !variables.is_empty() {
+        eprintln!("With values:");
+        for var in variables.iter() {
+            eprintln!("\t{} = {}", var.name.as_str(), var.value.as_str());
+        }
+        eprintln!();
+    }
+
+    std::process::exit(1);
 }
 
 /// # Safety
@@ -337,7 +360,8 @@ pub fn init() {
 
 #[no_mangle]
 pub extern "C" fn rust_main(args: ReadOnlyRocList<ReadOnlyRocStr>) -> i32 {
-    ARGS.set(args).unwrap_or_else(|_| panic!("only one thread running, must be able to set args"));
+    ARGS.set(args)
+        .unwrap_or_else(|_| panic!("only one thread running, must be able to set args"));
     init();
 
     extern "C" {
@@ -375,7 +399,9 @@ pub extern "C" fn roc_fx_envDict() -> RocList<(RocStr, RocStr)> {
 #[no_mangle]
 pub extern "C" fn roc_fx_args() -> ReadOnlyRocList<ReadOnlyRocStr> {
     // Note: the clone here is no-op since the refcount is readonly. Just goes from &RocList to RocList.
-    ARGS.get().expect("args was set during init and must be here").clone()
+    ARGS.get()
+        .expect("args was set during init and must be here")
+        .clone()
 }
 
 #[no_mangle]
