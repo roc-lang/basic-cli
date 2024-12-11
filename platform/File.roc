@@ -18,7 +18,7 @@ module [
     hardLink!,
 ]
 
-import Path exposing [Path, MetadataErr]
+import Path exposing [Path]
 import InternalFile
 import Host
 
@@ -180,7 +180,7 @@ hardLink! = \path ->
 ## This uses [rust's std::path::is_dir](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_dir).
 ##
 ## > [Path.isDir!] does the same thing, except it takes a [Path] instead of a [Str].
-isDir! : Str => Result Bool [PathErr MetadataErr]
+isDir! : Str => Result Bool [PathErr IOErr]
 isDir! = \path ->
     Path.isDir! (Path.fromStr path)
 
@@ -191,7 +191,7 @@ isDir! = \path ->
 ## This uses [rust's std::path::is_file](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_file).
 ##
 ## > [Path.isFile!] does the same thing, except it takes a [Path] instead of a [Str].
-isFile! : Str => Result Bool [PathErr MetadataErr]
+isFile! : Str => Result Bool [PathErr IOErr]
 isFile! = \path ->
     Path.isFile! (Path.fromStr path)
 
@@ -202,7 +202,7 @@ isFile! = \path ->
 ## This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
 ##
 ## > [Path.isSymLink!] does the same thing, except it takes a [Path] instead of a [Str].
-isSymLink! : Str => Result Bool [PathErr MetadataErr]
+isSymLink! : Str => Result Bool [PathErr IOErr]
 isSymLink! = \path ->
     Path.isSymLink! (Path.fromStr path)
 
@@ -210,7 +210,7 @@ isSymLink! = \path ->
 ## This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
 ##
 ## > [Path.type!] does the same thing, except it takes a [Path] instead of a [Str].
-type! : Str => Result [IsFile, IsDir, IsSymLink] [PathErr MetadataErr]
+type! : Str => Result [IsFile, IsDir, IsSymLink] [PathErr IOErr]
 type! = \path ->
     Path.type! (Path.fromStr path)
 

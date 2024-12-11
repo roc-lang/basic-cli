@@ -107,7 +107,7 @@ tcpReadExactly! : TcpStream, U64 => Result (List U8) Str
 tcpReadUntil! : TcpStream, U8 => Result (List U8) Str
 tcpWrite! : TcpStream, List U8 => Result {} Str
 
-pathType! : List U8 => Result InternalPath.InternalPathType (List U8)
+pathType! : List U8 => Result InternalPath.InternalPathType InternalIOErr
 
 # TODO why is this a U128 but then getting converted to a I128 in Utc.roc?
 posixTime! : {} => U128

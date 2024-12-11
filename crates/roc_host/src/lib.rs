@@ -563,7 +563,7 @@ pub struct InternalPathType {
 #[no_mangle]
 pub extern "C" fn roc_fx_pathType(
     roc_path: &RocList<u8>,
-) -> RocResult<InternalPathType, RocList<u8>> {
+) -> RocResult<InternalPathType, glue::IOErr> {
     let path = path_from_roc_path(roc_path);
     match path.symlink_metadata() {
         Ok(m) => RocResult::ok(InternalPathType {
@@ -571,7 +571,7 @@ pub extern "C" fn roc_fx_pathType(
             isFile: m.is_file(),
             isSymLink: m.is_symlink(),
         }),
-        Err(err) => RocResult::err(toRocGetMetadataError(err)),
+        Err(err) => RocResult::err(err.into()),
     }
 }
 
@@ -969,14 +969,6 @@ async fn send_request(request: hyper::Request<String>, url: &str) -> InternalRes
                 InternalResponse::bad_request(err.to_string().as_str())
             }
         }
-    }
-}
-
-fn toRocGetMetadataError(err: std::io::Error) -> RocList<u8> {
-    match err.kind() {
-        ErrorKind::PermissionDenied => RocList::from([b'P', b'D']),
-        ErrorKind::NotFound => RocList::from([b'N', b'F']),
-        _ => RocList::from(format!("{:?}", err).as_bytes()),
     }
 }
 

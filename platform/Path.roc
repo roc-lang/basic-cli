@@ -2,7 +2,6 @@ module [
     Path,
     IOErr,
     DirEntry,
-    MetadataErr,
     LinkErr,
     display,
     fromStr,
@@ -33,9 +32,6 @@ import InternalPath
 import InternalFile
 import FileMetadata exposing [FileMetadata]
 import Host
-
-## An error when reading a path's file metadata from disk.
-MetadataErr : InternalPath.GetMetadataErr
 
 ## Represents a path to a file or directory on the filesystem.
 Path : InternalPath.InternalPath
@@ -188,7 +184,7 @@ display = \path ->
 ## This uses [rust's std::path::is_dir](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_dir).
 ##
 ## > [`File.isDir`](File#isDir!) does the same thing, except it takes a [Str] instead of a [Path].
-isDir! : Path => Result Bool [PathErr MetadataErr]
+isDir! : Path => Result Bool [PathErr IOErr]
 isDir! = \path ->
     res = type!? path
     Ok (res == IsDir)
@@ -200,7 +196,7 @@ isDir! = \path ->
 ## This uses [rust's std::path::is_file](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_file).
 ##
 ## > [`File.isFile`](File#isFile!) does the same thing, except it takes a [Str] instead of a [Path].
-isFile! : Path => Result Bool [PathErr MetadataErr]
+isFile! : Path => Result Bool [PathErr IOErr]
 isFile! = \path ->
     res = type!? path
     Ok (res == IsFile)
@@ -212,7 +208,7 @@ isFile! = \path ->
 ## This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
 ##
 ## > [`File.isSymLink`](File#isSymLink!) does the same thing, except it takes a [Str] instead of a [Path].
-isSymLink! : Path => Result Bool [PathErr MetadataErr]
+isSymLink! : Path => Result Bool [PathErr IOErr]
 isSymLink! = \path ->
     res = type!? path
     Ok (res == IsSymLink)
@@ -220,10 +216,10 @@ isSymLink! = \path ->
 ## Return the type of the path if the path exists on disk.
 ##
 ## > [`File.type`](File#type!) does the same thing, except it takes a [Str] instead of a [Path].
-type! : Path => Result [IsFile, IsDir, IsSymLink] [PathErr MetadataErr]
+type! : Path => Result [IsFile, IsDir, IsSymLink] [PathErr IOErr]
 type! = \path ->
     Host.pathType! (InternalPath.toBytes path)
-    |> Result.mapErr \err -> PathErr (InternalPath.handlerGetMetadataErr err)
+    |> Result.mapErr \err -> PathErr (InternalFile.handleErr err)
     |> Result.map \pathType ->
         if pathType.isSymLink then
             IsSymLink
