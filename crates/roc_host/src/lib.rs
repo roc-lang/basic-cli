@@ -6,7 +6,7 @@
 #![allow(non_snake_case)]
 #![allow(improper_ctypes)]
 use core::ffi::c_void;
-use roc_std::{RocBox, RocList, RocResult, RocStr};
+use roc_std::{RocBox, RocList, RocResult, RocStr, ReadOnlyRocList, ReadOnlyRocStr};
 use roc_std_heap::ThreadSafeRefcountedResourceHeap;
 use std::borrow::{Borrow, Cow};
 use std::ffi::OsStr;
@@ -28,6 +28,8 @@ thread_local! {
        .build()
        .unwrap();
 }
+
+static ARGS : OnceLock<ReadOnlyRocList<ReadOnlyRocStr>> = OnceLock::new();
 
 fn file_heap() -> &'static ThreadSafeRefcountedResourceHeap<BufReader<File>> {
     static FILE_HEAP: OnceLock<ThreadSafeRefcountedResourceHeap<BufReader<File>>> = OnceLock::new();
@@ -334,7 +336,8 @@ pub fn init() {
 }
 
 #[no_mangle]
-pub extern "C" fn rust_main() {
+pub extern "C" fn rust_main(args: ReadOnlyRocList<ReadOnlyRocStr>) -> i32 {
+    ARGS.set(args).unwrap_or_else(|_| panic!("only one thread running, must be able to set args"));
     init();
 
     extern "C" {
@@ -353,7 +356,7 @@ pub extern "C" fn rust_main() {
         code
     };
 
-    std::process::exit(exit_code);
+    exit_code
 }
 
 #[no_mangle]
@@ -370,12 +373,9 @@ pub extern "C" fn roc_fx_envDict() -> RocList<(RocStr, RocStr)> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_args() -> RocList<RocStr> {
-    // TODO: can we be more efficient about re_using the String's memory for RocStr?
-
-    std::env::args_os()
-        .map(|os_str| RocStr::from(os_str.to_string_lossy().borrow()))
-        .collect()
+pub extern "C" fn roc_fx_args() -> ReadOnlyRocList<ReadOnlyRocStr> {
+    // Note: the clone here is no-op since the refcount is readonly. Just goes from &RocList to RocList.
+    ARGS.get().expect("args was set during init and must be here").clone()
 }
 
 #[no_mangle]
