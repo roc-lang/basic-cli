@@ -1,21 +1,25 @@
-app [main] { pf: platform "../platform/main.roc" }
+app [main!] { pf: platform "../platform/main.roc" }
 
 import pf.Tcp
 import pf.Stdout
 import pf.Stdin
 import pf.Stderr
 
-main = run |> Task.onErr handleErr
+main! = \{} ->
+    when run! {} is
+        Ok {} -> Ok {}
+        Err err -> handleErr! err
 
-handleErr = \error ->
+handleErr! : []_ => Result {} _
+handleErr! = \error ->
     when error is
         TcpConnectErr err ->
             errStr = Tcp.connectErrToStr err
-            Stderr.line
+            Stderr.line!
                 """
                 Failed to connect: $(errStr)
 
-                If you don't have anything listening on port 8085, run: 
+                If you don't have anything listening on port 8085, run:
                 \$ nc -l 8085
 
                 If you want an echo server you can run:
@@ -23,30 +27,43 @@ handleErr = \error ->
                 """
 
         TcpReadBadUtf8 _ ->
-            Stderr.line "Received invalid UTF-8 data"
+            Stderr.line! "Received invalid UTF-8 data"
 
         TcpReadErr err ->
             errStr = Tcp.streamErrToStr err
-            Stderr.line "Error while reading: $(errStr)"
+            Stderr.line! "Error while reading: $(errStr)"
 
         TcpWriteErr err ->
             errStr = Tcp.streamErrToStr err
-            Stderr.line "Error while writing: $(errStr)"
+            Stderr.line! "Error while writing: $(errStr)"
 
-        other -> Stderr.line "Got other error: $(Inspect.toStr other)"
+        other -> Stderr.line! "Got other error: $(Inspect.toStr other)"
 
-run =
-    stream = Tcp.connect! "127.0.0.1" 8085
-    Stdout.line! "Connected!"
+run! : {} => Result {} _
+run! = \{} ->
 
-    Task.loop {} \_ -> Task.map (tick stream) Step
+    stream = try Tcp.connect! "127.0.0.1" 8085
 
-tick : Tcp.Stream -> Task.Task {} _
-tick = \stream ->
-    Stdout.write! "> "
+    try Stdout.line! "Connected!"
 
-    outMsg = Stdin.line!
-    Tcp.writeUtf8! stream "$(outMsg)\n"
+    loop! {} \_ ->
+        Result.map (tick! stream) Step
 
-    inMsg = Tcp.readLine! stream
+tick! : Tcp.Stream => Result {} _
+tick! = \stream ->
+    try Stdout.write! "> "
+
+    outMsg = try Stdin.line! {}
+
+    try Tcp.writeUtf8! stream "$(outMsg)\n"
+
+    inMsg = try Tcp.readLine! stream
+
     Stdout.line! "< $(inMsg)"
+
+loop! : state, (state => Result [Step state, Done done] err) => Result done err
+loop! = \state, fn! ->
+    when fn! state is
+        Err err -> Err err
+        Ok (Done done) -> Ok done
+        Ok (Step next) -> loop! next fn!

@@ -7,14 +7,14 @@ platform ""
 
 InternalIOErr : {
     tag : [
+        EndOfFile,
+        NotFound,
+        PermissionDenied,
         BrokenPipe,
-        WouldBlock,
-        WriteZero,
-        Unsupported,
+        AlreadyExists,
         Interrupted,
+        Unsupported,
         OutOfMemory,
-        UnexpectedEof,
-        InvalidInput,
         Other,
     ],
     msg : Str,

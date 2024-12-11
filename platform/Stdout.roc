@@ -1,64 +1,62 @@
-module [line, write, Err]
+module [line!, write!, Err]
 
 import PlatformTasks
 
-## **BrokenPipe** - This error can occur when writing to a stdout that is no longer connected
-## to a valid input. For example, if the process on the receiving end of a pipe closes its
-## end, any write to that pipe could lead to a BrokenPipe error.
+## **NotFound** - An entity was not found, often a file.
 ##
-## **WouldBlock** - This error might occur if stdout is set to non-blocking mode and the write
-## operation would block because the output buffer is full.
+## **PermissionDenied** - The operation lacked the necessary privileges to complete.
 ##
-## **WriteZero** - This indicates an attempt to write "zero" bytes which is technically a no-operation
-## (no-op), but if detected, it could be raised as an error.
+## **BrokenPipe** - The operation failed because a pipe was closed.
 ##
-## **Unsupported** - If the stdout operation involves writing data in a manner or format that is not
-## supported, this error could be raised.
+## **AlreadyExists** - An entity already exists, often a file.
 ##
-## **Interrupted** - This can happen if a signal interrupts the writing process before it completes.
+## **Interrupted** - This operation was interrupted. Interrupted operations can typically be retried.
 ##
-## **OutOfMemory** - This could occur if there is not enough memory available to buffer the data being
-## written to stdout.
+## **Unsupported** - This operation is unsupported on this platform. This means that the operation can never succeed.
 ##
-## **Other** - This is a catch-all for any error not specifically categorized by the other ErrorKind
-## variants.
+## **OutOfMemory** - An operation could not be completed, because it failed to allocate enough memory.
+##
+## **Other** - A custom error that does not fall under any other I/O error kind.
 Err : [
+    NotFound,
+    PermissionDenied,
     BrokenPipe,
-    WouldBlock,
-    WriteZero,
-    Unsupported,
+    AlreadyExists,
     Interrupted,
+    Unsupported,
     OutOfMemory,
     Other Str,
 ]
 
-handleErr = \err ->
-    when err is
-        e if e == "ErrorKind::BrokenPipe" -> StdoutErr BrokenPipe
-        e if e == "ErrorKind::WouldBlock" -> StdoutErr WouldBlock
-        e if e == "ErrorKind::WriteZero" -> StdoutErr WriteZero
-        e if e == "ErrorKind::Unsupported" -> StdoutErr Unsupported
-        e if e == "ErrorKind::Interrupted" -> StdoutErr Interrupted
-        e if e == "ErrorKind::OutOfMemory" -> StdoutErr OutOfMemory
-        str -> StdoutErr (Other str)
+handleErr : PlatformTasks.InternalIOErr -> [StdoutErr Err]
+handleErr = \{ tag, msg } ->
+    when tag is
+        NotFound -> StdoutErr NotFound
+        PermissionDenied -> StdoutErr PermissionDenied
+        BrokenPipe -> StdoutErr BrokenPipe
+        AlreadyExists -> StdoutErr AlreadyExists
+        Interrupted -> StdoutErr Interrupted
+        Unsupported -> StdoutErr Unsupported
+        OutOfMemory -> StdoutErr OutOfMemory
+        Other | EndOfFile -> StdoutErr (Other msg)
 
 ## Write the given string to [standard output](https://en.wikipedia.org/wiki/Standard_streams#Standard_output_(stdout)),
 ## followed by a newline.
 ##
-## > To write to `stdout` without the newline, see [Stdout.write].
+## > To write to `stdout` without the newline, see [Stdout.write!].
 ##
-line : Str -> Task {} [StdoutErr Err]
-line = \str ->
-    PlatformTasks.stdoutLine str
-    |> Task.mapErr handleErr
+line! : Str => Result {} [StdoutErr Err]
+line! = \str ->
+    PlatformTasks.stdoutLine! str
+    |> Result.mapErr handleErr
 
 ## Write the given string to [standard output](https://en.wikipedia.org/wiki/Standard_streams#Standard_output_(stdout)).
 ##
 ## Note that many terminals will not actually display strings that are written to them until they receive a newline,
 ## so this may appear to do nothing until you write a newline!
 ##
-## > To write to `stdout` with a newline at the end, see [Stdout.line].
-write : Str -> Task {} [StdoutErr Err]
-write = \str ->
-    PlatformTasks.stdoutWrite str
-    |> Task.mapErr handleErr
+## > To write to `stdout` with a newline at the end, see [Stdout.line!].
+write! : Str => Result {} [StdoutErr Err]
+write! = \str ->
+    PlatformTasks.stdoutWrite! str
+    |> Result.mapErr handleErr

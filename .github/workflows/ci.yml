@@ -42,7 +42,7 @@ jobs:
 
       - run: ./roc_nightly/roc version
 
-      - run: sudo apt install -y expect ncat
+      - run: sudo apt install -y expect ncat valgrind
       # expect for testing
       # ncat for tcp-client example
 
@@ -64,9 +64,8 @@ jobs:
           rustup target add x86_64-unknown-linux-musl
 
       - name: Test building with musl target
-        run: CARGO_BUILD_TARGET=x86_64-unknown-linux-musl ./roc_nightly/roc build.roc -- --roc ./roc_nightly/roc
+        run: ROC=./roc_nightly/roc CARGO_BUILD_TARGET=x86_64-unknown-linux-musl ./roc_nightly/roc build.roc
 
       - name: Test using musl build
         run: |
-          NO_BUILD=1 ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
-
+          NO_BUILD=1 IS_MUSL=1 ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh

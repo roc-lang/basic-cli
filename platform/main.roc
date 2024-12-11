@@ -1,5 +1,5 @@
 platform "cli"
-    requires {} { main : Task {} [Exit I32 Str]_ }
+    requires {} { main! : {} => Result {} [Exit I32 Str]_ }
     exposes [
         Path,
         Arg,
@@ -17,34 +17,33 @@ platform "cli"
         Sleep,
         Cmd,
         Tty,
+        Locale,
     ]
     packages {}
     imports []
-    provides [mainForHost]
+    provides [mainForHost!]
 
 import Stderr
 
-mainForHost : Task {} I32 as Fx
-mainForHost =
-    Task.attempt main \res ->
-        when res is
-            Ok {} -> Task.ok {}
-            Err (Exit code str) ->
-                if Str.isEmpty str then
-                    Task.err code
-                else
-                    Stderr.line str
-                    |> Task.onErr \_ -> Task.err code
-                    |> Task.await \{} -> Task.err code
+mainForHost! : I32 => I32
+mainForHost! = \_ ->
+    when main! {} is
+        Ok {} -> 0
+        Err (Exit code msg) ->
+            if Str.isEmpty msg then
+                code
+            else
+                _ = Stderr.line! msg
+                code
 
-            Err err ->
-                Stderr.line
-                    """
-                    Program exited with error:
-                        $(Inspect.toStr err)
+        Err msg ->
+            helpMsg =
+                """
+                Program exited with error:
+                    $(Inspect.toStr msg)
 
-                    Tip: If you do not want to exit on this error, use `Task.mapErr` to handle the error.
-                    Docs for `Task.mapErr`: <https://www.roc-lang.org/packages/basic-cli/Task#mapErr>
-                    """
-                |> Task.onErr \_ -> Task.err 1
-                |> Task.await \_ -> Task.err 1
+                Tip: If you do not want to exit on this error, use `Result.mapErr` to handle the error. Docs for `Result.mapErr`: <https://www.roc-lang.org/builtins/Result#mapErr>
+                """
+
+            _ = Stderr.line! helpMsg
+            1
