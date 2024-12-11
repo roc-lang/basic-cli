@@ -5,10 +5,8 @@
 
 #![allow(non_snake_case)]
 #![allow(improper_ctypes)]
-use core::alloc::Layout;
 use core::ffi::c_void;
-use core::mem::MaybeUninit;
-use roc_std::{RocBox, RocList, RocResult, RocStr};
+use roc_std::{RocBox, RocList, RocResult, RocStr, ReadOnlyRocList, ReadOnlyRocStr};
 use roc_std_heap::ThreadSafeRefcountedResourceHeap;
 use std::borrow::{Borrow, Cow};
 use std::ffi::OsStr;
@@ -30,6 +28,8 @@ thread_local! {
        .build()
        .unwrap();
 }
+
+static ARGS : OnceLock<ReadOnlyRocList<ReadOnlyRocStr>> = OnceLock::new();
 
 fn file_heap() -> &'static ThreadSafeRefcountedResourceHeap<BufReader<File>> {
     static FILE_HEAP: OnceLock<ThreadSafeRefcountedResourceHeap<BufReader<File>>> = OnceLock::new();
@@ -60,17 +60,6 @@ fn tcp_heap() -> &'static ThreadSafeRefcountedResourceHeap<BufReader<TcpStream>>
 }
 
 const UNEXPECTED_EOF_ERROR: &str = "UnexpectedEof";
-
-extern "C" {
-    #[link_name = "roc__mainForHost_1_exposed_generic"]
-    pub fn roc_main(output: *mut u8);
-
-    #[link_name = "roc__mainForHost_1_exposed_size"]
-    pub fn roc_main_size() -> i64;
-
-    #[link_name = "roc__mainForHost_0_caller"]
-    fn call_Fx(flags: *const u8, closure_data: *const u8, output: *mut RocResult<(), i32>);
-}
 
 /// # Safety
 ///
@@ -333,6 +322,8 @@ pub fn init() {
         roc_fx_dirDeleteAll as _,
         roc_fx_currentArchOS as _,
         roc_fx_tempDir as _,
+        roc_fx_getLocale as _,
+        roc_fx_getLocales as _,
     ];
     #[allow(forgetting_references)]
     std::mem::forget(std::hint::black_box(funcs));
@@ -345,48 +336,27 @@ pub fn init() {
 }
 
 #[no_mangle]
-pub extern "C" fn rust_main() -> i32 {
+pub extern "C" fn rust_main(args: ReadOnlyRocList<ReadOnlyRocStr>) -> i32 {
+    ARGS.set(args).unwrap_or_else(|_| panic!("only one thread running, must be able to set args"));
     init();
-    let size = unsafe { roc_main_size() } as usize;
-    let layout = Layout::array::<u8>(size).unwrap();
 
-    unsafe {
-        let buffer = if size > 0 {
-            std::alloc::alloc(layout)
-        } else {
-            std::ptr::null()
-        } as *mut u8;
+    extern "C" {
+        #[link_name = "roc__mainForHost_1_exposed"]
+        pub fn roc_main_for_host_caller(not_used: i32) -> i32;
 
-        roc_main(buffer);
-
-        let out = call_the_closure(buffer);
-
-        if size > 0 {
-            std::alloc::dealloc(buffer, layout);
-        }
-
-        out
+        #[link_name = "roc__mainForHost_1_exposed_size"]
+        pub fn roc_main__for_host_size() -> usize;
     }
-}
 
-/// # Safety
-///
-/// This function should be passed a pointer to a closure data buffer.
-pub unsafe fn call_the_closure(closure_data_ptr: *const u8) -> i32 {
-    // Main always returns an i32. just allocate for that.
-    let mut out: RocResult<(), i32> = RocResult::ok(());
+    let exit_code: i32 = unsafe {
+        let code = roc_main_for_host_caller(0);
 
-    call_Fx(
-        // This flags pointer will never get dereferenced
-        MaybeUninit::uninit().as_ptr(),
-        closure_data_ptr,
-        &mut out,
-    );
+        debug_assert_eq!(std::mem::size_of_val(&code), roc_main__for_host_size());
 
-    match out.into() {
-        Ok(()) => 0,
-        Err(exit_code) => exit_code,
-    }
+        code
+    };
+
+    exit_code
 }
 
 #[no_mangle]
@@ -403,13 +373,9 @@ pub extern "C" fn roc_fx_envDict() -> RocList<(RocStr, RocStr)> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_args() -> RocResult<RocList<RocStr>, ()> {
-    // TODO: can we be more efficient about reusing the String's memory for RocStr?
-    RocResult::ok(
-        std::env::args_os()
-            .map(|os_str| RocStr::from(os_str.to_string_lossy().borrow()))
-            .collect(),
-    )
+pub extern "C" fn roc_fx_args() -> ReadOnlyRocList<ReadOnlyRocStr> {
+    // Note: the clone here is no-op since the refcount is readonly. Just goes from &RocList to RocList.
+    ARGS.get().expect("args was set during init and must be here").clone()
 }
 
 #[no_mangle]
@@ -437,67 +403,44 @@ pub extern "C" fn roc_fx_exePath(_roc_str: &RocStr) -> RocResult<RocList<u8>, ()
     }
 }
 
-/// See docs in `platform/Stdin.roc` for descriptions
-fn handleStdinErr(io_err: std::io::Error) -> RocStr {
-    match io_err.kind() {
-        ErrorKind::BrokenPipe => "ErrorKind::BrokenPipe".into(),
-        ErrorKind::UnexpectedEof => "ErrorKind::UnexpectedEof".into(),
-        ErrorKind::InvalidInput => "ErrorKind::InvalidInput".into(),
-        ErrorKind::OutOfMemory => "ErrorKind::OutOfMemory".into(),
-        ErrorKind::Interrupted => "ErrorKind::Interrupted".into(),
-        ErrorKind::Unsupported => "ErrorKind::Unsupported".into(),
-        _ => format!("{:?}", io_err).as_str().into(),
-    }
-}
-
 #[no_mangle]
-pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, RocStr> {
+pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, glue::IOErr> {
     let stdin = std::io::stdin();
 
     match stdin.lock().lines().next() {
-        None => RocResult::err(RocStr::from("EOF")),
-        Some(Ok(str)) => RocResult::ok(RocStr::from(str.as_str())),
-        Some(Err(io_err)) => RocResult::err(handleStdinErr(io_err)),
+        None => RocResult::err(glue::IOErr {
+            msg: RocStr::empty(),
+            tag: glue::IOErrTag::EndOfFile,
+        }),
+        Some(Ok(str)) => RocResult::ok(str.as_str().into()),
+        Some(Err(io_err)) => RocResult::err(io_err.into()),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdinBytes() -> RocResult<RocList<u8>, ()> {
+pub extern "C" fn roc_fx_stdinBytes() -> RocResult<RocList<u8>, glue::IOErr> {
     const BUF_SIZE: usize = 16_384; // 16 KiB = 16 * 1024 = 16,384 bytes
     let stdin = std::io::stdin();
     let mut buffer: [u8; BUF_SIZE] = [0; BUF_SIZE];
 
     match stdin.lock().read(&mut buffer) {
         Ok(bytes_read) => RocResult::ok(RocList::from(&buffer[0..bytes_read])),
-        Err(_) => RocResult::ok(RocList::from(([]).as_slice())),
+        Err(io_err) => RocResult::err(io_err.into()),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdinReadToEnd() -> RocResult<RocList<u8>, glue::InternalIOErr> {
+pub extern "C" fn roc_fx_stdinReadToEnd() -> RocResult<RocList<u8>, glue::IOErr> {
     let stdin = std::io::stdin();
     let mut buf = Vec::new();
     match stdin.lock().read_to_end(&mut buf) {
         Ok(bytes_read) => RocResult::ok(RocList::from(&buf[0..bytes_read])),
-        Err(err) => RocResult::err(err.into()),
-    }
-}
-
-/// See docs in `platform/Stdout.roc` for descriptions
-fn handleStdoutErr(io_err: std::io::Error) -> RocStr {
-    match io_err.kind() {
-        ErrorKind::BrokenPipe => "ErrorKind::BrokenPipe".into(),
-        ErrorKind::WouldBlock => "ErrorKind::WouldBlock".into(),
-        ErrorKind::WriteZero => "ErrorKind::WriteZero".into(),
-        ErrorKind::Unsupported => "ErrorKind::Unsupported".into(),
-        ErrorKind::Interrupted => "ErrorKind::Interrupted".into(),
-        ErrorKind::OutOfMemory => "ErrorKind::OutOfMemory".into(),
-        _ => format!("{:?}", io_err).as_str().into(),
+        Err(io_err) => RocResult::err(io_err.into()),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdoutLine(line: &RocStr) -> RocResult<(), RocStr> {
+pub extern "C" fn roc_fx_stdoutLine(line: &RocStr) -> RocResult<(), glue::IOErr> {
     let stdout = std::io::stdout();
 
     let mut handle = stdout.lock();
@@ -506,75 +449,55 @@ pub extern "C" fn roc_fx_stdoutLine(line: &RocStr) -> RocResult<(), RocStr> {
         .write_all(line.as_bytes())
         .and_then(|()| handle.write_all("\n".as_bytes()))
         .and_then(|()| handle.flush())
-        .map_err(handleStdoutErr)
+        .map_err(|io_err| io_err.into())
         .into()
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdoutWrite(text: &RocStr) -> RocResult<(), RocStr> {
+pub extern "C" fn roc_fx_stdoutWrite(text: &RocStr) -> RocResult<(), glue::IOErr> {
     let stdout = std::io::stdout();
-
     let mut handle = stdout.lock();
 
     handle
         .write_all(text.as_bytes())
         .and_then(|()| handle.flush())
-        .map_err(handleStdoutErr)
+        .map_err(|io_err| io_err.into())
         .into()
 }
 
-/// See docs in `platform/Stdout.roc` for descriptions
-fn handleStderrErr(io_err: std::io::Error) -> RocStr {
-    match io_err.kind() {
-        ErrorKind::BrokenPipe => "ErrorKind::BrokenPipe".into(),
-        ErrorKind::WouldBlock => "ErrorKind::WouldBlock".into(),
-        ErrorKind::WriteZero => "ErrorKind::WriteZero".into(),
-        ErrorKind::Unsupported => "ErrorKind::Unsupported".into(),
-        ErrorKind::Interrupted => "ErrorKind::Interrupted".into(),
-        ErrorKind::OutOfMemory => "ErrorKind::OutOfMemory".into(),
-        _ => format!("{:?}", io_err).as_str().into(),
-    }
-}
-
 #[no_mangle]
-pub extern "C" fn roc_fx_stderrLine(line: &RocStr) -> RocResult<(), RocStr> {
+pub extern "C" fn roc_fx_stderrLine(line: &RocStr) -> RocResult<(), glue::IOErr> {
     let stderr = std::io::stderr();
-
     let mut handle = stderr.lock();
 
     handle
         .write_all(line.as_bytes())
         .and_then(|()| handle.write_all("\n".as_bytes()))
         .and_then(|()| handle.flush())
-        .map_err(handleStderrErr)
+        .map_err(|io_err| io_err.into())
         .into()
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stderrWrite(text: &RocStr) -> RocResult<(), RocStr> {
+pub extern "C" fn roc_fx_stderrWrite(text: &RocStr) -> RocResult<(), glue::IOErr> {
     let stderr = std::io::stderr();
-
     let mut handle = stderr.lock();
 
     handle
         .write_all(text.as_bytes())
         .and_then(|()| handle.flush())
-        .map_err(handleStderrErr)
+        .map_err(|io_err| io_err.into())
         .into()
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_ttyModeCanonical() -> RocResult<(), ()> {
+pub extern "C" fn roc_fx_ttyModeCanonical() {
     crossterm::terminal::disable_raw_mode().expect("failed to disable raw mode");
-
-    RocResult::ok(())
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_ttyModeRaw() -> RocResult<(), ()> {
+pub extern "C" fn roc_fx_ttyModeRaw() {
     crossterm::terminal::enable_raw_mode().expect("failed to enable raw mode");
-
-    RocResult::ok(())
 }
 
 #[no_mangle]
@@ -690,7 +613,7 @@ pub extern "C" fn roc_fx_fileReadLine(data: RocBox<()>) -> RocResult<RocList<u8>
     let buf_reader: &mut BufReader<File> = ThreadSafeRefcountedResourceHeap::box_to_resource(data);
 
     let mut buffer = RocList::empty();
-    match read_until(buf_reader, '\n' as u8, &mut buffer) {
+    match read_until(buf_reader, b'\n', &mut buffer) {
         Ok(..) => {
             // Note: this returns an empty list when no bytes were read, e.g. End Of File
             RocResult::ok(buffer)
@@ -752,21 +675,19 @@ pub extern "C" fn roc_fx_cwd() -> RocResult<RocList<u8>, ()> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_posixTime() -> RocResult<roc_std::U128, ()> {
+pub extern "C" fn roc_fx_posixTime() -> roc_std::U128 {
     // TODO in future may be able to avoid this panic by using C APIs
     let since_epoch = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("time went backwards");
 
-    RocResult::ok(roc_std::U128::from(since_epoch.as_nanos()))
+    roc_std::U128::from(since_epoch.as_nanos())
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_sleepMillis(milliseconds: u64) -> RocResult<(), ()> {
+pub extern "C" fn roc_fx_sleepMillis(milliseconds: u64) {
     let duration = Duration::from_millis(milliseconds);
     std::thread::sleep(duration);
-
-    RocResult::ok(())
 }
 
 #[no_mangle]
@@ -1064,7 +985,7 @@ pub extern "C" fn roc_fx_tcpConnect(host: &RocStr, port: u16) -> RocResult<RocBo
                 Err(err) => RocResult::err(to_tcp_connect_err(err)),
             }
         }
-        Err(err) => return RocResult::err(to_tcp_connect_err(err)),
+        Err(err) => RocResult::err(to_tcp_connect_err(err)),
     }
 }
 
@@ -1361,25 +1282,30 @@ fn handleDirError(io_err: std::io::Error) -> RocStr {
     }
 }
 
-#[repr(C)]
-pub struct ReturnArchOS {
-    arch: RocStr,
-    os: RocStr,
+#[no_mangle]
+pub extern "C" fn roc_fx_hardLink(
+    path_from: &RocList<u8>,
+    path_to: &RocList<u8>,
+) -> RocResult<(), glue::IOErr> {
+    match std::fs::hard_link(path_from_roc_path(path_from), path_from_roc_path(path_to)) {
+        Ok(_) => RocResult::ok(()),
+        Err(err) => RocResult::err(err.into()),
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_currentArchOS() -> RocResult<ReturnArchOS, ()> {
-    RocResult::ok(ReturnArchOS {
+pub extern "C" fn roc_fx_currentArchOS() -> glue::ReturnArchOS {
+    glue::ReturnArchOS {
         arch: std::env::consts::ARCH.into(),
         os: std::env::consts::OS.into(),
-    })
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_tempDir() -> RocResult<RocList<u8>, ()> {
+pub extern "C" fn roc_fx_tempDir() -> RocList<u8> {
     let path_os_string_bytes = std::env::temp_dir().into_os_string().into_encoded_bytes();
 
-    RocResult::ok(RocList::from(path_os_string_bytes.as_slice()))
+    RocList::from(path_os_string_bytes.as_slice())
 }
 
 #[no_mangle]
@@ -1391,12 +1317,12 @@ pub extern "C" fn roc_fx_getLocale() -> RocResult<RocStr, ()> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_getLocales() -> RocResult<RocList<RocStr>, ()> {
+pub extern "C" fn roc_fx_getLocales() -> RocList<RocStr> {
     const DEFAULT_MAX_LOCALES: usize = 10;
     let locales = sys_locale::get_locales();
     let mut roc_locales = RocList::with_capacity(DEFAULT_MAX_LOCALES);
     for l in locales {
         roc_locales.push(l.to_string().as_str().into());
     }
-    RocResult::ok(roc_locales)
+    roc_locales
 }

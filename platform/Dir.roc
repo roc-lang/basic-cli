@@ -1,14 +1,15 @@
 module [
     DirEntry,
     Err,
-    list,
-    create,
-    createAll,
-    deleteEmpty,
-    deleteAll,
+    list!,
+    create!,
+    createAll!,
+    deleteEmpty!,
+    deleteAll!,
 ]
 
 import Path exposing [Path]
+import InternalPath
 
 ## **NotFound** - This error is raised when the specified path does not exist, typically during attempts to access or manipulate it, but also potentially when trying to create a directory and a parent directory does not exist.
 ##
@@ -16,20 +17,20 @@ import Path exposing [Path]
 ##
 ## **Other** - A catch-all for any other types of errors not explicitly listed above.
 ##
-## > This is the same as [`Path.DirErr`].
-Err : Path.DirErr
+## > This is the same as [`Path.DirErr`](Path#DirErr).
+Err : InternalPath.DirErr
 
 ## Record which represents a directory
 ##
-## > This is the same as [`Path.DirEntry`].
+## > This is the same as [`Path.DirEntry`](Path#DirEntry).
 DirEntry : Path.DirEntry
 
 ## Lists the files and directories inside the directory.
 ##
-## > [Path.listDir] does the same thing, except it takes a [Path] instead of a [Str].
-list : Str -> Task (List Path) [DirErr Err]
-list = \path ->
-    Path.listDir (Path.fromStr path)
+## > [Path.listDir!] does the same thing, except it takes a [Path] instead of a [Str].
+list! : Str => Result (List Path) [DirErr Err]
+list! = \path ->
+    Path.listDir! (Path.fromStr path)
 
 ## Deletes a directory if it's empty
 ##
@@ -39,10 +40,10 @@ list = \path ->
 ##   - the directory is not empty
 ##   - the user lacks permission to remove the directory.
 ##
-## > [Path.deleteEmpty] does the same thing, except it takes a [Path] instead of a [Str].
-deleteEmpty : Str -> Task {} [DirErr Err]
-deleteEmpty = \path ->
-    Path.deleteEmpty (Path.fromStr path)
+## > [Path.deleteEmpty!] does the same thing, except it takes a [Path] instead of a [Str].
+deleteEmpty! : Str => Result {} [DirErr Err]
+deleteEmpty! = \path ->
+    Path.deleteEmpty! (Path.fromStr path)
 
 ## Recursively deletes the directory as well as all files and directories
 ## inside it.
@@ -53,10 +54,10 @@ deleteEmpty = \path ->
 ##   - the directory is not empty
 ##   - the user lacks permission to remove the directory.
 ##
-## > [Path.deleteAll] does the same thing, except it takes a [Path] instead of a [Str].
-deleteAll : Str -> Task {} [DirErr Err]
-deleteAll = \path ->
-    Path.deleteAll (Path.fromStr path)
+## > [Path.deleteAll!] does the same thing, except it takes a [Path] instead of a [Str].
+deleteAll! : Str => Result {} [DirErr Err]
+deleteAll! = \path ->
+    Path.deleteAll! (Path.fromStr path)
 
 ## Creates a directory
 ##
@@ -65,10 +66,10 @@ deleteAll = \path ->
 ##   - the user lacks permission to create a directory there
 ##   - the path already exists.
 ##
-## > [Path.createDir] does the same thing, except it takes a [Path] instead of a [Str].
-create : Str -> Task {} [DirErr Err]
-create = \path ->
-    Path.createDir (Path.fromStr path)
+## > [Path.createDir!] does the same thing, except it takes a [Path] instead of a [Str].
+create! : Str => Result {} [DirErr Err]
+create! = \path ->
+    Path.createDir! (Path.fromStr path)
 
 ## Creates a directory recursively adding any missing parent directories.
 ##
@@ -76,7 +77,7 @@ create = \path ->
 ##   - the user lacks permission to create a directory there
 ##   - the path already exists
 ##
-## > [Path.createAll] does the same thing, except it takes a [Path] instead of a [Str].
-createAll : Str -> Task {} [DirErr Err]
-createAll = \path ->
-    Path.createAll (Path.fromStr path)
+## > [Path.createAll!] does the same thing, except it takes a [Path] instead of a [Str].
+createAll! : Str => Result {} [DirErr Err]
+createAll! = \path ->
+    Path.createAll! (Path.fromStr path)

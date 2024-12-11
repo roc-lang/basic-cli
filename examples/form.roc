@@ -1,12 +1,16 @@
-app [main] { pf: platform "../platform/main.roc" }
+app [main!] { pf: platform "../platform/main.roc" }
 
 import pf.Stdin
 import pf.Stdout
 
-main =
-    Stdout.line! "What's your first name?"
-    firstName = Stdin.line!
-    Stdout.line! "What's your last name?"
-    lastName = Stdin.line!
+main! = \{} ->
 
-    Stdout.line "Hi, $(firstName) $(lastName)! 👋"
+    try Stdout.line! "What's your first name?"
+
+    firstName = try Stdin.line! {}
+
+    try Stdout.line! "What's your last name?"
+
+    lastName = try Stdin.line! {}
+
+    Stdout.line! "Hi, $(firstName) $(lastName)! 👋"

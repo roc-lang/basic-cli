@@ -9,9 +9,9 @@ module [
     env,
     envs,
     clearEnvs,
-    status,
-    output,
-    exec,
+    status!,
+    output!,
+    exec!,
 ]
 
 import InternalCommand
@@ -128,27 +128,25 @@ clearEnvs = \@Cmd cmd ->
 ## > Stdin is not inherited from the parent and any attempt by the child process
 ## > to read from the stdin stream will result in the stream immediately closing.
 ##
-output : Cmd -> Task Output [CmdOutputError (Output, Err)]
-output = \@Cmd cmd ->
-    internalOutput =
-        PlatformTasks.commandOutput (Box.box cmd)
-            |> Task.mapErr! \_ -> crash "unreachable"
+output! : Cmd => Result Output [CmdOutputError (Output, Err)]
+output! = \@Cmd cmd ->
+    internalOutput = PlatformTasks.commandOutput! (Box.box cmd)
+
     out = {
         stdout: internalOutput.stdout,
         stderr: internalOutput.stderr,
     }
 
     when internalOutput.status is
-        Ok {} -> Task.ok out
-        Err bytes -> Task.err (CmdOutputError (out, InternalCommand.handleCommandErr bytes))
+        Ok {} -> Ok out
+        Err bytes -> Err (CmdOutputError (out, InternalCommand.handleCommandErr bytes))
 
 ## Execute command and inherit stdin, stdout and stderr from parent
 ##
-status : Cmd -> Task {} [CmdError Err]
-status = \@Cmd cmd ->
-    PlatformTasks.commandStatus (Box.box cmd)
-    |> Task.mapErr \bytes ->
-        CmdError (InternalCommand.handleCommandErr bytes)
+status! : Cmd => Result {} [CmdError Err]
+status! = \@Cmd cmd ->
+    PlatformTasks.commandStatus! (Box.box cmd)
+    |> Result.mapErr \bytes -> CmdError (InternalCommand.handleCommandErr bytes)
 
 ## Execute command and inherit stdin, stdout and stderr from parent
 ##
@@ -156,8 +154,8 @@ status = \@Cmd cmd ->
 ## # Call echo to print "hello world"
 ## Cmd.exec! "echo" ["hello world"]
 ## ```
-exec : Str, List Str -> Task {} [CmdError Err]
-exec = \program, arguments ->
+exec! : Str, List Str => Result {} [CmdError Err]
+exec! = \program, arguments ->
     new program
     |> args arguments
-    |> status
+    |> status!
