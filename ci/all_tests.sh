@@ -73,7 +73,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
 
     # Ignored received command line args are empty when using --linker=legacy
     # see https://github.com/roc-lang/basic-cli/issues/82
-    if [ "$IS_MUSL" != "1" ] && [ "$no_ext_name" == "args" ]; then
+    if [ "$IS_MUSL" == "1" ] && [ "$no_ext_name" == "args" ]; then
         continue
     fi
 
