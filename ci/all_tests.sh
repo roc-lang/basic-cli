@@ -74,6 +74,9 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     if [ "$no_ext_name" == "args" ] && command -v valgrind &> /dev/null; then
         valgrind --main-stacksize=32777216 --track-origins=yes --leak-check=full --show-leak-kinds=all --verbose $EXAMPLES_DIR/args argument
     fi
+    if [ "$no_ext_name" == "command" ] && command -v valgrind &> /dev/null; then
+        valgrind --main-stacksize=32777216 --track-origins=yes --leak-check=full --show-leak-kinds=all --verbose $EXAMPLES_DIR/args argument
+    fi
     expect ci/expect_scripts/$no_ext_name.exp
 done
 
@@ -105,7 +108,9 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     elif [ "$base_file" == "temp-dir.roc" ]; then
         $ROC dev $roc_file $ROC_BUILD_FLAGS --linker=legacy
     else
-        $ROC dev $roc_file $ROC_BUILD_FLAGS
+        # Try using legacy linker for all ... this might help isolate our args segfault to surgical linking
+        # $ROC dev $roc_file $ROC_BUILD_FLAGS
+        $ROC dev --linker=legacy $roc_file $ROC_BUILD_FLAGS
     fi
 done
 
