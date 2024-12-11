@@ -43,14 +43,14 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         continue
     fi
 
-    # Try using legacy linker for all ... this might help isolate our args segfault to surgical linking
-    $ROC build $roc_file $ROC_BUILD_FLAGS --linker=legacy
-
     # if [ "$base_file" == "temp-dir.roc" ]; then
     #     $ROC build $roc_file $ROC_BUILD_FLAGS --linker=legacy
     # else
     #     $ROC build $roc_file $ROC_BUILD_FLAGS
     # fi
+
+    # Try using legacy linker for all ... this might help isolate our args segfault to surgical linking
+    $ROC build $roc_file $ROC_BUILD_FLAGS --linker=legacy
 
 done
 
@@ -75,6 +75,9 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         valgrind --main-stacksize=32777216 --track-origins=yes --leak-check=full --show-leak-kinds=all --verbose $EXAMPLES_DIR/args argument
     fi
     if [ "$no_ext_name" == "command" ] && command -v valgrind &> /dev/null; then
+        valgrind --main-stacksize=32777216 --track-origins=yes --leak-check=full --show-leak-kinds=all --verbose $EXAMPLES_DIR/args argument
+    fi
+    if [ "$no_ext_name" == "path" ] && command -v valgrind &> /dev/null; then
         valgrind --main-stacksize=32777216 --track-origins=yes --leak-check=full --show-leak-kinds=all --verbose $EXAMPLES_DIR/args argument
     fi
     expect ci/expect_scripts/$no_ext_name.exp
@@ -103,13 +106,19 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     if [ "$base_file" == "path.roc" ]; then
         absolute_roc=$(which $ROC | xargs realpath)
         cd $EXAMPLES_DIR
-        $absolute_roc dev $base_file $ROC_BUILD_FLAGS
+
+        # $absolute_roc dev $base_file $ROC_BUILD_FLAGS
+
+        # Try using legacy linker for all ... we're getting non-zero exit codes with surgical linker
+        $absolute_roc dev --linker=legacy $base_file $ROC_BUILD_FLAGS
         cd ..
     elif [ "$base_file" == "temp-dir.roc" ]; then
         $ROC dev $roc_file $ROC_BUILD_FLAGS --linker=legacy
     else
-        # Try using legacy linker for all ... this might help isolate our args segfault to surgical linking
+
         # $ROC dev $roc_file $ROC_BUILD_FLAGS
+
+        # Try using legacy linker for all ... we're getting non-zero exit codes with surgical linker
         $ROC dev --linker=legacy $roc_file $ROC_BUILD_FLAGS
     fi
 done
