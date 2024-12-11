@@ -5,20 +5,9 @@ platform ""
     imports []
     provides [mainForHost]
 
-InternalIOErr : {
-    tag : [
-        EndOfFile,
-        NotFound,
-        PermissionDenied,
-        BrokenPipe,
-        AlreadyExists,
-        Interrupted,
-        Unsupported,
-        OutOfMemory,
-        Other,
-    ],
-    msg : Str,
-}
+import PlatformTasks
+
+InternalIOErr : PlatformTasks.InternalIOErr
 
 mainForHost : InternalIOErr
 mainForHost = main
