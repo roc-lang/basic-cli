@@ -71,6 +71,12 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     roc_file_only="$(basename "$roc_file")"
     no_ext_name=${roc_file_only%.*}
 
+    # Ignored received command line args are empty when using --linker=legacy
+    # see https://github.com/roc-lang/basic-cli/issues/82
+    if [ "$IS_MUSL" != "1" ] && [ "$no_ext_name" == "args" ]; then
+        continue
+    fi
+
     if [ "$no_ext_name" == "args" ] && command -v valgrind &> /dev/null; then
         valgrind --main-stacksize=32777216 --track-origins=yes --leak-check=full --show-leak-kinds=all --verbose $EXAMPLES_DIR/args argument
     fi
