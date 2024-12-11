@@ -7,6 +7,7 @@ module [
     readUtf8!,
     readBytes!,
     # read, TODO fix "Ability specialization is unknown - code generation cannot proceed!: DeriveError(UnboundVar)"
+    read!,
     delete!,
     isDir!,
     isFile!,
@@ -15,10 +16,12 @@ module [
     Reader,
     openReader!,
     openReaderWithCapacity!,
+    openReaderWithBuf!,
     readLine!,
+    readBytesToBuf!,
     hardLink!,
 ]
-
+# import Shared exposing [ByteReader]
 import Path exposing [Path, MetadataErr]
 import InternalFile
 import PlatformTasks
@@ -206,47 +209,85 @@ type! : Str => Result [IsFile, IsDir, IsSymLink] [PathErr MetadataErr]
 type! = \path ->
     Path.type! (Path.fromStr path)
 
-Reader := { reader : PlatformTasks.FileReader, path : Path }
+Reader := { reader : PlatformTasks.FileReader, path : Path, buffer : List U8 }
 
 ## Try to open a `File.Reader` for buffered (= part by part) reading given a path string.
 ## See [examples/file-read-buffered.roc](https://github.com/roc-lang/basic-cli/blob/main/examples/file-read-buffered.roc) for example usage.
-##
-## This uses [rust's std::io::BufReader](https://doc.rust-lang.org/std/io/struct.BufReader.html).
 ##
 ## Use [readUtf8!] if you want to get the entire file contents at once.
 openReader! : Str => Result Reader [GetFileReadErr Path ReadErr]
 openReader! = \pathStr ->
     path = Path.fromStr pathStr
+    buffer = List.withCapacity 8000
 
     # 0 means with default capacity
-    PlatformTasks.fileReader! (Str.toUtf8 pathStr) 0
+    PlatformTasks.fileReader! (Str.toUtf8 pathStr)
     |> Result.mapErr \err -> GetFileReadErr path (InternalFile.handleReadErr err)
-    |> Result.map \reader -> @Reader { reader, path }
+    |> Result.map \reader -> @Reader { reader, path, buffer }
 
 ## Try to open a `File.Reader` for buffered (= part by part) reading given a path string.
 ## The buffer will be created with the specified capacity.
 ## See [examples/file-read-buffered.roc](https://github.com/roc-lang/basic-cli/blob/main/examples/file-read-buffered.roc) for example usage.
 ##
-## This uses [rust's std::io::BufReader](https://doc.rust-lang.org/std/io/struct.BufReader.html).
-##
 ## Use [readUtf8!] if you want to get the entire file contents at once.
 openReaderWithCapacity! : Str, U64 => Result Reader [GetFileReadErr Path ReadErr]
 openReaderWithCapacity! = \pathStr, capacity ->
     path = Path.fromStr pathStr
+    # 8k is the default in rust and seems reasonable
+    buffer = List.withCapacity (if capacity == 0 then 8000 else capacity)
 
-    PlatformTasks.fileReader! (Str.toUtf8 pathStr) capacity
+    PlatformTasks.fileReader! (Str.toUtf8 pathStr)
     |> Result.mapErr \err -> GetFileReadErr path (InternalFile.handleReadErr err)
-    |> Result.map \reader -> @Reader { reader, path }
+    |> Result.map \reader -> @Reader { reader, path, buffer }
 
 ## Try to read a line from a file given a Reader.
 ## The line will be provided as the list of bytes (`List U8`) until a newline (`0xA` byte).
 ## This list will be empty when we reached the end of the file.
 ## See [examples/file-read-buffered.roc](https://github.com/roc-lang/basic-cli/blob/main/examples/file-read-buffered.roc) for example usage.
 ##
-## This uses [rust's `BufRead::read_line`](https://doc.rust-lang.org/std/io/trait.BufRead.html#method.read_line).
-##
 ## Use [readUtf8!] if you want to get the entire file contents at once.
 readLine! : Reader => Result (List U8) [FileReadErr Path Str]
-readLine! = \@Reader { reader, path } ->
-    PlatformTasks.fileReadLine! reader
+readLine! = \@Reader { reader, path, buffer } ->
+    PlatformTasks.fileReadLine! reader buffer
     |> Result.mapErr \err -> FileReadErr path err
+
+## Try to read bytes from a file given a Reader.
+## Returns a list of bytes (`List U8`) read from the file.
+## The list will be empty when we reach the end of the file.
+## See [examples/file-read-buffered.roc](https://github.com/roc-lang/basic-cli/blob/main/examples/file-read-buffered.roc) for example usage.
+##
+## NOTE: Avoid storing a reference to the buffer returned by this function beyond the next call to try readBytes. 
+## That will allow the buffer to be reused and avoid unnecessary allocations.
+##
+## Use [readUtf8!] if you want to get the entire file contents at once as a UTF-8 string.
+read! : Reader => Result (List U8) [FileReadErr Path Str]
+read! = \@Reader { reader, path, buffer } ->
+    PlatformTasks.fileReadByteBuf! reader buffer
+    |> Result.mapErr \err -> FileReadErr path err
+
+## Try to open a `File.Reader` using the provided buffer as the internal buffer.
+## See [examples/file-read-buffered.roc](https://github.com/roc-lang/basic-cli/blob/main/examples/file-read-buffered.roc) for example usage.
+##
+## Use [readUtf8!] if you want to get the entire file contents at once.
+openReaderWithBuf! : Str, List U8 => Result Reader [GetFileReadErr Path ReadErr]
+openReaderWithBuf! = \pathStr, buffer ->
+    path = Path.fromStr pathStr
+
+    PlatformTasks.fileReader! (Str.toUtf8 pathStr) 
+    |> Result.mapErr \err -> GetFileReadErr path (InternalFile.handleReadErr err)
+    |> Result.map \reader -> @Reader { reader, path, buffer }
+
+
+## Try to read bytes from a file given a Reader.
+## Returns a list of bytes (`List U8`) read from the file.
+## The list will be empty when we reach the end of the file.
+## This function is exists for very specific use cases where you want to use multiple buffers with a single reader
+##
+## Prefer [File.readBytes!] which will automatically reuse the reader's internalbuffer.
+readBytesToBuf! : Reader => Result (List U8) [FileReadErr Path Str]
+readBytesToBuf! = \@Reader { reader, path, buffer } ->
+    PlatformTasks.fileReadByteBuf! reader buffer
+    |> Result.mapErr \err -> FileReadErr path err
+
+    
+

@@ -376,9 +376,9 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
 name = "redox_syscall"
-version = "0.5.7"
+version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b6dfecf2c74bce2466cabf93f6664d6998a69eb21e39f4207930065b27b771f"
+checksum = "03a862b389f93e68874fbf580b9de08dd02facb9a788ebadaf4a3fd33cf58834"
 dependencies = [
  "bitflags",
 ]
@@ -426,7 +426,7 @@ dependencies = [
 [[package]]
 name = "roc_std"
 version = "0.0.1"
-source = "git+https://github.com/roc-lang/roc.git#d746e2a0414448e08183e6cf5e4765601e396af3"
+source = "git+https://github.com/roc-lang/roc.git#0be7b3f7501501f6ced1648f9c2644560d338505"
 dependencies = [
  "arrayvec",
  "static_assertions",
@@ -435,7 +435,7 @@ dependencies = [
 [[package]]
 name = "roc_std_heap"
 version = "0.0.1"
-source = "git+https://github.com/roc-lang/roc.git#d746e2a0414448e08183e6cf5e4765601e396af3"
+source = "git+https://github.com/roc-lang/roc.git#0be7b3f7501501f6ced1648f9c2644560d338505"
 dependencies = [
  "memmap2",
  "roc_std",
