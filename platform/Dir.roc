@@ -1,6 +1,6 @@
 module [
     DirEntry,
-    Err,
+    IOErr,
     list!,
     create!,
     createAll!,
@@ -9,16 +9,24 @@ module [
 ]
 
 import Path exposing [Path]
-import InternalPath
+import InternalFile
 
-## **NotFound** - This error is raised when the specified path does not exist, typically during attempts to access or manipulate it, but also potentially when trying to create a directory and a parent directory does not exist.
+## **NotFound** - An entity was not found, often a file.
 ##
-## **PermissionDenied** - Occurs when the user lacks the necessary permissions to perform an action on a directory, such as reading, writing, or executing.
+## **PermissionDenied** - The operation lacked the necessary privileges to complete.
 ##
-## **Other** - A catch-all for any other types of errors not explicitly listed above.
+## **BrokenPipe** - The operation failed because a pipe was closed.
 ##
-## > This is the same as [`Path.DirErr`](Path#DirErr).
-Err : InternalPath.DirErr
+## **AlreadyExists** - An entity already exists, often a file.
+##
+## **Interrupted** - This operation was interrupted. Interrupted operations can typically be retried.
+##
+## **Unsupported** - This operation is unsupported on this platform. This means that the operation can never succeed.
+##
+## **OutOfMemory** - An operation could not be completed, because it failed to allocate enough memory.
+##
+## **Other** - A custom error that does not fall under any other I/O error kind.
+IOErr : InternalFile.IOErr
 
 ## Record which represents a directory
 ##
@@ -28,7 +36,7 @@ DirEntry : Path.DirEntry
 ## Lists the files and directories inside the directory.
 ##
 ## > [Path.listDir!] does the same thing, except it takes a [Path] instead of a [Str].
-list! : Str => Result (List Path) [DirErr Err]
+list! : Str => Result (List Path) [DirErr IOErr]
 list! = \path ->
     Path.listDir! (Path.fromStr path)
 
@@ -41,7 +49,7 @@ list! = \path ->
 ##   - the user lacks permission to remove the directory.
 ##
 ## > [Path.deleteEmpty!] does the same thing, except it takes a [Path] instead of a [Str].
-deleteEmpty! : Str => Result {} [DirErr Err]
+deleteEmpty! : Str => Result {} [DirErr IOErr]
 deleteEmpty! = \path ->
     Path.deleteEmpty! (Path.fromStr path)
 
@@ -55,7 +63,7 @@ deleteEmpty! = \path ->
 ##   - the user lacks permission to remove the directory.
 ##
 ## > [Path.deleteAll!] does the same thing, except it takes a [Path] instead of a [Str].
-deleteAll! : Str => Result {} [DirErr Err]
+deleteAll! : Str => Result {} [DirErr IOErr]
 deleteAll! = \path ->
     Path.deleteAll! (Path.fromStr path)
 
@@ -67,7 +75,7 @@ deleteAll! = \path ->
 ##   - the path already exists.
 ##
 ## > [Path.createDir!] does the same thing, except it takes a [Path] instead of a [Str].
-create! : Str => Result {} [DirErr Err]
+create! : Str => Result {} [DirErr IOErr]
 create! = \path ->
     Path.createDir! (Path.fromStr path)
 
@@ -78,6 +86,6 @@ create! = \path ->
 ##   - the path already exists
 ##
 ## > [Path.createAll!] does the same thing, except it takes a [Path] instead of a [Str].
-createAll! : Str => Result {} [DirErr Err]
+createAll! : Str => Result {} [DirErr IOErr]
 createAll! = \path ->
     Path.createAll! (Path.fromStr path)

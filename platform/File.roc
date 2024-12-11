@@ -1,6 +1,5 @@
 module [
-    ReadErr,
-    WriteErr,
+    IOErr,
     writeUtf8!,
     writeBytes!,
     write!,
@@ -23,15 +22,10 @@ import Path exposing [Path, MetadataErr]
 import InternalFile
 import Host
 
-## Tag union of possible errors when reading a file or directory.
+## Tag union of possible errors when reading and writing a file or directory.
 ##
-## > This is the same as [`Path.ReadErr`](Path#ReadErr).
-ReadErr : Path.ReadErr
-
-## Tag union of possible errors when writing a file or directory.
-##
-## > This is the same as [`Path.WriteErr`](Path#WriteErr).
-WriteErr : Path.WriteErr
+## > This is the same as [`File.IOErr`](File#IOErr).
+IOErr : InternalFile.IOErr
 
 ## Write data to a file.
 ##
@@ -56,7 +50,7 @@ WriteErr : Path.WriteErr
 ## > To write unformatted bytes to a file, you can use [File.writeBytes!] instead.
 ## >
 ## > [Path.write!] does the same thing, except it takes a [Path] instead of a [Str].
-write! : val, Str, fmt => Result {} [FileWriteErr Path WriteErr] where val implements Encoding, fmt implements EncoderFormatting
+write! : val, Str, fmt => Result {} [FileWriteErr Path IOErr] where val implements Encoding, fmt implements EncoderFormatting
 write! = \val, path, fmt ->
     Path.write! val (Path.fromStr path) fmt
 
@@ -72,7 +66,7 @@ write! = \val, path, fmt ->
 ## > To format data before writing it to a file, you can use [File.write!] instead.
 ## >
 ## > [Path.writeBytes!] does the same thing, except it takes a [Path] instead of a [Str].
-writeBytes! : List U8, Str => Result {} [FileWriteErr Path WriteErr]
+writeBytes! : List U8, Str => Result {} [FileWriteErr Path IOErr]
 writeBytes! = \bytes, path ->
     Path.writeBytes! bytes (Path.fromStr path)
 
@@ -88,7 +82,7 @@ writeBytes! = \bytes, path ->
 ## > To write unformatted bytes to a file, you can use [File.writeBytes!] instead.
 ## >
 ## > [Path.writeUtf8!] does the same thing, except it takes a [Path] instead of a [Str].
-writeUtf8! : Str, Str => Result {} [FileWriteErr Path WriteErr]
+writeUtf8! : Str, Str => Result {} [FileWriteErr Path IOErr]
 writeUtf8! = \str, path ->
     Path.writeUtf8! str (Path.fromStr path)
 
@@ -112,7 +106,7 @@ writeUtf8! = \str, path ->
 ## [hard link](https://en.wikipedia.org/wiki/Hard_link) to it has been deleted.
 ## >
 ## > [Path.delete!] does the same thing, except it takes a [Path] instead of a [Str].
-delete! : Str => Result {} [FileWriteErr Path WriteErr]
+delete! : Str => Result {} [FileWriteErr Path IOErr]
 delete! = \path ->
     Path.delete! (Path.fromStr path)
 
@@ -128,7 +122,7 @@ delete! = \path ->
 ## > To read and decode data from a file, you can use `File.read` instead.
 ## >
 ## > [Path.readBytes!] does the same thing, except it takes a [Path] instead of a [Str].
-readBytes! : Str => Result (List U8) [FileReadErr Path ReadErr]
+readBytes! : Str => Result (List U8) [FileReadErr Path IOErr]
 readBytes! = \path ->
     Path.readBytes! (Path.fromStr path)
 
@@ -145,7 +139,7 @@ readBytes! = \path ->
 ## > To read unformatted bytes from a file, you can use [File.readBytes!] instead.
 ##
 ## > [Path.readUtf8!] does the same thing, except it takes a [Path] instead of a [Str].
-readUtf8! : Str => Result Str [FileReadErr Path ReadErr, FileReadUtf8Err Path _]
+readUtf8! : Str => Result Str [FileReadErr Path IOErr, FileReadUtf8Err Path _]
 readUtf8! = \path ->
     Path.readUtf8! (Path.fromStr path)
 
@@ -214,13 +208,13 @@ Reader := { reader : Host.FileReader, path : Path }
 ## This uses [rust's std::io::BufReader](https://doc.rust-lang.org/std/io/struct.BufReader.html).
 ##
 ## Use [readUtf8!] if you want to get the entire file contents at once.
-openReader! : Str => Result Reader [GetFileReadErr Path ReadErr]
+openReader! : Str => Result Reader [GetFileReadErr Path IOErr]
 openReader! = \pathStr ->
     path = Path.fromStr pathStr
 
     # 0 means with default capacity
     Host.fileReader! (Str.toUtf8 pathStr) 0
-    |> Result.mapErr \err -> GetFileReadErr path (InternalFile.handleReadErr err)
+    |> Result.mapErr \err -> GetFileReadErr path (InternalFile.handleErr err)
     |> Result.map \reader -> @Reader { reader, path }
 
 ## Try to open a `File.Reader` for buffered (= part by part) reading given a path string.
@@ -230,12 +224,12 @@ openReader! = \pathStr ->
 ## This uses [rust's std::io::BufReader](https://doc.rust-lang.org/std/io/struct.BufReader.html).
 ##
 ## Use [readUtf8!] if you want to get the entire file contents at once.
-openReaderWithCapacity! : Str, U64 => Result Reader [GetFileReadErr Path ReadErr]
+openReaderWithCapacity! : Str, U64 => Result Reader [GetFileReadErr Path IOErr]
 openReaderWithCapacity! = \pathStr, capacity ->
     path = Path.fromStr pathStr
 
     Host.fileReader! (Str.toUtf8 pathStr) capacity
-    |> Result.mapErr \err -> GetFileReadErr path (InternalFile.handleReadErr err)
+    |> Result.mapErr \err -> GetFileReadErr path (InternalFile.handleErr err)
     |> Result.map \reader -> @Reader { reader, path }
 
 ## Try to read a line from a file given a Reader.
@@ -246,7 +240,7 @@ openReaderWithCapacity! = \pathStr, capacity ->
 ## This uses [rust's `BufRead::read_line`](https://doc.rust-lang.org/std/io/trait.BufRead.html#method.read_line).
 ##
 ## Use [readUtf8!] if you want to get the entire file contents at once.
-readLine! : Reader => Result (List U8) [FileReadErr Path Str]
+readLine! : Reader => Result (List U8) [FileReadErr Path IOErr]
 readLine! = \@Reader { reader, path } ->
     Host.fileReadLine! reader
-    |> Result.mapErr \err -> FileReadErr path err
+    |> Result.mapErr \err -> FileReadErr path (InternalFile.handleErr err)

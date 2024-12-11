@@ -1,9 +1,7 @@
 module [
     Path,
-    ReadErr,
-    WriteErr,
+    IOErr,
     DirEntry,
-    DirErr,
     MetadataErr,
     LinkErr,
     display,
@@ -51,28 +49,10 @@ DirEntry : {
     metadata : FileMetadata,
 }
 
-## Tag union of possible errors when reading a file or directory.
+## Tag union of possible errors when reading and writing a file or directory.
 ##
-## > This is the same as [`File.ReadErr`](File#ReadErr).
-ReadErr : InternalFile.ReadErr
-
-## Tag union of possible errors when writing a file or directory.
-##
-## > This is the same as [`File.WriteErr`](File#WriteErr).
-WriteErr : InternalFile.WriteErr
-
-## **NotFound** - This error is raised when the specified directory does not exist, typically during attempts to access or manipulate it.
-##
-## **PermissionDenied** - Occurs when the user lacks the necessary permissions to perform an action on a directory, such as reading, writing, or executing.
-##
-## **AlreadyExists** - This error is thrown when trying to create a directory that already exists.
-##
-## **NotADirectory** - Raised when an operation that requires a directory (e.g., listing contents) is attempted on a file instead.
-##
-## **Other** - A catch-all for any other types of errors not explicitly listed above.
-##
-## > This is the same as [`Dir.Err`](Dir#Err).
-DirErr : InternalPath.DirErr
+## > This is the same as [`File.IOErr`](File#IOErr).
+IOErr : InternalFile.IOErr
 
 ## Write data to a file.
 ##
@@ -95,7 +75,7 @@ DirErr : InternalPath.DirErr
 ## If writing to the file fails, for example because of a file permissions issue, the task fails with [WriteErr].
 ##
 ## > To write unformatted bytes to a file, you can use [Path.writeBytes!] instead.
-write! : val, Path, fmt => Result {} [FileWriteErr Path WriteErr] where val implements Encoding, fmt implements EncoderFormatting
+write! : val, Path, fmt => Result {} [FileWriteErr Path IOErr] where val implements Encoding, fmt implements EncoderFormatting
 write! = \val, path, fmt ->
     bytes = Encode.toBytes val fmt
 
@@ -112,12 +92,12 @@ write! = \val, path, fmt ->
 ## This opens the file first and closes it after writing to it.
 ##
 ## > To format data before writing it to a file, you can use [Path.write!] instead.
-writeBytes! : List U8, Path => Result {} [FileWriteErr Path WriteErr]
+writeBytes! : List U8, Path => Result {} [FileWriteErr Path IOErr]
 writeBytes! = \bytes, path ->
     pathBytes = InternalPath.toBytes path
 
     Host.fileWriteBytes! pathBytes bytes
-    |> Result.mapErr \err -> FileWriteErr path (InternalFile.handleWriteErr err)
+    |> Result.mapErr \err -> FileWriteErr path (InternalFile.handleErr err)
 
 ## Writes a [Str] to a file, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##
@@ -129,12 +109,12 @@ writeBytes! = \bytes, path ->
 ## This opens the file first and closes it after writing to it.
 ##
 ## > To write unformatted bytes to a file, you can use [Path.writeBytes!] instead.
-writeUtf8! : Str, Path => Result {} [FileWriteErr Path WriteErr]
+writeUtf8! : Str, Path => Result {} [FileWriteErr Path IOErr]
 writeUtf8! = \str, path ->
     pathBytes = InternalPath.toBytes path
 
     Host.fileWriteUtf8! pathBytes str
-    |> Result.mapErr \err -> FileWriteErr path (InternalFile.handleWriteErr err)
+    |> Result.mapErr \err -> FileWriteErr path (InternalFile.handleErr err)
 
 ## Note that the path may not be valid depending on the filesystem where it is used.
 ## For example, paths containing `:` are valid on ext4 and NTFS filesystems, but not
@@ -310,10 +290,10 @@ withExtension = \path, extension ->
 ## [hard link](https://en.wikipedia.org/wiki/Hard_link) to it has been deleted.
 ##
 ## > [`File.delete`](File#delete!) does the same thing, except it takes a [Str] instead of a [Path].
-delete! : Path => Result {} [FileWriteErr Path WriteErr]
+delete! : Path => Result {} [FileWriteErr Path IOErr]
 delete! = \path ->
     Host.fileDelete! (InternalPath.toBytes path)
-    |> Result.mapErr \err -> FileWriteErr path (InternalFile.handleWriteErr err)
+    |> Result.mapErr \err -> FileWriteErr path (InternalFile.handleErr err)
 
 ## Reads a [Str] from a file containing [UTF-8](https://en.wikipedia.org/wiki/UTF-8)-encoded text.
 ##
@@ -328,11 +308,11 @@ delete! = \path ->
 ## > To read unformatted bytes from a file, you can use [Path.readBytes!] instead.
 ## >
 ## > [`File.readUtf8`](File#readUtf8!) does the same thing, except it takes a [Str] instead of a [Path].
-readUtf8! : Path => Result Str [FileReadErr Path ReadErr, FileReadUtf8Err Path _]
+readUtf8! : Path => Result Str [FileReadErr Path IOErr, FileReadUtf8Err Path _]
 readUtf8! = \path ->
     bytes =
         Host.fileReadBytes! (InternalPath.toBytes path)
-        |> Result.mapErr? \readErr -> FileReadErr path (InternalFile.handleReadErr readErr)
+        |> Result.mapErr? \readErr -> FileReadErr path (InternalFile.handleErr readErr)
 
     Str.fromUtf8 bytes
     |> Result.mapErr \err -> FileReadUtf8Err path err
@@ -349,19 +329,19 @@ readUtf8! = \path ->
 ## > To read and decode data from a file, you can use `Path.read` instead.
 ## >
 ## > [`File.readBytes`](File#readBytes!) does the same thing, except it takes a [Str] instead of a [Path].
-readBytes! : Path => Result (List U8) [FileReadErr Path ReadErr]
+readBytes! : Path => Result (List U8) [FileReadErr Path IOErr]
 readBytes! = \path ->
     Host.fileReadBytes! (InternalPath.toBytes path)
-    |> Result.mapErr \err -> FileReadErr path (InternalFile.handleReadErr err)
+    |> Result.mapErr \err -> FileReadErr path (InternalFile.handleErr err)
 
 ## Lists the files and directories inside the directory.
 ##
 ## > [`Dir.list`](Dir#list!) does the same thing, except it takes a [Str] instead of a [Path].
-listDir! : Path => Result (List Path) [DirErr DirErr]
+listDir! : Path => Result (List Path) [DirErr IOErr]
 listDir! = \path ->
     when Host.dirList! (InternalPath.toBytes path) is
         Ok entries -> Ok (List.map entries InternalPath.fromOsBytes)
-        Err err -> Err (handleErr err)
+        Err err -> Err (DirErr (InternalFile.handleErr err))
 
 ## Deletes a directory if it's empty
 ##
@@ -372,10 +352,10 @@ listDir! = \path ->
 ##   - the user lacks permission to remove the directory.
 ##
 ## > [`Dir.deleteEmpty`](Dir#deleteEmpty!) does the same thing, except it takes a [Str] instead of a [Path].
-deleteEmpty! : Path => Result {} [DirErr DirErr]
+deleteEmpty! : Path => Result {} [DirErr IOErr]
 deleteEmpty! = \path ->
     Host.dirDeleteEmpty! (InternalPath.toBytes path)
-    |> Result.mapErr handleErr
+    |> Result.mapErr \err -> DirErr (InternalFile.handleErr err)
 
 ## Recursively deletes a directory as well as all files and directories
 ## inside it.
@@ -387,10 +367,10 @@ deleteEmpty! = \path ->
 ##   - the user lacks permission to remove the directory.
 ##
 ## > [`Dir.deleteAll`](Dir#deleteAll!) does the same thing, except it takes a [Str] instead of a [Path].
-deleteAll! : Path => Result {} [DirErr DirErr]
+deleteAll! : Path => Result {} [DirErr IOErr]
 deleteAll! = \path ->
     Host.dirDeleteAll! (InternalPath.toBytes path)
-    |> Result.mapErr handleErr
+    |> Result.mapErr \err -> DirErr (InternalFile.handleErr err)
 
 ## Creates a directory
 ##
@@ -400,10 +380,10 @@ deleteAll! = \path ->
 ##   - the path already exists.
 ##
 ## > [`Dir.create`](Dir#create!) does the same thing, except it takes a [Str] instead of a [Path].
-createDir! : Path => Result {} [DirErr DirErr]
+createDir! : Path => Result {} [DirErr IOErr]
 createDir! = \path ->
     Host.dirCreate! (InternalPath.toBytes path)
-    |> Result.mapErr handleErr
+    |> Result.mapErr \err -> DirErr (InternalFile.handleErr err)
 
 ## Creates a directory recursively adding any missing parent directories.
 ##
@@ -412,29 +392,10 @@ createDir! = \path ->
 ##   - the path already exists
 ##
 ## > [`Dir.createAll`](Dir#createAll!) does the same thing, except it takes a [Str] instead of a [Path].
-createAll! : Path => Result {} [DirErr DirErr]
+createAll! : Path => Result {} [DirErr IOErr]
 createAll! = \path ->
     Host.dirCreateAll! (InternalPath.toBytes path)
-    |> Result.mapErr handleErr
-
-# There are othe errors which may be useful, however they are currently unstable
-# features see https://github.com/rust-lang/rust/issues/86442
-# TODO add these when available
-# ErrorKind::NotADirectory => RocStr::from("ErrorKind::NotADirectory"),
-# ErrorKind::IsADirectory => RocStr::from("ErrorKind::IsADirectory"),
-# ErrorKind::DirectoryNotEmpty => RocStr::from("ErrorKind::DirectoryNotEmpty"),
-# ErrorKind::ReadOnlyFilesystem => RocStr::from("ErrorKind::ReadOnlyFilesystem"),
-# ErrorKind::FilesystemLoop => RocStr::from("ErrorKind::FilesystemLoop"),
-# ErrorKind::FilesystemQuotaExceeded => RocStr::from("ErrorKind::FilesystemQuotaExceeded"),
-# ErrorKind::StorageFull => RocStr::from("ErrorKind::StorageFull"),
-# ErrorKind::InvalidFilename => RocStr::from("ErrorKind::InvalidFilename"),
-handleErr = \err ->
-    when err is
-        e if e == "ErrorKind::NotFound" -> DirErr NotFound
-        e if e == "ErrorKind::PermissionDenied" -> DirErr PermissionDenied
-        e if e == "ErrorKind::AlreadyExists" -> DirErr AlreadyExists
-        e if e == "ErrorKind::NotADirectory" -> DirErr NotADirectory
-        str -> DirErr (Other str)
+    |> Result.mapErr \err -> DirErr (InternalFile.handleErr err)
 
 ## Creates a new hard link on the filesystem.
 ##

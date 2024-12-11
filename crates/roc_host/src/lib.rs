@@ -6,6 +6,7 @@
 #![allow(non_snake_case)]
 #![allow(improper_ctypes)]
 use core::ffi::c_void;
+use glue::IOErr;
 use roc_std::{ReadOnlyRocList, ReadOnlyRocStr, RocBox, RocList, RocResult, RocStr};
 use roc_std_heap::ThreadSafeRefcountedResourceHeap;
 use std::borrow::{Borrow, Cow};
@@ -530,7 +531,7 @@ pub extern "C" fn roc_fx_ttyModeRaw() {
 pub extern "C" fn roc_fx_fileWriteUtf8(
     roc_path: &RocList<u8>,
     roc_str: &RocStr,
-) -> RocResult<(), RocStr> {
+) -> RocResult<(), IOErr> {
     write_slice(roc_path, roc_str.as_str().as_bytes())
 }
 
@@ -538,17 +539,17 @@ pub extern "C" fn roc_fx_fileWriteUtf8(
 pub extern "C" fn roc_fx_fileWriteBytes(
     roc_path: &RocList<u8>,
     roc_bytes: &RocList<u8>,
-) -> RocResult<(), RocStr> {
+) -> RocResult<(), glue::IOErr> {
     write_slice(roc_path, roc_bytes.as_slice())
 }
 
-fn write_slice(roc_path: &RocList<u8>, bytes: &[u8]) -> RocResult<(), RocStr> {
+fn write_slice(roc_path: &RocList<u8>, bytes: &[u8]) -> RocResult<(), glue::IOErr> {
     match File::create(path_from_roc_path(roc_path)) {
         Ok(mut file) => match file.write_all(bytes) {
             Ok(()) => RocResult::ok(()),
-            Err(err) => RocResult::err(toRocWriteError(err)),
+            Err(err) => RocResult::err(err.into()),
         },
-        Err(err) => RocResult::err(toRocWriteError(err)),
+        Err(err) => RocResult::err(err.into()),
     }
 }
 
@@ -596,7 +597,9 @@ fn path_from_roc_path(bytes: &RocList<u8>) -> Cow<'_, Path> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocList<u8>, RocStr> {
+pub extern "C" fn roc_fx_fileReadBytes(
+    roc_path: &RocList<u8>,
+) -> RocResult<RocList<u8>, glue::IOErr> {
     // TODO: write our own duplicate of `read_to_end` that directly fills a `RocList<u8>`.
     // This adds an extra O(n) copy.
     let mut bytes = Vec::new();
@@ -604,9 +607,9 @@ pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocL
     match File::open(path_from_roc_path(roc_path)) {
         Ok(mut file) => match file.read_to_end(&mut bytes) {
             Ok(_bytes_read) => RocResult::ok(RocList::from(bytes.as_slice())),
-            Err(err) => RocResult::err(toRocReadError(err)),
+            Err(err) => RocResult::err(err.into()),
         },
-        Err(err) => RocResult::err(toRocReadError(err)),
+        Err(err) => RocResult::err(err.into()),
     }
 }
 
@@ -614,7 +617,7 @@ pub extern "C" fn roc_fx_fileReadBytes(roc_path: &RocList<u8>) -> RocResult<RocL
 pub extern "C" fn roc_fx_fileReader(
     roc_path: &RocList<u8>,
     size: u64,
-) -> RocResult<RocBox<()>, RocStr> {
+) -> RocResult<RocBox<()>, glue::IOErr> {
     match File::open(path_from_roc_path(roc_path)) {
         Ok(file) => {
             let buf_reader = if size > 0 {
@@ -627,15 +630,15 @@ pub extern "C" fn roc_fx_fileReader(
             let alloc_result = heap.alloc_for(buf_reader);
             match alloc_result {
                 Ok(out) => RocResult::ok(out),
-                Err(err) => RocResult::err(toRocReadError(err)),
+                Err(err) => RocResult::err(err.into()),
             }
         }
-        Err(err) => RocResult::err(toRocReadError(err)),
+        Err(err) => RocResult::err(err.into()),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_fileReadLine(data: RocBox<()>) -> RocResult<RocList<u8>, RocStr> {
+pub extern "C" fn roc_fx_fileReadLine(data: RocBox<()>) -> RocResult<RocList<u8>, glue::IOErr> {
     let buf_reader: &mut BufReader<File> = ThreadSafeRefcountedResourceHeap::box_to_resource(data);
 
     let mut buffer = RocList::empty();
@@ -644,7 +647,7 @@ pub extern "C" fn roc_fx_fileReadLine(data: RocBox<()>) -> RocResult<RocList<u8>
             // Note: this returns an empty list when no bytes were read, e.g. End Of File
             RocResult::ok(buffer)
         }
-        Err(err) => RocResult::err(err.to_string().as_str().into()),
+        Err(err) => RocResult::err(err.into()),
     }
 }
 
@@ -681,10 +684,10 @@ fn read_until<R: BufRead + ?Sized>(
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_fileDelete(roc_path: &RocList<u8>) -> RocResult<(), RocStr> {
+pub extern "C" fn roc_fx_fileDelete(roc_path: &RocList<u8>) -> RocResult<(), glue::IOErr> {
     match std::fs::remove_file(path_from_roc_path(roc_path)) {
         Ok(()) => RocResult::ok(()),
-        Err(err) => RocResult::err(toRocReadError(err)),
+        Err(err) => RocResult::err(err.into()),
     }
 }
 
@@ -719,13 +722,13 @@ pub extern "C" fn roc_fx_sleepMillis(milliseconds: u64) {
 #[no_mangle]
 pub extern "C" fn roc_fx_dirList(
     roc_path: &RocList<u8>,
-) -> RocResult<RocList<RocList<u8>>, RocStr> {
+) -> RocResult<RocList<RocList<u8>>, glue::IOErr> {
     let path = path_from_roc_path(roc_path);
 
     if path.is_dir() {
         let dir = match std::fs::read_dir(path) {
             Ok(dir) => dir,
-            Err(err) => return RocResult::err(handleDirError(err)),
+            Err(err) => return RocResult::err(err.into()),
         };
 
         let mut entries = Vec::new();
@@ -738,7 +741,10 @@ pub extern "C" fn roc_fx_dirList(
 
         RocResult::ok(RocList::from_iter(entries))
     } else {
-        RocResult::err("ErrorKind::NotADirectory".into())
+        RocResult::err(glue::IOErr {
+            msg: "NotADirectory".into(),
+            tag: glue::IOErrTag::Other,
+        })
     }
 }
 
@@ -963,30 +969,6 @@ async fn send_request(request: hyper::Request<String>, url: &str) -> InternalRes
                 InternalResponse::bad_request(err.to_string().as_str())
             }
         }
-    }
-}
-
-fn toRocWriteError(err: std::io::Error) -> RocStr {
-    match err.kind() {
-        ErrorKind::NotFound => "ErrorKind::NotFound".into(),
-        ErrorKind::AlreadyExists => "ErrorKind::AlreadyExists".into(),
-        ErrorKind::Interrupted => "ErrorKind::Interrupted".into(),
-        ErrorKind::OutOfMemory => "ErrorKind::OutOfMemory".into(),
-        ErrorKind::PermissionDenied => "ErrorKind::PermissionDenied".into(),
-        ErrorKind::TimedOut => "ErrorKind::TimedOut".into(),
-        ErrorKind::WriteZero => "ErrorKind::WriteZero".into(),
-        _ => format!("{:?}", err).as_str().into(),
-    }
-}
-
-fn toRocReadError(err: std::io::Error) -> RocStr {
-    match err.kind() {
-        ErrorKind::Interrupted => "ErrorKind::Interrupted".into(),
-        ErrorKind::NotFound => "ErrorKind::NotFound".into(),
-        ErrorKind::OutOfMemory => "ErrorKind::OutOfMemory".into(),
-        ErrorKind::PermissionDenied => "ErrorKind::PermissionDenied".into(),
-        ErrorKind::TimedOut => "ErrorKind::TimedOut".into(),
-        _ => format!("{:?}", err).as_str().into(),
     }
 }
 
@@ -1257,54 +1239,34 @@ pub extern "C" fn roc_fx_commandOutput(roc_cmd: &Command) -> CommandOutput {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirCreate(roc_path: &RocList<u8>) -> RocResult<(), RocStr> {
+pub extern "C" fn roc_fx_dirCreate(roc_path: &RocList<u8>) -> RocResult<(), glue::IOErr> {
     match std::fs::create_dir(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
-        Err(err) => RocResult::err(handleDirError(err)),
+        Err(err) => RocResult::err(err.into()),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirCreateAll(roc_path: &RocList<u8>) -> RocResult<(), RocStr> {
+pub extern "C" fn roc_fx_dirCreateAll(roc_path: &RocList<u8>) -> RocResult<(), glue::IOErr> {
     match std::fs::create_dir_all(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
-        Err(err) => RocResult::err(handleDirError(err)),
+        Err(err) => RocResult::err(err.into()),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirDeleteEmpty(roc_path: &RocList<u8>) -> RocResult<(), RocStr> {
+pub extern "C" fn roc_fx_dirDeleteEmpty(roc_path: &RocList<u8>) -> RocResult<(), glue::IOErr> {
     match std::fs::remove_dir(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
-        Err(err) => RocResult::err(handleDirError(err)),
+        Err(err) => RocResult::err(err.into()),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirDeleteAll(roc_path: &RocList<u8>) -> RocResult<(), RocStr> {
+pub extern "C" fn roc_fx_dirDeleteAll(roc_path: &RocList<u8>) -> RocResult<(), glue::IOErr> {
     match std::fs::remove_dir_all(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
-        Err(err) => RocResult::err(handleDirError(err)),
-    }
-}
-
-/// See docs in `platform/Stdout.roc` for descriptions
-fn handleDirError(io_err: std::io::Error) -> RocStr {
-    match io_err.kind() {
-        ErrorKind::NotFound => RocStr::from("ErrorKind::NotFound"),
-        ErrorKind::PermissionDenied => RocStr::from("ErrorKind::PermissionDenied"),
-        ErrorKind::AlreadyExists => RocStr::from("ErrorKind::AlreadyExists"),
-        // The below are unstable features see https://github.com/rust-lang/rust/issues/86442
-        // TODO add these when available
-        // ErrorKind::NotADirectory => RocStr::from("ErrorKind::NotADirectory"),
-        // ErrorKind::IsADirectory => RocStr::from("ErrorKind::IsADirectory"),
-        // ErrorKind::DirectoryNotEmpty => RocStr::from("ErrorKind::DirectoryNotEmpty"),
-        // ErrorKind::ReadOnlyFilesystem => RocStr::from("ErrorKind::ReadOnlyFilesystem"),
-        // ErrorKind::FilesystemLoop => RocStr::from("ErrorKind::FilesystemLoop"),
-        // ErrorKind::FilesystemQuotaExceeded => RocStr::from("ErrorKind::FilesystemQuotaExceeded"),
-        // ErrorKind::StorageFull => RocStr::from("ErrorKind::StorageFull"),
-        // ErrorKind::InvalidFilename => RocStr::from("ErrorKind::InvalidFilename"),
-        _ => RocStr::from(format!("{:?}", io_err).as_str()),
+        Err(err) => RocResult::err(err.into()),
     }
 }
 
