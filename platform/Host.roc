@@ -1,4 +1,4 @@
-hosted PlatformTasks
+hosted Host
     exposes [
         TcpStream,
         FileReader,

@@ -3,13 +3,13 @@ module [cwd!, dict!, var!, decode!, exePath!, setCwd!, platform!, tempDir!]
 import Path exposing [Path]
 import InternalPath
 import EnvDecoding
-import PlatformTasks
+import Host
 
 ## Reads the [current working directory](https://en.wikipedia.org/wiki/Working_directory)
 ## from the environment. File operations on relative [Path]s are relative to this directory.
 cwd! : {} => Result Path [CwdUnavailable]
 cwd! = \{} ->
-    bytes = PlatformTasks.cwd! {} |> Result.withDefault []
+    bytes = Host.cwd! {} |> Result.withDefault []
 
     if List.isEmpty bytes then
         Err CwdUnavailable
@@ -21,13 +21,13 @@ cwd! = \{} ->
 ## to this directory.
 setCwd! : Path => Result {} [InvalidCwd]
 setCwd! = \path ->
-    PlatformTasks.setCwd! (InternalPath.toBytes path)
+    Host.setCwd! (InternalPath.toBytes path)
     |> Result.mapErr \{} -> InvalidCwd
 
 ## Gets the path to the currently-running executable.
 exePath! : {} => Result Path [ExePathUnavailable]
 exePath! = \{} ->
-    when PlatformTasks.exePath! {} is
+    when Host.exePath! {} is
         Ok bytes -> Ok (InternalPath.fromOsBytes bytes)
         Err {} -> Err ExePathUnavailable
 
@@ -37,7 +37,7 @@ exePath! = \{} ->
 ## [Unicode replacement character](https://unicode.org/glossary/#replacement_character) ('�').
 var! : Str => Result Str [VarNotFound]
 var! = \name ->
-    PlatformTasks.envVar! name
+    Host.envVar! name
     |> Result.mapErr \{} -> VarNotFound
 
 ## Reads the given environment variable and attempts to decode it.
@@ -67,7 +67,7 @@ var! = \name ->
 ##
 decode! : Str => Result val [VarNotFound, DecodeErr DecodeError] where val implements Decoding
 decode! = \name ->
-    when PlatformTasks.envVar! name is
+    when Host.envVar! name is
         Err {} -> Err VarNotFound
         Ok varStr ->
             Str.toUtf8 varStr
@@ -80,7 +80,7 @@ decode! = \name ->
 ## will be used in place of any parts of keys or values that are invalid Unicode.
 dict! : {} => Dict Str Str
 dict! = \{} ->
-    PlatformTasks.envDict! {}
+    Host.envDict! {}
     |> Dict.fromList
 
 # ## Walks over the process's environment variables as key-value arguments to the walking function.
@@ -129,7 +129,7 @@ OS : [LINUX, MACOS, WINDOWS, OTHER Str]
 platform! : {} => { arch : ARCH, os : OS }
 platform! = \{} ->
 
-    fromRust = PlatformTasks.currentArchOS! {}
+    fromRust = Host.currentArchOS! {}
 
     arch =
         when fromRust.arch is
@@ -159,5 +159,5 @@ platform! = \{} ->
 ##
 tempDir! : {} => Path
 tempDir! = \{} ->
-    PlatformTasks.tempDir! {}
+    Host.tempDir! {}
     |> \pathOSStringBytes -> InternalPath.fromOsBytes pathOSStringBytes

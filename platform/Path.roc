@@ -34,7 +34,7 @@ module [
 import InternalPath
 import InternalFile
 import FileMetadata exposing [FileMetadata]
-import PlatformTasks
+import Host
 
 ## An error when reading a path's file metadata from disk.
 MetadataErr : InternalPath.GetMetadataErr
@@ -116,7 +116,7 @@ writeBytes! : List U8, Path => Result {} [FileWriteErr Path WriteErr]
 writeBytes! = \bytes, path ->
     pathBytes = InternalPath.toBytes path
 
-    PlatformTasks.fileWriteBytes! pathBytes bytes
+    Host.fileWriteBytes! pathBytes bytes
     |> Result.mapErr \err -> FileWriteErr path (InternalFile.handleWriteErr err)
 
 ## Writes a [Str] to a file, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
@@ -133,7 +133,7 @@ writeUtf8! : Str, Path => Result {} [FileWriteErr Path WriteErr]
 writeUtf8! = \str, path ->
     pathBytes = InternalPath.toBytes path
 
-    PlatformTasks.fileWriteUtf8! pathBytes str
+    Host.fileWriteUtf8! pathBytes str
     |> Result.mapErr \err -> FileWriteErr path (InternalFile.handleWriteErr err)
 
 ## Note that the path may not be valid depending on the filesystem where it is used.
@@ -242,7 +242,7 @@ isSymLink! = \path ->
 ## > [`File.type`](File#type!) does the same thing, except it takes a [Str] instead of a [Path].
 type! : Path => Result [IsFile, IsDir, IsSymLink] [PathErr MetadataErr]
 type! = \path ->
-    PlatformTasks.pathType! (InternalPath.toBytes path)
+    Host.pathType! (InternalPath.toBytes path)
     |> Result.mapErr \err -> PathErr (InternalPath.handlerGetMetadataErr err)
     |> Result.map \pathType ->
         if pathType.isSymLink then
@@ -312,7 +312,7 @@ withExtension = \path, extension ->
 ## > [`File.delete`](File#delete!) does the same thing, except it takes a [Str] instead of a [Path].
 delete! : Path => Result {} [FileWriteErr Path WriteErr]
 delete! = \path ->
-    PlatformTasks.fileDelete! (InternalPath.toBytes path)
+    Host.fileDelete! (InternalPath.toBytes path)
     |> Result.mapErr \err -> FileWriteErr path (InternalFile.handleWriteErr err)
 
 ## Reads a [Str] from a file containing [UTF-8](https://en.wikipedia.org/wiki/UTF-8)-encoded text.
@@ -331,7 +331,7 @@ delete! = \path ->
 readUtf8! : Path => Result Str [FileReadErr Path ReadErr, FileReadUtf8Err Path _]
 readUtf8! = \path ->
     bytes =
-        PlatformTasks.fileReadBytes! (InternalPath.toBytes path)
+        Host.fileReadBytes! (InternalPath.toBytes path)
         |> Result.mapErr? \readErr -> FileReadErr path (InternalFile.handleReadErr readErr)
 
     Str.fromUtf8 bytes
@@ -351,7 +351,7 @@ readUtf8! = \path ->
 ## > [`File.readBytes`](File#readBytes!) does the same thing, except it takes a [Str] instead of a [Path].
 readBytes! : Path => Result (List U8) [FileReadErr Path ReadErr]
 readBytes! = \path ->
-    PlatformTasks.fileReadBytes! (InternalPath.toBytes path)
+    Host.fileReadBytes! (InternalPath.toBytes path)
     |> Result.mapErr \err -> FileReadErr path (InternalFile.handleReadErr err)
 
 ## Lists the files and directories inside the directory.
@@ -359,7 +359,7 @@ readBytes! = \path ->
 ## > [`Dir.list`](Dir#list!) does the same thing, except it takes a [Str] instead of a [Path].
 listDir! : Path => Result (List Path) [DirErr DirErr]
 listDir! = \path ->
-    when PlatformTasks.dirList! (InternalPath.toBytes path) is
+    when Host.dirList! (InternalPath.toBytes path) is
         Ok entries -> Ok (List.map entries InternalPath.fromOsBytes)
         Err err -> Err (handleErr err)
 
@@ -374,7 +374,7 @@ listDir! = \path ->
 ## > [`Dir.deleteEmpty`](Dir#deleteEmpty!) does the same thing, except it takes a [Str] instead of a [Path].
 deleteEmpty! : Path => Result {} [DirErr DirErr]
 deleteEmpty! = \path ->
-    PlatformTasks.dirDeleteEmpty! (InternalPath.toBytes path)
+    Host.dirDeleteEmpty! (InternalPath.toBytes path)
     |> Result.mapErr handleErr
 
 ## Recursively deletes a directory as well as all files and directories
@@ -389,7 +389,7 @@ deleteEmpty! = \path ->
 ## > [`Dir.deleteAll`](Dir#deleteAll!) does the same thing, except it takes a [Str] instead of a [Path].
 deleteAll! : Path => Result {} [DirErr DirErr]
 deleteAll! = \path ->
-    PlatformTasks.dirDeleteAll! (InternalPath.toBytes path)
+    Host.dirDeleteAll! (InternalPath.toBytes path)
     |> Result.mapErr handleErr
 
 ## Creates a directory
@@ -402,7 +402,7 @@ deleteAll! = \path ->
 ## > [`Dir.create`](Dir#create!) does the same thing, except it takes a [Str] instead of a [Path].
 createDir! : Path => Result {} [DirErr DirErr]
 createDir! = \path ->
-    PlatformTasks.dirCreate! (InternalPath.toBytes path)
+    Host.dirCreate! (InternalPath.toBytes path)
     |> Result.mapErr handleErr
 
 ## Creates a directory recursively adding any missing parent directories.
@@ -414,7 +414,7 @@ createDir! = \path ->
 ## > [`Dir.createAll`](Dir#createAll!) does the same thing, except it takes a [Str] instead of a [Path].
 createAll! : Path => Result {} [DirErr DirErr]
 createAll! = \path ->
-    PlatformTasks.dirCreateAll! (InternalPath.toBytes path)
+    Host.dirCreateAll! (InternalPath.toBytes path)
     |> Result.mapErr handleErr
 
 # There are othe errors which may be useful, however they are currently unstable
@@ -446,8 +446,8 @@ handleErr = \err ->
 ## > [File.hardLink!] does the same thing, except it takes a [Str] instead of a [Path].
 hardLink! : Path => Result {} [LinkErr LinkErr]
 hardLink! = \path ->
-    PlatformTasks.hardLink! (InternalPath.toBytes path)
+    Host.hardLink! (InternalPath.toBytes path)
     |> Result.mapErr LinkErr
 
 ## Tag union of possible errors when linking a file or directory.
-LinkErr : PlatformTasks.InternalIOErr
+LinkErr : Host.InternalIOErr

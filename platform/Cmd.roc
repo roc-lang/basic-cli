@@ -15,7 +15,7 @@ module [
 ]
 
 import InternalCommand
-import PlatformTasks
+import Host
 
 ## Represents a command to be executed in a child process.
 Cmd := InternalCommand.Command implements [Inspect]
@@ -130,7 +130,7 @@ clearEnvs = \@Cmd cmd ->
 ##
 output! : Cmd => Result Output [CmdOutputError (Output, Err)]
 output! = \@Cmd cmd ->
-    internalOutput = PlatformTasks.commandOutput! (Box.box cmd)
+    internalOutput = Host.commandOutput! (Box.box cmd)
 
     out = {
         stdout: internalOutput.stdout,
@@ -145,7 +145,7 @@ output! = \@Cmd cmd ->
 ##
 status! : Cmd => Result {} [CmdError Err]
 status! = \@Cmd cmd ->
-    PlatformTasks.commandStatus! (Box.box cmd)
+    Host.commandStatus! (Box.box cmd)
     |> Result.mapErr \bytes -> CmdError (InternalCommand.handleCommandErr bytes)
 
 ## Execute command and inherit stdin, stdout and stderr from parent

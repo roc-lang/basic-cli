@@ -4,7 +4,7 @@
 ##
 module [disableRawMode!, enableRawMode!]
 
-import PlatformTasks
+import Host
 
 ## Enable terminal raw mode which disables some default terminal bevahiour.
 ##
@@ -18,7 +18,7 @@ import PlatformTasks
 ##
 enableRawMode! : {} => {}
 enableRawMode! = \{} ->
-    PlatformTasks.ttyModeRaw! {}
+    Host.ttyModeRaw! {}
 
 ## Revert terminal to default behaviour
 ##
@@ -26,4 +26,4 @@ enableRawMode! = \{} ->
 ##
 disableRawMode! : {} => {}
 disableRawMode! = \{} ->
-    PlatformTasks.ttyModeCanonical! {}
+    Host.ttyModeCanonical! {}

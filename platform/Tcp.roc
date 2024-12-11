@@ -13,12 +13,12 @@ module [
     streamErrToStr,
 ]
 
-import PlatformTasks
+import Host
 
 unexpectedEofErrorMessage = "UnexpectedEof"
 
 ## Represents a TCP stream.
-Stream := PlatformTasks.TcpStream
+Stream := Host.TcpStream
 
 ## Represents errors that can occur when connecting to a remote host.
 ConnectErr : [
@@ -85,7 +85,7 @@ parseStreamErr = \err ->
 ##
 connect! : Str, U16 => Result Stream ConnectErr
 connect! = \host, port ->
-    PlatformTasks.tcpConnect! host port
+    Host.tcpConnect! host port
     |> Result.map @Stream
     |> Result.mapErr parseConnectErr
 
@@ -100,7 +100,7 @@ connect! = \host, port ->
 ## > To read an exact number of bytes or fail, you can use [Tcp.readExactly!] instead.
 readUpTo! : Stream, U64 => Result (List U8) [TcpReadErr StreamErr]
 readUpTo! = \@Stream stream, bytesToRead ->
-    PlatformTasks.tcpReadUpTo! stream bytesToRead
+    Host.tcpReadUpTo! stream bytesToRead
     |> Result.mapErr \err -> TcpReadErr (parseStreamErr err)
 
 ## Read an exact number of bytes or fail.
@@ -113,7 +113,7 @@ readUpTo! = \@Stream stream, bytesToRead ->
 ##
 readExactly! : Stream, U64 => Result (List U8) [TcpReadErr StreamErr, TcpUnexpectedEOF]
 readExactly! = \@Stream stream, bytesToRead ->
-    PlatformTasks.tcpReadExactly! stream bytesToRead
+    Host.tcpReadExactly! stream bytesToRead
     |> Result.mapErr \err ->
         if err == unexpectedEofErrorMessage then
             TcpUnexpectedEOF
@@ -133,7 +133,7 @@ readExactly! = \@Stream stream, bytesToRead ->
 ## conveniently decodes to a [Str].
 readUntil! : Stream, U8 => Result (List U8) [TcpReadErr StreamErr]
 readUntil! = \@Stream stream, byte ->
-    PlatformTasks.tcpReadUntil! stream byte
+    Host.tcpReadUntil! stream byte
     |> Result.mapErr \err -> TcpReadErr (parseStreamErr err)
 
 ## Read until a newline or EOF is reached.
@@ -163,7 +163,7 @@ readLine! = \stream ->
 ## > To write a [Str], you can use [Tcp.writeUtf8!] instead.
 write! : Stream, List U8 => Result {} [TcpWriteErr StreamErr]
 write! = \@Stream stream, bytes ->
-    PlatformTasks.tcpWrite! stream bytes
+    Host.tcpWrite! stream bytes
     |> Result.mapErr \err -> TcpWriteErr (parseStreamErr err)
 
 ## Writes a [Str] to a TCP stream, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).

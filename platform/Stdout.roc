@@ -1,6 +1,6 @@
 module [line!, write!, Err]
 
-import PlatformTasks
+import Host
 
 ## **NotFound** - An entity was not found, often a file.
 ##
@@ -28,7 +28,7 @@ Err : [
     Other Str,
 ]
 
-handleErr : PlatformTasks.InternalIOErr -> [StdoutErr Err]
+handleErr : Host.InternalIOErr -> [StdoutErr Err]
 handleErr = \{ tag, msg } ->
     when tag is
         NotFound -> StdoutErr NotFound
@@ -47,7 +47,7 @@ handleErr = \{ tag, msg } ->
 ##
 line! : Str => Result {} [StdoutErr Err]
 line! = \str ->
-    PlatformTasks.stdoutLine! str
+    Host.stdoutLine! str
     |> Result.mapErr handleErr
 
 ## Write the given string to [standard output](https://en.wikipedia.org/wiki/Standard_streams#Standard_output_(stdout)).
@@ -58,5 +58,5 @@ line! = \str ->
 ## > To write to `stdout` with a newline at the end, see [Stdout.line!].
 write! : Str => Result {} [StdoutErr Err]
 write! = \str ->
-    PlatformTasks.stdoutWrite! str
+    Host.stdoutWrite! str
     |> Result.mapErr handleErr
