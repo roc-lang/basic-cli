@@ -9,7 +9,7 @@ module [
     deltaAsNanos,
 ]
 
-import PlatformTasks
+import Host
 
 ## Stores a timestamp as nanoseconds since UNIX EPOCH
 Utc := I128 implements [Inspect]
@@ -17,7 +17,7 @@ Utc := I128 implements [Inspect]
 ## Duration since UNIX EPOCH
 now! : {} => Utc
 now! = \{} ->
-    currentEpoch = PlatformTasks.posixTime! {} |> Num.toI128
+    currentEpoch = Host.posixTime! {} |> Num.toI128
 
     @Utc currentEpoch
 

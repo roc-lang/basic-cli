@@ -1,50 +1,44 @@
 module [
-    ReadErr,
-    handleReadErr,
-    WriteErr,
-    handleWriteErr,
+    IOErr,
+    handleErr,
 ]
 
-## Tag union of possible errors when reading a file or directory.
-ReadErr : [
-    Interrupted,
+import Host
+
+## **NotFound** - An entity was not found, often a file.
+##
+## **PermissionDenied** - The operation lacked the necessary privileges to complete.
+##
+## **BrokenPipe** - The operation failed because a pipe was closed.
+##
+## **AlreadyExists** - An entity already exists, often a file.
+##
+## **Interrupted** - This operation was interrupted. Interrupted operations can typically be retried.
+##
+## **Unsupported** - This operation is unsupported on this platform. This means that the operation can never succeed.
+##
+## **OutOfMemory** - An operation could not be completed, because it failed to allocate enough memory.
+##
+## **Other** - A custom error that does not fall under any other I/O error kind.
+IOErr : [
     NotFound,
-    OutOfMemory,
     PermissionDenied,
-    TimedOut,
-    Other Str,
-]
-
-handleReadErr : Str -> ReadErr
-handleReadErr = \err ->
-    when err is
-        e if e == "ErrorKind::Interrupted" -> Interrupted
-        e if e == "ErrorKind::NotFound" -> NotFound
-        e if e == "ErrorKind::OutOfMemory" -> OutOfMemory
-        e if e == "ErrorKind::PermissionDenied" -> PermissionDenied
-        e if e == "ErrorKind::TimedOut" -> TimedOut
-        str -> Other str
-
-## Tag union of possible errors when writing a file or directory.
-WriteErr : [
-    NotFound,
+    BrokenPipe,
     AlreadyExists,
     Interrupted,
+    Unsupported,
     OutOfMemory,
-    PermissionDenied,
-    TimedOut,
-    WriteZero,
     Other Str,
 ]
 
-handleWriteErr : Str -> WriteErr
-handleWriteErr = \err ->
-    when err is
-        e if e == "ErrorKind::NotFound" -> NotFound
-        e if e == "ErrorKind::AlreadyExists" -> AlreadyExists
-        e if e == "ErrorKind::Interrupted" -> Interrupted
-        e if e == "ErrorKind::OutOfMemory" -> OutOfMemory
-        e if e == "ErrorKind::PermissionDenied" -> PermissionDenied
-        e if e == "ErrorKind::TimedOut" -> TimedOut
-        e if e == "ErrorKind::WriteZero" -> WriteZero
-        str -> Other str
+handleErr : Host.InternalIOErr -> IOErr
+handleErr = \{ tag, msg } ->
+    when tag is
+        NotFound -> NotFound
+        PermissionDenied -> PermissionDenied
+        BrokenPipe -> BrokenPipe
+        AlreadyExists -> AlreadyExists
+        Interrupted -> Interrupted
+        Unsupported -> Unsupported
+        OutOfMemory -> OutOfMemory
+        Other | EndOfFile -> Other msg

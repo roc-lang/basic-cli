@@ -1,4 +1,4 @@
-hosted PlatformTasks
+hosted Host
     exposes [
         TcpStream,
         FileReader,
@@ -78,14 +78,14 @@ stdinReadToEnd! : {} => Result (List U8) InternalIOErr
 ttyModeCanonical! : {} => {}
 ttyModeRaw! : {} => {}
 
-fileWriteBytes! : List U8, List U8 => Result {} Str
-fileWriteUtf8! : List U8, Str => Result {} Str
-fileDelete! : List U8 => Result {} Str
-fileReadBytes! : List U8 => Result (List U8) Str
+fileWriteBytes! : List U8, List U8 => Result {} InternalIOErr
+fileWriteUtf8! : List U8, Str => Result {} InternalIOErr
+fileDelete! : List U8 => Result {} InternalIOErr
+fileReadBytes! : List U8 => Result (List U8) InternalIOErr
 
 FileReader := Box {}
-fileReader! : List U8, U64 => Result FileReader Str
-fileReadLine! : FileReader => Result (List U8) Str
+fileReader! : List U8, U64 => Result FileReader InternalIOErr
+fileReadLine! : FileReader => Result (List U8) InternalIOErr
 
 envDict! : {} => List (Str, Str)
 envVar! : Str => Result Str {}
@@ -107,7 +107,7 @@ tcpReadExactly! : TcpStream, U64 => Result (List U8) Str
 tcpReadUntil! : TcpStream, U8 => Result (List U8) Str
 tcpWrite! : TcpStream, List U8 => Result {} Str
 
-pathType! : List U8 => Result InternalPath.InternalPathType (List U8)
+pathType! : List U8 => Result InternalPath.InternalPathType InternalIOErr
 
 # TODO why is this a U128 but then getting converted to a I128 in Utc.roc?
 posixTime! : {} => U128
@@ -117,11 +117,11 @@ sleepMillis! : U64 => {}
 commandStatus! : Box InternalCommand.Command => Result {} (List U8)
 commandOutput! : Box InternalCommand.Command => InternalCommand.Output
 
-dirList! : List U8 => Result (List (List U8)) Str
-dirCreate! : List U8 => Result {} Str
-dirCreateAll! : List U8 => Result {} Str
-dirDeleteEmpty! : List U8 => Result {} Str
-dirDeleteAll! : List U8 => Result {} Str
+dirList! : List U8 => Result (List (List U8)) InternalIOErr
+dirCreate! : List U8 => Result {} InternalIOErr
+dirCreateAll! : List U8 => Result {} InternalIOErr
+dirDeleteEmpty! : List U8 => Result {} InternalIOErr
+dirDeleteAll! : List U8 => Result {} InternalIOErr
 
 hardLink! : List U8 => Result {} InternalIOErr
 

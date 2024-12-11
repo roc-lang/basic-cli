@@ -5,9 +5,9 @@ platform ""
     imports []
     provides [mainForHost]
 
-import PlatformTasks
+import Host
 
-InternalIOErr : PlatformTasks.InternalIOErr
+InternalIOErr : Host.InternalIOErr
 
 mainForHost : InternalIOErr
 mainForHost = main

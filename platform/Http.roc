@@ -15,7 +15,7 @@ module [
 ]
 
 import InternalHttp exposing [errorBodyToUtf8, errorBodyFromUtf8]
-import PlatformTasks
+import Host
 
 ## Represents an HTTP request.
 Request : {
@@ -134,7 +134,7 @@ send! = \req ->
     }
 
     # TODO: Fix our C ABI codegen so that we don't this Box.box heap allocation
-    { variant, body, metadata } = PlatformTasks.sendRequest! (Box.box internalRequest)
+    { variant, body, metadata } = Host.sendRequest! (Box.box internalRequest)
 
     responseResult =
         when variant is

@@ -5,7 +5,7 @@ module [
     readToEnd!,
 ]
 
-import PlatformTasks
+import Host
 
 ## **NotFound** - An entity was not found, often a file.
 ##
@@ -33,7 +33,7 @@ Err : [
     Other Str,
 ]
 
-handleErr : PlatformTasks.InternalIOErr -> [EndOfFile, StdinErr Err]
+handleErr : Host.InternalIOErr -> [EndOfFile, StdinErr Err]
 handleErr = \{ tag, msg } ->
     when tag is
         NotFound -> StdinErr NotFound
@@ -54,7 +54,7 @@ handleErr = \{ tag, msg } ->
 ## the user knows it's necessary to enter something before the program will continue.
 line! : {} => Result Str [EndOfFile, StdinErr Err]
 line! = \{} ->
-    PlatformTasks.stdinLine! {}
+    Host.stdinLine! {}
     |> Result.mapErr handleErr
 
 ## Read bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
@@ -65,13 +65,13 @@ line! = \{} ->
 ## without buffering until Enter key is pressed.
 bytes! : {} => Result (List U8) [EndOfFile, StdinErr Err]
 bytes! = \{} ->
-    PlatformTasks.stdinBytes! {}
+    Host.stdinBytes! {}
     |> Result.mapErr handleErr
 
 ## Read all bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)) until EOF in this source.
 readToEnd! : {} => Result (List U8) [StdinErr Err]
 readToEnd! = \{} ->
-    PlatformTasks.stdinReadToEnd! {}
+    Host.stdinReadToEnd! {}
     |> Result.mapErr \{ tag, msg } ->
         when tag is
             NotFound -> StdinErr NotFound

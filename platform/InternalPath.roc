@@ -1,9 +1,6 @@
 module [
     UnwrappedPath,
     InternalPath,
-    GetMetadataErr,
-    DirErr,
-    handlerGetMetadataErr,
     InternalPathType,
     wrap,
     unwrap,
@@ -51,27 +48,6 @@ UnwrappedPath : [
 ]
 
 InternalPathType : { isFile : Bool, isSymLink : Bool, isDir : Bool }
-
-DirErr : [
-    NotFound,
-    PermissionDenied,
-    AlreadyExists,
-    NotADirectory,
-    Other Str,
-]
-
-GetMetadataErr : [
-    PermissionDenied,
-    PathDoesNotExist,
-    Unrecognized Str,
-]
-
-handlerGetMetadataErr : List U8 -> GetMetadataErr
-handlerGetMetadataErr = \err ->
-    when err is
-        ['P', 'D'] -> PermissionDenied
-        ['N', 'F'] -> PathDoesNotExist
-        msg -> Unrecognized (Str.fromUtf8 msg |> Result.withDefault "InvalidUtf8")
 
 wrap : UnwrappedPath -> InternalPath
 wrap = @InternalPath
