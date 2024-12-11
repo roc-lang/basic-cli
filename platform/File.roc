@@ -19,6 +19,7 @@ module [
     openReaderWithBuf!,
     readLine!,
     readBytesToBuf!,
+    hardLink!,
 ]
 # import Shared exposing [ByteReader]
 import Path exposing [Path, MetadataErr]
@@ -27,12 +28,12 @@ import PlatformTasks
 
 ## Tag union of possible errors when reading a file or directory.
 ##
-## > This is the same as [`Path.ReadErr`].
+## > This is the same as [`Path.ReadErr`](Path#ReadErr).
 ReadErr : Path.ReadErr
 
 ## Tag union of possible errors when writing a file or directory.
 ##
-## > This is the same as [`Path.WriteErr`].
+## > This is the same as [`Path.WriteErr`](Path#WriteErr).
 WriteErr : Path.WriteErr
 
 ## Write data to a file.
@@ -103,7 +104,7 @@ writeUtf8! = \str, path ->
 ## successfully deleted.
 ##
 ## ```
-## # Deletes the file named
+## # Deletes the file named `myfile.dat`
 ## File.delete! (Path.fromStr "myfile.dat") [1, 2, 3]
 ## ```
 ##
@@ -151,13 +152,25 @@ readUtf8! : Str => Result Str [FileReadErr Path ReadErr, FileReadUtf8Err Path _]
 readUtf8! = \path ->
     Path.readUtf8! (Path.fromStr path)
 
-# read : Str, fmt -> Task contents [FileReadErr Path ReadErr, FileReadDecodingFailed] where contents implements Decoding, fmt implements DecoderFormatting
+# read : Str, fmt => Result contents [FileReadErr Path ReadErr, FileReadDecodingFailed] where contents implements Decoding, fmt implements DecoderFormatting
 # read = \path, fmt ->
 #    Path.read! (Path.fromStr path) fmt
 
-## Returns true if the path exists on disk and is pointing at a directory.
-## Returns `Task.ok false` if the path exists and it is not a directory. If the path does not exist,
-## this function will return `Task.err PathErr PathDoesNotExist`.
+## Creates a new hard link on the filesystem.
+##
+## The link path will be a link pointing to the original path.
+## Note that systems often require these two paths to both be located on the same filesystem.
+##
+## This uses [rust's std::fs::hard_link](https://doc.rust-lang.org/std/fs/fn.hard_link.html).
+##
+## > [Path.hardLink!] does the same thing, except it takes a [Path] instead of a [Str].
+hardLink! : Str => Result {} [LinkErr Path.LinkErr]
+hardLink! = \path ->
+    Path.hardLink! (Path.fromStr path)
+
+## Returns True if the path exists on disk and is pointing at a directory.
+## Returns False if the path exists and it is not a directory. If the path does not exist,
+## this function will return `Err (PathErr PathDoesNotExist)`.
 ##
 ## This uses [rust's std::path::is_dir](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_dir).
 ##
@@ -166,9 +179,9 @@ isDir! : Str => Result Bool [PathErr MetadataErr]
 isDir! = \path ->
     Path.isDir! (Path.fromStr path)
 
-## Returns true if the path exists on disk and is pointing at a regular file.
-## Returns `Task.ok false` if the path exists and it is not a file. If the path does not exist,
-## this function will return `Task.err PathErr PathDoesNotExist`.
+## Returns True if the path exists on disk and is pointing at a regular file.
+## Returns False if the path exists and it is not a file. If the path does not exist,
+## this function will return `Err (PathErr PathDoesNotExist)`.
 ##
 ## This uses [rust's std::path::is_file](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_file).
 ##
@@ -177,9 +190,9 @@ isFile! : Str => Result Bool [PathErr MetadataErr]
 isFile! = \path ->
     Path.isFile! (Path.fromStr path)
 
-## Returns true if the path exists on disk and is pointing at a symbolic link.
-## Returns `Task.ok false` if the path exists and it is not a symbolic link. If the path does not exist,
-## this function will return `Task.err PathErr PathDoesNotExist`.
+## Returns True if the path exists on disk and is pointing at a symbolic link.
+## Returns False if the path exists and it is not a symbolic link. If the path does not exist,
+## this function will return `Err (PathErr PathDoesNotExist)`.
 ##
 ## This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
 ##

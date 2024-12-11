@@ -24,7 +24,7 @@ if [ "$NO_BUILD" != "1" ]; then
   ./jump-start.sh
 
   # build the basic-cli platform
-  $ROC dev ./build.roc --linker=legacy
+  $ROC dev ./build.roc --linker=legacy -- --roc $ROC
 fi
 
 # roc check
@@ -68,9 +68,11 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     roc_file_only="$(basename "$roc_file")"
     no_ext_name=${roc_file_only%.*}
 
-    if [ "$no_ext_name" == "args" ]; then
-        valgrind $EXAMPLES_DIR/args div -n 5 -d 20
-    fi
+    # not used, leaving here for future reference if we want to run valgrind on an example
+    # if [ "$no_ext_name" == "args" ] && command -v valgrind &> /dev/null; then
+    #     valgrind $EXAMPLES_DIR/args argument
+    # fi
+
     expect ci/expect_scripts/$no_ext_name.exp
 done
 
@@ -102,6 +104,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     elif [ "$base_file" == "temp-dir.roc" ]; then
         $ROC dev $roc_file $ROC_BUILD_FLAGS --linker=legacy
     else
+
         $ROC dev $roc_file $ROC_BUILD_FLAGS
     fi
 done

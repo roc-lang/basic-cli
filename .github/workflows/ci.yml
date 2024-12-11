@@ -68,4 +68,4 @@ jobs:
 
       - name: Test using musl build
         run: |
-          NO_BUILD=1 ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
+          NO_BUILD=1 IS_MUSL=1 ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh

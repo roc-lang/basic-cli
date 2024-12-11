@@ -2,6 +2,7 @@ module [
     UnwrappedPath,
     InternalPath,
     GetMetadataErr,
+    DirErr,
     handlerGetMetadataErr,
     InternalPathType,
     wrap,
@@ -50,6 +51,14 @@ UnwrappedPath : [
 ]
 
 InternalPathType : { isFile : Bool, isSymLink : Bool, isDir : Bool }
+
+DirErr : [
+    NotFound,
+    PermissionDenied,
+    AlreadyExists,
+    NotADirectory,
+    Other Str,
+]
 
 GetMetadataErr : [
     PermissionDenied,
