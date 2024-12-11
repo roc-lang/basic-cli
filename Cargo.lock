@@ -179,6 +179,7 @@ name = "host"
 version = "0.0.1"
 dependencies = [
  "roc_host",
+ "roc_std",
 ]
 
 [[package]]
@@ -419,6 +420,7 @@ name = "roc_host_bin"
 version = "0.0.1"
 dependencies = [
  "roc_host",
+ "roc_std",
 ]
 
 [[package]]
