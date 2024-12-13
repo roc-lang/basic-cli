@@ -7,7 +7,5 @@ platform ""
 
 import Host
 
-InternalIOErr : Host.InternalIOErr
-
-mainForHost : InternalIOErr
+mainForHost : Host.InternalIOErr
 mainForHost = main
