@@ -67,17 +67,11 @@ InternalIOErr : {
     msg : Str,
 }
 
-stdoutLine! : Str => Result {} InternalIOErr
-stdoutWrite! : Str => Result {} InternalIOErr
-stderrLine! : Str => Result {} InternalIOErr
-stderrWrite! : Str => Result {} InternalIOErr
-stdinLine! : {} => Result Str InternalIOErr
-stdinBytes! : {} => Result (List U8) InternalIOErr
-stdinReadToEnd! : {} => Result (List U8) InternalIOErr
+# COMMAND
+commandStatus! : Box InternalCommand.Command => Result {} (List U8)
+commandOutput! : Box InternalCommand.Command => InternalCommand.Output
 
-ttyModeCanonical! : {} => {}
-ttyModeRaw! : {} => {}
-
+# FILE
 fileWriteBytes! : List U8, List U8 => Result {} InternalIOErr
 fileWriteUtf8! : List U8, Str => Result {} InternalIOErr
 fileDelete! : List U8 => Result {} InternalIOErr
@@ -87,17 +81,27 @@ FileReader := Box {}
 fileReader! : List U8, U64 => Result FileReader InternalIOErr
 fileReadLine! : FileReader => Result (List U8) InternalIOErr
 
-envDict! : {} => List (Str, Str)
-envVar! : Str => Result Str {}
-exePath! : {} => Result (List U8) {}
-setCwd! : List U8 => Result {} {}
+dirList! : List U8 => Result (List (List U8)) InternalIOErr
+dirCreate! : List U8 => Result {} InternalIOErr
+dirCreateAll! : List U8 => Result {} InternalIOErr
+dirDeleteEmpty! : List U8 => Result {} InternalIOErr
+dirDeleteAll! : List U8 => Result {} InternalIOErr
 
-# If we encounter a Unicode error in any of the args, it will be replaced with
-# the Unicode replacement char where necessary.
-args! : {} => List Str
-
+hardLink! : List U8 => Result {} InternalIOErr
+pathType! : List U8 => Result InternalPath.InternalPathType InternalIOErr
 cwd! : {} => Result (List U8) {}
+tempDir! : {} => List U8
 
+# STDIO
+stdoutLine! : Str => Result {} InternalIOErr
+stdoutWrite! : Str => Result {} InternalIOErr
+stderrLine! : Str => Result {} InternalIOErr
+stderrWrite! : Str => Result {} InternalIOErr
+stdinLine! : {} => Result Str InternalIOErr
+stdinBytes! : {} => Result (List U8) InternalIOErr
+stdinReadToEnd! : {} => Result (List U8) InternalIOErr
+
+# TCP
 sendRequest! : Box Request => InternalResponse
 
 TcpStream := Box {}
@@ -107,27 +111,24 @@ tcpReadExactly! : TcpStream, U64 => Result (List U8) Str
 tcpReadUntil! : TcpStream, U8 => Result (List U8) Str
 tcpWrite! : TcpStream, List U8 => Result {} Str
 
-pathType! : List U8 => Result InternalPath.InternalPathType InternalIOErr
-
-# TODO why is this a U128 but then getting converted to a I128 in Utc.roc?
-posixTime! : {} => U128
-
-sleepMillis! : U64 => {}
-
-commandStatus! : Box InternalCommand.Command => Result {} (List U8)
-commandOutput! : Box InternalCommand.Command => InternalCommand.Output
-
-dirList! : List U8 => Result (List (List U8)) InternalIOErr
-dirCreate! : List U8 => Result {} InternalIOErr
-dirCreateAll! : List U8 => Result {} InternalIOErr
-dirDeleteEmpty! : List U8 => Result {} InternalIOErr
-dirDeleteAll! : List U8 => Result {} InternalIOErr
-
-hardLink! : List U8 => Result {} InternalIOErr
-
+# OTHERS
 currentArchOS! : {} => { arch : Str, os : Str }
-
-tempDir! : {} => List U8
 
 getLocale! : {} => Result Str {}
 getLocales! : {} => List Str
+
+posixTime! : {} => U128 # TODO why is this a U128 but then getting converted to a I128 in Utc.roc?
+
+sleepMillis! : U64 => {}
+
+ttyModeCanonical! : {} => {}
+ttyModeRaw! : {} => {}
+
+envDict! : {} => List (Str, Str)
+envVar! : Str => Result Str {}
+exePath! : {} => Result (List U8) {}
+setCwd! : List U8 => Result {} {}
+
+# If we encounter a Unicode error in any of the args, it will be replaced with
+# the Unicode replacement char where necessary.
+args! : {} => List Str

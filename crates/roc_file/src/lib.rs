@@ -21,12 +21,12 @@ pub fn heap() -> &'static ThreadSafeRefcountedResourceHeap<BufReader<File>> {
     })
 }
 
-#[no_mangle]
+/// fileWriteUtf8! : List U8, Str => Result {} IOErr
 pub fn file_write_utf8(roc_path: &RocList<u8>, roc_str: &RocStr) -> RocResult<(), IOErr> {
     write_slice(roc_path, roc_str.as_str().as_bytes())
 }
 
-#[no_mangle]
+/// fileWriteBytes! : List U8, List U8 => Result {} IOErr
 pub fn file_write_bytes(roc_path: &RocList<u8>, roc_bytes: &RocList<u8>) -> RocResult<(), IOErr> {
     write_slice(roc_path, roc_bytes.as_slice())
 }
@@ -48,7 +48,7 @@ pub struct InternalPathType {
     is_sym_link: bool,
 }
 
-#[no_mangle]
+/// pathType! : List U8 => Result InternalPathType IOErr
 pub fn path_type(roc_path: &RocList<u8>) -> RocResult<InternalPathType, IOErr> {
     let path = path_from_roc_path(roc_path);
     match path.symlink_metadata() {
@@ -82,7 +82,7 @@ fn path_from_roc_path(bytes: &RocList<u8>) -> Cow<'_, Path> {
     Cow::Owned(std::path::PathBuf::from(os_string))
 }
 
-#[no_mangle]
+/// fileReadBytes! : List U8 => Result (List U8) IOErr
 pub fn file_read_bytes(roc_path: &RocList<u8>) -> RocResult<RocList<u8>, IOErr> {
     // TODO: write our own duplicate of `read_to_end` that directly fills a `RocList<u8>`.
     // This adds an extra O(n) copy.
@@ -97,7 +97,7 @@ pub fn file_read_bytes(roc_path: &RocList<u8>) -> RocResult<RocList<u8>, IOErr> 
     }
 }
 
-#[no_mangle]
+/// fileReader! : List U8, U64 => Result FileReader IOErr
 pub fn file_reader(roc_path: &RocList<u8>, size: u64) -> RocResult<RocBox<()>, IOErr> {
     match File::open(path_from_roc_path(roc_path)) {
         Ok(file) => {
@@ -118,7 +118,7 @@ pub fn file_reader(roc_path: &RocList<u8>, size: u64) -> RocResult<RocBox<()>, I
     }
 }
 
-#[no_mangle]
+/// fileReadLine! : FileReader => Result (List U8) IOErr
 pub fn file_read_line(data: RocBox<()>) -> RocResult<RocList<u8>, IOErr> {
     let buf_reader: &mut BufReader<File> = ThreadSafeRefcountedResourceHeap::box_to_resource(data);
 
@@ -164,7 +164,7 @@ pub fn read_until<R: BufRead + ?Sized>(
     }
 }
 
-#[no_mangle]
+/// fileDelete! : List U8 => Result {} IOErr
 pub fn file_delete(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     match std::fs::remove_file(path_from_roc_path(roc_path)) {
         Ok(()) => RocResult::ok(()),
@@ -172,7 +172,7 @@ pub fn file_delete(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     }
 }
 
-#[no_mangle]
+/// cwd! : {} => Result (List U8) {}
 pub fn cwd() -> RocResult<RocList<u8>, ()> {
     // TODO instead, call getcwd on UNIX and GetCurrentDirectory on Windows
     match std::env::current_dir() {
@@ -184,7 +184,7 @@ pub fn cwd() -> RocResult<RocList<u8>, ()> {
     }
 }
 
-#[no_mangle]
+/// dirList! : List U8 => Result (List (List U8)) IOErr
 pub fn dir_list(roc_path: &RocList<u8>) -> RocResult<RocList<RocList<u8>>, IOErr> {
     let path = path_from_roc_path(roc_path);
 
@@ -211,7 +211,7 @@ pub fn dir_list(roc_path: &RocList<u8>) -> RocResult<RocList<RocList<u8>>, IOErr
     }
 }
 
-#[no_mangle]
+/// dirCreate! : List U8 => Result {} IOErr
 pub fn dir_create(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     match std::fs::create_dir(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
@@ -219,7 +219,7 @@ pub fn dir_create(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     }
 }
 
-#[no_mangle]
+/// dirCreateAll! : List U8 => Result {} IOErr
 pub fn dir_create_all(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     match std::fs::create_dir_all(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
@@ -227,7 +227,7 @@ pub fn dir_create_all(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     }
 }
 
-#[no_mangle]
+/// dirDeleteEmpty! : List U8 => Result {} IOErr
 pub fn dir_delete_empty(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     match std::fs::remove_dir(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
@@ -235,7 +235,7 @@ pub fn dir_delete_empty(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     }
 }
 
-#[no_mangle]
+/// dirDeleteAll! : List U8 => Result {} IOErr
 pub fn dir_delete_all(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     match std::fs::remove_dir_all(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
@@ -243,7 +243,7 @@ pub fn dir_delete_all(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     }
 }
 
-#[no_mangle]
+/// hardLink! : List U8 => Result {} IOErr
 pub fn hard_link(path_from: &RocList<u8>, path_to: &RocList<u8>) -> RocResult<(), IOErr> {
     match std::fs::hard_link(path_from_roc_path(path_from), path_from_roc_path(path_to)) {
         Ok(_) => RocResult::ok(()),
@@ -251,7 +251,7 @@ pub fn hard_link(path_from: &RocList<u8>, path_to: &RocList<u8>) -> RocResult<()
     }
 }
 
-#[no_mangle]
+/// tempDir! : {} => List U8
 pub fn temp_dir() -> RocList<u8> {
     let path_os_string_bytes = std::env::temp_dir().into_os_string().into_encoded_bytes();
 

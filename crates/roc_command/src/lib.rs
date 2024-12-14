@@ -41,6 +41,7 @@ pub struct CommandOutput {
     pub stdout: RocList<u8>,
 }
 
+/// commandStatus! : Box Command => Result {} (List U8)
 pub fn command_status(roc_cmd: &Command) -> RocResult<(), RocList<u8>> {
     let args = roc_cmd.args.into_iter().map(|arg| arg.as_str());
     let num_envs = roc_cmd.envs.len() / 2;
@@ -113,6 +114,7 @@ fn other_error(err: std::io::Error) -> RocResult<(), RocList<u8>> {
     RocResult::err(error)
 }
 
+/// commandOutput! : Box Command => Output
 pub fn command_output(roc_cmd: &Command) -> CommandOutput {
     let args = roc_cmd.args.into_iter().map(|arg| arg.as_str());
     let num_envs = roc_cmd.envs.len() / 2;

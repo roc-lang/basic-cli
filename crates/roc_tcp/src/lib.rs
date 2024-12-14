@@ -125,11 +125,8 @@ impl InternalResponse {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn send_request(
-    rt: &tokio::runtime::Runtime,
-    roc_request: &Request,
-) -> InternalResponse {
+/// sendRequest! : Box Request => InternalResponse
+pub fn send_request(rt: &tokio::runtime::Runtime, roc_request: &Request) -> InternalResponse {
     let method = parse_http_method(roc_request.method.as_str());
     let mut req_builder = hyper::Request::builder()
         .method(method)
@@ -233,8 +230,8 @@ async fn async_send_request(request: hyper::Request<String>, url: &str) -> Inter
     }
 }
 
-#[no_mangle]
-pub extern "C" fn tcp_connect(host: &RocStr, port: u16) -> RocResult<RocBox<()>, RocStr> {
+/// tcpConnect! : Str, U16 => Result TcpStream Str
+pub fn tcp_connect(host: &RocStr, port: u16) -> RocResult<RocBox<()>, RocStr> {
     match TcpStream::connect((host.as_str(), port)) {
         Ok(stream) => {
             let buf_reader = BufReader::new(stream);
@@ -250,11 +247,8 @@ pub extern "C" fn tcp_connect(host: &RocStr, port: u16) -> RocResult<RocBox<()>,
     }
 }
 
-#[no_mangle]
-pub extern "C" fn tcp_read_up_to(
-    stream: RocBox<()>,
-    bytes_to_read: u64,
-) -> RocResult<RocList<u8>, RocStr> {
+/// tcpReadUpTo! : TcpStream, U64 => Result (List U8) Str
+pub fn tcp_read_up_to(stream: RocBox<()>, bytes_to_read: u64) -> RocResult<RocList<u8>, RocStr> {
     let stream: &mut BufReader<TcpStream> =
         ThreadSafeRefcountedResourceHeap::box_to_resource(stream);
 
@@ -272,11 +266,8 @@ pub extern "C" fn tcp_read_up_to(
     }
 }
 
-#[no_mangle]
-pub extern "C" fn tcp_read_exactly(
-    stream: RocBox<()>,
-    bytes_to_read: u64,
-) -> RocResult<RocList<u8>, RocStr> {
+/// tcpReadExactly! : TcpStream, U64 => Result (List U8) Str
+pub fn tcp_read_exactly(stream: RocBox<()>, bytes_to_read: u64) -> RocResult<RocList<u8>, RocStr> {
     let stream: &mut BufReader<TcpStream> =
         ThreadSafeRefcountedResourceHeap::box_to_resource(stream);
 
@@ -296,8 +287,8 @@ pub extern "C" fn tcp_read_exactly(
     }
 }
 
-#[no_mangle]
-pub extern "C" fn tcp_read_until(stream: RocBox<()>, byte: u8) -> RocResult<RocList<u8>, RocStr> {
+/// tcpReadUntil! : TcpStream, U8 => Result (List U8) Str
+pub fn tcp_read_until(stream: RocBox<()>, byte: u8) -> RocResult<RocList<u8>, RocStr> {
     let stream: &mut BufReader<TcpStream> =
         ThreadSafeRefcountedResourceHeap::box_to_resource(stream);
 
@@ -308,8 +299,8 @@ pub extern "C" fn tcp_read_until(stream: RocBox<()>, byte: u8) -> RocResult<RocL
     }
 }
 
-#[no_mangle]
-pub extern "C" fn tcp_write(stream: RocBox<()>, msg: &RocList<u8>) -> RocResult<(), RocStr> {
+/// tcpWrite! : TcpStream, List U8 => Result {} Str
+pub fn tcp_write(stream: RocBox<()>, msg: &RocList<u8>) -> RocResult<(), RocStr> {
     let stream: &mut BufReader<TcpStream> =
         ThreadSafeRefcountedResourceHeap::box_to_resource(stream);
 

@@ -1,8 +1,7 @@
 use roc_std::{RocList, RocResult, RocStr};
 use std::io::{BufRead, Read, Write};
 
-/// stdinLine! : {} => Result Str InternalIOErr
-#[no_mangle]
+/// stdinLine! : {} => Result Str IOErr
 pub fn stdin_line() -> RocResult<RocStr, roc_io_error::IOErr> {
     let stdin = std::io::stdin();
 
@@ -16,8 +15,7 @@ pub fn stdin_line() -> RocResult<RocStr, roc_io_error::IOErr> {
     }
 }
 
-/// stdinBytes! : {} => Result (List U8) InternalIOErr
-#[no_mangle]
+/// stdinBytes! : {} => Result (List U8) IOErr
 pub fn stdin_bytes() -> RocResult<RocList<u8>, roc_io_error::IOErr> {
     const BUF_SIZE: usize = 16_384; // 16 KiB = 16 * 1024 = 16,384 bytes
     let stdin = std::io::stdin();
@@ -29,8 +27,7 @@ pub fn stdin_bytes() -> RocResult<RocList<u8>, roc_io_error::IOErr> {
     }
 }
 
-/// stdinReadToEnd! : {} => Result (List U8) InternalIOErr
-#[no_mangle]
+/// stdinReadToEnd! : {} => Result (List U8) IOErr
 pub fn stdin_read_to_end() -> RocResult<RocList<u8>, roc_io_error::IOErr> {
     let stdin = std::io::stdin();
     let mut buf = Vec::new();
@@ -40,8 +37,7 @@ pub fn stdin_read_to_end() -> RocResult<RocList<u8>, roc_io_error::IOErr> {
     }
 }
 
-/// stdoutLine! : Str => Result {} InternalIOErr
-#[no_mangle]
+/// stdoutLine! : Str => Result {} IOErr
 pub fn stdout_line(line: &RocStr) -> RocResult<(), roc_io_error::IOErr> {
     let stdout = std::io::stdout();
 
@@ -55,8 +51,7 @@ pub fn stdout_line(line: &RocStr) -> RocResult<(), roc_io_error::IOErr> {
         .into()
 }
 
-/// stdoutWrite! : Str => Result {} InternalIOErr
-#[no_mangle]
+/// stdoutWrite! : Str => Result {} IOErr
 pub fn stdout_write(text: &RocStr) -> RocResult<(), roc_io_error::IOErr> {
     let stdout = std::io::stdout();
     let mut handle = stdout.lock();
@@ -68,8 +63,7 @@ pub fn stdout_write(text: &RocStr) -> RocResult<(), roc_io_error::IOErr> {
         .into()
 }
 
-/// stderrLine! : Str => Result {} InternalIOErr
-#[no_mangle]
+/// stderrLine! : Str => Result {} IOErr
 pub fn stderr_line(line: &RocStr) -> RocResult<(), roc_io_error::IOErr> {
     let stderr = std::io::stderr();
     let mut handle = stderr.lock();
@@ -82,8 +76,7 @@ pub fn stderr_line(line: &RocStr) -> RocResult<(), roc_io_error::IOErr> {
         .into()
 }
 
-/// stderrWrite! : Str => Result {} InternalIOErr
-#[no_mangle]
+/// stderrWrite! : Str => Result {} IOErr
 pub fn stderr_write(text: &RocStr) -> RocResult<(), roc_io_error::IOErr> {
     let stderr = std::io::stderr();
     let mut handle = stderr.lock();
