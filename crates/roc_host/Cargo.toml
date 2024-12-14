@@ -15,6 +15,7 @@ path = "src/lib.rs"
 [dependencies]
 roc_std.workspace = true
 roc_std_heap.workspace = true
+roc_command.workspace = true
 libc = "=0.2.155"
 backtrace = "=0.3.69"
 hyper = { version = "=0.14.27", default-features = false, features = [

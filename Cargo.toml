@@ -1,6 +1,18 @@
 [workspace]
 resolver = "2"
-members = ["crates/roc_host", "crates/roc_host_lib", "crates/roc_host_bin"]
+members = [
+    "crates/roc_command",
+    "crates/roc_host",
+    "crates/roc_host_lib",
+    "crates/roc_host_bin",
+]
+
+[workspace.package]
+authors = ["The Roc Contributors"]
+edition = "2021"
+license = "UPL-1.0"
+repository = "https://github.com/roc-lang/basic-cli"
+version = "0.0.1"
 
 [profile.release]
 lto = true
@@ -12,3 +24,4 @@ codegen-units = 1
 [workspace.dependencies]
 roc_std = { git = "https://github.com/roc-lang/roc.git" }
 roc_std_heap = { git = "https://github.com/roc-lang/roc.git" }
+roc_command = { path = "crates/roc_command" }
