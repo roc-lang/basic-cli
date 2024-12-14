@@ -431,6 +431,7 @@ dependencies = [
  "roc_io_error",
  "roc_std",
  "roc_std_heap",
+ "roc_stdio",
  "roc_tcp",
  "sys-locale",
  "tokio",
@@ -467,6 +468,14 @@ version = "0.0.1"
 source = "git+https://github.com/roc-lang/roc.git#d746e2a0414448e08183e6cf5e4765601e396af3"
 dependencies = [
  "memmap2",
+ "roc_std",
+]
+
+[[package]]
+name = "roc_stdio"
+version = "0.0.1"
+dependencies = [
+ "roc_io_error",
  "roc_std",
 ]
 

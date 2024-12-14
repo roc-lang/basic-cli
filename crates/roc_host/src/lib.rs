@@ -7,14 +7,14 @@
 #![allow(improper_ctypes)]
 use core::ffi::c_void;
 use roc_io_error::IOErr;
-use roc_std::{ReadOnlyRocList, ReadOnlyRocStr, RocBox, RocList, RocResult, RocStr};
+use roc_std::{
+    roc_refcounted_noop_impl, ReadOnlyRocList, ReadOnlyRocStr, RocBox, RocList, RocRefcounted,
+    RocResult, RocStr,
+};
 use std::borrow::Borrow;
-use std::io::{BufRead, Read, Write};
 use std::sync::OnceLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::runtime::Runtime;
-
-mod glue;
 
 thread_local! {
    static TOKIO_RUNTIME: Runtime = tokio::runtime::Builder::new_current_thread()
@@ -103,7 +103,7 @@ pub unsafe extern "C" fn roc_dbg(loc: &RocStr, msg: &RocStr, src: &RocStr) {
 pub unsafe extern "C" fn roc_expect_failed(
     loc: &RocStr,
     src: &RocStr,
-    variables: &RocList<glue::Variable>,
+    variables: &RocList<Variable>,
 ) {
     eprintln!("\nExpectation failed at {}:", loc.as_str());
     eprintln!("\nExpression:\n\t{}\n", src.as_str());
@@ -396,89 +396,37 @@ pub extern "C" fn roc_fx_exePath(_roc_str: &RocStr) -> RocResult<RocList<u8>, ()
 
 #[no_mangle]
 pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, roc_io_error::IOErr> {
-    let stdin = std::io::stdin();
-
-    match stdin.lock().lines().next() {
-        None => RocResult::err(roc_io_error::IOErr {
-            msg: RocStr::empty(),
-            tag: roc_io_error::IOErrTag::EndOfFile,
-        }),
-        Some(Ok(str)) => RocResult::ok(str.as_str().into()),
-        Some(Err(io_err)) => RocResult::err(io_err.into()),
-    }
+    roc_stdio::stdin_line()
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_stdinBytes() -> RocResult<RocList<u8>, roc_io_error::IOErr> {
-    const BUF_SIZE: usize = 16_384; // 16 KiB = 16 * 1024 = 16,384 bytes
-    let stdin = std::io::stdin();
-    let mut buffer: [u8; BUF_SIZE] = [0; BUF_SIZE];
-
-    match stdin.lock().read(&mut buffer) {
-        Ok(bytes_read) => RocResult::ok(RocList::from(&buffer[0..bytes_read])),
-        Err(io_err) => RocResult::err(io_err.into()),
-    }
+    roc_stdio::stdin_bytes()
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_stdinReadToEnd() -> RocResult<RocList<u8>, roc_io_error::IOErr> {
-    let stdin = std::io::stdin();
-    let mut buf = Vec::new();
-    match stdin.lock().read_to_end(&mut buf) {
-        Ok(bytes_read) => RocResult::ok(RocList::from(&buf[0..bytes_read])),
-        Err(io_err) => RocResult::err(io_err.into()),
-    }
+    roc_stdio::stdin_read_to_end()
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_stdoutLine(line: &RocStr) -> RocResult<(), roc_io_error::IOErr> {
-    let stdout = std::io::stdout();
-
-    let mut handle = stdout.lock();
-
-    handle
-        .write_all(line.as_bytes())
-        .and_then(|()| handle.write_all("\n".as_bytes()))
-        .and_then(|()| handle.flush())
-        .map_err(|io_err| io_err.into())
-        .into()
+    roc_stdio::stdout_line(line)
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_stdoutWrite(text: &RocStr) -> RocResult<(), roc_io_error::IOErr> {
-    let stdout = std::io::stdout();
-    let mut handle = stdout.lock();
-
-    handle
-        .write_all(text.as_bytes())
-        .and_then(|()| handle.flush())
-        .map_err(|io_err| io_err.into())
-        .into()
+    roc_stdio::stdout_write(text)
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_stderrLine(line: &RocStr) -> RocResult<(), roc_io_error::IOErr> {
-    let stderr = std::io::stderr();
-    let mut handle = stderr.lock();
-
-    handle
-        .write_all(line.as_bytes())
-        .and_then(|()| handle.write_all("\n".as_bytes()))
-        .and_then(|()| handle.flush())
-        .map_err(|io_err| io_err.into())
-        .into()
+    roc_stdio::stderr_line(line)
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_stderrWrite(text: &RocStr) -> RocResult<(), roc_io_error::IOErr> {
-    let stderr = std::io::stderr();
-    let mut handle = stderr.lock();
-
-    handle
-        .write_all(text.as_bytes())
-        .and_then(|()| handle.flush())
-        .map_err(|io_err| io_err.into())
-        .into()
+    roc_stdio::stderr_write(text)
 }
 
 #[no_mangle]
@@ -657,8 +605,8 @@ pub extern "C" fn roc_fx_hardLink(
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_currentArchOS() -> glue::ReturnArchOS {
-    glue::ReturnArchOS {
+pub extern "C" fn roc_fx_currentArchOS() -> ReturnArchOS {
+    ReturnArchOS {
         arch: std::env::consts::ARCH.into(),
         os: std::env::consts::OS.into(),
     }
@@ -686,4 +634,33 @@ pub extern "C" fn roc_fx_getLocales() -> RocList<RocStr> {
         roc_locales.push(l.to_string().as_str().into());
     }
     roc_locales
+}
+
+#[derive(Debug)]
+#[repr(C)]
+pub struct ReturnArchOS {
+    pub arch: RocStr,
+    pub os: RocStr,
+}
+
+roc_refcounted_noop_impl!(ReturnArchOS);
+
+#[repr(C)]
+pub struct Variable {
+    pub name: RocStr,
+    pub value: RocStr,
+}
+
+impl roc_std::RocRefcounted for Variable {
+    fn inc(&mut self) {
+        self.name.inc();
+        self.value.inc();
+    }
+    fn dec(&mut self) {
+        self.name.dec();
+        self.value.dec();
+    }
+    fn is_refcounted() -> bool {
+        true
+    }
 }

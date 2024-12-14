@@ -8,6 +8,7 @@ members = [
     "crates/roc_host_bin",
     "crates/roc_tcp",
     "crates/roc_io_error",
+    "crates/roc_stdio",
 ]
 
 [workspace.package]
@@ -32,6 +33,7 @@ roc_file = { path = "crates/roc_file" }
 roc_host = { path = "crates/roc_host" }
 roc_tcp = { path = "crates/roc_tcp" }
 roc_io_error = { path = "crates/roc_io_error" }
+roc_stdio = { path = "crates/roc_stdio" }
 
 memchr = "=2.7.4"
 hyper = { version = "=0.14.27", default-features = false, features = [
