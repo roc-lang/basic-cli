@@ -6,18 +6,12 @@
 #![allow(non_snake_case)]
 #![allow(improper_ctypes)]
 use core::ffi::c_void;
-use glue::IOErr;
+use roc_io_error::IOErr;
 use roc_std::{ReadOnlyRocList, ReadOnlyRocStr, RocBox, RocList, RocResult, RocStr};
-use roc_std_heap::ThreadSafeRefcountedResourceHeap;
-use std::borrow::{Borrow, Cow};
-use std::ffi::OsStr;
-use std::fs::File;
-use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
-use std::net::TcpStream;
-use std::path::Path;
+use std::borrow::Borrow;
+use std::io::{BufRead, Read, Write};
 use std::sync::OnceLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use std::{env, io};
 use tokio::runtime::Runtime;
 
 mod glue;
@@ -31,36 +25,6 @@ thread_local! {
 }
 
 static ARGS: OnceLock<ReadOnlyRocList<ReadOnlyRocStr>> = OnceLock::new();
-
-fn file_heap() -> &'static ThreadSafeRefcountedResourceHeap<BufReader<File>> {
-    static FILE_HEAP: OnceLock<ThreadSafeRefcountedResourceHeap<BufReader<File>>> = OnceLock::new();
-    FILE_HEAP.get_or_init(|| {
-        let DEFAULT_MAX_FILES = 65536;
-        let max_files = env::var("ROC_BASIC_CLI_MAX_FILES")
-            .map(|v| v.parse().unwrap_or(DEFAULT_MAX_FILES))
-            .unwrap_or(DEFAULT_MAX_FILES);
-        ThreadSafeRefcountedResourceHeap::new(max_files)
-            .expect("Failed to allocate mmap for file handle references.")
-    })
-}
-
-fn tcp_heap() -> &'static ThreadSafeRefcountedResourceHeap<BufReader<TcpStream>> {
-    // TODO: Should this be a BufReader and BufWriter of the tcp stream?
-    // like this: https://stackoverflow.com/questions/58467659/how-to-store-tcpstream-with-bufreader-and-bufwriter-in-a-data-structure/58491889#58491889
-
-    static TCP_HEAP: OnceLock<ThreadSafeRefcountedResourceHeap<BufReader<TcpStream>>> =
-        OnceLock::new();
-    TCP_HEAP.get_or_init(|| {
-        let DEFAULT_MAX_TCP_STREAMS = 65536;
-        let max_tcp_streams = env::var("ROC_BASIC_CLI_MAX_TCP_STREAMS")
-            .map(|v| v.parse().unwrap_or(DEFAULT_MAX_TCP_STREAMS))
-            .unwrap_or(DEFAULT_MAX_TCP_STREAMS);
-        ThreadSafeRefcountedResourceHeap::new(max_tcp_streams)
-            .expect("Failed to allocate mmap for tcp handle references.")
-    })
-}
-
-const UNEXPECTED_EOF_ERROR: &str = "UnexpectedEof";
 
 /// # Safety
 ///
@@ -88,12 +52,12 @@ pub unsafe extern "C" fn roc_realloc(
 /// This function is unsafe.
 #[no_mangle]
 pub unsafe extern "C" fn roc_dealloc(c_ptr: *mut c_void, _alignment: u32) {
-    let heap = file_heap();
+    let heap = roc_file::heap();
     if heap.in_range(c_ptr) {
         heap.dealloc(c_ptr);
         return;
     }
-    let heap = tcp_heap();
+    let heap = roc_tcp::heap();
     if heap.in_range(c_ptr) {
         heap.dealloc(c_ptr);
         return;
@@ -416,7 +380,7 @@ pub extern "C" fn roc_fx_envVar(roc_str: &RocStr) -> RocResult<RocStr, ()> {
 
 #[no_mangle]
 pub extern "C" fn roc_fx_setCwd(roc_path: &RocList<u8>) -> RocResult<(), ()> {
-    match std::env::set_current_dir(path_from_roc_path(roc_path)) {
+    match std::env::set_current_dir(roc_file::path_from_roc_path(roc_path)) {
         Ok(()) => RocResult::ok(()),
         Err(_) => RocResult::err(()),
     }
@@ -425,19 +389,19 @@ pub extern "C" fn roc_fx_setCwd(roc_path: &RocList<u8>) -> RocResult<(), ()> {
 #[no_mangle]
 pub extern "C" fn roc_fx_exePath(_roc_str: &RocStr) -> RocResult<RocList<u8>, ()> {
     match std::env::current_exe() {
-        Ok(path_buf) => RocResult::ok(os_str_to_roc_path(path_buf.as_path().as_os_str())),
+        Ok(path_buf) => RocResult::ok(roc_file::os_str_to_roc_path(path_buf.as_path().as_os_str())),
         Err(_) => RocResult::err(()),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, glue::IOErr> {
+pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, roc_io_error::IOErr> {
     let stdin = std::io::stdin();
 
     match stdin.lock().lines().next() {
-        None => RocResult::err(glue::IOErr {
+        None => RocResult::err(roc_io_error::IOErr {
             msg: RocStr::empty(),
-            tag: glue::IOErrTag::EndOfFile,
+            tag: roc_io_error::IOErrTag::EndOfFile,
         }),
         Some(Ok(str)) => RocResult::ok(str.as_str().into()),
         Some(Err(io_err)) => RocResult::err(io_err.into()),
@@ -445,7 +409,7 @@ pub extern "C" fn roc_fx_stdinLine() -> RocResult<RocStr, glue::IOErr> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdinBytes() -> RocResult<RocList<u8>, glue::IOErr> {
+pub extern "C" fn roc_fx_stdinBytes() -> RocResult<RocList<u8>, roc_io_error::IOErr> {
     const BUF_SIZE: usize = 16_384; // 16 KiB = 16 * 1024 = 16,384 bytes
     let stdin = std::io::stdin();
     let mut buffer: [u8; BUF_SIZE] = [0; BUF_SIZE];
@@ -457,7 +421,7 @@ pub extern "C" fn roc_fx_stdinBytes() -> RocResult<RocList<u8>, glue::IOErr> {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdinReadToEnd() -> RocResult<RocList<u8>, glue::IOErr> {
+pub extern "C" fn roc_fx_stdinReadToEnd() -> RocResult<RocList<u8>, roc_io_error::IOErr> {
     let stdin = std::io::stdin();
     let mut buf = Vec::new();
     match stdin.lock().read_to_end(&mut buf) {
@@ -467,7 +431,7 @@ pub extern "C" fn roc_fx_stdinReadToEnd() -> RocResult<RocList<u8>, glue::IOErr>
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdoutLine(line: &RocStr) -> RocResult<(), glue::IOErr> {
+pub extern "C" fn roc_fx_stdoutLine(line: &RocStr) -> RocResult<(), roc_io_error::IOErr> {
     let stdout = std::io::stdout();
 
     let mut handle = stdout.lock();
@@ -481,7 +445,7 @@ pub extern "C" fn roc_fx_stdoutLine(line: &RocStr) -> RocResult<(), glue::IOErr>
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stdoutWrite(text: &RocStr) -> RocResult<(), glue::IOErr> {
+pub extern "C" fn roc_fx_stdoutWrite(text: &RocStr) -> RocResult<(), roc_io_error::IOErr> {
     let stdout = std::io::stdout();
     let mut handle = stdout.lock();
 
@@ -493,7 +457,7 @@ pub extern "C" fn roc_fx_stdoutWrite(text: &RocStr) -> RocResult<(), glue::IOErr
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stderrLine(line: &RocStr) -> RocResult<(), glue::IOErr> {
+pub extern "C" fn roc_fx_stderrLine(line: &RocStr) -> RocResult<(), roc_io_error::IOErr> {
     let stderr = std::io::stderr();
     let mut handle = stderr.lock();
 
@@ -506,7 +470,7 @@ pub extern "C" fn roc_fx_stderrLine(line: &RocStr) -> RocResult<(), glue::IOErr>
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_stderrWrite(text: &RocStr) -> RocResult<(), glue::IOErr> {
+pub extern "C" fn roc_fx_stderrWrite(text: &RocStr) -> RocResult<(), roc_io_error::IOErr> {
     let stderr = std::io::stderr();
     let mut handle = stderr.lock();
 
@@ -532,175 +496,54 @@ pub extern "C" fn roc_fx_fileWriteUtf8(
     roc_path: &RocList<u8>,
     roc_str: &RocStr,
 ) -> RocResult<(), IOErr> {
-    write_slice(roc_path, roc_str.as_str().as_bytes())
+    roc_file::file_write_utf8(roc_path, roc_str)
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_fileWriteBytes(
     roc_path: &RocList<u8>,
     roc_bytes: &RocList<u8>,
-) -> RocResult<(), glue::IOErr> {
-    write_slice(roc_path, roc_bytes.as_slice())
-}
-
-fn write_slice(roc_path: &RocList<u8>, bytes: &[u8]) -> RocResult<(), glue::IOErr> {
-    match File::create(path_from_roc_path(roc_path)) {
-        Ok(mut file) => match file.write_all(bytes) {
-            Ok(()) => RocResult::ok(()),
-            Err(err) => RocResult::err(err.into()),
-        },
-        Err(err) => RocResult::err(err.into()),
-    }
-}
-
-#[repr(C)]
-pub struct InternalPathType {
-    isDir: bool,
-    isFile: bool,
-    isSymLink: bool,
+) -> RocResult<(), roc_io_error::IOErr> {
+    roc_file::file_write_bytes(roc_path, roc_bytes)
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_pathType(
     roc_path: &RocList<u8>,
-) -> RocResult<InternalPathType, glue::IOErr> {
-    let path = path_from_roc_path(roc_path);
-    match path.symlink_metadata() {
-        Ok(m) => RocResult::ok(InternalPathType {
-            isDir: m.is_dir(),
-            isFile: m.is_file(),
-            isSymLink: m.is_symlink(),
-        }),
-        Err(err) => RocResult::err(err.into()),
-    }
-}
-
-#[cfg(target_family = "unix")]
-fn path_from_roc_path(bytes: &RocList<u8>) -> Cow<'_, Path> {
-    use std::os::unix::ffi::OsStrExt;
-    let os_str = OsStr::from_bytes(bytes.as_slice());
-    Cow::Borrowed(Path::new(os_str))
-}
-
-#[cfg(target_family = "windows")]
-fn path_from_roc_path(bytes: &RocList<u8>) -> Cow<'_, Path> {
-    use std::os::windows::ffi::OsStringExt;
-
-    let bytes = bytes.as_slice();
-    assert_eq!(bytes.len() % 2, 0);
-    let characters: &[u16] =
-        unsafe { std::slice::from_raw_parts(bytes.as_ptr().cast(), bytes.len() / 2) };
-
-    let os_string = std::ffi::OsString::from_wide(characters);
-
-    Cow::Owned(std::path::PathBuf::from(os_string))
+) -> RocResult<roc_file::InternalPathType, roc_io_error::IOErr> {
+    roc_file::path_type(roc_path)
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_fileReadBytes(
     roc_path: &RocList<u8>,
-) -> RocResult<RocList<u8>, glue::IOErr> {
-    // TODO: write our own duplicate of `read_to_end` that directly fills a `RocList<u8>`.
-    // This adds an extra O(n) copy.
-    let mut bytes = Vec::new();
-
-    match File::open(path_from_roc_path(roc_path)) {
-        Ok(mut file) => match file.read_to_end(&mut bytes) {
-            Ok(_bytes_read) => RocResult::ok(RocList::from(bytes.as_slice())),
-            Err(err) => RocResult::err(err.into()),
-        },
-        Err(err) => RocResult::err(err.into()),
-    }
+) -> RocResult<RocList<u8>, roc_io_error::IOErr> {
+    roc_file::file_read_bytes(roc_path)
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_fileReader(
     roc_path: &RocList<u8>,
     size: u64,
-) -> RocResult<RocBox<()>, glue::IOErr> {
-    match File::open(path_from_roc_path(roc_path)) {
-        Ok(file) => {
-            let buf_reader = if size > 0 {
-                BufReader::with_capacity(size as usize, file)
-            } else {
-                BufReader::new(file)
-            };
-
-            let heap = file_heap();
-            let alloc_result = heap.alloc_for(buf_reader);
-            match alloc_result {
-                Ok(out) => RocResult::ok(out),
-                Err(err) => RocResult::err(err.into()),
-            }
-        }
-        Err(err) => RocResult::err(err.into()),
-    }
+) -> RocResult<RocBox<()>, roc_io_error::IOErr> {
+    roc_file::file_reader(roc_path, size)
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_fileReadLine(data: RocBox<()>) -> RocResult<RocList<u8>, glue::IOErr> {
-    let buf_reader: &mut BufReader<File> = ThreadSafeRefcountedResourceHeap::box_to_resource(data);
-
-    let mut buffer = RocList::empty();
-    match read_until(buf_reader, b'\n', &mut buffer) {
-        Ok(..) => {
-            // Note: this returns an empty list when no bytes were read, e.g. End Of File
-            RocResult::ok(buffer)
-        }
-        Err(err) => RocResult::err(err.into()),
-    }
-}
-
-fn read_until<R: BufRead + ?Sized>(
-    r: &mut R,
-    delim: u8,
-    buf: &mut RocList<u8>,
-) -> io::Result<usize> {
-    let mut read = 0;
-    loop {
-        let (done, used) = {
-            let available = match r.fill_buf() {
-                Ok(n) => n,
-                Err(ref e) if matches!(e.kind(), ErrorKind::Interrupted) => continue,
-                Err(e) => return Err(e),
-            };
-            match memchr::memchr(delim, available) {
-                Some(i) => {
-                    buf.extend_from_slice(&available[..=i]);
-                    (true, i + 1)
-                }
-                None => {
-                    buf.extend_from_slice(available);
-                    (false, available.len())
-                }
-            }
-        };
-        r.consume(used);
-        read += used;
-        if done || used == 0 {
-            return Ok(read);
-        }
-    }
+pub extern "C" fn roc_fx_fileReadLine(
+    data: RocBox<()>,
+) -> RocResult<RocList<u8>, roc_io_error::IOErr> {
+    roc_file::file_read_line(data)
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_fileDelete(roc_path: &RocList<u8>) -> RocResult<(), glue::IOErr> {
-    match std::fs::remove_file(path_from_roc_path(roc_path)) {
-        Ok(()) => RocResult::ok(()),
-        Err(err) => RocResult::err(err.into()),
-    }
+pub extern "C" fn roc_fx_fileDelete(roc_path: &RocList<u8>) -> RocResult<(), roc_io_error::IOErr> {
+    roc_file::file_delete(roc_path)
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_cwd() -> RocResult<RocList<u8>, ()> {
-    // TODO instead, call getcwd on UNIX and GetCurrentDirectory on Windows
-    match std::env::current_dir() {
-        Ok(path_buf) => RocResult::ok(os_str_to_roc_path(path_buf.into_os_string().as_os_str())),
-        Err(_) => {
-            // Default to empty path
-            RocResult::ok(RocList::empty())
-        }
-    }
+    roc_file::cwd()
 }
 
 #[no_mangle]
@@ -722,271 +565,18 @@ pub extern "C" fn roc_fx_sleepMillis(milliseconds: u64) {
 #[no_mangle]
 pub extern "C" fn roc_fx_dirList(
     roc_path: &RocList<u8>,
-) -> RocResult<RocList<RocList<u8>>, glue::IOErr> {
-    let path = path_from_roc_path(roc_path);
-
-    if path.is_dir() {
-        let dir = match std::fs::read_dir(path) {
-            Ok(dir) => dir,
-            Err(err) => return RocResult::err(err.into()),
-        };
-
-        let mut entries = Vec::new();
-
-        for entry in dir.flatten() {
-            let path = entry.path();
-            let str = path.as_os_str();
-            entries.push(os_str_to_roc_path(str));
-        }
-
-        RocResult::ok(RocList::from_iter(entries))
-    } else {
-        RocResult::err(glue::IOErr {
-            msg: "NotADirectory".into(),
-            tag: glue::IOErrTag::Other,
-        })
-    }
-}
-
-#[cfg(target_family = "unix")]
-fn os_str_to_roc_path(os_str: &OsStr) -> RocList<u8> {
-    use std::os::unix::ffi::OsStrExt;
-
-    RocList::from(os_str.as_bytes())
-}
-
-#[cfg(target_family = "windows")]
-fn os_str_to_roc_path(os_str: &OsStr) -> RocList<u8> {
-    use std::os::windows::ffi::OsStrExt;
-
-    let bytes: Vec<_> = os_str.encode_wide().flat_map(|c| c.to_be_bytes()).collect();
-
-    RocList::from(bytes.as_slice())
-}
-
-#[repr(C)]
-pub struct Request {
-    body: RocList<u8>,
-    headers: RocList<Header>,
-    method: RocStr,
-    mimeType: RocStr,
-    timeoutMs: u64,
-    url: RocStr,
-}
-
-#[repr(C)]
-pub struct Header {
-    key: RocStr,
-    value: RocStr,
-}
-
-impl roc_std::RocRefcounted for Header {
-    fn inc(&mut self) {
-        self.key.inc();
-        self.value.inc();
-    }
-    fn dec(&mut self) {
-        self.key.dec();
-        self.value.dec();
-    }
-    fn is_refcounted() -> bool {
-        true
-    }
-}
-
-#[repr(C)]
-pub struct Metadata {
-    headers: RocList<Header>,
-    statusText: RocStr,
-    url: RocStr,
-    statusCode: u16,
-}
-
-impl Metadata {
-    fn empty() -> Metadata {
-        Metadata {
-            headers: RocList::empty(),
-            statusText: RocStr::empty(),
-            url: RocStr::empty(),
-            statusCode: 0,
-        }
-    }
-}
-
-#[repr(C)]
-pub struct InternalResponse {
-    body: RocList<u8>,
-    metadata: Metadata,
-    variant: RocStr,
-}
-
-impl InternalResponse {
-    fn bad_request(error: &str) -> InternalResponse {
-        InternalResponse {
-            variant: "BadRequest".into(),
-            metadata: Metadata {
-                statusText: RocStr::from(error),
-                ..Metadata::empty()
-            },
-            body: RocList::empty(),
-        }
-    }
-
-    fn good_status(metadata: Metadata, body: RocList<u8>) -> InternalResponse {
-        InternalResponse {
-            variant: "GoodStatus".into(),
-            metadata,
-            body,
-        }
-    }
-
-    fn bad_status(metadata: Metadata, body: RocList<u8>) -> InternalResponse {
-        InternalResponse {
-            variant: "BadStatus".into(),
-            metadata,
-            body,
-        }
-    }
-
-    fn timeout() -> InternalResponse {
-        InternalResponse {
-            variant: "Timeout".into(),
-            metadata: Metadata::empty(),
-            body: RocList::empty(),
-        }
-    }
-
-    fn network_error() -> InternalResponse {
-        InternalResponse {
-            variant: "NetworkError".into(),
-            metadata: Metadata::empty(),
-            body: RocList::empty(),
-        }
-    }
+) -> RocResult<RocList<RocList<u8>>, roc_io_error::IOErr> {
+    roc_file::dir_list(roc_path)
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_sendRequest(roc_request: &Request) -> InternalResponse {
-    let method = parse_http_method(roc_request.method.as_str());
-    let mut req_builder = hyper::Request::builder()
-        .method(method)
-        .uri(roc_request.url.as_str());
-    let mut has_content_type_header = false;
-
-    for header in roc_request.headers.iter() {
-        req_builder = req_builder.header(header.key.as_str(), header.value.as_str());
-        if header.key.eq_ignore_ascii_case("Content-Type") {
-            has_content_type_header = true;
-        }
-    }
-
-    let bytes = String::from_utf8(roc_request.body.as_slice().to_vec()).unwrap();
-    let mime_type_str = roc_request.mimeType.as_str();
-
-    if !has_content_type_header && !mime_type_str.is_empty() {
-        req_builder = req_builder.header("Content-Type", mime_type_str);
-    }
-
-    let request = match req_builder.body(bytes) {
-        Ok(req) => req,
-        Err(err) => return InternalResponse::bad_request(err.to_string().as_str()),
-    };
-
-    if roc_request.timeoutMs > 0 {
-        let time_limit = Duration::from_millis(roc_request.timeoutMs);
-
-        TOKIO_RUNTIME.with(|rt| {
-            rt.block_on(async {
-                tokio::time::timeout(time_limit, send_request(request, &roc_request.url)).await
-            })
-            .unwrap_or_else(|_err| InternalResponse::timeout())
-        })
-    } else {
-        TOKIO_RUNTIME.with(|rt| rt.block_on(send_request(request, &roc_request.url)))
-    }
-}
-
-fn parse_http_method(method: &str) -> hyper::Method {
-    match method {
-        "Connect" => hyper::Method::CONNECT,
-        "Delete" => hyper::Method::DELETE,
-        "Get" => hyper::Method::GET,
-        "Head" => hyper::Method::HEAD,
-        "Options" => hyper::Method::OPTIONS,
-        "Patch" => hyper::Method::PATCH,
-        "Post" => hyper::Method::POST,
-        "Put" => hyper::Method::PUT,
-        "Trace" => hyper::Method::TRACE,
-        _other => unreachable!("Should only pass known HTTP methods from Roc side"),
-    }
-}
-
-async fn send_request(request: hyper::Request<String>, url: &str) -> InternalResponse {
-    use hyper::Client;
-    use hyper_rustls::HttpsConnectorBuilder;
-
-    let https = HttpsConnectorBuilder::new()
-        .with_native_roots()
-        .https_or_http()
-        .enable_http1()
-        .build();
-
-    let client: Client<_, String> = Client::builder().build(https);
-    let res = client.request(request).await;
-
-    match res {
-        Ok(response) => {
-            let status = response.status();
-            let status_str = status.canonical_reason().unwrap_or_else(|| status.as_str());
-
-            let headers_iter = response.headers().iter().map(|(name, value)| Header {
-                key: RocStr::from(name.as_str()),
-                value: RocStr::from(value.to_str().unwrap_or_default()),
-            });
-
-            let metadata = Metadata {
-                headers: RocList::from_iter(headers_iter),
-                statusText: RocStr::from(status_str),
-                url: RocStr::from(url),
-                statusCode: status.as_u16(),
-            };
-
-            let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
-            let body: RocList<u8> = RocList::from_iter(bytes);
-
-            if status.is_success() {
-                InternalResponse::good_status(metadata, body)
-            } else {
-                InternalResponse::bad_status(metadata, body)
-            }
-        }
-        Err(err) => {
-            if err.is_timeout() {
-                InternalResponse::timeout()
-            } else if err.is_connect() || err.is_closed() {
-                InternalResponse::network_error()
-            } else {
-                InternalResponse::bad_request(err.to_string().as_str())
-            }
-        }
-    }
+pub extern "C" fn roc_fx_sendRequest(roc_request: &roc_tcp::Request) -> roc_tcp::InternalResponse {
+    TOKIO_RUNTIME.with(|rt| roc_tcp::send_request(rt, roc_request))
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpConnect(host: &RocStr, port: u16) -> RocResult<RocBox<()>, RocStr> {
-    match TcpStream::connect((host.as_str(), port)) {
-        Ok(stream) => {
-            let buf_reader = BufReader::new(stream);
-
-            let heap = tcp_heap();
-            let alloc_result = heap.alloc_for(buf_reader);
-            match alloc_result {
-                Ok(out) => RocResult::ok(out),
-                Err(err) => RocResult::err(to_tcp_connect_err(err)),
-            }
-        }
-        Err(err) => RocResult::err(to_tcp_connect_err(err)),
-    }
+    roc_tcp::tcp_connect(host, port)
 }
 
 #[no_mangle]
@@ -994,21 +584,7 @@ pub extern "C" fn roc_fx_tcpReadUpTo(
     stream: RocBox<()>,
     bytes_to_read: u64,
 ) -> RocResult<RocList<u8>, RocStr> {
-    let stream: &mut BufReader<TcpStream> =
-        ThreadSafeRefcountedResourceHeap::box_to_resource(stream);
-
-    let mut chunk = stream.take(bytes_to_read);
-
-    //TODO: fill a roc list directly. This is an extra O(n) copy.
-    match chunk.fill_buf() {
-        Ok(received) => {
-            let received = received.to_vec();
-            stream.consume(received.len());
-
-            RocResult::ok(RocList::from(&received[..]))
-        }
-        Err(err) => RocResult::err(to_tcp_stream_err(err)),
-    }
+    roc_tcp::tcp_read_up_to(stream, bytes_to_read)
 }
 
 #[no_mangle]
@@ -1016,23 +592,7 @@ pub extern "C" fn roc_fx_tcpReadExactly(
     stream: RocBox<()>,
     bytes_to_read: u64,
 ) -> RocResult<RocList<u8>, RocStr> {
-    let stream: &mut BufReader<TcpStream> =
-        ThreadSafeRefcountedResourceHeap::box_to_resource(stream);
-
-    let mut buffer = Vec::with_capacity(bytes_to_read as usize);
-    let mut chunk = stream.take(bytes_to_read);
-
-    //TODO: fill a roc list directly. This is an extra O(n) copy.
-    match chunk.read_to_end(&mut buffer) {
-        Ok(read) => {
-            if (read as u64) < bytes_to_read {
-                RocResult::err(UNEXPECTED_EOF_ERROR.into())
-            } else {
-                RocResult::ok(RocList::from(&buffer[..]))
-            }
-        }
-        Err(err) => RocResult::err(to_tcp_stream_err(err)),
-    }
+    roc_tcp::tcp_read_exactly(stream, bytes_to_read)
 }
 
 #[no_mangle]
@@ -1040,65 +600,12 @@ pub extern "C" fn roc_fx_tcpReadUntil(
     stream: RocBox<()>,
     byte: u8,
 ) -> RocResult<RocList<u8>, RocStr> {
-    let stream: &mut BufReader<TcpStream> =
-        ThreadSafeRefcountedResourceHeap::box_to_resource(stream);
-
-    let mut buffer = RocList::empty();
-    match read_until(stream, byte, &mut buffer) {
-        Ok(_) => RocResult::ok(buffer),
-        Err(err) => RocResult::err(to_tcp_stream_err(err)),
-    }
+    roc_tcp::tcp_read_until(stream, byte)
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpWrite(stream: RocBox<()>, msg: &RocList<u8>) -> RocResult<(), RocStr> {
-    let stream: &mut BufReader<TcpStream> =
-        ThreadSafeRefcountedResourceHeap::box_to_resource(stream);
-
-    match stream.get_mut().write_all(msg.as_slice()) {
-        Ok(()) => RocResult::ok(()),
-        Err(err) => RocResult::err(to_tcp_stream_err(err)),
-    }
-}
-
-fn to_tcp_connect_err(err: std::io::Error) -> RocStr {
-    match err.kind() {
-        ErrorKind::PermissionDenied => "ErrorKind::PermissionDenied".into(),
-        ErrorKind::AddrInUse => "ErrorKind::AddrInUse".into(),
-        ErrorKind::AddrNotAvailable => "ErrorKind::AddrNotAvailable".into(),
-        ErrorKind::ConnectionRefused => "ErrorKind::ConnectionRefused".into(),
-        ErrorKind::Interrupted => "ErrorKind::Interrupted".into(),
-        ErrorKind::TimedOut => "ErrorKind::TimedOut".into(),
-        ErrorKind::Unsupported => "ErrorKind::Unsupported".into(),
-        other => format!("{:?}", other).as_str().into(),
-    }
-}
-
-fn to_tcp_stream_err(err: std::io::Error) -> RocStr {
-    match err.kind() {
-        ErrorKind::PermissionDenied => "ErrorKind::PermissionDenied".into(),
-        ErrorKind::ConnectionRefused => "ErrorKind::ConnectionRefused".into(),
-        ErrorKind::ConnectionReset => "ErrorKind::ConnectionReset".into(),
-        ErrorKind::Interrupted => "ErrorKind::Interrupted".into(),
-        ErrorKind::OutOfMemory => "ErrorKind::OutOfMemory".into(),
-        ErrorKind::BrokenPipe => "ErrorKind::BrokenPipe".into(),
-        other => format!("{:?}", other).as_str().into(),
-    }
-}
-
-#[repr(C)]
-pub struct Command {
-    pub args: RocList<RocStr>,
-    pub envs: RocList<RocStr>,
-    pub program: RocStr,
-    pub clearEnvs: bool,
-}
-
-#[repr(C)]
-pub struct CommandOutput {
-    pub status: RocResult<(), RocList<u8>>,
-    pub stderr: RocList<u8>,
-    pub stdout: RocList<u8>,
+    roc_tcp::tcp_write(stream, msg)
 }
 
 #[no_mangle]
@@ -1116,46 +623,37 @@ pub extern "C" fn roc_fx_commandOutput(
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirCreate(roc_path: &RocList<u8>) -> RocResult<(), glue::IOErr> {
-    match std::fs::create_dir(path_from_roc_path(roc_path)) {
-        Ok(_) => RocResult::ok(()),
-        Err(err) => RocResult::err(err.into()),
-    }
+pub extern "C" fn roc_fx_dirCreate(roc_path: &RocList<u8>) -> RocResult<(), roc_io_error::IOErr> {
+    roc_file::dir_create(roc_path)
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirCreateAll(roc_path: &RocList<u8>) -> RocResult<(), glue::IOErr> {
-    match std::fs::create_dir_all(path_from_roc_path(roc_path)) {
-        Ok(_) => RocResult::ok(()),
-        Err(err) => RocResult::err(err.into()),
-    }
+pub extern "C" fn roc_fx_dirCreateAll(
+    roc_path: &RocList<u8>,
+) -> RocResult<(), roc_io_error::IOErr> {
+    roc_file::dir_create_all(roc_path)
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirDeleteEmpty(roc_path: &RocList<u8>) -> RocResult<(), glue::IOErr> {
-    match std::fs::remove_dir(path_from_roc_path(roc_path)) {
-        Ok(_) => RocResult::ok(()),
-        Err(err) => RocResult::err(err.into()),
-    }
+pub extern "C" fn roc_fx_dirDeleteEmpty(
+    roc_path: &RocList<u8>,
+) -> RocResult<(), roc_io_error::IOErr> {
+    roc_file::dir_delete_empty(roc_path)
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_dirDeleteAll(roc_path: &RocList<u8>) -> RocResult<(), glue::IOErr> {
-    match std::fs::remove_dir_all(path_from_roc_path(roc_path)) {
-        Ok(_) => RocResult::ok(()),
-        Err(err) => RocResult::err(err.into()),
-    }
+pub extern "C" fn roc_fx_dirDeleteAll(
+    roc_path: &RocList<u8>,
+) -> RocResult<(), roc_io_error::IOErr> {
+    roc_file::dir_delete_all(roc_path)
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_hardLink(
     path_from: &RocList<u8>,
     path_to: &RocList<u8>,
-) -> RocResult<(), glue::IOErr> {
-    match std::fs::hard_link(path_from_roc_path(path_from), path_from_roc_path(path_to)) {
-        Ok(_) => RocResult::ok(()),
-        Err(err) => RocResult::err(err.into()),
-    }
+) -> RocResult<(), roc_io_error::IOErr> {
+    roc_file::hard_link(path_from, path_to)
 }
 
 #[no_mangle]
@@ -1168,9 +666,7 @@ pub extern "C" fn roc_fx_currentArchOS() -> glue::ReturnArchOS {
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tempDir() -> RocList<u8> {
-    let path_os_string_bytes = std::env::temp_dir().into_os_string().into_encoded_bytes();
-
-    RocList::from(path_os_string_bytes.as_slice())
+    roc_file::temp_dir()
 }
 
 #[no_mangle]

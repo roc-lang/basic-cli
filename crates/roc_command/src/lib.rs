@@ -46,7 +46,7 @@ pub fn command_status(roc_cmd: &Command) -> RocResult<(), RocList<u8>> {
     let num_envs = roc_cmd.envs.len() / 2;
     let flat_envs = &roc_cmd.envs;
 
-    // Environment vairables must be passed in key=value pairs
+    // Environment variables must be passed in key=value pairs
     assert_eq!(flat_envs.len() % 2, 0);
 
     let mut envs = Vec::with_capacity(num_envs);
@@ -89,6 +89,10 @@ pub fn command_status(roc_cmd: &Command) -> RocResult<(), RocList<u8>> {
     }
 }
 
+/// TODO replace with glue instead of using a `List U8` for the errors
+/// this is currently a temporary solution for incorrect C ABI with small types
+/// we consider using a `List U8` acceptable here as calls to command
+/// should be infrequent and have negligible affect on performance
 fn killed_by_signal() -> RocResult<(), RocList<u8>> {
     let mut error_bytes = Vec::new();
     error_bytes.extend([b'K', b'S']);
