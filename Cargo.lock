@@ -406,6 +406,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "roc_env"
+version = "0.0.1"
+dependencies = [
+ "roc_file",
+ "roc_std",
+ "sys-locale",
+]
+
+[[package]]
 name = "roc_file"
 version = "0.0.1"
 dependencies = [
@@ -427,6 +436,7 @@ dependencies = [
  "memchr",
  "memmap2",
  "roc_command",
+ "roc_env",
  "roc_file",
  "roc_io_error",
  "roc_std",

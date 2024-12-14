@@ -1,4 +1,4 @@
-//! This crate provides roc glue to wrap `std::process::Command`
+//! This crate provides common functionality for Roc to interface with `std::process::Command`
 //!
 //! ```roc
 //! CommandErr : [

@@ -1,3 +1,4 @@
+//! This crate provides common functionality for Roc to interface with `std::io`
 use roc_io_error::{IOErr, IOErrTag};
 use roc_std::{RocBox, RocList, RocResult, RocStr};
 use roc_std_heap::ThreadSafeRefcountedResourceHeap;
@@ -249,13 +250,6 @@ pub fn hard_link(path_from: &RocList<u8>, path_to: &RocList<u8>) -> RocResult<()
         Ok(_) => RocResult::ok(()),
         Err(err) => RocResult::err(err.into()),
     }
-}
-
-/// tempDir! : {} => List U8
-pub fn temp_dir() -> RocList<u8> {
-    let path_os_string_bytes = std::env::temp_dir().into_os_string().into_encoded_bytes();
-
-    RocList::from(path_os_string_bytes.as_slice())
 }
 
 #[cfg(target_family = "unix")]

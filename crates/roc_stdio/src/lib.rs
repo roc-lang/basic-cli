@@ -1,3 +1,4 @@
+//! This crate provides common functionality for Roc to interface with `std::io`
 use roc_std::{RocList, RocResult, RocStr};
 use std::io::{BufRead, Read, Write};
 

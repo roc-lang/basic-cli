@@ -1,3 +1,4 @@
+//! This crate provides common functionality for Roc to interface with `std::net::tcp`
 use roc_std::{RocBox, RocList, RocResult, RocStr};
 use roc_std_heap::ThreadSafeRefcountedResourceHeap;
 use std::env;

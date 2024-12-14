@@ -3,17 +3,10 @@
 //! Roc app with functions to allocate memory and execute effects such as
 //! writing to stdio or making HTTP requests.
 
-#![allow(non_snake_case)]
-#![allow(improper_ctypes)]
 use core::ffi::c_void;
 use roc_io_error::IOErr;
-use roc_std::{
-    roc_refcounted_noop_impl, ReadOnlyRocList, ReadOnlyRocStr, RocBox, RocList, RocRefcounted,
-    RocResult, RocStr,
-};
-use std::borrow::Borrow;
+use roc_std::{ReadOnlyRocList, ReadOnlyRocStr, RocBox, RocList, RocResult, RocStr};
 use std::sync::OnceLock;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::runtime::Runtime;
 
 thread_local! {
@@ -96,6 +89,30 @@ pub unsafe extern "C" fn roc_dbg(loc: &RocStr, msg: &RocStr, src: &RocStr) {
     eprintln!("[{}] {} = {}", loc, src, msg);
 }
 
+#[repr(C)]
+pub struct Variable {
+    pub name: RocStr,
+    pub value: RocStr,
+}
+
+impl roc_std::RocRefcounted for Variable {
+    fn inc(&mut self) {
+        self.name.inc();
+        self.value.inc();
+    }
+    fn dec(&mut self) {
+        self.name.dec();
+        self.value.dec();
+    }
+    fn is_refcounted() -> bool {
+        true
+    }
+}
+
+/// This is not currently used but has been included for a future upgrade to roc
+/// to help with debugging and prevent a breaking change for users
+/// refer to <https://github.com/roc-lang/roc/issues/6930>
+///
 /// # Safety
 ///
 /// This function is unsafe.
@@ -350,15 +367,7 @@ pub extern "C" fn rust_main(args: ReadOnlyRocList<ReadOnlyRocStr>) -> i32 {
 
 #[no_mangle]
 pub extern "C" fn roc_fx_envDict() -> RocList<(RocStr, RocStr)> {
-    // TODO: can we be more efficient about reusing the String's memory for RocStr?
-    std::env::vars_os()
-        .map(|(key, val)| {
-            (
-                RocStr::from(key.to_string_lossy().borrow()),
-                RocStr::from(val.to_string_lossy().borrow()),
-            )
-        })
-        .collect()
+    roc_env::env_dict()
 }
 
 #[no_mangle]
@@ -371,27 +380,17 @@ pub extern "C" fn roc_fx_args() -> ReadOnlyRocList<ReadOnlyRocStr> {
 
 #[no_mangle]
 pub extern "C" fn roc_fx_envVar(roc_str: &RocStr) -> RocResult<RocStr, ()> {
-    // TODO: can we be more efficient about reusing the String's memory for RocStr?
-    match std::env::var_os(roc_str.as_str()) {
-        Some(os_str) => RocResult::ok(RocStr::from(os_str.to_string_lossy().borrow())),
-        None => RocResult::err(()),
-    }
+    roc_env::env_var(roc_str)
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_setCwd(roc_path: &RocList<u8>) -> RocResult<(), ()> {
-    match std::env::set_current_dir(roc_file::path_from_roc_path(roc_path)) {
-        Ok(()) => RocResult::ok(()),
-        Err(_) => RocResult::err(()),
-    }
+    roc_env::set_cwd(roc_path)
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_exePath(_roc_str: &RocStr) -> RocResult<RocList<u8>, ()> {
-    match std::env::current_exe() {
-        Ok(path_buf) => RocResult::ok(roc_file::os_str_to_roc_path(path_buf.as_path().as_os_str())),
-        Err(_) => RocResult::err(()),
-    }
+pub extern "C" fn roc_fx_exePath() -> RocResult<RocList<u8>, ()> {
+    roc_env::exe_path()
 }
 
 #[no_mangle]
@@ -496,18 +495,12 @@ pub extern "C" fn roc_fx_cwd() -> RocResult<RocList<u8>, ()> {
 
 #[no_mangle]
 pub extern "C" fn roc_fx_posixTime() -> roc_std::U128 {
-    // TODO in future may be able to avoid this panic by using C APIs
-    let since_epoch = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("time went backwards");
-
-    roc_std::U128::from(since_epoch.as_nanos())
+    roc_env::posix_time()
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_sleepMillis(milliseconds: u64) {
-    let duration = Duration::from_millis(milliseconds);
-    std::thread::sleep(duration);
+    roc_env::sleep_millis(milliseconds);
 }
 
 #[no_mangle]
@@ -605,62 +598,21 @@ pub extern "C" fn roc_fx_hardLink(
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_currentArchOS() -> ReturnArchOS {
-    ReturnArchOS {
-        arch: std::env::consts::ARCH.into(),
-        os: std::env::consts::OS.into(),
-    }
+pub extern "C" fn roc_fx_currentArchOS() -> roc_env::ReturnArchOS {
+    roc_env::current_arch_os()
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tempDir() -> RocList<u8> {
-    roc_file::temp_dir()
+    roc_env::temp_dir()
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_getLocale() -> RocResult<RocStr, ()> {
-    sys_locale::get_locale().map_or_else(
-        || RocResult::err(()),
-        |locale| RocResult::ok(locale.to_string().as_str().into()),
-    )
+    roc_env::get_locale()
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_getLocales() -> RocList<RocStr> {
-    const DEFAULT_MAX_LOCALES: usize = 10;
-    let locales = sys_locale::get_locales();
-    let mut roc_locales = RocList::with_capacity(DEFAULT_MAX_LOCALES);
-    for l in locales {
-        roc_locales.push(l.to_string().as_str().into());
-    }
-    roc_locales
-}
-
-#[derive(Debug)]
-#[repr(C)]
-pub struct ReturnArchOS {
-    pub arch: RocStr,
-    pub os: RocStr,
-}
-
-roc_refcounted_noop_impl!(ReturnArchOS);
-
-#[repr(C)]
-pub struct Variable {
-    pub name: RocStr,
-    pub value: RocStr,
-}
-
-impl roc_std::RocRefcounted for Variable {
-    fn inc(&mut self) {
-        self.name.inc();
-        self.value.inc();
-    }
-    fn dec(&mut self) {
-        self.name.dec();
-        self.value.dec();
-    }
-    fn is_refcounted() -> bool {
-        true
-    }
+    roc_env::get_locales()
 }

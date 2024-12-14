@@ -20,6 +20,7 @@ roc_file.workspace = true
 roc_io_error.workspace = true
 roc_tcp.workspace = true
 roc_stdio.workspace = true
+roc_env.workspace = true
 libc = "=0.2.155"
 backtrace = "=0.3.69"
 hyper.workspace = true

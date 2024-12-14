@@ -9,6 +9,7 @@ members = [
     "crates/roc_tcp",
     "crates/roc_io_error",
     "crates/roc_stdio",
+    "crates/roc_env",
 ]
 
 [workspace.package]
@@ -34,6 +35,7 @@ roc_host = { path = "crates/roc_host" }
 roc_tcp = { path = "crates/roc_tcp" }
 roc_io_error = { path = "crates/roc_io_error" }
 roc_stdio = { path = "crates/roc_stdio" }
+roc_env = { path = "crates/roc_env" }
 
 memchr = "=2.7.4"
 hyper = { version = "=0.14.27", default-features = false, features = [
@@ -46,3 +48,4 @@ hyper-rustls = { version = "=0.24.2", default-features = false, features = [
     "native-tokio",
 ] }
 tokio = { version = "=1.31.0", default-features = false }
+sys-locale = "0.3.2"
