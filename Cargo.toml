@@ -1,6 +1,23 @@
 [workspace]
 resolver = "2"
-members = ["crates/roc_host", "crates/roc_host_lib", "crates/roc_host_bin"]
+members = [
+    "crates/roc_command",
+    "crates/roc_host",
+    "crates/roc_host_lib",
+    "crates/roc_file",
+    "crates/roc_host_bin",
+    "crates/roc_tcp",
+    "crates/roc_io_error",
+    "crates/roc_stdio",
+    "crates/roc_env",
+]
+
+[workspace.package]
+authors = ["The Roc Contributors"]
+edition = "2021"
+license = "UPL-1.0"
+repository = "https://github.com/roc-lang/basic-cli"
+version = "0.0.1"
 
 [profile.release]
 lto = true
@@ -12,3 +29,23 @@ codegen-units = 1
 [workspace.dependencies]
 roc_std = { git = "https://github.com/roc-lang/roc.git" }
 roc_std_heap = { git = "https://github.com/roc-lang/roc.git" }
+roc_command = { path = "crates/roc_command" }
+roc_file = { path = "crates/roc_file" }
+roc_host = { path = "crates/roc_host" }
+roc_tcp = { path = "crates/roc_tcp" }
+roc_io_error = { path = "crates/roc_io_error" }
+roc_stdio = { path = "crates/roc_stdio" }
+roc_env = { path = "crates/roc_env" }
+
+memchr = "=2.7.4"
+hyper = { version = "=0.14.27", default-features = false, features = [
+    "http1",
+    "client",
+] }
+hyper-rustls = { version = "=0.24.2", default-features = false, features = [
+    "http1",
+    "tls12",
+    "native-tokio",
+] }
+tokio = { version = "=1.31.0", default-features = false }
+sys-locale = "0.3.2"

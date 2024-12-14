@@ -1,0 +1,11 @@
+[package]
+name = "roc_command"
+description = "Common functionality for Roc to interface with std::process::Command."
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+roc_std.workspace = true

@@ -399,6 +399,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "roc_command"
+version = "0.0.1"
+dependencies = [
+ "roc_std",
+]
+
+[[package]]
+name = "roc_env"
+version = "0.0.1"
+dependencies = [
+ "roc_file",
+ "roc_std",
+ "sys-locale",
+]
+
+[[package]]
+name = "roc_file"
+version = "0.0.1"
+dependencies = [
+ "memchr",
+ "roc_io_error",
+ "roc_std",
+ "roc_std_heap",
+]
+
+[[package]]
 name = "roc_host"
 version = "0.0.1"
 dependencies = [
@@ -409,8 +435,14 @@ dependencies = [
  "libc",
  "memchr",
  "memmap2",
+ "roc_command",
+ "roc_env",
+ "roc_file",
+ "roc_io_error",
  "roc_std",
  "roc_std_heap",
+ "roc_stdio",
+ "roc_tcp",
  "sys-locale",
  "tokio",
 ]
@@ -421,6 +453,14 @@ version = "0.0.1"
 dependencies = [
  "roc_host",
  "roc_std",
+]
+
+[[package]]
+name = "roc_io_error"
+version = "0.0.1"
+dependencies = [
+ "roc_std",
+ "roc_std_heap",
 ]
 
 [[package]]
@@ -439,6 +479,28 @@ source = "git+https://github.com/roc-lang/roc.git#d746e2a0414448e08183e6cf5e4765
 dependencies = [
  "memmap2",
  "roc_std",
+]
+
+[[package]]
+name = "roc_stdio"
+version = "0.0.1"
+dependencies = [
+ "roc_io_error",
+ "roc_std",
+]
+
+[[package]]
+name = "roc_tcp"
+version = "0.0.1"
+dependencies = [
+ "hyper",
+ "hyper-rustls",
+ "memchr",
+ "roc_file",
+ "roc_io_error",
+ "roc_std",
+ "roc_std_heap",
+ "tokio",
 ]
 
 [[package]]

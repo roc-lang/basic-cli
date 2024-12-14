@@ -1,0 +1,12 @@
+[package]
+name = "roc_io_error"
+description = "Common functionality for Roc to interface with std::io::Error"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+roc_std.workspace = true
+roc_std_heap.workspace = true

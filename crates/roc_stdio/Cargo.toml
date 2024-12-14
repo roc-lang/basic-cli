@@ -1,0 +1,12 @@
+[package]
+name = "roc_stdio"
+description = "Common functionality for Roc to interface with std::io"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+roc_std.workspace = true
+roc_io_error.workspace = true

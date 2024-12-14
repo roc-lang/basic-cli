@@ -1,0 +1,13 @@
+[package]
+name = "roc_env"
+description = "Common functionality for Roc to interface with std::env"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+roc_std.workspace = true
+roc_file.workspace = true
+sys-locale.workspace = true

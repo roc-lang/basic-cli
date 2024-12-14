@@ -1,6 +1,5 @@
-use roc_std::roc_refcounted_noop_impl;
-use roc_std::RocRefcounted;
-use roc_std::RocStr;
+//! This crate provides common functionality for Roc to interface with `std::io::Error`
+use roc_std::{roc_refcounted_noop_impl, RocRefcounted, RocStr};
 
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(u8)]
@@ -79,33 +78,5 @@ impl From<std::io::Error> for IOErr {
             std::io::ErrorKind::OutOfMemory => with_empty_msg(IOErrTag::OutOfMemory),
             _ => other(),
         }
-    }
-}
-
-#[derive(Debug)]
-#[repr(C)]
-pub struct ReturnArchOS {
-    pub arch: RocStr,
-    pub os: RocStr,
-}
-
-roc_refcounted_noop_impl!(ReturnArchOS);
-#[repr(C)]
-pub struct Variable {
-    pub name: RocStr,
-    pub value: RocStr,
-}
-
-impl roc_std::RocRefcounted for Variable {
-    fn inc(&mut self) {
-        self.name.inc();
-        self.value.inc();
-    }
-    fn dec(&mut self) {
-        self.name.dec();
-        self.value.dec();
-    }
-    fn is_refcounted() -> bool {
-        true
     }
 }
