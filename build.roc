@@ -22,27 +22,29 @@ main! = \{} ->
             Ok str if !(Str.isEmpty str) -> Debug
             _ -> Release
 
-    rocVersion!? rocCmd
+    try rocVersion! rocCmd
 
-    osAndArch = getOSAndArch!? {}
+    osAndArch = try getOSAndArch! {}
 
     stubLibPath = "platform/libapp.$(stubFileExtension osAndArch)"
 
-    buildStubAppLib!? rocCmd stubLibPath
+    try buildStubAppLib! rocCmd stubLibPath
 
-    cargoBuildHost!? debugMode
+    try cargoBuildHost! debugMode
 
-    rustTargetFolder = getRustTargetFolder!? debugMode
+    rustTargetFolder = try getRustTargetFolder! debugMode
 
-    copyHostLib!? osAndArch rustTargetFolder
+    try copyHostLib! osAndArch rustTargetFolder
 
-    preprocessHost!? rocCmd stubLibPath rustTargetFolder
+    try preprocessHost! rocCmd stubLibPath rustTargetFolder
 
-    info! "Successfully built platform files!"
+    try info! "Successfully built platform files!"
+
+    Ok {}
 
 rocVersion! : Str => Result {} _
 rocVersion! = \rocCmd ->
-    info!? "Checking provided roc; executing `$(rocCmd) version`:"
+    try info! "Checking provided roc; executing `$(rocCmd) version`:"
 
     rocCmd
     |> Cmd.exec! ["version"]
@@ -50,7 +52,7 @@ rocVersion! = \rocCmd ->
 
 getOSAndArch! : {} => Result OSAndArch _
 getOSAndArch! = \{} ->
-    info!? "Getting the native operating system and architecture ..."
+    try info! "Getting the native operating system and architecture ..."
 
     { os, arch } = Env.platform! {}
 
@@ -76,7 +78,7 @@ convertOSAndArch! = \{ os, arch } ->
 
 buildStubAppLib! : Str, Str => Result {} _
 buildStubAppLib! = \rocCmd, stubLibPath ->
-    info!? "Building stubbed app shared library ..."
+    try info! "Building stubbed app shared library ..."
 
     rocCmd
     |> Cmd.exec! ["build", "--lib", "platform/libapp.roc", "--output", stubLibPath, "--optimize"]
@@ -112,19 +114,19 @@ getRustTargetFolder! = \debugMode ->
                 Ok "target/$(targetEnvVar)/$(debugOrRelease)/"
 
         Err e ->
-            info!? "Failed to get env var CARGO_BUILD_TARGET with error $(Inspect.toStr e). Assuming default CARGO_BUILD_TARGET (native)..."
+            try info! "Failed to get env var CARGO_BUILD_TARGET with error $(Inspect.toStr e). Assuming default CARGO_BUILD_TARGET (native)..."
 
             Ok "target/$(debugOrRelease)/"
 
 cargoBuildHost! : [Debug, Release] => Result {} _
 cargoBuildHost! = \debugMode ->
-    cargoBuildArgs! = \{} ->
+    cargoBuildArgs =
         when debugMode is
             Debug -> Result.map (info! "Building rust host in debug mode...") \_ -> ["build"]
             Release -> Result.map (info! "Building rust host ...") \_ -> ["build", "--release"]
 
     "cargo"
-    |> Cmd.exec! (cargoBuildArgs!? {})
+    |> Cmd.exec! (try cargoBuildArgs)
     |> Result.mapErr ErrBuildingHostBinaries
 
 copyHostLib! : OSAndArch, Str => Result {} _
@@ -134,7 +136,7 @@ copyHostLib! = \osAndArch, rustTargetFolder ->
 
     hostDestPath = "platform/$(prebuiltStaticLibFile osAndArch)"
 
-    info!? "Moving the prebuilt binary from $(hostBuildPath) to $(hostDestPath) ..."
+    try info! "Moving the prebuilt binary from $(hostBuildPath) to $(hostDestPath) ..."
 
     "cp"
     |> Cmd.exec! [hostBuildPath, hostDestPath]
@@ -143,7 +145,7 @@ copyHostLib! = \osAndArch, rustTargetFolder ->
 preprocessHost! : Str, Str, Str => Result {} _
 preprocessHost! = \rocCmd, stubLibPath, rustTargetFolder ->
 
-    info!? "Preprocessing surgical host ..."
+    try info! "Preprocessing surgical host ..."
 
     surgicalBuildPath = "$(rustTargetFolder)host"
 

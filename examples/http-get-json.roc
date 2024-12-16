@@ -11,7 +11,7 @@ import json.Json
 main! = \{} ->
 
     # Easy decoding/deserialization of { "foo": "something" } into a Roc var
-    { foo } = Http.get!? "http://localhost:8000" Json.utf8
+    { foo } = try Http.get! "http://localhost:8000" Json.utf8
     # If you want to see an example of the server side, see basic-cli/ci/rust_http_server/src/main.rs
 
     Stdout.line! "The json I received was: { foo: \"$(foo)\" }"

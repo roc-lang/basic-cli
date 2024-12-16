@@ -7,18 +7,19 @@ import pf.Path
 main! = \{} ->
 
     # Create a directory
-    Dir.create!? "dirExampleE"
+    try Dir.create! "dirExampleE"
 
     # Create a directory and its parents
-    Dir.create_all!? "dirExampleA/b/c/child"
+    try Dir.create_all! "dirExampleA/b/c/child"
 
     # Create a child directory
-    Dir.create!? "dirExampleA/child"
+    try Dir.create! "dirExampleA/child"
 
     # List the contents of a directory
     paths_as_str =
         Dir.list! "dirExampleA"
-        |> Result.map? \paths -> List.map paths Path.display
+        |> Result.map \paths -> List.map paths Path.display
+        |> try
 
     # Check the contents of the directory
     expect (Set.fromList paths_as_str) == (Set.fromList ["dirExampleA/b", "dirExampleA/child"])
@@ -29,9 +30,9 @@ main! = \{} ->
         Err _ -> {}
 
     # Delete an empty directory
-    Dir.delete_empty!? "dirExampleE"
+    try Dir.delete_empty! "dirExampleE"
 
     # Delete all directories recursively
-    Dir.delete_all!? "dirExampleA"
+    try Dir.delete_all! "dirExampleA"
 
     Stdout.line! "Success!"

@@ -4,11 +4,11 @@ import pf.Stdout
 import pf.Cmd
 
 main! = \{} ->
-    status_example!? {}
+    try status_example! {}
 
-    output_example!? {}
+    try output_example! {}
 
-    exec_example!? {}
+    try exec_example! {}
 
     Ok {}
 

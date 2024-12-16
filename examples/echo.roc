@@ -4,7 +4,7 @@ import pf.Stdin
 import pf.Stdout
 
 main! = \{} ->
-    Stdout.line!? "Shout into this cave and hear the echo!"
+    try Stdout.line! "Shout into this cave and hear the echo!"
 
     tick! {}
 
@@ -12,15 +12,15 @@ tick! : {} => Result {} [StdoutErr _]
 tick! = \{} ->
     when Stdin.line! {} is
         Ok str ->
-            Stdout.line!? (echo str)
+            try Stdout.line! (echo str)
             tick! {}
 
         Err EndOfFile ->
-            Stdout.line!? (echo "Received end of input (EOF).")
+            try Stdout.line! (echo "Received end of input (EOF).")
             Ok {}
 
         Err (StdinErr err) ->
-            Stdout.line!? (echo "Unable to read input $(Inspect.toStr err)")
+            try Stdout.line! (echo "Unable to read input $(Inspect.toStr err)")
             Ok {}
 
 echo : Str -> Str

@@ -5,12 +5,12 @@ import pf.Stdout
 
 main! = \{} ->
 
-    Stdout.line!? "What's your first name?"
+    try Stdout.line! "What's your first name?"
 
-    first = Stdin.line!? {}
+    first = try Stdin.line! {}
 
-    Stdout.line!? "What's your last name?"
+    try Stdout.line! "What's your last name?"
 
-    last = Stdin.line!? {}
+    last = try Stdin.line! {}
 
     Stdout.line! "Hi, $(first) $(last)! 👋"
