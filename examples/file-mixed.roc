@@ -15,19 +15,19 @@ task! = \{} ->
 
     try Stdout.line! "cwd: $(cwdStr)"
 
-    dirEntries = try Dir.list! cwdStr
+    dir_entries = try Dir.list! cwdStr
 
-    dirEntriesStr = Str.joinWith (List.map dirEntries Path.display) "\n    "
+    dir_entries_tr = Str.joinWith (List.map dir_entries Path.display) "\n    "
 
-    try Stdout.line! "Directory contents:\n    $(dirEntriesStr)\n"
+    try Stdout.line! "Directory contents:\n    $(dir_entries_tr)\n"
 
     try Stdout.line! "Writing a string to out.txt"
 
-    try File.writeUtf8! "a string!" outTxtPath
+    try File.write_utf8! "a string!" outTxtPath
 
-    outTxtContents = try File.readUtf8! outTxtPath
+    contents = try File.read_utf8! outTxtPath
 
-    Stdout.line! "I read the file back. Its contents: \"$(outTxtContents)\""
+    Stdout.line! "I read the file back. Its contents: \"$(contents)\""
 
 main! = \{} ->
     when task! {} is

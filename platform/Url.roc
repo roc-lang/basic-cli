@@ -3,14 +3,14 @@ module [
     append,
     fromStr,
     toStr,
-    appendParam,
-    hasQuery,
-    hasFragment,
+    append_param,
+    has_query,
+    has_fragment,
     query,
     fragment,
     reserve,
-    withQuery,
-    withFragment,
+    with_query,
+    with_fragment,
 ]
 
 ## A [Uniform Resource Locator](https://en.wikipedia.org/wiki/URL).
@@ -27,8 +27,8 @@ Url := Str implements [Inspect]
 ## Url.fromStr "https://example.com"
 ## |> Url.reserve 50
 ## |> Url.append "stuff"
-## |> Url.appendParam "café" "du Monde"
-## |> Url.appendParam "email" "hi@example.com"
+## |> Url.append_param "café" "du Monde"
+## |> Url.append_param "email" "hi@example.com"
 ## ```
 ## The [Str.countUtf8Bytes](https://www.roc-lang.org/builtins/Str#countUtf8Bytes) function can be helpful in finding out how many bytes to reserve.
 ##
@@ -232,7 +232,7 @@ percentEncode = \input ->
 ## ```
 ## # Gives https://example.com?email=someone%40example.com
 ## Url.fromStr "https://example.com"
-## |> Url.appendParam "email" "someone@example.com"
+## |> Url.append_param "email" "someone@example.com"
 ## ```
 ##
 ## This can be called multiple times on the same URL.
@@ -240,12 +240,12 @@ percentEncode = \input ->
 ## ```
 ## # Gives https://example.com?caf%C3%A9=du%20Monde&email=hi%40example.com
 ## Url.fromStr "https://example.com"
-## |> Url.appendParam "café" "du Monde"
-## |> Url.appendParam "email" "hi@example.com"
+## |> Url.append_param "café" "du Monde"
+## |> Url.append_param "email" "hi@example.com"
 ## ```
 ##
-appendParam : Url, Str, Str -> Url
-appendParam = \@Url urlStr, key, value ->
+append_param : Url, Str, Str -> Url
+append_param = \@Url urlStr, key, value ->
     { withoutFragment, afterQuery } =
         when Str.splitLast urlStr "#" is
             Ok { before, after } ->
@@ -269,7 +269,7 @@ appendParam = \@Url urlStr, key, value ->
 
     withoutFragment
     |> Str.reserve bytes
-    |> Str.concat (if hasQuery (@Url withoutFragment) then "&" else "?")
+    |> Str.concat (if has_query (@Url withoutFragment) then "&" else "?")
     |> Str.concat encodedKey
     |> Str.concat "="
     |> Str.concat encodedValue
@@ -284,14 +284,14 @@ appendParam = \@Url urlStr, key, value ->
 ## ```
 ## # Gives https://example.com?newQuery=thisRightHere#stuff
 ## Url.fromStr "https://example.com?key1=val1&key2=val2#stuff"
-## |> Url.withQuery "newQuery=thisRightHere"
+## |> Url.with_query "newQuery=thisRightHere"
 ##
 ## # Gives https://example.com#stuff
 ## Url.fromStr "https://example.com?key1=val1&key2=val2#stuff"
-## |> Url.withQuery ""
+## |> Url.with_query ""
 ## ```
-withQuery : Url, Str -> Url
-withQuery = \@Url urlStr, queryStr ->
+with_query : Url, Str -> Url
+with_query = \@Url urlStr, queryStr ->
     { withoutFragment, afterQuery } =
         when Str.splitLast urlStr "#" is
             Ok { before, after } ->
@@ -354,15 +354,15 @@ query = \@Url urlStr ->
 ## ```
 ## # Gives Bool.true
 ## Url.fromStr "https://example.com?key=value#stuff"
-## |> Url.hasQuery
+## |> Url.has_query
 ##
 ## # Gives Bool.false
 ## Url.fromStr "https://example.com#stuff"
-## |> Url.hasQuery
+## |> Url.has_query
 ## ```
 ##
-hasQuery : Url -> Bool
-hasQuery = \@Url urlStr ->
+has_query : Url -> Bool
+has_query = \@Url urlStr ->
     Str.contains urlStr "?"
 
 ## Returns the URL's [fragment](https://en.wikipedia.org/wiki/URL#Syntax)—the part after
@@ -393,19 +393,19 @@ fragment = \@Url urlStr ->
 ## ```
 ## # Gives https://example.com#things
 ## Url.fromStr "https://example.com#stuff"
-## |> Url.withFragment "things"
+## |> Url.with_fragment "things"
 ##
 ## # Gives https://example.com#things
 ## Url.fromStr "https://example.com"
-## |> Url.withFragment "things"
+## |> Url.with_fragment "things"
 ##
 ## # Gives https://example.com
 ## Url.fromStr "https://example.com#stuff"
-## |> Url.withFragment ""
+## |> Url.with_fragment ""
 ## ```
 ##
-withFragment : Url, Str -> Url
-withFragment = \@Url urlStr, fragmentStr ->
+with_fragment : Url, Str -> Url
+with_fragment = \@Url urlStr, fragmentStr ->
     when Str.splitLast urlStr "#" is
         Ok { before } ->
             if Str.isEmpty fragmentStr then
@@ -428,15 +428,15 @@ withFragment = \@Url urlStr, fragmentStr ->
 ## ```
 ## # Gives Bool.true
 ## Url.fromStr "https://example.com?key=value#stuff"
-## |> Url.hasFragment
+## |> Url.has_fragment
 ##
 ## # Gives Bool.false
 ## Url.fromStr "https://example.com?key=value"
-## |> Url.hasFragment
+## |> Url.has_fragment
 ## ```
 ##
-hasFragment : Url -> Bool
-hasFragment = \@Url urlStr ->
+has_fragment : Url -> Bool
+has_fragment = \@Url urlStr ->
     Str.contains urlStr "#"
 
 # Adapted from the percent-encoding crate, © The rust-url developers, Apache2-licensed

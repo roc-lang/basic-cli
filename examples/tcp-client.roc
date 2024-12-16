@@ -8,13 +8,13 @@ import pf.Stderr
 main! = \{} ->
     when run! {} is
         Ok {} -> Ok {}
-        Err err -> handleErr! err
+        Err err -> handle_err! err
 
-handleErr! : []_ => Result {} _
-handleErr! = \error ->
+handle_err! : []_ => Result {} _
+handle_err! = \error ->
     when error is
         TcpConnectErr err ->
-            errStr = Tcp.connectErrToStr err
+            errStr = Tcp.connect_err_to_str err
             Stderr.line!
                 """
                 Failed to connect: $(errStr)

@@ -7,11 +7,11 @@ import Host
 ## The returned [Str] is a BCP 47 language tag, like `en-US` or `fr-CA`.
 get! : {} => Result Str [NotAvailable]
 get! = \{} ->
-    Host.getLocale! {}
+    Host.get_locale! {}
     |> Result.mapErr \{} -> NotAvailable
 
 ## Returns the preferred locales for the system or application.
 ##
 ## The returned [Str] are BCP 47 language tags, like `en-US` or `fr-CA`.
 all! : {} => List Str
-all! = Host.getLocales!
+all! = Host.get_locales!

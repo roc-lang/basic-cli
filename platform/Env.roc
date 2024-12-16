@@ -1,4 +1,4 @@
-module [cwd!, dict!, var!, decode!, exePath!, setCwd!, platform!, tempDir!]
+module [cwd!, dict!, var!, decode!, exe_path!, set_cwd!, platform!, temp_dir!]
 
 import Path exposing [Path]
 import InternalPath
@@ -14,20 +14,20 @@ cwd! = \{} ->
     if List.isEmpty bytes then
         Err CwdUnavailable
     else
-        Ok (InternalPath.fromArbitraryBytes bytes)
+        Ok (InternalPath.from_arbitrary_bytes bytes)
 
 ## Sets the [current working directory](https://en.wikipedia.org/wiki/Working_directory)
 ## in the environment. After changing it, file operations on relative [Path]s will be relative
 ## to this directory.
-setCwd! : Path => Result {} [InvalidCwd]
-setCwd! = \path ->
-    Host.setCwd! (InternalPath.toBytes path)
+set_cwd! : Path => Result {} [InvalidCwd]
+set_cwd! = \path ->
+    Host.set_cwd! (InternalPath.to_bytes path)
     |> Result.mapErr \{} -> InvalidCwd
 
 ## Gets the path to the currently-running executable.
-exePath! : {} => Result Path [ExePathUnavailable]
-exePath! = \{} ->
-    when Host.exePath! {} is
+exe_path! : {} => Result Path [ExePathUnavailable]
+exe_path! = \{} ->
+    when Host.exe_path! {} is
         Ok bytes -> Ok (InternalPath.fromOsBytes bytes)
         Err {} -> Err ExePathUnavailable
 
@@ -37,7 +37,7 @@ exePath! = \{} ->
 ## [Unicode replacement character](https://unicode.org/glossary/#replacement_character) ('�').
 var! : Str => Result Str [VarNotFound]
 var! = \name ->
-    Host.envVar! name
+    Host.env_var! name
     |> Result.mapErr \{} -> VarNotFound
 
 ## Reads the given environment variable and attempts to decode it.
@@ -67,7 +67,7 @@ var! = \name ->
 ##
 decode! : Str => Result val [VarNotFound, DecodeErr DecodeError] where val implements Decoding
 decode! = \name ->
-    when Host.envVar! name is
+    when Host.env_var! name is
         Err {} -> Err VarNotFound
         Ok varStr ->
             Str.toUtf8 varStr
@@ -80,7 +80,7 @@ decode! = \name ->
 ## will be used in place of any parts of keys or values that are invalid Unicode.
 dict! : {} => Dict Str Str
 dict! = \{} ->
-    Host.envDict! {}
+    Host.env_dict! {}
     |> Dict.fromList
 
 # ## Walks over the process's environment variables as key-value arguments to the walking function.
@@ -129,7 +129,7 @@ OS : [LINUX, MACOS, WINDOWS, OTHER Str]
 platform! : {} => { arch : ARCH, os : OS }
 platform! = \{} ->
 
-    fromRust = Host.currentArchOS! {}
+    fromRust = Host.current_arch_os! {}
 
     arch =
         when fromRust.arch is
@@ -157,7 +157,7 @@ platform! = \{} ->
 ## to create a uniquely named file. Creating a file or directory with a fixed or predictable name may
 ## result in “insecure temporary file” security vulnerabilities.
 ##
-tempDir! : {} => Path
-tempDir! = \{} ->
-    Host.tempDir! {}
+temp_dir! : {} => Path
+temp_dir! = \{} ->
+    Host.temp_dir! {}
     |> \pathOSStringBytes -> InternalPath.fromOsBytes pathOSStringBytes

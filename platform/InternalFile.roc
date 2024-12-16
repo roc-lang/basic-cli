@@ -1,6 +1,6 @@
 module [
     IOErr,
-    handleErr,
+    handle_err,
 ]
 
 import Host
@@ -31,8 +31,8 @@ IOErr : [
     Other Str,
 ]
 
-handleErr : Host.InternalIOErr -> IOErr
-handleErr = \{ tag, msg } ->
+handle_err : Host.InternalIOErr -> IOErr
+handle_err = \{ tag, msg } ->
     when tag is
         NotFound -> NotFound
         PermissionDenied -> PermissionDenied

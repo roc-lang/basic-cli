@@ -67,7 +67,7 @@ send! : Request => Response
 send! = \request ->
     request
     |> InternalHttp.to_host_request
-    |> Host.sendRequest!
+    |> Host.send_request!
     |> InternalHttp.from_host_response
 
 ## Try to perform an HTTP get request and convert (decode) the received bytes into a Roc type.

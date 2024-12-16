@@ -7,10 +7,10 @@ main! = \{} ->
 
     try Stdout.line! "What's your first name?"
 
-    firstName = try Stdin.line! {}
+    first = try Stdin.line! {}
 
     try Stdout.line! "What's your last name?"
 
-    lastName = try Stdin.line! {}
+    last = try Stdin.line! {}
 
-    Stdout.line! "Hi, $(firstName) $(lastName)! 👋"
+    Stdout.line! "Hi, $(first) $(last)! 👋"

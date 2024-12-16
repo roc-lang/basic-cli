@@ -2,7 +2,7 @@ module [
     Command,
     Output,
     CommandErr,
-    handleCommandErr,
+    handle_command_err,
 ]
 
 CommandErr : [
@@ -11,8 +11,8 @@ CommandErr : [
     IOError Str,
 ]
 
-handleCommandErr : List U8 -> CommandErr
-handleCommandErr = \err ->
+handle_command_err : List U8 -> CommandErr
+handle_command_err = \err ->
     when err is
         ['E', 'C', .. as rest] ->
             code = rest |> Str.fromUtf8 |> Result.try Str.toI32 |> Result.withDefault -99
@@ -28,7 +28,7 @@ Command : {
     program : Str,
     args : List Str, # [arg0, arg1, arg2, arg3, ...]
     envs : List Str, # [key0, value0, key1, value1, key2, value2, ...]
-    clearEnvs : Bool,
+    clear_envs : Bool,
 }
 
 Output : {

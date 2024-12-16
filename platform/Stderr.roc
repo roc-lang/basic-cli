@@ -46,7 +46,7 @@ handleErr = \{ tag, msg } ->
 ## > To write to `stderr` without the newline, see [Stderr.write!].
 line! : Str => Result {} [StderrErr Err]
 line! = \str ->
-    Host.stderrLine! str
+    Host.stderr_line! str
     |> Result.mapErr handleErr
 
 ## Write the given string to [standard error](https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)).
@@ -57,5 +57,5 @@ line! = \str ->
 ## > To write to `stderr` with a newline at the end, see [Stderr.line!].
 write! : Str => Result {} [StderrErr Err]
 write! = \str ->
-    Host.stderrWrite! str
+    Host.stderr_write! str
     |> Result.mapErr handleErr

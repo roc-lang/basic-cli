@@ -2,13 +2,13 @@ module [
     Cmd,
     Output,
     Err,
-    outputErrToStr,
+    output_err_o_str,
     new,
     arg,
     args,
     env,
     envs,
-    clearEnvs,
+    clear_envs,
     status!,
     output!,
     exec!,
@@ -23,8 +23,8 @@ Cmd := InternalCommand.Command implements [Inspect]
 ## Errors from executing a command.
 Err : InternalCommand.CommandErr
 
-outputErrToStr : (Output, Err) -> Str
-outputErrToStr = \(_, err) ->
+output_err_o_str : (Output, Err) -> Str
+output_err_o_str = \(_, err) ->
     when err is
         ExitCode code -> "Child exited with non-zero code: $(Num.toStr code)"
         KilledBySignal -> "Child was killed by signal"
@@ -43,7 +43,7 @@ new = \program ->
         program,
         args: [],
         envs: [],
-        clearEnvs: Bool.false,
+        clear_envs: Bool.false,
     }
 
 ## Add a single argument to the command.
@@ -115,13 +115,13 @@ envs = \@Cmd cmd, keyValues ->
 ## ```
 ## # Represents "env" with only "FOO" environment variable set
 ## Cmd.new "env"
-## |> Cmd.clearEnvs
+## |> Cmd.clear_envs
 ## |> Cmd.env "FOO" "BAR"
 ## ```
 ##
-clearEnvs : Cmd -> Cmd
-clearEnvs = \@Cmd cmd ->
-    @Cmd { cmd & clearEnvs: Bool.true }
+clear_envs : Cmd -> Cmd
+clear_envs = \@Cmd cmd ->
+    @Cmd { cmd & clear_envs: Bool.true }
 
 ## Execute command and capture stdout and stderr
 ##
@@ -130,7 +130,7 @@ clearEnvs = \@Cmd cmd ->
 ##
 output! : Cmd => Result Output [CmdOutputError (Output, Err)]
 output! = \@Cmd cmd ->
-    internalOutput = Host.commandOutput! (Box.box cmd)
+    internalOutput = Host.command_output! (Box.box cmd)
 
     out = {
         stdout: internalOutput.stdout,
@@ -139,14 +139,14 @@ output! = \@Cmd cmd ->
 
     when internalOutput.status is
         Ok {} -> Ok out
-        Err bytes -> Err (CmdOutputError (out, InternalCommand.handleCommandErr bytes))
+        Err bytes -> Err (CmdOutputError (out, InternalCommand.handle_command_err bytes))
 
 ## Execute command and inherit stdin, stdout and stderr from parent
 ##
 status! : Cmd => Result {} [CmdError Err]
 status! = \@Cmd cmd ->
-    Host.commandStatus! (Box.box cmd)
-    |> Result.mapErr \bytes -> CmdError (InternalCommand.handleCommandErr bytes)
+    Host.command_status! (Box.box cmd)
+    |> Result.mapErr \bytes -> CmdError (InternalCommand.handle_command_err bytes)
 
 ## Execute command and inherit stdin, stdout and stderr from parent
 ##

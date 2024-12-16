@@ -40,6 +40,5 @@ echo = \shout ->
 
 expect
     message = "hello!"
-    echoedMessage = echo message
-
-    echoedMessage == "            hello!     hello    hell   hel  he h"
+    echoed_message = echo message
+    echoed_message == "            hello!     hello    hell   hel  he h"

@@ -4,23 +4,23 @@ import pf.Stdout
 import pf.Cmd
 
 main! = \{} ->
-    try statusExample! {}
+    try status_example! {}
 
-    try outputExample! {}
+    try output_example! {}
 
-    try execExample! {}
+    try exec_example! {}
 
     Ok {}
 
-execExample! = \{} -> Cmd.exec! "echo" ["EXEC"]
+exec_example! = \{} -> Cmd.exec! "echo" ["EXEC"]
 
 # Run "env" with verbose option, clear all environment variables, and pass in
 # "FOO" and "BAZ".
-statusExample! = \{} ->
+status_example! = \{} ->
     result =
         Cmd.new "env"
         |> Cmd.arg "-v"
-        |> Cmd.clearEnvs
+        |> Cmd.clear_envs
         |> Cmd.envs [("FOO", "BAR"), ("BAZ", "DUCK")]
         |> Cmd.status!
 
@@ -32,11 +32,11 @@ statusExample! = \{} ->
 
 # Run "env" with verbose option, clear all environment variables, and pass in
 # only as an environment variable "FOO"
-outputExample! = \{} ->
+output_example! = \{} ->
 
     output =
         Cmd.new "env"
-        |> Cmd.clearEnvs
+        |> Cmd.clear_envs
         |> Cmd.env "FOO" "BAR"
         |> Cmd.args ["-v"]
         |> Cmd.output!
