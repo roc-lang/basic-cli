@@ -9,12 +9,12 @@ module [
 ]
 
 import Path exposing [Path]
-import InternalFile
+import InternalIOErr
 
 ## Tag union of possible errors when reading and writing a file or directory.
 ##
 ## > This is the same as [`File.IOErr`](File#IOErr).
-IOErr : InternalFile.IOErr
+IOErr : InternalIOErr.IOErr
 
 ## Record which represents a directory
 ##

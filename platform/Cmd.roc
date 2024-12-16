@@ -1,8 +1,6 @@
 module [
     Cmd,
     Output,
-    Err,
-    output_err_o_str,
     new,
     arg,
     args,
@@ -14,27 +12,15 @@ module [
     exec!,
 ]
 
-import InternalCommand
+import InternalCmd
+import InternalIOErr
 import Host
 
 ## Represents a command to be executed in a child process.
-Cmd := InternalCommand.Command implements [Inspect]
-
-## Errors from executing a command.
-Err : InternalCommand.CommandErr
-
-output_err_o_str : (Output, Err) -> Str
-output_err_o_str = \(_, err) ->
-    when err is
-        ExitCode code -> "Child exited with non-zero code: $(Num.toStr code)"
-        KilledBySignal -> "Child was killed by signal"
-        IOError ioErr -> "IOError executing: $(ioErr)"
+Cmd := InternalCmd.Command
 
 ## Represents the output of a command.
-Output : {
-    stdout : List U8,
-    stderr : List U8,
-}
+Output : InternalCmd.Output
 
 ## Create a new command to execute the given program in a child process.
 new : Str -> Cmd
@@ -57,10 +43,7 @@ new = \program ->
 ##
 arg : Cmd, Str -> Cmd
 arg = \@Cmd cmd, value ->
-    @Cmd
-        { cmd &
-            args: List.append cmd.args value,
-        }
+    @Cmd ({ cmd & args: List.append cmd.args value })
 
 ## Add multiple arguments to the command.
 ## ! Shell features like variable subsitition (e.g. `$FOO`), glob patterns (e.g. `*.txt`), ... are not available.
@@ -73,10 +56,7 @@ arg = \@Cmd cmd, value ->
 ##
 args : Cmd, List Str -> Cmd
 args = \@Cmd cmd, values ->
-    @Cmd
-        { cmd &
-            args: List.concat cmd.args values,
-        }
+    @Cmd ({ cmd & args: List.concat cmd.args values })
 
 ## Add a single environment variable to the command.
 ##
@@ -88,10 +68,7 @@ args = \@Cmd cmd, values ->
 ##
 env : Cmd, Str, Str -> Cmd
 env = \@Cmd cmd, key, value ->
-    @Cmd
-        { cmd &
-            envs: List.concat cmd.envs [key, value],
-        }
+    @Cmd ({ cmd & envs: List.concat cmd.envs [key, value] })
 
 ## Add multiple environment variables to the command.
 ##
@@ -128,25 +105,18 @@ clear_envs = \@Cmd cmd ->
 ## > Stdin is not inherited from the parent and any attempt by the child process
 ## > to read from the stdin stream will result in the stream immediately closing.
 ##
-output! : Cmd => Result Output [CmdOutputError (Output, Err)]
+output! : Cmd => Output
 output! = \@Cmd cmd ->
-    internalOutput = Host.command_output! (Box.box cmd)
-
-    out = {
-        stdout: internalOutput.stdout,
-        stderr: internalOutput.stderr,
-    }
-
-    when internalOutput.status is
-        Ok {} -> Ok out
-        Err bytes -> Err (CmdOutputError (out, InternalCommand.handle_command_err bytes))
+    Host.command_output! (Box.box cmd)
+    |> InternalCmd.from_host_output
 
 ## Execute command and inherit stdin, stdout and stderr from parent
 ##
-status! : Cmd => Result {} [CmdError Err]
+status! : Cmd => Result I32 [CmdStatusErr InternalIOErr.IOErr]
 status! = \@Cmd cmd ->
     Host.command_status! (Box.box cmd)
-    |> Result.mapErr \bytes -> CmdError (InternalCommand.handle_command_err bytes)
+    |> Result.mapErr InternalIOErr.handle_err
+    |> Result.mapErr CmdStatusErr
 
 ## Execute command and inherit stdin, stdout and stderr from parent
 ##
@@ -154,8 +124,14 @@ status! = \@Cmd cmd ->
 ## # Call echo to print "hello world"
 ## Cmd.exec! "echo" ["hello world"]
 ## ```
-exec! : Str, List Str => Result {} [CmdError Err]
+exec! : Str, List Str => Result {} [CmdStatusErr InternalIOErr.IOErr]
 exec! = \program, arguments ->
-    new program
-    |> args arguments
-    |> status!
+    exit_code =
+        new program
+        |> args arguments
+        |> status!?
+
+    if exit_code == 0i32 then
+        Ok {}
+    else
+        Err (CmdStatusErr (Other "Non-zero exit code $(Num.toStr exit_code)"))

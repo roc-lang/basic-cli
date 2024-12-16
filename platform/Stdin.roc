@@ -6,6 +6,7 @@ module [
 ]
 
 import Host
+import InternalIOErr
 
 ## **NotFound** - An entity was not found, often a file.
 ##
@@ -33,7 +34,7 @@ Err : [
     Other Str,
 ]
 
-handleErr : Host.InternalIOErr -> [EndOfFile, StdinErr Err]
+handleErr : InternalIOErr.IOErrFromHost -> [EndOfFile, StdinErr Err]
 handleErr = \{ tag, msg } ->
     when tag is
         NotFound -> StdinErr NotFound

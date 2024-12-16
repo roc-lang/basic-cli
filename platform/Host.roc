@@ -2,7 +2,6 @@ hosted Host
     exposes [
         TcpStream,
         FileReader,
-        InternalIOErr,
         args!,
         dir_list!,
         dir_create!,
@@ -49,57 +48,43 @@ hosted Host
     imports []
 
 import InternalHttp
-import InternalCommand
+import InternalCmd
 import InternalPath
-
-InternalIOErr : {
-    tag : [
-        EndOfFile,
-        NotFound,
-        PermissionDenied,
-        BrokenPipe,
-        AlreadyExists,
-        Interrupted,
-        Unsupported,
-        OutOfMemory,
-        Other,
-    ],
-    msg : Str,
-}
+import InternalIOErr
 
 # COMMAND
-command_status! : Box InternalCommand.Command => Result {} (List U8)
-command_output! : Box InternalCommand.Command => InternalCommand.Output
+command_status! : Box InternalCmd.Command => Result I32 InternalIOErr.IOErrFromHost
+command_output! : Box InternalCmd.Command => InternalCmd.OutputFromHost
 
 # FILE
-file_write_bytes! : List U8, List U8 => Result {} InternalIOErr
-file_write_utf8! : List U8, Str => Result {} InternalIOErr
-file_delete! : List U8 => Result {} InternalIOErr
-file_read_bytes! : List U8 => Result (List U8) InternalIOErr
+file_write_bytes! : List U8, List U8 => Result {} InternalIOErr.IOErrFromHost
+file_write_utf8! : List U8, Str => Result {} InternalIOErr.IOErrFromHost
+file_delete! : List U8 => Result {} InternalIOErr.IOErrFromHost
+file_read_bytes! : List U8 => Result (List U8) InternalIOErr.IOErrFromHost
 
 FileReader := Box {}
-file_reader! : List U8, U64 => Result FileReader InternalIOErr
-file_read_line! : FileReader => Result (List U8) InternalIOErr
+file_reader! : List U8, U64 => Result FileReader InternalIOErr.IOErrFromHost
+file_read_line! : FileReader => Result (List U8) InternalIOErr.IOErrFromHost
 
-dir_list! : List U8 => Result (List (List U8)) InternalIOErr
-dir_create! : List U8 => Result {} InternalIOErr
-dir_create_all! : List U8 => Result {} InternalIOErr
-dir_delete_empty! : List U8 => Result {} InternalIOErr
-dir_delete_all! : List U8 => Result {} InternalIOErr
+dir_list! : List U8 => Result (List (List U8)) InternalIOErr.IOErrFromHost
+dir_create! : List U8 => Result {} InternalIOErr.IOErrFromHost
+dir_create_all! : List U8 => Result {} InternalIOErr.IOErrFromHost
+dir_delete_empty! : List U8 => Result {} InternalIOErr.IOErrFromHost
+dir_delete_all! : List U8 => Result {} InternalIOErr.IOErrFromHost
 
-hard_link! : List U8 => Result {} InternalIOErr
-path_type! : List U8 => Result InternalPath.InternalPathType InternalIOErr
+hard_link! : List U8 => Result {} InternalIOErr.IOErrFromHost
+path_type! : List U8 => Result InternalPath.InternalPathType InternalIOErr.IOErrFromHost
 cwd! : {} => Result (List U8) {}
 temp_dir! : {} => List U8
 
 # STDIO
-stdout_line! : Str => Result {} InternalIOErr
-stdout_write! : Str => Result {} InternalIOErr
-stderr_line! : Str => Result {} InternalIOErr
-stderr_write! : Str => Result {} InternalIOErr
-stdin_line! : {} => Result Str InternalIOErr
-stdin_bytes! : {} => Result (List U8) InternalIOErr
-stdin_read_to_end! : {} => Result (List U8) InternalIOErr
+stdout_line! : Str => Result {} InternalIOErr.IOErrFromHost
+stdout_write! : Str => Result {} InternalIOErr.IOErrFromHost
+stderr_line! : Str => Result {} InternalIOErr.IOErrFromHost
+stderr_write! : Str => Result {} InternalIOErr.IOErrFromHost
+stdin_line! : {} => Result Str InternalIOErr.IOErrFromHost
+stdin_bytes! : {} => Result (List U8) InternalIOErr.IOErrFromHost
+stdin_read_to_end! : {} => Result (List U8) InternalIOErr.IOErrFromHost
 
 # TCP
 send_request! : InternalHttp.RequestToAndFromHost => InternalHttp.ResponseToAndFromHost

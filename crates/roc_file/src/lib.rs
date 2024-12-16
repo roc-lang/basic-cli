@@ -22,12 +22,10 @@ pub fn heap() -> &'static ThreadSafeRefcountedResourceHeap<BufReader<File>> {
     })
 }
 
-/// fileWriteUtf8! : List U8, Str => Result {} IOErr
 pub fn file_write_utf8(roc_path: &RocList<u8>, roc_str: &RocStr) -> RocResult<(), IOErr> {
     write_slice(roc_path, roc_str.as_str().as_bytes())
 }
 
-/// fileWriteBytes! : List U8, List U8 => Result {} IOErr
 pub fn file_write_bytes(roc_path: &RocList<u8>, roc_bytes: &RocList<u8>) -> RocResult<(), IOErr> {
     write_slice(roc_path, roc_bytes.as_slice())
 }
@@ -49,7 +47,6 @@ pub struct InternalPathType {
     is_sym_link: bool,
 }
 
-/// pathType! : List U8 => Result InternalPathType IOErr
 pub fn path_type(roc_path: &RocList<u8>) -> RocResult<InternalPathType, IOErr> {
     let path = path_from_roc_path(roc_path);
     match path.symlink_metadata() {
@@ -83,7 +80,6 @@ fn path_from_roc_path(bytes: &RocList<u8>) -> Cow<'_, Path> {
     Cow::Owned(std::path::PathBuf::from(os_string))
 }
 
-/// fileReadBytes! : List U8 => Result (List U8) IOErr
 pub fn file_read_bytes(roc_path: &RocList<u8>) -> RocResult<RocList<u8>, IOErr> {
     // TODO: write our own duplicate of `read_to_end` that directly fills a `RocList<u8>`.
     // This adds an extra O(n) copy.
@@ -98,7 +94,6 @@ pub fn file_read_bytes(roc_path: &RocList<u8>) -> RocResult<RocList<u8>, IOErr> 
     }
 }
 
-/// fileReader! : List U8, U64 => Result FileReader IOErr
 pub fn file_reader(roc_path: &RocList<u8>, size: u64) -> RocResult<RocBox<()>, IOErr> {
     match File::open(path_from_roc_path(roc_path)) {
         Ok(file) => {
@@ -119,7 +114,6 @@ pub fn file_reader(roc_path: &RocList<u8>, size: u64) -> RocResult<RocBox<()>, I
     }
 }
 
-/// fileReadLine! : FileReader => Result (List U8) IOErr
 pub fn file_read_line(data: RocBox<()>) -> RocResult<RocList<u8>, IOErr> {
     let buf_reader: &mut BufReader<File> = ThreadSafeRefcountedResourceHeap::box_to_resource(data);
 
@@ -165,7 +159,6 @@ pub fn read_until<R: BufRead + ?Sized>(
     }
 }
 
-/// fileDelete! : List U8 => Result {} IOErr
 pub fn file_delete(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     match std::fs::remove_file(path_from_roc_path(roc_path)) {
         Ok(()) => RocResult::ok(()),
@@ -173,7 +166,6 @@ pub fn file_delete(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     }
 }
 
-/// dirList! : List U8 => Result (List (List U8)) IOErr
 pub fn dir_list(roc_path: &RocList<u8>) -> RocResult<RocList<RocList<u8>>, IOErr> {
     let path = path_from_roc_path(roc_path);
 
@@ -200,7 +192,6 @@ pub fn dir_list(roc_path: &RocList<u8>) -> RocResult<RocList<RocList<u8>>, IOErr
     }
 }
 
-/// dirCreate! : List U8 => Result {} IOErr
 pub fn dir_create(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     match std::fs::create_dir(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
@@ -208,7 +199,6 @@ pub fn dir_create(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     }
 }
 
-/// dirCreateAll! : List U8 => Result {} IOErr
 pub fn dir_create_all(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     match std::fs::create_dir_all(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
@@ -216,7 +206,6 @@ pub fn dir_create_all(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     }
 }
 
-/// dirDeleteEmpty! : List U8 => Result {} IOErr
 pub fn dir_delete_empty(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     match std::fs::remove_dir(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
@@ -224,7 +213,6 @@ pub fn dir_delete_empty(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     }
 }
 
-/// dirDeleteAll! : List U8 => Result {} IOErr
 pub fn dir_delete_all(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     match std::fs::remove_dir_all(path_from_roc_path(roc_path)) {
         Ok(_) => RocResult::ok(()),
@@ -232,7 +220,6 @@ pub fn dir_delete_all(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     }
 }
 
-/// hardLink! : List U8 => Result {} IOErr
 pub fn hard_link(path_from: &RocList<u8>, path_to: &RocList<u8>) -> RocResult<(), IOErr> {
     match std::fs::hard_link(path_from_roc_path(path_from), path_from_roc_path(path_to)) {
         Ok(_) => RocResult::ok(()),

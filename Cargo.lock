@@ -402,6 +402,7 @@ dependencies = [
 name = "roc_command"
 version = "0.0.1"
 dependencies = [
+ "roc_io_error",
  "roc_std",
 ]
 

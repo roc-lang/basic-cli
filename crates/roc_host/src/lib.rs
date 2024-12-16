@@ -631,16 +631,24 @@ pub extern "C" fn roc_fx_tcp_write(stream: RocBox<()>, msg: &RocList<u8>) -> Roc
 
 #[no_mangle]
 pub extern "C" fn roc_fx_command_status(
-    roc_cmd: &roc_command::Command,
-) -> RocResult<(), RocList<u8>> {
-    roc_command::command_status(roc_cmd)
+    boxed_roc_cmd: RocBox<roc_command::Command>,
+) -> RocResult<i32, roc_io_error::IOErr> {
+    let roc_cmd = boxed_roc_cmd.into_inner();
+
+    dbg!(&roc_cmd);
+
+    roc_command::command_status(&roc_cmd)
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_command_output(
-    roc_cmd: &roc_command::Command,
-) -> roc_command::CommandOutput {
-    roc_command::command_output(roc_cmd)
+    boxed_roc_cmd: RocBox<roc_command::Command>,
+) -> roc_command::OutputFromHost {
+    let roc_cmd = boxed_roc_cmd.into_inner();
+
+    dbg!(&roc_cmd);
+
+    roc_command::command_output(&roc_cmd)
 }
 
 #[no_mangle]

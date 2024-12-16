@@ -5,7 +5,7 @@
 # be manually adjusted after generation.
 #
 # ```
-# $ roc glue ../roc/crates/glue/src/RustGlue.roc asdf/ platform/glue-internal-http.roc
+# $ roc glue ../roc/crates/glue/src/RustGlue.roc asdf/ platform/glue-internal-cmd.roc
 # ```
 platform "glue-types"
     requires {} { main : _ }
@@ -14,10 +14,9 @@ platform "glue-types"
     imports []
     provides [mainForHost]
 
-import InternalHttp
+import InternalCmd
 
 mainForHost : {
-    a : InternalHttp.RequestToAndFromHost,
-    b : InternalHttp.ResponseToAndFromHost,
+    a : InternalCmd.OutputFromHost,
 }
 mainForHost = main

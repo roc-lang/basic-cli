@@ -251,7 +251,6 @@ impl roc_std::RocRefcounted for Header {
     }
 }
 
-/// tcpConnect! : Str, U16 => Result TcpStream Str
 pub fn tcp_connect(host: &RocStr, port: u16) -> RocResult<RocBox<()>, RocStr> {
     match TcpStream::connect((host.as_str(), port)) {
         Ok(stream) => {
@@ -268,7 +267,6 @@ pub fn tcp_connect(host: &RocStr, port: u16) -> RocResult<RocBox<()>, RocStr> {
     }
 }
 
-/// tcpReadUpTo! : TcpStream, U64 => Result (List U8) Str
 pub fn tcp_read_up_to(stream: RocBox<()>, bytes_to_read: u64) -> RocResult<RocList<u8>, RocStr> {
     let stream: &mut BufReader<TcpStream> =
         ThreadSafeRefcountedResourceHeap::box_to_resource(stream);
@@ -287,7 +285,6 @@ pub fn tcp_read_up_to(stream: RocBox<()>, bytes_to_read: u64) -> RocResult<RocLi
     }
 }
 
-/// tcpReadExactly! : TcpStream, U64 => Result (List U8) Str
 pub fn tcp_read_exactly(stream: RocBox<()>, bytes_to_read: u64) -> RocResult<RocList<u8>, RocStr> {
     let stream: &mut BufReader<TcpStream> =
         ThreadSafeRefcountedResourceHeap::box_to_resource(stream);
@@ -308,7 +305,6 @@ pub fn tcp_read_exactly(stream: RocBox<()>, bytes_to_read: u64) -> RocResult<Roc
     }
 }
 
-/// tcpReadUntil! : TcpStream, U8 => Result (List U8) Str
 pub fn tcp_read_until(stream: RocBox<()>, byte: u8) -> RocResult<RocList<u8>, RocStr> {
     let stream: &mut BufReader<TcpStream> =
         ThreadSafeRefcountedResourceHeap::box_to_resource(stream);
@@ -320,7 +316,6 @@ pub fn tcp_read_until(stream: RocBox<()>, byte: u8) -> RocResult<RocList<u8>, Ro
     }
 }
 
-/// tcpWrite! : TcpStream, List U8 => Result {} Str
 pub fn tcp_write(stream: RocBox<()>, msg: &RocList<u8>) -> RocResult<(), RocStr> {
     let stream: &mut BufReader<TcpStream> =
         ThreadSafeRefcountedResourceHeap::box_to_resource(stream);

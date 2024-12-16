@@ -1,8 +1,7 @@
 module [
     Path,
-    IOErr,
+    Err,
     DirEntry,
-    LinkErr,
     display,
     from_str,
     from_bytes,
@@ -26,7 +25,7 @@ module [
 ]
 
 import InternalPath
-import InternalFile
+import InternalIOErr
 import FileMetadata exposing [FileMetadata]
 import Host
 
@@ -44,8 +43,8 @@ DirEntry : {
 
 ## Tag union of possible errors when reading and writing a file or directory.
 ##
-## > This is the same as [`File.IOErr`](File#IOErr).
-IOErr : InternalFile.IOErr
+## > This is the same as [`File.Err`](File#Err).
+Err : InternalIOErr.IOErr
 
 ## Write data to a file.
 ##
@@ -68,7 +67,7 @@ IOErr : InternalFile.IOErr
 ## If writing to the file fails, for example because of a file permissions issue, the task fails with [WriteErr].
 ##
 ## > To write unformatted bytes to a file, you can use [Path.write_bytes!] instead.
-write! : val, Path, fmt => Result {} [FileWriteErr Path IOErr] where val implements Encoding, fmt implements EncoderFormatting
+write! : val, Path, fmt => Result {} [FileWriteErr Path Err] where val implements Encoding, fmt implements EncoderFormatting
 write! = \val, path, fmt ->
     bytes = Encode.toBytes val fmt
 
@@ -85,12 +84,12 @@ write! = \val, path, fmt ->
 ## This opens the file first and closes it after writing to it.
 ##
 ## > To format data before writing it to a file, you can use [Path.write!] instead.
-write_bytes! : List U8, Path => Result {} [FileWriteErr Path IOErr]
+write_bytes! : List U8, Path => Result {} [FileWriteErr Path Err]
 write_bytes! = \bytes, path ->
     pathBytes = InternalPath.to_bytes path
 
     Host.file_write_bytes! pathBytes bytes
-    |> Result.mapErr \err -> FileWriteErr path (InternalFile.handle_err err)
+    |> Result.mapErr \err -> FileWriteErr path (InternalIOErr.handle_err err)
 
 ## Writes a [Str] to a file, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##
@@ -102,12 +101,12 @@ write_bytes! = \bytes, path ->
 ## This opens the file first and closes it after writing to it.
 ##
 ## > To write unformatted bytes to a file, you can use [Path.write_bytes!] instead.
-write_utf8! : Str, Path => Result {} [FileWriteErr Path IOErr]
+write_utf8! : Str, Path => Result {} [FileWriteErr Path Err]
 write_utf8! = \str, path ->
     pathBytes = InternalPath.to_bytes path
 
     Host.file_write_utf8! pathBytes str
-    |> Result.mapErr \err -> FileWriteErr path (InternalFile.handle_err err)
+    |> Result.mapErr \err -> FileWriteErr path (InternalIOErr.handle_err err)
 
 ## Note that the path may not be valid depending on the filesystem where it is used.
 ## For example, paths containing `:` are valid on ext4 and NTFS filesystems, but not
@@ -181,7 +180,7 @@ display = \path ->
 ## This uses [rust's std::path::is_dir](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_dir).
 ##
 ## > [`File.is_dir`](File#is_dir!) does the same thing, except it takes a [Str] instead of a [Path].
-is_dir! : Path => Result Bool [PathErr IOErr]
+is_dir! : Path => Result Bool [PathErr Err]
 is_dir! = \path ->
     res = type!? path
     Ok (res == IsDir)
@@ -193,7 +192,7 @@ is_dir! = \path ->
 ## This uses [rust's std::path::is_file](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_file).
 ##
 ## > [`File.is_file`](File#is_file!) does the same thing, except it takes a [Str] instead of a [Path].
-is_file! : Path => Result Bool [PathErr IOErr]
+is_file! : Path => Result Bool [PathErr Err]
 is_file! = \path ->
     res = type!? path
     Ok (res == IsFile)
@@ -205,7 +204,7 @@ is_file! = \path ->
 ## This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
 ##
 ## > [`File.is_sym_link`](File#is_sym_link!) does the same thing, except it takes a [Str] instead of a [Path].
-is_sym_link! : Path => Result Bool [PathErr IOErr]
+is_sym_link! : Path => Result Bool [PathErr Err]
 is_sym_link! = \path ->
     res = type!? path
     Ok (res == IsSymLink)
@@ -213,10 +212,10 @@ is_sym_link! = \path ->
 ## Return the type of the path if the path exists on disk.
 ##
 ## > [`File.type`](File#type!) does the same thing, except it takes a [Str] instead of a [Path].
-type! : Path => Result [IsFile, IsDir, IsSymLink] [PathErr IOErr]
+type! : Path => Result [IsFile, IsDir, IsSymLink] [PathErr Err]
 type! = \path ->
     Host.path_type! (InternalPath.to_bytes path)
-    |> Result.mapErr \err -> PathErr (InternalFile.handle_err err)
+    |> Result.mapErr \err -> PathErr (InternalIOErr.handle_err err)
     |> Result.map \path_type ->
         if path_type.is_sym_link then
             IsSymLink
@@ -283,10 +282,10 @@ with_extension = \path, extension ->
 ## [hard link](https://en.wikipedia.org/wiki/Hard_link) to it has been deleted.
 ##
 ## > [`File.delete`](File#delete!) does the same thing, except it takes a [Str] instead of a [Path].
-delete! : Path => Result {} [FileWriteErr Path IOErr]
+delete! : Path => Result {} [FileWriteErr Path Err]
 delete! = \path ->
     Host.file_delete! (InternalPath.to_bytes path)
-    |> Result.mapErr \err -> FileWriteErr path (InternalFile.handle_err err)
+    |> Result.mapErr \err -> FileWriteErr path (InternalIOErr.handle_err err)
 
 ## Reads a [Str] from a file containing [UTF-8](https://en.wikipedia.org/wiki/UTF-8)-encoded text.
 ##
@@ -301,11 +300,11 @@ delete! = \path ->
 ## > To read unformatted bytes from a file, you can use [Path.read_bytes!] instead.
 ## >
 ## > [`File.read_utf8`](File#read_utf8!) does the same thing, except it takes a [Str] instead of a [Path].
-read_utf8! : Path => Result Str [FileReadErr Path IOErr, FileReadUtf8Err Path _]
+read_utf8! : Path => Result Str [FileReadErr Path Err, FileReadUtf8Err Path _]
 read_utf8! = \path ->
     bytes =
         Host.file_read_bytes! (InternalPath.to_bytes path)
-        |> Result.mapErr? \readErr -> FileReadErr path (InternalFile.handle_err readErr)
+        |> Result.mapErr? \readErr -> FileReadErr path (InternalIOErr.handle_err readErr)
 
     Str.fromUtf8 bytes
     |> Result.mapErr \err -> FileReadUtf8Err path err
@@ -322,19 +321,19 @@ read_utf8! = \path ->
 ## > To read and decode data from a file, you can use `Path.read` instead.
 ## >
 ## > [`File.read_bytes`](File#read_bytes!) does the same thing, except it takes a [Str] instead of a [Path].
-read_bytes! : Path => Result (List U8) [FileReadErr Path IOErr]
+read_bytes! : Path => Result (List U8) [FileReadErr Path Err]
 read_bytes! = \path ->
     Host.file_read_bytes! (InternalPath.to_bytes path)
-    |> Result.mapErr \err -> FileReadErr path (InternalFile.handle_err err)
+    |> Result.mapErr \err -> FileReadErr path (InternalIOErr.handle_err err)
 
 ## Lists the files and directories inside the directory.
 ##
 ## > [`Dir.list`](Dir#list!) does the same thing, except it takes a [Str] instead of a [Path].
-list_dir! : Path => Result (List Path) [DirErr IOErr]
+list_dir! : Path => Result (List Path) [DirErr Err]
 list_dir! = \path ->
     when Host.dir_list! (InternalPath.to_bytes path) is
         Ok entries -> Ok (List.map entries InternalPath.from_os_bytes)
-        Err err -> Err (DirErr (InternalFile.handle_err err))
+        Err err -> Err (DirErr (InternalIOErr.handle_err err))
 
 ## Deletes a directory if it's empty
 ##
@@ -345,10 +344,10 @@ list_dir! = \path ->
 ##   - the user lacks permission to remove the directory.
 ##
 ## > [`Dir.delete_empty`](Dir#delete_empty!) does the same thing, except it takes a [Str] instead of a [Path].
-delete_empty! : Path => Result {} [DirErr IOErr]
+delete_empty! : Path => Result {} [DirErr Err]
 delete_empty! = \path ->
     Host.dir_delete_empty! (InternalPath.to_bytes path)
-    |> Result.mapErr \err -> DirErr (InternalFile.handle_err err)
+    |> Result.mapErr \err -> DirErr (InternalIOErr.handle_err err)
 
 ## Recursively deletes a directory as well as all files and directories
 ## inside it.
@@ -360,10 +359,10 @@ delete_empty! = \path ->
 ##   - the user lacks permission to remove the directory.
 ##
 ## > [`Dir.delete_all`](Dir#delete_all!) does the same thing, except it takes a [Str] instead of a [Path].
-delete_all! : Path => Result {} [DirErr IOErr]
+delete_all! : Path => Result {} [DirErr Err]
 delete_all! = \path ->
     Host.dir_delete_all! (InternalPath.to_bytes path)
-    |> Result.mapErr \err -> DirErr (InternalFile.handle_err err)
+    |> Result.mapErr \err -> DirErr (InternalIOErr.handle_err err)
 
 ## Creates a directory
 ##
@@ -373,10 +372,10 @@ delete_all! = \path ->
 ##   - the path already exists.
 ##
 ## > [`Dir.create`](Dir#create!) does the same thing, except it takes a [Str] instead of a [Path].
-create_dir! : Path => Result {} [DirErr IOErr]
+create_dir! : Path => Result {} [DirErr Err]
 create_dir! = \path ->
     Host.dir_create! (InternalPath.to_bytes path)
-    |> Result.mapErr \err -> DirErr (InternalFile.handle_err err)
+    |> Result.mapErr \err -> DirErr (InternalIOErr.handle_err err)
 
 ## Creates a directory recursively adding any missing parent directories.
 ##
@@ -385,10 +384,10 @@ create_dir! = \path ->
 ##   - the path already exists
 ##
 ## > [`Dir.create_all`](Dir#create_all!) does the same thing, except it takes a [Str] instead of a [Path].
-create_all! : Path => Result {} [DirErr IOErr]
+create_all! : Path => Result {} [DirErr Err]
 create_all! = \path ->
     Host.dir_create_all! (InternalPath.to_bytes path)
-    |> Result.mapErr \err -> DirErr (InternalFile.handle_err err)
+    |> Result.mapErr \err -> DirErr (InternalIOErr.handle_err err)
 
 ## Creates a new hard link on the filesystem.
 ##
@@ -398,10 +397,8 @@ create_all! = \path ->
 ## This uses [rust's std::fs::hard_link](https://doc.rust-lang.org/std/fs/fn.hard_link.html).
 ##
 ## > [File.hard_link!] does the same thing, except it takes a [Str] instead of a [Path].
-hard_link! : Path => Result {} [LinkErr LinkErr]
+hard_link! : Path => Result {} [LinkErr Err]
 hard_link! = \path ->
     Host.hard_link! (InternalPath.to_bytes path)
+    |> Result.mapErr InternalIOErr.handle_err
     |> Result.mapErr LinkErr
-
-## Tag union of possible errors when linking a file or directory.
-LinkErr : Host.InternalIOErr
