@@ -224,8 +224,8 @@ impl From<ResponseToAndFromHost> for hyper::StatusCode {
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct Header {
-    name: RocStr,
-    value: RocStr,
+    pub name: RocStr,
+    pub value: RocStr,
 }
 
 impl Header {
