@@ -46,11 +46,11 @@ hosted Host
         getLocale!,
         getLocales!,
     ]
-    imports [
-        InternalHttp.{ Request, InternalResponse },
-        InternalCommand,
-        InternalPath,
-    ]
+    imports []
+
+import InternalHttp
+import InternalCommand
+import InternalPath
 
 InternalIOErr : {
     tag : [
@@ -102,7 +102,7 @@ stdinBytes! : {} => Result (List U8) InternalIOErr
 stdinReadToEnd! : {} => Result (List U8) InternalIOErr
 
 # TCP
-sendRequest! : Box Request => InternalResponse
+sendRequest! : InternalHttp.RequestToAndFromHost => InternalHttp.ResponseToAndFromHost
 
 TcpStream := Box {}
 tcpConnect! : Str, U16 => Result TcpStream Str

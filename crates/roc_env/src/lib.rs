@@ -32,6 +32,20 @@ pub fn env_var(roc_str: &RocStr) -> RocResult<RocStr, ()> {
     }
 }
 
+/// cwd! : {} => Result (List U8) {}
+pub fn cwd() -> RocResult<RocList<u8>, ()> {
+    // TODO instead, call getcwd on UNIX and GetCurrentDirectory on Windows
+    match std::env::current_dir() {
+        Ok(path_buf) => RocResult::ok(roc_file::os_str_to_roc_path(
+            path_buf.into_os_string().as_os_str(),
+        )),
+        Err(_) => {
+            // Default to empty path
+            RocResult::ok(RocList::empty())
+        }
+    }
+}
+
 /// setCwd! : List U8 => Result {} {}
 pub fn set_cwd(roc_path: &RocList<u8>) -> RocResult<(), ()> {
     match std::env::set_current_dir(roc_file::path_from_roc_path(roc_path)) {

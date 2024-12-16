@@ -6,7 +6,7 @@
 use core::ffi::c_void;
 use roc_io_error::IOErr;
 use roc_std::{ReadOnlyRocList, ReadOnlyRocStr, RocBox, RocList, RocResult, RocStr};
-use std::sync::OnceLock;
+use std::{sync::OnceLock, time::Duration};
 use tokio::runtime::Runtime;
 
 thread_local! {
@@ -50,7 +50,7 @@ pub unsafe extern "C" fn roc_dealloc(c_ptr: *mut c_void, _alignment: u32) {
         heap.dealloc(c_ptr);
         return;
     }
-    let heap = roc_tcp::heap();
+    let heap = roc_http::heap();
     if heap.in_range(c_ptr) {
         heap.dealloc(c_ptr);
         return;
@@ -490,7 +490,7 @@ pub extern "C" fn roc_fx_fileDelete(roc_path: &RocList<u8>) -> RocResult<(), roc
 
 #[no_mangle]
 pub extern "C" fn roc_fx_cwd() -> RocResult<RocList<u8>, ()> {
-    roc_file::cwd()
+    roc_env::cwd()
 }
 
 #[no_mangle]
@@ -511,13 +511,93 @@ pub extern "C" fn roc_fx_dirList(
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_sendRequest(roc_request: &roc_tcp::Request) -> roc_tcp::InternalResponse {
-    TOKIO_RUNTIME.with(|rt| roc_tcp::send_request(rt, roc_request))
+pub extern "C" fn roc_fx_sendRequest(
+    roc_request: &roc_http::RequestToAndFromHost,
+) -> roc_http::ResponseToAndFromHost {
+    TOKIO_RUNTIME.with(|rt| {
+        let request = match roc_request.to_hyper_request() {
+            Ok(r) => r,
+            Err(err) => return err.into(),
+        };
+
+        match roc_request.has_timeout() {
+            Some(time_limit) => rt
+                .block_on(async {
+                    tokio::time::timeout(
+                        Duration::from_millis(time_limit),
+                        async_send_request(request),
+                    )
+                    .await
+                })
+                .unwrap_or_else(|_err| roc_http::ResponseToAndFromHost {
+                    status: 408,
+                    headers: RocList::empty(),
+                    body: "Request Timeout".as_bytes().into(),
+                }),
+            None => rt.block_on(async_send_request(request)),
+        }
+    })
+}
+
+async fn async_send_request(request: hyper::Request<String>) -> roc_http::ResponseToAndFromHost {
+    use hyper::Client;
+    use hyper_rustls::HttpsConnectorBuilder;
+
+    let https = HttpsConnectorBuilder::new()
+        .with_native_roots()
+        .https_or_http()
+        .enable_http1()
+        .build();
+
+    let client: Client<_, String> = Client::builder().build(https);
+    let res = client.request(request).await;
+
+    match res {
+        Ok(response) => {
+            let status = response.status();
+
+            let headers = RocList::from_iter(response.headers().iter().map(|(name, value)| {
+                roc_http::Header::new(name.as_str(), value.to_str().unwrap_or_default())
+            }));
+
+            let status = status.as_u16();
+
+            let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+            let body: RocList<u8> = RocList::from_iter(bytes);
+
+            roc_http::ResponseToAndFromHost {
+                body,
+                status,
+                headers,
+            }
+        }
+        Err(err) => {
+            if err.is_timeout() {
+                roc_http::ResponseToAndFromHost {
+                    status: 408,
+                    headers: RocList::empty(),
+                    body: "Request Timeout".as_bytes().into(),
+                }
+            } else if err.is_connect() || err.is_closed() {
+                roc_http::ResponseToAndFromHost {
+                    status: 500,
+                    headers: RocList::empty(),
+                    body: "Network Error".as_bytes().into(),
+                }
+            } else {
+                roc_http::ResponseToAndFromHost {
+                    status: 500,
+                    headers: RocList::empty(),
+                    body: err.to_string().as_bytes().into(),
+                }
+            }
+        }
+    }
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpConnect(host: &RocStr, port: u16) -> RocResult<RocBox<()>, RocStr> {
-    roc_tcp::tcp_connect(host, port)
+    roc_http::tcp_connect(host, port)
 }
 
 #[no_mangle]
@@ -525,7 +605,7 @@ pub extern "C" fn roc_fx_tcpReadUpTo(
     stream: RocBox<()>,
     bytes_to_read: u64,
 ) -> RocResult<RocList<u8>, RocStr> {
-    roc_tcp::tcp_read_up_to(stream, bytes_to_read)
+    roc_http::tcp_read_up_to(stream, bytes_to_read)
 }
 
 #[no_mangle]
@@ -533,7 +613,7 @@ pub extern "C" fn roc_fx_tcpReadExactly(
     stream: RocBox<()>,
     bytes_to_read: u64,
 ) -> RocResult<RocList<u8>, RocStr> {
-    roc_tcp::tcp_read_exactly(stream, bytes_to_read)
+    roc_http::tcp_read_exactly(stream, bytes_to_read)
 }
 
 #[no_mangle]
@@ -541,12 +621,12 @@ pub extern "C" fn roc_fx_tcpReadUntil(
     stream: RocBox<()>,
     byte: u8,
 ) -> RocResult<RocList<u8>, RocStr> {
-    roc_tcp::tcp_read_until(stream, byte)
+    roc_http::tcp_read_until(stream, byte)
 }
 
 #[no_mangle]
 pub extern "C" fn roc_fx_tcpWrite(stream: RocBox<()>, msg: &RocList<u8>) -> RocResult<(), RocStr> {
-    roc_tcp::tcp_write(stream, msg)
+    roc_http::tcp_write(stream, msg)
 }
 
 #[no_mangle]

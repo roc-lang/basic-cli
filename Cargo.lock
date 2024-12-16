@@ -438,11 +438,11 @@ dependencies = [
  "roc_command",
  "roc_env",
  "roc_file",
+ "roc_http",
  "roc_io_error",
  "roc_std",
  "roc_std_heap",
  "roc_stdio",
- "roc_tcp",
  "sys-locale",
  "tokio",
 ]
@@ -453,6 +453,21 @@ version = "0.0.1"
 dependencies = [
  "roc_host",
  "roc_std",
+]
+
+[[package]]
+name = "roc_http"
+version = "0.0.1"
+dependencies = [
+ "bytes",
+ "hyper",
+ "hyper-rustls",
+ "memchr",
+ "roc_file",
+ "roc_io_error",
+ "roc_std",
+ "roc_std_heap",
+ "tokio",
 ]
 
 [[package]]
@@ -487,20 +502,6 @@ version = "0.0.1"
 dependencies = [
  "roc_io_error",
  "roc_std",
-]
-
-[[package]]
-name = "roc_tcp"
-version = "0.0.1"
-dependencies = [
- "hyper",
- "hyper-rustls",
- "memchr",
- "roc_file",
- "roc_io_error",
- "roc_std",
- "roc_std_heap",
- "tokio",
 ]
 
 [[package]]

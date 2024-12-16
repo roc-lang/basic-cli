@@ -173,18 +173,6 @@ pub fn file_delete(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     }
 }
 
-/// cwd! : {} => Result (List U8) {}
-pub fn cwd() -> RocResult<RocList<u8>, ()> {
-    // TODO instead, call getcwd on UNIX and GetCurrentDirectory on Windows
-    match std::env::current_dir() {
-        Ok(path_buf) => RocResult::ok(os_str_to_roc_path(path_buf.into_os_string().as_os_str())),
-        Err(_) => {
-            // Default to empty path
-            RocResult::ok(RocList::empty())
-        }
-    }
-}
-
 /// dirList! : List U8 => Result (List (List U8)) IOErr
 pub fn dir_list(roc_path: &RocList<u8>) -> RocResult<RocList<RocList<u8>>, IOErr> {
     let path = path_from_roc_path(roc_path);
