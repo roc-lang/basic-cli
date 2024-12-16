@@ -107,14 +107,14 @@ clear_envs = \@Cmd cmd ->
 ##
 output! : Cmd => Output
 output! = \@Cmd cmd ->
-    Host.command_output! (Box.box cmd)
+    Host.command_output! cmd
     |> InternalCmd.from_host_output
 
 ## Execute command and inherit stdin, stdout and stderr from parent
 ##
 status! : Cmd => Result I32 [CmdStatusErr InternalIOErr.IOErr]
 status! = \@Cmd cmd ->
-    Host.command_status! (Box.box cmd)
+    Host.command_status! cmd
     |> Result.mapErr InternalIOErr.handle_err
     |> Result.mapErr CmdStatusErr
 

@@ -53,8 +53,8 @@ import InternalPath
 import InternalIOErr
 
 # COMMAND
-command_status! : Box InternalCmd.Command => Result I32 InternalIOErr.IOErrFromHost
-command_output! : Box InternalCmd.Command => InternalCmd.OutputFromHost
+command_status! : InternalCmd.Command => Result I32 InternalIOErr.IOErrFromHost
+command_output! : InternalCmd.Command => InternalCmd.OutputFromHost
 
 # FILE
 file_write_bytes! : List U8, List U8 => Result {} InternalIOErr.IOErrFromHost
