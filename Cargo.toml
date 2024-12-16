@@ -47,5 +47,9 @@ hyper-rustls = { version = "=0.24.2", default-features = false, features = [
     "native-tokio",
 ] }
 tokio = { version = "=1.31.0", default-features = false }
-sys-locale = "0.3.2"
-bytes = "1.0"
+sys-locale = "=0.3.2"
+bytes = "=1.0"
+crossterm = "=0.27.0"
+memmap2 = "0.9.4"
+libc = "=0.2.155"
+backtrace = "=0.3.69"
