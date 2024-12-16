@@ -11,11 +11,11 @@ outTxtPath = "out.txt"
 
 task! = \{} ->
 
-    cwdStr = Path.display (try Env.cwd! {})
+    cwd_str = Path.display (try Env.cwd! {})
 
-    try Stdout.line! "cwd: $(cwdStr)"
+    try Stdout.line! "cwd: $(cwd_str)"
 
-    dir_entries = try Dir.list! cwdStr
+    dir_entries = try Dir.list! cwd_str
 
     dir_entries_tr = Str.joinWith (List.map dir_entries Path.display) "\n    "
 

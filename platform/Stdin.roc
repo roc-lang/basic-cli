@@ -60,7 +60,7 @@ line! = \{} ->
 ## Read bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
 ## ‼️ This function can read no more than 16,384 bytes at a time. Use [readToEnd!] if you need more.
 ##
-## > This is typically used in combintation with [Tty.enableRawMode!],
+## > This is typically used in combintation with [Tty.enable_raw_mode!],
 ## which disables defaults terminal bevahiour and allows reading input
 ## without buffering until Enter key is pressed.
 bytes! : {} => Result (List U8) [EndOfFile, StdinErr Err]

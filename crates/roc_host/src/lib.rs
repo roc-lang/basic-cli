@@ -304,7 +304,7 @@ pub fn init() {
         roc_fx_tty_mode_raw as _,
         roc_fx_file_write_utf8 as _,
         roc_fx_file_write_bytes as _,
-        roc_fx_path_ype as _,
+        roc_fx_path_type as _,
         roc_fx_file_read_bytes as _,
         roc_fx_file_reader as _,
         roc_fx_file_read_line as _,
@@ -455,7 +455,7 @@ pub extern "C" fn roc_fx_file_write_bytes(
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_path_ype(
+pub extern "C" fn roc_fx_path_type(
     roc_path: &RocList<u8>,
 ) -> RocResult<roc_file::InternalPathType, roc_io_error::IOErr> {
     roc_file::path_type(roc_path)

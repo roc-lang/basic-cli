@@ -17,7 +17,7 @@ import pf.File
 # See examples/file-read.roc if you want to read the full contents at once.
 
 main! = \{} ->
-    reader = try File.openReader! "LICENSE"
+    reader = try File.open_reader! "LICENSE"
 
     read_summary = try process_line! reader { lines_read: 0, bytes_read: 0 }
 
@@ -31,7 +31,7 @@ ReadSummary : {
 ## Count the number of lines and the number of bytes read.
 process_line! : File.Reader, ReadSummary => Result ReadSummary _
 process_line! = \reader, { lines_read, bytes_read } ->
-    when File.readLine! reader is
+    when File.read_line! reader is
         Ok bytes if List.len bytes == 0 ->
             Ok { lines_read, bytes_read }
 

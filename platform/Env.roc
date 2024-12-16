@@ -1,4 +1,13 @@
-module [cwd!, dict!, var!, decode!, exe_path!, set_cwd!, platform!, temp_dir!]
+module [
+    cwd!,
+    dict!,
+    var!,
+    decode!,
+    exe_path!,
+    set_cwd!,
+    platform!,
+    temp_dir!,
+]
 
 import Path exposing [Path]
 import InternalPath
@@ -28,7 +37,7 @@ set_cwd! = \path ->
 exe_path! : {} => Result Path [ExePathUnavailable]
 exe_path! = \{} ->
     when Host.exe_path! {} is
-        Ok bytes -> Ok (InternalPath.fromOsBytes bytes)
+        Ok bytes -> Ok (InternalPath.from_os_bytes bytes)
         Err {} -> Err ExePathUnavailable
 
 ## Reads the given environment variable.
@@ -160,4 +169,4 @@ platform! = \{} ->
 temp_dir! : {} => Path
 temp_dir! = \{} ->
     Host.temp_dir! {}
-    |> \pathOSStringBytes -> InternalPath.fromOsBytes pathOSStringBytes
+    |> \pathOSStringBytes -> InternalPath.from_os_bytes pathOSStringBytes

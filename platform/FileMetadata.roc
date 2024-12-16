@@ -1,4 +1,10 @@
-module [FileMetadata, bytes, type, is_readonly, mode]
+module [
+    FileMetadata,
+    bytes,
+    type,
+    is_readonly,
+    mode,
+]
 
 # Design note: this is an opaque type rather than a type alias so that
 # we can add new operating system info if new OS releases introduce them,

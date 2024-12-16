@@ -6,7 +6,7 @@ module [
     unwrap,
     to_bytes,
     from_arbitrary_bytes,
-    fromOsBytes,
+    from_os_bytes,
 ]
 
 InternalPath := UnwrappedPath implements [Inspect]
@@ -73,6 +73,6 @@ from_arbitrary_bytes : List U8 -> InternalPath
 from_arbitrary_bytes = \bytes ->
     @InternalPath (ArbitraryBytes bytes)
 
-fromOsBytes : List U8 -> InternalPath
-fromOsBytes = \bytes ->
+from_os_bytes : List U8 -> InternalPath
+from_os_bytes = \bytes ->
     @InternalPath (FromOperatingSystem bytes)

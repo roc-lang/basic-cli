@@ -1,8 +1,8 @@
 module [
     Url,
     append,
-    fromStr,
-    toStr,
+    from_str,
+    to_str,
     append_param,
     has_query,
     has_fragment,
@@ -16,7 +16,7 @@ module [
 ## A [Uniform Resource Locator](https://en.wikipedia.org/wiki/URL).
 ##
 ## It could be an absolute address, such as `https://roc-lang.org/authors` or
-## a relative address, such as `/authors`. You can create one using [Url.fromStr].
+## a relative address, such as `/authors`. You can create one using [Url.from_str].
 Url := Str implements [Inspect]
 
 ## Reserve the given number of bytes as extra capacity. This can avoid reallocation
@@ -24,7 +24,7 @@ Url := Str implements [Inspect]
 ##
 ## The following example reserves 50 bytes, then builds the url `https://example.com/stuff?caf%C3%A9=du%20Monde&email=hi%40example.com`;
 ## ```
-## Url.fromStr "https://example.com"
+## Url.from_str "https://example.com"
 ## |> Url.reserve 50
 ## |> Url.append "stuff"
 ## |> Url.append_param "café" "du Monde"
@@ -33,7 +33,7 @@ Url := Str implements [Inspect]
 ## The [Str.countUtf8Bytes](https://www.roc-lang.org/builtins/Str#countUtf8Bytes) function can be helpful in finding out how many bytes to reserve.
 ##
 ## There is no `Url.withCapacity` because it's better to reserve extra capacity
-## on a [Str] first, and then pass that string to [Url.fromStr]. This function will make use
+## on a [Str] first, and then pass that string to [Url.from_str]. This function will make use
 ## of the extra capacity.
 reserve : Url, U64 -> Url
 reserve = \@Url str, cap ->
@@ -43,35 +43,35 @@ reserve = \@Url str, cap ->
 ## anything.
 ##
 ## ```
-## Url.fromStr "https://example.com#stuff"
+## Url.from_str "https://example.com#stuff"
 ## ```
 ##
 ## URLs can be absolute, like `https://example.com`, or they can be relative, like `/blah`.
 ##
 ## ```
-## Url.fromStr "/this/is#relative"
+## Url.from_str "/this/is#relative"
 ## ```
 ##
 ## Since nothing is validated, this can return invalid URLs.
 ##
 ## ```
-## Url.fromStr "https://this is not a valid URL, not at all!"
+## Url.from_str "https://this is not a valid URL, not at all!"
 ## ```
 ##
 ## Naturally, passing invalid URLs to functions that need valid ones will tend to result in errors.
 ##
-fromStr : Str -> Url
-fromStr = \str -> @Url str
+from_str : Str -> Url
+from_str = \str -> @Url str
 
 ## Return a [Str] representation of this URL.
 ## ```
 ## # Gives "https://example.com/two%20words"
-## Url.fromStr "https://example.com"
+## Url.from_str "https://example.com"
 ## |> Url.append "two words"
-## |> Url.toStr
+## |> Url.to_str
 ## ```
-toStr : Url -> Str
-toStr = \@Url str -> str
+to_str : Url -> Str
+to_str = \@Url str -> str
 
 ## [Percent-encodes](https://en.wikipedia.org/wiki/Percent-encoding) a
 ## [path component](https://en.wikipedia.org/wiki/Uniform_Resource_Identifier#Syntax)
@@ -82,27 +82,27 @@ toStr = \@Url str -> str
 ##
 ## ```
 ## # Gives https://example.com/some%20stuff
-## Url.fromStr "https://example.com"
+## Url.from_str "https://example.com"
 ## |> Url.append "some stuff"
 ##
 ## # Gives https://example.com/stuff?search=blah#fragment
-## Url.fromStr "https://example.com?search=blah#fragment"
+## Url.from_str "https://example.com?search=blah#fragment"
 ## |> Url.append "stuff"
 ##
 ## # Gives https://example.com/things/stuff/more/etc/"
-## Url.fromStr "https://example.com/things/"
+## Url.from_str "https://example.com/things/"
 ## |> Url.append "/stuff/"
 ## |> Url.append "/more/etc/"
 ##
 ## # Gives https://example.com/things
-## Url.fromStr "https://example.com/things"
+## Url.from_str "https://example.com/things"
 ## |> Url.append ""
 ## ```
 append : Url, Str -> Url
-append = \@Url urlStr, suffixUnencoded ->
-    suffix = percentEncode suffixUnencoded
+append = \@Url url_str, suffix_unencoded ->
+    suffix = percent_encode suffix_unencoded
 
-    when Str.splitFirst urlStr "?" is
+    when Str.splitFirst url_str "?" is
         Ok { before, after } ->
             bytes =
                 Str.countUtf8Bytes before
@@ -120,7 +120,7 @@ append = \@Url urlStr, suffixUnencoded ->
 
         Err NotFound ->
             # There wasn't a query, but there might still be a fragment
-            when Str.splitFirst urlStr "#" is
+            when Str.splitFirst url_str "#" is
                 Ok { before, after } ->
                     bytes =
                         Str.countUtf8Bytes before
@@ -138,7 +138,7 @@ append = \@Url urlStr, suffixUnencoded ->
 
                 Err NotFound ->
                     # No query and no fragment, so just append it
-                    @Url (appendHelp urlStr suffix)
+                    @Url (appendHelp url_str suffix)
 
 ## Internal helper
 appendHelp : Str, Str -> Str
@@ -179,17 +179,17 @@ appendHelp = \prefix, suffix ->
 ## you can always do:
 ##
 ## ```
-## Url.fromStr ""
+## Url.from_str ""
 ## |> Url.append myStrToEncode
-## |> Url.toStr
+## |> Url.to_str
 ## ```
 ##
 ## > It is recommended to encode spaces as `%20`, the HTML 2.0 specification
 ## suggests that these can be encoded as `+`, however this is not always safe to
 ## use. See [this stackoverflow discussion](https://stackoverflow.com/questions/2678551/when-should-space-be-encoded-to-plus-or-20/47188851#47188851)
 ## for a detailed explanation.
-percentEncode : Str -> Str
-percentEncode = \input ->
+percent_encode : Str -> Str
+percent_encode = \input ->
     # Optimistically assume we won't need any percent encoding, and can have
     # the same capacity as the input string. If we're wrong, it will get doubled.
     initialOutput = List.withCapacity (Str.countUtf8Bytes input |> Num.intCast)
@@ -231,7 +231,7 @@ percentEncode = \input ->
 ##
 ## ```
 ## # Gives https://example.com?email=someone%40example.com
-## Url.fromStr "https://example.com"
+## Url.from_str "https://example.com"
 ## |> Url.append_param "email" "someone@example.com"
 ## ```
 ##
@@ -239,25 +239,25 @@ percentEncode = \input ->
 ##
 ## ```
 ## # Gives https://example.com?caf%C3%A9=du%20Monde&email=hi%40example.com
-## Url.fromStr "https://example.com"
+## Url.from_str "https://example.com"
 ## |> Url.append_param "café" "du Monde"
 ## |> Url.append_param "email" "hi@example.com"
 ## ```
 ##
 append_param : Url, Str, Str -> Url
-append_param = \@Url urlStr, key, value ->
+append_param = \@Url url_str, key, value ->
     { withoutFragment, afterQuery } =
-        when Str.splitLast urlStr "#" is
+        when Str.splitLast url_str "#" is
             Ok { before, after } ->
                 # The fragment is almost certainly going to be a small string,
                 # so this interpolation should happen on the stack.
                 { withoutFragment: before, afterQuery: "#$(after)" }
 
             Err NotFound ->
-                { withoutFragment: urlStr, afterQuery: "" }
+                { withoutFragment: url_str, afterQuery: "" }
 
-    encodedKey = percentEncode key
-    encodedValue = percentEncode value
+    encodedKey = percent_encode key
+    encodedValue = percent_encode value
 
     bytes =
         Str.countUtf8Bytes withoutFragment
@@ -283,24 +283,24 @@ append_param = \@Url urlStr, key, value ->
 ##
 ## ```
 ## # Gives https://example.com?newQuery=thisRightHere#stuff
-## Url.fromStr "https://example.com?key1=val1&key2=val2#stuff"
+## Url.from_str "https://example.com?key1=val1&key2=val2#stuff"
 ## |> Url.with_query "newQuery=thisRightHere"
 ##
 ## # Gives https://example.com#stuff
-## Url.fromStr "https://example.com?key1=val1&key2=val2#stuff"
+## Url.from_str "https://example.com?key1=val1&key2=val2#stuff"
 ## |> Url.with_query ""
 ## ```
 with_query : Url, Str -> Url
-with_query = \@Url urlStr, queryStr ->
+with_query = \@Url url_str, queryStr ->
     { withoutFragment, afterQuery } =
-        when Str.splitLast urlStr "#" is
+        when Str.splitLast url_str "#" is
             Ok { before, after } ->
                 # The fragment is almost certainly going to be a small string,
                 # so this interpolation should happen on the stack.
                 { withoutFragment: before, afterQuery: "#$(after)" }
 
             Err NotFound ->
-                { withoutFragment: urlStr, afterQuery: "" }
+                { withoutFragment: url_str, afterQuery: "" }
 
     beforeQuery =
         when Str.splitLast withoutFragment "?" is
@@ -330,20 +330,20 @@ with_query = \@Url urlStr, queryStr ->
 ##
 ## ```
 ## # Gives "key1=val1&key2=val2&key3=val3"
-## Url.fromStr "https://example.com?key1=val1&key2=val2&key3=val3#stuff"
+## Url.from_str "https://example.com?key1=val1&key2=val2&key3=val3#stuff"
 ## |> Url.query
 ##
 ## # Gives ""
-## Url.fromStr "https://example.com#stuff"
+## Url.from_str "https://example.com#stuff"
 ## |> Url.query
 ## ```
 ##
 query : Url -> Str
-query = \@Url urlStr ->
+query = \@Url url_str ->
     withoutFragment =
-        when Str.splitLast urlStr "#" is
+        when Str.splitLast url_str "#" is
             Ok { before } -> before
-            Err NotFound -> urlStr
+            Err NotFound -> url_str
 
     when Str.splitLast withoutFragment "?" is
         Ok { after } -> after
@@ -353,17 +353,17 @@ query = \@Url urlStr ->
 ##
 ## ```
 ## # Gives Bool.true
-## Url.fromStr "https://example.com?key=value#stuff"
+## Url.from_str "https://example.com?key=value#stuff"
 ## |> Url.has_query
 ##
 ## # Gives Bool.false
-## Url.fromStr "https://example.com#stuff"
+## Url.from_str "https://example.com#stuff"
 ## |> Url.has_query
 ## ```
 ##
 has_query : Url -> Bool
-has_query = \@Url urlStr ->
-    Str.contains urlStr "?"
+has_query = \@Url url_str ->
+    Str.contains url_str "?"
 
 ## Returns the URL's [fragment](https://en.wikipedia.org/wiki/URL#Syntax)—the part after
 ## the `#`, if it has one.
@@ -372,17 +372,17 @@ has_query = \@Url urlStr ->
 ##
 ## ```
 ## # Gives "stuff"
-## Url.fromStr "https://example.com#stuff"
+## Url.from_str "https://example.com#stuff"
 ## |> Url.fragment
 ##
 ## # Gives ""
-## Url.fromStr "https://example.com"
+## Url.from_str "https://example.com"
 ## |> Url.fragment
 ## ```
 ##
 fragment : Url -> Str
-fragment = \@Url urlStr ->
-    when Str.splitLast urlStr "#" is
+fragment = \@Url url_str ->
+    when Str.splitLast url_str "#" is
         Ok { after } -> after
         Err NotFound -> ""
 
@@ -392,21 +392,21 @@ fragment = \@Url urlStr ->
 ##
 ## ```
 ## # Gives https://example.com#things
-## Url.fromStr "https://example.com#stuff"
+## Url.from_str "https://example.com#stuff"
 ## |> Url.with_fragment "things"
 ##
 ## # Gives https://example.com#things
-## Url.fromStr "https://example.com"
+## Url.from_str "https://example.com"
 ## |> Url.with_fragment "things"
 ##
 ## # Gives https://example.com
-## Url.fromStr "https://example.com#stuff"
+## Url.from_str "https://example.com#stuff"
 ## |> Url.with_fragment ""
 ## ```
 ##
 with_fragment : Url, Str -> Url
-with_fragment = \@Url urlStr, fragmentStr ->
-    when Str.splitLast urlStr "#" is
+with_fragment = \@Url url_str, fragmentStr ->
+    when Str.splitLast url_str "#" is
         Ok { before } ->
             if Str.isEmpty fragmentStr then
                 # If the given fragment is empty, remove the URL's fragment
@@ -418,26 +418,26 @@ with_fragment = \@Url urlStr, fragmentStr ->
         Err NotFound ->
             if Str.isEmpty fragmentStr then
                 # If the given fragment is empty, leave the URL as having no fragment
-                @Url urlStr
+                @Url url_str
             else
                 # The URL didn't have a fragment, so give it this one
-                @Url "$(urlStr)#$(fragmentStr)"
+                @Url "$(url_str)#$(fragmentStr)"
 
 ## Returns [Bool.true] if the URL has a `#` in it.
 ##
 ## ```
 ## # Gives Bool.true
-## Url.fromStr "https://example.com?key=value#stuff"
+## Url.from_str "https://example.com?key=value#stuff"
 ## |> Url.has_fragment
 ##
 ## # Gives Bool.false
-## Url.fromStr "https://example.com?key=value"
+## Url.from_str "https://example.com?key=value"
 ## |> Url.has_fragment
 ## ```
 ##
 has_fragment : Url -> Bool
-has_fragment = \@Url urlStr ->
-    Str.contains urlStr "#"
+has_fragment = \@Url url_str ->
+    Str.contains url_str "#"
 
 # Adapted from the percent-encoding crate, © The rust-url developers, Apache2-licensed
 #

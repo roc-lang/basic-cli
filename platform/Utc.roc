@@ -17,9 +17,7 @@ Utc := I128 implements [Inspect]
 ## Duration since UNIX EPOCH
 now! : {} => Utc
 now! = \{} ->
-    currentEpoch = Host.posix_time! {} |> Num.toI128
-
-    @Utc currentEpoch
+    @Utc (Num.toI128 (Host.posix_time! {}))
 
 # Constant number of nanoseconds in a millisecond
 nanosPerMilli = 1_000_000

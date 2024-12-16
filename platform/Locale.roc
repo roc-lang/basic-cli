@@ -1,4 +1,7 @@
-module [get!, all!]
+module [
+    get!,
+    all!,
+]
 
 import Host
 

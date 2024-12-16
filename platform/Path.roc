@@ -7,7 +7,6 @@ module [
     from_str,
     from_bytes,
     with_extension,
-    # These can all be found in File as well
     is_dir!,
     is_file!,
     is_sym_link!,
@@ -17,9 +16,7 @@ module [
     write!,
     read_utf8!,
     read_bytes!,
-    # read, TODO fix "Ability specialization is unknown - code generation cannot proceed!: DeriveError(UnboundVar)"
     delete!,
-    # These can all be found in Dir as well
     list_dir!,
     create_dir!,
     create_all!,
@@ -336,7 +333,7 @@ read_bytes! = \path ->
 list_dir! : Path => Result (List Path) [DirErr IOErr]
 list_dir! = \path ->
     when Host.dir_list! (InternalPath.to_bytes path) is
-        Ok entries -> Ok (List.map entries InternalPath.fromOsBytes)
+        Ok entries -> Ok (List.map entries InternalPath.from_os_bytes)
         Err err -> Err (DirErr (InternalFile.handle_err err))
 
 ## Deletes a directory if it's empty

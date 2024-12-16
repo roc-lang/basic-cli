@@ -1,4 +1,8 @@
-module [line!, write!, Err]
+module [
+    Err,
+    line!,
+    write!,
+]
 
 import Host
 

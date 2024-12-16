@@ -23,7 +23,7 @@ DirEntry : Path.DirEntry
 
 ## Lists the files and directories inside the directory.
 ##
-## > [Path.listDir!] does the same thing, except it takes a [Path] instead of a [Str].
+## > [Path.list_dir!] does the same thing, except it takes a [Path] instead of a [Str].
 list! : Str => Result (List Path) [DirErr IOErr]
 list! = \path ->
     Path.list_dir! (Path.from_str path)
@@ -62,7 +62,7 @@ delete_all! = \path ->
 ##   - the user lacks permission to create a directory there
 ##   - the path already exists.
 ##
-## > [Path.createDir!] does the same thing, except it takes a [Path] instead of a [Str].
+## > [Path.create_dir!] does the same thing, except it takes a [Path] instead of a [Str].
 create! : Str => Result {} [DirErr IOErr]
 create! = \path ->
     Path.create_dir! (Path.from_str path)

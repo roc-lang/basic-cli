@@ -1,20 +1,19 @@
 module [
     IOErr,
+    Reader,
     write_utf8!,
     write_bytes!,
     write!,
     read_utf8!,
     read_bytes!,
-    # read, TODO fix "Ability specialization is unknown - code generation cannot proceed!: DeriveError(UnboundVar)"
     delete!,
     is_dir!,
     is_file!,
     is_sym_link!,
     type!,
-    Reader,
-    openReader!,
-    openReaderWithCapacity!,
-    readLine!,
+    open_reader!,
+    open_reader_with_capacity!,
+    read_line!,
     hard_link!,
 ]
 
@@ -222,8 +221,8 @@ Reader := { reader : Host.FileReader, path : Path }
 ## This uses [rust's std::io::BufReader](https://doc.rust-lang.org/std/io/struct.BufReader.html).
 ##
 ## Use [read_utf8!] if you want to get the entire file contents at once.
-openReader! : Str => Result Reader [GetFileReadErr Path IOErr]
-openReader! = \pathStr ->
+open_reader! : Str => Result Reader [GetFileReadErr Path IOErr]
+open_reader! = \pathStr ->
     path = Path.from_str pathStr
 
     # 0 means with default capacity
@@ -238,8 +237,8 @@ openReader! = \pathStr ->
 ## This uses [rust's std::io::BufReader](https://doc.rust-lang.org/std/io/struct.BufReader.html).
 ##
 ## Use [read_utf8!] if you want to get the entire file contents at once.
-openReaderWithCapacity! : Str, U64 => Result Reader [GetFileReadErr Path IOErr]
-openReaderWithCapacity! = \pathStr, capacity ->
+open_reader_with_capacity! : Str, U64 => Result Reader [GetFileReadErr Path IOErr]
+open_reader_with_capacity! = \pathStr, capacity ->
     path = Path.from_str pathStr
 
     Host.file_reader! (Str.toUtf8 pathStr) capacity
@@ -254,7 +253,7 @@ openReaderWithCapacity! = \pathStr, capacity ->
 ## This uses [rust's `BufRead::read_line`](https://doc.rust-lang.org/std/io/trait.BufRead.html#method.read_line).
 ##
 ## Use [read_utf8!] if you want to get the entire file contents at once.
-readLine! : Reader => Result (List U8) [FileReadErr Path IOErr]
-readLine! = \@Reader { reader, path } ->
+read_line! : Reader => Result (List U8) [FileReadErr Path IOErr]
+read_line! = \@Reader { reader, path } ->
     Host.file_read_line! reader
     |> Result.mapErr \err -> FileReadErr path (InternalFile.handle_err err)

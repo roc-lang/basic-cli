@@ -2,7 +2,10 @@
 ##
 ## Note: we plan on moving this file away from basic-cli in the future, see github.com/roc-lang/basic-cli/issues/73
 ##
-module [disable_raw_mode!, enable_raw_mode!]
+module [
+    disable_raw_mode!,
+    enable_raw_mode!,
+]
 
 import Host
 

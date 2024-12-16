@@ -1,15 +1,15 @@
 module [
     Stream,
+    ConnectErr,
+    StreamErr,
     connect!,
-    readUpTo!,
-    readExactly!,
-    readUntil!,
+    read_up_to!,
+    read_exactly!,
+    read_until!,
     read_line!,
     write!,
     write_utf8!,
-    ConnectErr,
     connect_err_to_str,
-    StreamErr,
     stream_err_to_str,
 ]
 
@@ -93,26 +93,26 @@ connect! = \host, port ->
 ##
 ## ```
 ## # Read up to 64 bytes from the stream and convert to a Str
-## received = File.readUpTo! stream 64
+## received = File.read_up_to! stream 64
 ## Str.fromUtf8 received
 ## ```
 ##
-## > To read an exact number of bytes or fail, you can use [Tcp.readExactly!] instead.
-readUpTo! : Stream, U64 => Result (List U8) [TcpReadErr StreamErr]
-readUpTo! = \@Stream stream, bytesToRead ->
+## > To read an exact number of bytes or fail, you can use [Tcp.read_exactly!] instead.
+read_up_to! : Stream, U64 => Result (List U8) [TcpReadErr StreamErr]
+read_up_to! = \@Stream stream, bytesToRead ->
     Host.tcp_read_up_to! stream bytesToRead
     |> Result.mapErr \err -> TcpReadErr (parseStreamErr err)
 
 ## Read an exact number of bytes or fail.
 ##
 ## ```
-## bytes = File.readExactly!? stream 64
+## bytes = File.read_exactly!? stream 64
 ## ```
 ##
 ## `TcpUnexpectedEOF` is returned if the stream ends before the specfied number of bytes is reached.
 ##
-readExactly! : Stream, U64 => Result (List U8) [TcpReadErr StreamErr, TcpUnexpectedEOF]
-readExactly! = \@Stream stream, bytesToRead ->
+read_exactly! : Stream, U64 => Result (List U8) [TcpReadErr StreamErr, TcpUnexpectedEOF]
+read_exactly! = \@Stream stream, bytesToRead ->
     Host.tcp_read_exactly! stream bytesToRead
     |> Result.mapErr \err ->
         if err == unexpectedEofErrorMessage then
@@ -124,15 +124,15 @@ readExactly! = \@Stream stream, bytesToRead ->
 ##
 ## ```
 ## # Read until null terminator
-## File.readUntil! stream 0
+## File.read_until! stream 0
 ## ```
 ##
 ## If found, the delimiter is included as the last byte.
 ##
 ## > To read until a newline is found, you can use [Tcp.read_line!] which
 ## conveniently decodes to a [Str].
-readUntil! : Stream, U8 => Result (List U8) [TcpReadErr StreamErr]
-readUntil! = \@Stream stream, byte ->
+read_until! : Stream, U8 => Result (List U8) [TcpReadErr StreamErr]
+read_until! = \@Stream stream, byte ->
     Host.tcp_read_until! stream byte
     |> Result.mapErr \err -> TcpReadErr (parseStreamErr err)
 
@@ -148,7 +148,7 @@ readUntil! = \@Stream stream, byte ->
 ##
 read_line! : Stream => Result Str [TcpReadErr StreamErr, TcpReadBadUtf8 _]
 read_line! = \stream ->
-    bytes = readUntil!? stream '\n'
+    bytes = read_until!? stream '\n'
 
     Str.fromUtf8 bytes
     |> Result.mapErr TcpReadBadUtf8

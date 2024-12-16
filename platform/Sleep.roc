@@ -1,4 +1,6 @@
-module [millis!]
+module [
+    millis!,
+]
 
 import Host
 
