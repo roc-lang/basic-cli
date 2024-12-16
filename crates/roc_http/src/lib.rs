@@ -1,5 +1,5 @@
 //! This crate provides common functionality for Roc to interface with `std::net::tcp`
-use roc_std::{roc_refcounted_noop_impl, RocBox, RocList, RocRefcounted, RocResult, RocStr};
+use roc_std::{RocBox, RocList, RocRefcounted, RocResult, RocStr};
 use roc_std_heap::ThreadSafeRefcountedResourceHeap;
 use std::env;
 use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
@@ -25,14 +25,14 @@ pub fn heap() -> &'static ThreadSafeRefcountedResourceHeap<BufReader<TcpStream>>
 const UNEXPECTED_EOF_ERROR: &str = "UnexpectedEof";
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
-#[repr(C)]
+#[repr(C, align(8))]
 pub struct RequestToAndFromHost {
     pub body: RocList<u8>,
     pub headers: RocList<Header>,
+    pub method: u64,
     pub method_ext: RocStr,
     pub timeout_ms: u64,
     pub uri: RocStr,
-    pub method: MethodTag,
 }
 
 impl RocRefcounted for RequestToAndFromHost {
@@ -62,9 +62,9 @@ impl From<hyper::Request<String>> for RequestToAndFromHost {
                 RocStr::from(value.to_str().unwrap()),
             )
         }));
-        let method = hyper_req.method().into();
+        let method: u64 = RequestToAndFromHost::from_hyper_method(hyper_req.method());
         let method_ext = {
-            if method == MethodTag::Extension {
+            if RequestToAndFromHost::is_extension_method(method) {
                 RocStr::from(hyper_req.method().as_str())
             } else {
                 RocStr::empty()
@@ -93,20 +93,43 @@ impl RequestToAndFromHost {
         }
     }
 
-    pub fn to_hyper_request(&self) -> Result<hyper::Request<String>, hyper::http::Error> {
-        let method: hyper::Method = match self.method {
-            MethodTag::Connect => hyper::Method::CONNECT,
-            MethodTag::Delete => hyper::Method::DELETE,
-            MethodTag::Get => hyper::Method::GET,
-            MethodTag::Head => hyper::Method::HEAD,
-            MethodTag::Options => hyper::Method::OPTIONS,
-            MethodTag::Patch => hyper::Method::PATCH,
-            MethodTag::Post => hyper::Method::POST,
-            MethodTag::Put => hyper::Method::PUT,
-            MethodTag::Trace => hyper::Method::TRACE,
-            MethodTag::Extension => hyper::Method::from_bytes(self.method_ext.as_bytes()).unwrap(),
-        };
+    pub fn is_extension_method(raw_method: u64) -> bool {
+        raw_method == 2
+    }
 
+    pub fn from_hyper_method(method: &hyper::Method) -> u64 {
+        match *method {
+            hyper::Method::CONNECT => 0,
+            hyper::Method::DELETE => 1,
+            hyper::Method::GET => 3,
+            hyper::Method::HEAD => 4,
+            hyper::Method::OPTIONS => 5,
+            hyper::Method::PATCH => 6,
+            hyper::Method::POST => 7,
+            hyper::Method::PUT => 8,
+            hyper::Method::TRACE => 9,
+            _ => 2,
+        }
+    }
+
+    pub fn as_hyper_method(&self) -> hyper::Method {
+        match self.method {
+            0 => hyper::Method::CONNECT,
+            1 => hyper::Method::DELETE,
+            2 => hyper::Method::from_bytes(self.method_ext.as_bytes()).unwrap(),
+            3 => hyper::Method::GET,
+            4 => hyper::Method::HEAD,
+            5 => hyper::Method::OPTIONS,
+            6 => hyper::Method::PATCH,
+            7 => hyper::Method::POST,
+            8 => hyper::Method::PUT,
+            9 => hyper::Method::TRACE,
+            _ => panic!("invalid method"),
+        }
+    }
+
+    pub fn to_hyper_request(&self) -> Result<hyper::Request<String>, hyper::http::Error> {
+        let method: hyper::Method = self.as_hyper_method();
         let mut req_builder = hyper::Request::builder()
             .method(method)
             .uri(self.uri.as_str());
@@ -131,57 +154,6 @@ impl RequestToAndFromHost {
         req_builder.body(bytes)
     }
 }
-
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
-#[repr(u8)]
-pub enum MethodTag {
-    Connect = 0,
-    Delete = 1,
-    Extension = 2,
-    Get = 3,
-    Head = 4,
-    Options = 5,
-    Patch = 6,
-    Post = 7,
-    Put = 8,
-    Trace = 9,
-}
-
-impl From<&hyper::Method> for MethodTag {
-    fn from(method: &hyper::Method) -> Self {
-        match *method {
-            hyper::Method::CONNECT => Self::Connect,
-            hyper::Method::DELETE => Self::Delete,
-            hyper::Method::GET => Self::Get,
-            hyper::Method::HEAD => Self::Head,
-            hyper::Method::OPTIONS => Self::Options,
-            hyper::Method::PATCH => Self::Patch,
-            hyper::Method::POST => Self::Post,
-            hyper::Method::PUT => Self::Put,
-            hyper::Method::TRACE => Self::Trace,
-            _ => Self::Extension,
-        }
-    }
-}
-
-impl core::fmt::Debug for MethodTag {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            Self::Connect => f.write_str("MethodTag::Connect"),
-            Self::Delete => f.write_str("MethodTag::Delete"),
-            Self::Extension => f.write_str("MethodTag::Extension"),
-            Self::Get => f.write_str("MethodTag::Get"),
-            Self::Head => f.write_str("MethodTag::Head"),
-            Self::Options => f.write_str("MethodTag::Options"),
-            Self::Patch => f.write_str("MethodTag::Patch"),
-            Self::Post => f.write_str("MethodTag::Post"),
-            Self::Put => f.write_str("MethodTag::Put"),
-            Self::Trace => f.write_str("MethodTag::Trace"),
-        }
-    }
-}
-
-roc_refcounted_noop_impl!(MethodTag);
 
 #[derive(Clone, Default, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]

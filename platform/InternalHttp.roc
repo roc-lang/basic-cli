@@ -41,7 +41,7 @@ Response : {
 # FOR HOST
 
 RequestToAndFromHost : {
-    method : [Options, Get, Post, Put, Delete, Head, Trace, Connect, Patch, Extension],
+    method : U64,
     method_ext : Str,
     headers : List Header,
     uri : Str,
@@ -75,16 +75,16 @@ to_host_request = \{ method, headers, uri, body, timeout_ms } -> {
 to_host_method : Method -> _
 to_host_method = \method ->
     when method is
-        Options -> Options
-        Get -> Get
-        Post -> Post
-        Put -> Put
-        Delete -> Delete
-        Head -> Head
-        Trace -> Trace
-        Connect -> Connect
-        Patch -> Patch
-        Extension _ -> Extension
+        Options -> 5
+        Get -> 3
+        Post -> 7
+        Put -> 8
+        Delete -> 1
+        Head -> 4
+        Trace -> 9
+        Connect -> 0
+        Patch -> 6
+        Extension _ -> 2
 
 to_host_method_ext : Method -> Str
 to_host_method_ext = \method ->
@@ -107,19 +107,20 @@ from_host_request = \{ method, method_ext, headers, uri, body, timeout_ms } -> {
     timeout_ms: from_host_timeout timeout_ms,
 }
 
-from_host_method : [Options, Get, Post, Put, Delete, Head, Trace, Connect, Patch, Extension], Str -> Method
+from_host_method : U64, Str -> Method
 from_host_method = \tag, ext ->
     when tag is
-        Options -> Options
-        Get -> Get
-        Post -> Post
-        Put -> Put
-        Delete -> Delete
-        Head -> Head
-        Trace -> Trace
-        Connect -> Connect
-        Patch -> Patch
-        Extension -> Extension ext
+        5 -> Options
+        3 -> Get
+        7 -> Post
+        8 -> Put
+        1 -> Delete
+        4 -> Head
+        9 -> Trace
+        0 -> Connect
+        6 -> Patch
+        2 -> Extension ext
+        _ -> crash "invalid tag from host"
 
 from_host_timeout : U64 -> [TimeoutMilliseconds U64, NoTimeout]
 from_host_timeout = \timeout ->
