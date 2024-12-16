@@ -42,22 +42,22 @@ handle_err! = \error ->
 run! : {} => Result {} _
 run! = \{} ->
 
-    stream = try Tcp.connect! "127.0.0.1" 8085
+    stream = Tcp.connect!? "127.0.0.1" 8085
 
-    try Stdout.line! "Connected!"
+    Stdout.line!? "Connected!"
 
     loop! {} \_ ->
         Result.map (tick! stream) Step
 
 tick! : Tcp.Stream => Result {} _
 tick! = \stream ->
-    try Stdout.write! "> "
+    Stdout.write!? "> "
 
-    out_msg = try Stdin.line! {}
+    out_msg = Stdin.line!? {}
 
-    try Tcp.write_utf8! stream "$(out_msg)\n"
+    Tcp.write_utf8!? stream "$(out_msg)\n"
 
-    in_msg = try Tcp.read_line! stream
+    in_msg = Tcp.read_line!? stream
 
     Stdout.line! "< $(in_msg)"
 

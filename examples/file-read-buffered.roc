@@ -17,9 +17,9 @@ import pf.File
 # See examples/file-read.roc if you want to read the full contents at once.
 
 main! = \{} ->
-    reader = try File.open_reader! "LICENSE"
+    reader = File.open_reader!? "LICENSE"
 
-    read_summary = try process_line! reader { lines_read: 0, bytes_read: 0 }
+    read_summary = process_line!? reader { lines_read: 0, bytes_read: 0 }
 
     Stdout.line! "Done reading file: $(Inspect.toStr read_summary)"
 

@@ -11,5 +11,5 @@ print! = \authors ->
     when authors is
         [] -> Ok {}
         [author, .. as rest] ->
-            try Stdout.line! author
+            Stdout.line!? author
             print! rest

@@ -5,11 +5,11 @@ app [main!] {
 import pf.Stdout
 
 main! = \{} ->
-    { apples, oranges } = try
+    { apples, oranges } =
         { Result.map2 <-
             apples: get_fruit! Apples |> Result.map join_strs,
             oranges: get_fruit! Oranges |> Result.map join_strs,
-        }
+        }?
 
     Stdout.line! "Apples: $(apples)\nOranges: $(oranges)"
 
