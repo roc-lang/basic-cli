@@ -11,6 +11,7 @@ module [
     Method,
     Header,
     to_host_request,
+    to_host_response,
     from_host_request,
     from_host_response,
 ]
@@ -19,21 +20,6 @@ module [
 
 # https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods
 Method : [Options, Get, Post, Put, Delete, Head, Trace, Connect, Patch, Extension Str]
-
-# Do we need this? Inspect.toStr should get us most of the way there.
-# method_to_str : Method -> Str
-# method_to_str = \method ->
-#    when method is
-#        Options -> "Options"
-#        Get -> "Get"
-#        Post -> "Post"
-#        Put -> "Put"
-#        Delete -> "Delete"
-#        Head -> "Head"
-#        Trace -> "Trace"
-#        Connect -> "Connect"
-#        Patch -> "Patch"
-#        Extension ext -> ext
 
 # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers
 Header : { name : Str, value : Str }
@@ -75,6 +61,36 @@ ResponseToAndFromHost : {
     headers : List Header,
     body : List U8,
 }
+
+to_host_response : Response -> ResponseToAndFromHost
+to_host_response = \{ status, headers, body } -> {
+    status: to_host_status status,
+    headers,
+    body,
+}
+
+to_host_status : Status -> U16
+to_host_status = \status ->
+    when status is
+        Success Ok -> 200
+        Success Created -> 201
+        Success NoContent -> 204
+        Redirect MovedPermanently -> 301
+        Redirect Found -> 302
+        Redirect NotModified -> 304
+        ClientErr BadRequest -> 400
+        ClientErr Unauthorized -> 401
+        ClientErr Forbidden -> 403
+        ClientErr NotFound -> 404
+        ClientErr TooManyRequests -> 429
+        ServerErr InternalServerError -> 500
+        ServerErr BadGateway -> 502
+        ServerErr ServiceUnavailable -> 503
+        ServerErr GatewayTimeout -> 504
+        Success (Other code) -> code
+        Redirect (Other code) -> code
+        ClientErr (Other code) -> code
+        ServerErr (Other code) -> code
 
 to_host_request : Request -> RequestToAndFromHost
 to_host_request = \{ method, headers, uri, body, timeout_ms } -> {
