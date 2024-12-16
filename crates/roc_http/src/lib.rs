@@ -215,6 +215,26 @@ impl From<hyper::http::Error> for ResponseToAndFromHost {
     }
 }
 
+impl From<ResponseToAndFromHost> for hyper::Response<hyper::Body> {
+    fn from(roc_response: ResponseToAndFromHost) -> Self {
+        let mut builder = hyper::Response::builder();
+
+        // TODO handle invalid status code provided from roc....
+        // we should return an error
+        builder = builder.status(
+            hyper::StatusCode::from_u16(roc_response.status).expect("valid status from roc"),
+        );
+
+        for header in roc_response.headers.iter() {
+            builder = builder.header(header.name.as_str(), header.value.as_bytes());
+        }
+
+        builder
+            .body(Vec::from(roc_response.body.as_slice()).into()) // TODO try not to use Vec here
+            .unwrap() // TODO don't unwrap this
+    }
+}
+
 impl From<ResponseToAndFromHost> for hyper::StatusCode {
     fn from(response: ResponseToAndFromHost) -> Self {
         hyper::StatusCode::from_u16(response.status).expect("valid status code from roc")
