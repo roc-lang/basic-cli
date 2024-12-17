@@ -46,8 +46,8 @@ default_request = {
 ##
 ## See common headers [here](https://en.wikipedia.org/wiki/List_of_HTTP_header_fields).
 ##
-header : Str, Str -> Header
-header = \name, value -> { name, value }
+header : (Str, Str) -> Header
+header = \(name, value) -> { name, value }
 
 ## Send an HTTP request, succeeds with a value of [Str] or fails with an
 ## [Err].
