@@ -4,7 +4,7 @@ import pf.Stdout
 import pf.Dir
 import pf.Path
 
-main! = \{} ->
+main! = \_args ->
 
     # Create a directory
     try Dir.create! "dirExampleE"

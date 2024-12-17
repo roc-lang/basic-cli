@@ -9,7 +9,7 @@ import pf.Dir
 
 outTxtPath = "out.txt"
 
-task! = \{} ->
+task! = \_args ->
 
     cwdStr = Path.display (try Env.cwd! {})
 

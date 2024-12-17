@@ -8,7 +8,7 @@ import pf.Path
 ##
 ## !! requires --linker=legacy
 ## for example: `roc build examples/temp-dir.roc --linker=legacy`
-main! = \{} ->
+main! = \_args ->
 
     tempDirStr = Path.display (Env.tempDir! {})
 

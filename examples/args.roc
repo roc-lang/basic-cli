@@ -3,13 +3,9 @@ app [main!] {
 }
 
 import pf.Stdout
-import pf.Arg
 
-main! : {} => Result {} _
-main! = \{} ->
-
-    args = Arg.list! {}
-
+main! : List Str => Result {} _
+main! = \args ->
     # get the second argument, the first is the executable's path
     argResult = List.get args 1 |> Result.mapErr (\_ -> ZeroArgsGiven)
 

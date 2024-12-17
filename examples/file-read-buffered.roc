@@ -16,7 +16,7 @@ import pf.File
 #
 # See examples/file-read.roc if you want to read the full contents at once.
 
-main! = \{} ->
+main! = \_args ->
     reader = try File.openReader! "LICENSE"
 
     readSummary = try processLine! reader { linesRead: 0, bytesRead: 0 }
