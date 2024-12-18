@@ -14,10 +14,10 @@ handle_err! : []_ => Result {} _
 handle_err! = \error ->
     when error is
         TcpConnectErr err ->
-            errStr = Tcp.connect_err_to_str err
+            err_str = Tcp.connect_err_to_str err
             Stderr.line!
                 """
-                Failed to connect: $(errStr)
+                Failed to connect: $(err_str)
 
                 If you don't have anything listening on port 8085, run:
                 \$ nc -l 8085
@@ -30,12 +30,12 @@ handle_err! = \error ->
             Stderr.line! "Received invalid UTF-8 data"
 
         TcpReadErr err ->
-            errStr = Tcp.stream_err_to_str err
-            Stderr.line! "Error while reading: $(errStr)"
+            err_str = Tcp.stream_err_to_str err
+            Stderr.line! "Error while reading: $(err_str)"
 
         TcpWriteErr err ->
-            errStr = Tcp.stream_err_to_str err
-            Stderr.line! "Error while writing: $(errStr)"
+            err_str = Tcp.stream_err_to_str err
+            Stderr.line! "Error while writing: $(err_str)"
 
         other -> Stderr.line! "Got other error: $(Inspect.toStr other)"
 

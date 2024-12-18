@@ -5,31 +5,31 @@ module [
 
 EnvFormat := {} implements [
         DecoderFormatting {
-            u8: envU8,
-            u16: envU16,
-            u32: envU32,
-            u64: envU64,
-            u128: envU128,
-            i8: envI8,
-            i16: envI16,
-            i32: envI32,
-            i64: envI64,
-            i128: envI128,
-            f32: envF32,
-            f64: envF64,
-            dec: envDec,
-            bool: envBool,
-            string: envString,
-            list: envList,
-            record: envRecord,
-            tuple: envTuple,
+            u8: env_u8,
+            u16: env_u16,
+            u32: env_u32,
+            u64: env_u64,
+            u128: env_u128,
+            i8: env_i8,
+            i16: env_i16,
+            i32: env_i32,
+            i64: env_i64,
+            i128: env_i128,
+            f32: env_f32,
+            f64: env_f64,
+            dec: env_dec,
+            bool: env_bool,
+            string: env_string,
+            list: env_list,
+            record: env_record,
+            tuple: env_tuple,
         },
     ]
 
 format : {} -> EnvFormat
 format = \{} -> @EnvFormat {}
 
-decodeBytesToNum = \bytes, transformer ->
+decode_bytes_to_num = \bytes, transformer ->
     when Str.fromUtf8 bytes is
         Ok s ->
             when transformer s is
@@ -38,69 +38,71 @@ decodeBytesToNum = \bytes, transformer ->
 
         Err _ -> { result: Err TooShort, rest: bytes }
 
-envU8 = Decode.custom \bytes, @EnvFormat {} -> decodeBytesToNum bytes Str.toU8
-envU16 = Decode.custom \bytes, @EnvFormat {} -> decodeBytesToNum bytes Str.toU16
-envU32 = Decode.custom \bytes, @EnvFormat {} -> decodeBytesToNum bytes Str.toU32
-envU64 = Decode.custom \bytes, @EnvFormat {} -> decodeBytesToNum bytes Str.toU64
-envU128 = Decode.custom \bytes, @EnvFormat {} -> decodeBytesToNum bytes Str.toU128
-envI8 = Decode.custom \bytes, @EnvFormat {} -> decodeBytesToNum bytes Str.toI8
-envI16 = Decode.custom \bytes, @EnvFormat {} -> decodeBytesToNum bytes Str.toI16
-envI32 = Decode.custom \bytes, @EnvFormat {} -> decodeBytesToNum bytes Str.toI32
-envI64 = Decode.custom \bytes, @EnvFormat {} -> decodeBytesToNum bytes Str.toI64
-envI128 = Decode.custom \bytes, @EnvFormat {} -> decodeBytesToNum bytes Str.toI128
-envF32 = Decode.custom \bytes, @EnvFormat {} -> decodeBytesToNum bytes Str.toF32
-envF64 = Decode.custom \bytes, @EnvFormat {} -> decodeBytesToNum bytes Str.toF64
-envDec = Decode.custom \bytes, @EnvFormat {} -> decodeBytesToNum bytes Str.toDec
-envBool = Decode.custom \bytes, @EnvFormat {} ->
+env_u8 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toU8
+env_u16 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toU16
+env_u32 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toU32
+env_u64 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toU64
+env_u128 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toU128
+env_i8 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toI8
+env_i16 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toI16
+env_i32 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toI32
+env_i64 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toI64
+env_i128 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toI128
+env_f32 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toF32
+env_f64 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toF64
+env_dec = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toDec
+
+env_bool = Decode.custom \bytes, @EnvFormat {} ->
     when Str.fromUtf8 bytes is
         Ok "true" -> { result: Ok Bool.true, rest: [] }
         Ok "false" -> { result: Ok Bool.false, rest: [] }
         _ -> { result: Err TooShort, rest: bytes }
-envString = Decode.custom \bytes, @EnvFormat {} ->
+
+env_string = Decode.custom \bytes, @EnvFormat {} ->
     when Str.fromUtf8 bytes is
         Ok s -> { result: Ok s, rest: [] }
         Err _ -> { result: Err TooShort, rest: bytes }
 
-envList = \decodeElem -> Decode.custom \bytes, @EnvFormat {} ->
-        # Per our supported methods of decoding, this is either a list of strings or
-        # a list of numbers; in either case, the list of bytes must be Utf-8
-        # decodable. So just parse it as a list of strings and pass each chunk to
-        # the element decoder. By construction, our element decoders expect to parse
-        # a whole list of bytes anyway.
-        decodeElems = \allBytes, accum ->
-            { toParse, remainder } =
-                when List.splitFirst allBytes (Num.toU8 ',') is
-                    Ok { before, after } ->
-                        { toParse: before, remainder: Some after }
+env_list = \decode_elem -> Decode.custom \bytes, @EnvFormat {} ->
+    # Per our supported methods of decoding, this is either a list of strings or
+    # a list of numbers; in either case, the list of bytes must be Utf-8
+    # decodable. So just parse it as a list of strings and pass each chunk to
+    # the element decoder. By construction, our element decoders expect to parse
+    # a whole list of bytes anyway.
+    decode_elems = \all_bytes, accum ->
+        { to_parse, remainder } =
+            when List.splitFirst all_bytes (Num.toU8 ',') is
+                Ok { before, after } ->
+                    { to_parse: before, remainder: Some after }
 
-                    Err NotFound ->
-                        { toParse: allBytes, remainder: None }
+                Err NotFound ->
+                    { to_parse: all_bytes, remainder: None }
 
-            when Decode.decodeWith toParse decodeElem (@EnvFormat {}) is
-                { result, rest } ->
-                    when result is
-                        Ok val ->
-                            when remainder is
-                                Some restBytes -> decodeElems restBytes (List.append accum val)
-                                None -> Done (List.append accum val)
+        when Decode.decodeWith to_parse decode_elem (@EnvFormat {}) is
+            { result, rest } ->
+                when result is
+                    Ok val ->
+                        when remainder is
+                            Some rest_bytes -> decode_elems rest_bytes (List.append accum val)
+                            None -> Done (List.append accum val)
 
-                        Err e -> Errored e rest
+                    Err e -> Errored e rest
 
-        when decodeElems bytes [] is
-            Errored e rest -> { result: Err e, rest }
-            Done vals ->
-                { result: Ok vals, rest: [] }
-
-# TODO: we must currently annotate the arrows here so that the lambda sets are
-# exercised, and the solver can find an ambient lambda set for the
-# specialization.
-envRecord : _, (_, _ -> [Keep (Decoder _ _), Skip]), (_, _ -> _) -> Decoder _ _
-envRecord = \_initialState, _stepField, _finalizer -> Decode.custom \bytes, @EnvFormat {} ->
-        { result: Err TooShort, rest: bytes }
+    when decode_elems bytes [] is
+        Errored e rest -> { result: Err e, rest }
+        Done vals ->
+            { result: Ok vals, rest: [] }
 
 # TODO: we must currently annotate the arrows here so that the lambda sets are
 # exercised, and the solver can find an ambient lambda set for the
 # specialization.
-envTuple : _, (_, _ -> [Next (Decoder _ _), TooLong]), (_ -> _) -> Decoder _ _
-envTuple = \_initialState, _stepElem, _finalizer -> Decode.custom \bytes, @EnvFormat {} ->
-        { result: Err TooShort, rest: bytes }
+env_record : _, (_, _ -> [Keep (Decoder _ _), Skip]), (_, _ -> _) -> Decoder _ _
+env_record = \_initialState, _stepField, _finalizer -> Decode.custom \bytes, @EnvFormat {} ->
+    { result: Err TooShort, rest: bytes }
+
+# TODO: we must currently annotate the arrows here so that the lambda sets are
+# exercised, and the solver can find an ambient lambda set for the
+# specialization.
+env_tuple : _, (_, _ -> [Next (Decoder _ _), TooLong]), (_ -> _) -> Decoder _ _
+env_tuple = \_initialState, _stepElem, _finalizer -> Decode.custom \bytes, @EnvFormat {} ->
+    { result: Err TooShort, rest: bytes }

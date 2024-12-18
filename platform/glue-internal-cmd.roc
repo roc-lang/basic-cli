@@ -16,7 +16,5 @@ platform "glue-types"
 
 import InternalCmd
 
-mainForHost : {
-    a : InternalCmd.OutputFromHost,
-}
+mainForHost : InternalCmd.OutputFromHost
 mainForHost = main

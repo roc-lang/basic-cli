@@ -347,10 +347,10 @@ pub extern "C" fn rust_main(args: ReadOnlyRocList<ReadOnlyRocStr>) -> i32 {
     init();
 
     extern "C" {
-        #[link_name = "roc__mainForHost_1_exposed"]
+        #[link_name = "roc__main_for_host_1_exposed"]
         pub fn roc_main_for_host_caller(not_used: i32) -> i32;
 
-        #[link_name = "roc__mainForHost_1_exposed_size"]
+        #[link_name = "roc__main_for_host_1_exposed_size"]
         pub fn roc_main__for_host_size() -> usize;
     }
 

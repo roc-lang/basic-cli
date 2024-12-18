@@ -114,7 +114,7 @@ append = \@Url url_str, suffix_unencoded ->
 
             before
             |> Str.reserve bytes
-            |> appendHelp suffix
+            |> append_help suffix
             |> Str.concat "?"
             |> Str.concat after
             |> @Url
@@ -132,18 +132,18 @@ append = \@Url url_str, suffix_unencoded ->
 
                     before
                     |> Str.reserve bytes
-                    |> appendHelp suffix
+                    |> append_help suffix
                     |> Str.concat "#"
                     |> Str.concat after
                     |> @Url
 
                 Err NotFound ->
                     # No query and no fragment, so just append it
-                    @Url (appendHelp url_str suffix)
+                    @Url (append_help url_str suffix)
 
 ## Internal helper
-appendHelp : Str, Str -> Str
-appendHelp = \prefix, suffix ->
+append_help : Str, Str -> Str
+append_help = \prefix, suffix ->
     if Str.endsWith prefix "/" then
         if Str.startsWith suffix "/" then
             # Avoid a double-slash by appending only the part of the suffix after the "/"
@@ -193,10 +193,10 @@ percent_encode : Str -> Str
 percent_encode = \input ->
     # Optimistically assume we won't need any percent encoding, and can have
     # the same capacity as the input string. If we're wrong, it will get doubled.
-    initialOutput = List.withCapacity (Str.countUtf8Bytes input |> Num.intCast)
+    initial_output = List.withCapacity (Str.countUtf8Bytes input |> Num.intCast)
 
     answer =
-        List.walk (Str.toUtf8 input) initialOutput \output, byte ->
+        List.walk (Str.toUtf8 input) initial_output \output, byte ->
             # Spec for percent-encoding: https://www.ietf.org/rfc/rfc3986.txt
             if
                 (byte >= 97 && byte <= 122) # lowercase ASCII
@@ -218,7 +218,7 @@ percent_encode = \input ->
                     _ ->
                         # This needs encoding in a path
                         suffix =
-                            Str.toUtf8 percentEncoded
+                            Str.toUtf8 percent_encoded
                             |> List.sublist { len: 3, start: 3 * Num.intCast byte }
 
                         List.concat output suffix
@@ -247,34 +247,34 @@ percent_encode = \input ->
 ##
 append_param : Url, Str, Str -> Url
 append_param = \@Url url_str, key, value ->
-    { withoutFragment, afterQuery } =
+    { without_fragment, after_query } =
         when Str.splitLast url_str "#" is
             Ok { before, after } ->
                 # The fragment is almost certainly going to be a small string,
                 # so this interpolation should happen on the stack.
-                { withoutFragment: before, afterQuery: "#$(after)" }
+                { without_fragment: before, after_query: "#$(after)" }
 
             Err NotFound ->
-                { withoutFragment: url_str, afterQuery: "" }
+                { without_fragment: url_str, after_query: "" }
 
-    encodedKey = percent_encode key
-    encodedValue = percent_encode value
+    encoded_key = percent_encode key
+    encoded_value = percent_encode value
 
     bytes =
-        Str.countUtf8Bytes withoutFragment
+        Str.countUtf8Bytes without_fragment
         + 1 # for "?" or "&"
-        + Str.countUtf8Bytes encodedKey
+        + Str.countUtf8Bytes encoded_key
         + 1 # for "="
-        + Str.countUtf8Bytes encodedValue
-        + Str.countUtf8Bytes afterQuery
+        + Str.countUtf8Bytes encoded_value
+        + Str.countUtf8Bytes after_query
 
-    withoutFragment
+    without_fragment
     |> Str.reserve bytes
-    |> Str.concat (if has_query (@Url withoutFragment) then "&" else "?")
-    |> Str.concat encodedKey
+    |> Str.concat (if has_query (@Url without_fragment) then "&" else "?")
+    |> Str.concat encoded_key
     |> Str.concat "="
-    |> Str.concat encodedValue
-    |> Str.concat afterQuery
+    |> Str.concat encoded_value
+    |> Str.concat after_query
     |> @Url
 
 ## Replaces the URL's [query](https://en.wikipedia.org/wiki/URL#Syntax)—the part
@@ -292,36 +292,36 @@ append_param = \@Url url_str, key, value ->
 ## |> Url.with_query ""
 ## ```
 with_query : Url, Str -> Url
-with_query = \@Url url_str, queryStr ->
-    { withoutFragment, afterQuery } =
+with_query = \@Url url_str, query_str ->
+    { without_fragment, after_query } =
         when Str.splitLast url_str "#" is
             Ok { before, after } ->
                 # The fragment is almost certainly going to be a small string,
                 # so this interpolation should happen on the stack.
-                { withoutFragment: before, afterQuery: "#$(after)" }
+                { without_fragment: before, after_query: "#$(after)" }
 
             Err NotFound ->
-                { withoutFragment: url_str, afterQuery: "" }
+                { without_fragment: url_str, after_query: "" }
 
-    beforeQuery =
-        when Str.splitLast withoutFragment "?" is
+    before_query =
+        when Str.splitLast without_fragment "?" is
             Ok { before } -> before
-            Err NotFound -> withoutFragment
+            Err NotFound -> without_fragment
 
-    if Str.isEmpty queryStr then
-        @Url (Str.concat beforeQuery afterQuery)
+    if Str.isEmpty query_str then
+        @Url (Str.concat before_query after_query)
     else
         bytes =
-            Str.countUtf8Bytes beforeQuery
+            Str.countUtf8Bytes before_query
             + 1 # for "?"
-            + Str.countUtf8Bytes queryStr
-            + Str.countUtf8Bytes afterQuery
+            + Str.countUtf8Bytes query_str
+            + Str.countUtf8Bytes after_query
 
-        beforeQuery
+        before_query
         |> Str.reserve bytes
         |> Str.concat "?"
-        |> Str.concat queryStr
-        |> Str.concat afterQuery
+        |> Str.concat query_str
+        |> Str.concat after_query
         |> @Url
 
 ## Returns the URL's [query](https://en.wikipedia.org/wiki/URL#Syntax)—the part after
@@ -341,12 +341,12 @@ with_query = \@Url url_str, queryStr ->
 ##
 query : Url -> Str
 query = \@Url url_str ->
-    withoutFragment =
+    without_fragment =
         when Str.splitLast url_str "#" is
             Ok { before } -> before
             Err NotFound -> url_str
 
-    when Str.splitLast withoutFragment "?" is
+    when Str.splitLast without_fragment "?" is
         Ok { after } -> after
         Err NotFound -> ""
 
@@ -406,23 +406,23 @@ fragment = \@Url url_str ->
 ## ```
 ##
 with_fragment : Url, Str -> Url
-with_fragment = \@Url url_str, fragmentStr ->
+with_fragment = \@Url url_str, fragment_str ->
     when Str.splitLast url_str "#" is
         Ok { before } ->
-            if Str.isEmpty fragmentStr then
+            if Str.isEmpty fragment_str then
                 # If the given fragment is empty, remove the URL's fragment
                 @Url before
             else
                 # Replace the URL's old fragment with this one, discarding `after`
-                @Url "$(before)#$(fragmentStr)"
+                @Url "$(before)#$(fragment_str)"
 
         Err NotFound ->
-            if Str.isEmpty fragmentStr then
+            if Str.isEmpty fragment_str then
                 # If the given fragment is empty, leave the URL as having no fragment
                 @Url url_str
             else
                 # The URL didn't have a fragment, so give it this one
-                @Url "$(url_str)#$(fragmentStr)"
+                @Url "$(url_str)#$(fragment_str)"
 
 ## Returns [Bool.true] if the URL has a `#` in it.
 ##
@@ -443,8 +443,8 @@ has_fragment = \@Url url_str ->
 # Adapted from the percent-encoding crate, © The rust-url developers, Apache2-licensed
 #
 # https://github.com/servo/rust-url/blob/e12d76a61add5bc09980599c738099feaacd1d0d/percent_encoding/src/lib.rs#L183
-percentEncoded : Str
-percentEncoded = "%00%01%02%03%04%05%06%07%08%09%0A%0B%0C%0D%0E%0F%10%11%12%13%14%15%16%17%18%19%1A%1B%1C%1D%1E%1F%20%21%22%23%24%25%26%27%28%29%2A%2B%2C%2D%2E%2F%30%31%32%33%34%35%36%37%38%39%3A%3B%3C%3D%3E%3F%40%41%42%43%44%45%46%47%48%49%4A%4B%4C%4D%4E%4F%50%51%52%53%54%55%56%57%58%59%5A%5B%5C%5D%5E%5F%60%61%62%63%64%65%66%67%68%69%6A%6B%6C%6D%6E%6F%70%71%72%73%74%75%76%77%78%79%7A%7B%7C%7D%7E%7F%80%81%82%83%84%85%86%87%88%89%8A%8B%8C%8D%8E%8F%90%91%92%93%94%95%96%97%98%99%9A%9B%9C%9D%9E%9F%A0%A1%A2%A3%A4%A5%A6%A7%A8%A9%AA%AB%AC%AD%AE%AF%B0%B1%B2%B3%B4%B5%B6%B7%B8%B9%BA%BB%BC%BD%BE%BF%C0%C1%C2%C3%C4%C5%C6%C7%C8%C9%CA%CB%CC%CD%CE%CF%D0%D1%D2%D3%D4%D5%D6%D7%D8%D9%DA%DB%DC%DD%DE%DF%E0%E1%E2%E3%E4%E5%E6%E7%E8%E9%EA%EB%EC%ED%EE%EF%F0%F1%F2%F3%F4%F5%F6%F7%F8%F9%FA%FB%FC%FD%FE%FF"
+percent_encoded : Str
+percent_encoded = "%00%01%02%03%04%05%06%07%08%09%0A%0B%0C%0D%0E%0F%10%11%12%13%14%15%16%17%18%19%1A%1B%1C%1D%1E%1F%20%21%22%23%24%25%26%27%28%29%2A%2B%2C%2D%2E%2F%30%31%32%33%34%35%36%37%38%39%3A%3B%3C%3D%3E%3F%40%41%42%43%44%45%46%47%48%49%4A%4B%4C%4D%4E%4F%50%51%52%53%54%55%56%57%58%59%5A%5B%5C%5D%5E%5F%60%61%62%63%64%65%66%67%68%69%6A%6B%6C%6D%6E%6F%70%71%72%73%74%75%76%77%78%79%7A%7B%7C%7D%7E%7F%80%81%82%83%84%85%86%87%88%89%8A%8B%8C%8D%8E%8F%90%91%92%93%94%95%96%97%98%99%9A%9B%9C%9D%9E%9F%A0%A1%A2%A3%A4%A5%A6%A7%A8%A9%AA%AB%AC%AD%AE%AF%B0%B1%B2%B3%B4%B5%B6%B7%B8%B9%BA%BB%BC%BD%BE%BF%C0%C1%C2%C3%C4%C5%C6%C7%C8%C9%CA%CB%CC%CD%CE%CF%D0%D1%D2%D3%D4%D5%D6%D7%D8%D9%DA%DB%DC%DD%DE%DF%E0%E1%E2%E3%E4%E5%E6%E7%E8%E9%EA%EB%EC%ED%EE%EF%F0%F1%F2%F3%F4%F5%F6%F7%F8%F9%FA%FB%FC%FD%FE%FF"
 
 query_params : Url -> Dict Str Str
 query_params = \url ->

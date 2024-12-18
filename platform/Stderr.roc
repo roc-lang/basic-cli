@@ -33,8 +33,8 @@ Err : [
     Other Str,
 ]
 
-handleErr : InternalIOErr.IOErrFromHost -> [StderrErr Err]
-handleErr = \{ tag, msg } ->
+handle_err : InternalIOErr.IOErrFromHost -> [StderrErr Err]
+handle_err = \{ tag, msg } ->
     when tag is
         NotFound -> StderrErr NotFound
         PermissionDenied -> StderrErr PermissionDenied
@@ -52,7 +52,7 @@ handleErr = \{ tag, msg } ->
 line! : Str => Result {} [StderrErr Err]
 line! = \str ->
     Host.stderr_line! str
-    |> Result.mapErr handleErr
+    |> Result.mapErr handle_err
 
 ## Write the given string to [standard error](https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)).
 ##
@@ -63,4 +63,4 @@ line! = \str ->
 write! : Str => Result {} [StderrErr Err]
 write! = \str ->
     Host.stderr_write! str
-    |> Result.mapErr handleErr
+    |> Result.mapErr handle_err

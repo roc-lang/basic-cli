@@ -21,12 +21,12 @@ platform "cli"
     ]
     packages {}
     imports []
-    provides [mainForHost!]
+    provides [main_for_host!]
 
 import Stderr
 
-mainForHost! : I32 => I32
-mainForHost! = \_ ->
+main_for_host! : I32 => I32
+main_for_host! = \_ ->
     when main! {} is
         Ok {} -> 0
         Err (Exit code msg) ->
@@ -37,7 +37,7 @@ mainForHost! = \_ ->
                 code
 
         Err msg ->
-            helpMsg =
+            help_msg =
                 """
                 Program exited with error:
                     $(Inspect.toStr msg)
@@ -45,5 +45,5 @@ mainForHost! = \_ ->
                 Tip: If you do not want to exit on this error, use `Result.mapErr` to handle the error. Docs for `Result.mapErr`: <https://www.roc-lang.org/builtins/Result#mapErr>
                 """
 
-            _ = Stderr.line! helpMsg
+            _ = Stderr.line! help_msg
             1

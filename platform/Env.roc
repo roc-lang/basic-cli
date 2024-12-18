@@ -78,8 +78,8 @@ decode! : Str => Result val [VarNotFound, DecodeErr DecodeError] where val imple
 decode! = \name ->
     when Host.env_var! name is
         Err {} -> Err VarNotFound
-        Ok varStr ->
-            Str.toUtf8 varStr
+        Ok var_str ->
+            Str.toUtf8 var_str
             |> Decode.fromBytes (EnvDecoding.format {})
             |> Result.mapErr (\_ -> DecodeErr TooShort)
 
@@ -138,22 +138,22 @@ OS : [LINUX, MACOS, WINDOWS, OTHER Str]
 platform! : {} => { arch : ARCH, os : OS }
 platform! = \{} ->
 
-    fromRust = Host.current_arch_os! {}
+    from_rust = Host.current_arch_os! {}
 
     arch =
-        when fromRust.arch is
+        when from_rust.arch is
             "x86" -> X86
             "x86_64" -> X64
             "arm" -> ARM
             "aarch64" -> AARCH64
-            _ -> OTHER fromRust.arch
+            _ -> OTHER from_rust.arch
 
     os =
-        when fromRust.os is
+        when from_rust.os is
             "linux" -> LINUX
             "macos" -> MACOS
             "windows" -> WINDOWS
-            _ -> OTHER fromRust.os
+            _ -> OTHER from_rust.os
 
     { arch, os }
 
@@ -169,4 +169,4 @@ platform! = \{} ->
 temp_dir! : {} => Path
 temp_dir! = \{} ->
     Host.temp_dir! {}
-    |> \pathOSStringBytes -> InternalPath.from_os_bytes pathOSStringBytes
+    |> InternalPath.from_os_bytes
