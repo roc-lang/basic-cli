@@ -3,7 +3,7 @@ app [main!] { pf: platform "../platform/main.roc" }
 import pf.Stdin
 import pf.Stdout
 
-main! = \{} ->
+main! = \_args ->
     try Stdout.line! "\nLet's count down from 3 together - all you have to do is press <ENTER>."
     _ = Stdin.line! {}
     tick! 3

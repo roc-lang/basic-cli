@@ -1,5 +1,6 @@
-use roc_std::{ReadOnlyRocList, ReadOnlyRocStr, RocList, RocStr};
 use std::borrow::Borrow;
+
+use roc_std::{ReadOnlyRocList, ReadOnlyRocStr, RocList, RocStr};
 
 fn main() {
     let mut args: RocList<ReadOnlyRocStr> = std::env::args_os()

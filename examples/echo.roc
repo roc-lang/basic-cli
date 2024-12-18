@@ -3,7 +3,7 @@ app [main!] { pf: platform "../platform/main.roc" }
 import pf.Stdin
 import pf.Stdout
 
-main! = \{} ->
+main! = \_args ->
     try Stdout.line! "Shout into this cave and hear the echo!"
 
     tick! {}

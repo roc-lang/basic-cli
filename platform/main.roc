@@ -1,5 +1,5 @@
 platform "cli"
-    requires {} { main! : {} => Result {} [Exit I32 Str]_ }
+    requires {} { main! : List Str => Result {} [Exit I32 Str]_ }
     exposes [
         Path,
         Arg,
@@ -23,11 +23,14 @@ platform "cli"
     imports []
     provides [mainForHost!]
 
+import Arg
 import Stderr
 
 mainForHost! : I32 => I32
 mainForHost! = \_ ->
-    when main! {} is
+    args = Arg.list! {}
+
+    when main! args is
         Ok {} -> 0
         Err (Exit code msg) ->
             if Str.isEmpty msg then
