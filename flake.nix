@@ -39,6 +39,7 @@
           lib.optionals stdenv.isDarwin
           (with pkgs.darwin.apple_sdk.frameworks; [
             Security
+            CoreFoundation
           ]);
 
         sharedInputs = (with pkgs; [
