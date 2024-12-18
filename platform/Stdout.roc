@@ -1,6 +1,11 @@
-module [line!, write!, Err]
+module [
+    Err,
+    line!,
+    write!,
+]
 
 import Host
+import InternalIOErr
 
 ## **NotFound** - An entity was not found, often a file.
 ##
@@ -28,8 +33,8 @@ Err : [
     Other Str,
 ]
 
-handleErr : Host.InternalIOErr -> [StdoutErr Err]
-handleErr = \{ tag, msg } ->
+handle_err : InternalIOErr.IOErrFromHost -> [StdoutErr Err]
+handle_err = \{ tag, msg } ->
     when tag is
         NotFound -> StdoutErr NotFound
         PermissionDenied -> StdoutErr PermissionDenied
@@ -47,8 +52,8 @@ handleErr = \{ tag, msg } ->
 ##
 line! : Str => Result {} [StdoutErr Err]
 line! = \str ->
-    Host.stdoutLine! str
-    |> Result.mapErr handleErr
+    Host.stdout_line! str
+    |> Result.mapErr handle_err
 
 ## Write the given string to [standard output](https://en.wikipedia.org/wiki/Standard_streams#Standard_output_(stdout)).
 ##
@@ -58,5 +63,5 @@ line! = \str ->
 ## > To write to `stdout` with a newline at the end, see [Stdout.line!].
 write! : Str => Result {} [StdoutErr Err]
 write! = \str ->
-    Host.stdoutWrite! str
-    |> Result.mapErr handleErr
+    Host.stdout_write! str
+    |> Result.mapErr handle_err

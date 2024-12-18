@@ -2,132 +2,117 @@ hosted Host
     exposes [
         TcpStream,
         FileReader,
-        InternalIOErr,
         args!,
-        dirList!,
-        dirCreate!,
-        dirCreateAll!,
-        dirDeleteEmpty!,
-        dirDeleteAll!,
-        hardLink!,
-        envDict!,
-        envVar!,
+        dir_list!,
+        dir_create!,
+        dir_create_all!,
+        dir_delete_empty!,
+        dir_delete_all!,
+        hard_link!,
+        env_dict!,
+        env_var!,
         cwd!,
-        setCwd!,
-        exePath!,
-        stdoutLine!,
-        stdoutWrite!,
-        stderrLine!,
-        stderrWrite!,
-        stdinLine!,
-        stdinBytes!,
-        stdinReadToEnd!,
-        ttyModeCanonical!,
-        ttyModeRaw!,
-        sendRequest!,
-        fileReadBytes!,
-        fileDelete!,
-        fileWriteUtf8!,
-        fileWriteBytes!,
-        fileReader!,
-        fileReadLine!,
-        pathType!,
-        posixTime!,
-        tcpConnect!,
-        tcpReadUpTo!,
-        tcpReadExactly!,
-        tcpReadUntil!,
-        tcpWrite!,
-        sleepMillis!,
-        commandStatus!,
-        commandOutput!,
-        currentArchOS!,
-        tempDir!,
-        getLocale!,
-        getLocales!,
+        set_cwd!,
+        exe_path!,
+        stdout_line!,
+        stdout_write!,
+        stderr_line!,
+        stderr_write!,
+        stdin_line!,
+        stdin_bytes!,
+        stdin_read_to_end!,
+        tty_mode_canonical!,
+        tty_mode_raw!,
+        send_request!,
+        file_read_bytes!,
+        file_delete!,
+        file_write_utf8!,
+        file_write_bytes!,
+        file_reader!,
+        file_read_line!,
+        path_type!,
+        posix_time!,
+        tcp_connect!,
+        tcp_read_up_to!,
+        tcp_read_exactly!,
+        tcp_read_until!,
+        tcp_write!,
+        sleep_millis!,
+        command_status!,
+        command_output!,
+        current_arch_os!,
+        temp_dir!,
+        get_locale!,
+        get_locales!,
     ]
-    imports [
-        InternalHttp.{ Request, InternalResponse },
-        InternalCommand,
-        InternalPath,
-    ]
+    imports []
 
-InternalIOErr : {
-    tag : [
-        EndOfFile,
-        NotFound,
-        PermissionDenied,
-        BrokenPipe,
-        AlreadyExists,
-        Interrupted,
-        Unsupported,
-        OutOfMemory,
-        Other,
-    ],
-    msg : Str,
-}
+import InternalHttp
+import InternalCmd
+import InternalPath
+import InternalIOErr
 
 # COMMAND
-commandStatus! : Box InternalCommand.Command => Result {} (List U8)
-commandOutput! : Box InternalCommand.Command => InternalCommand.Output
+command_status! : InternalCmd.Command => Result I32 InternalIOErr.IOErrFromHost
+command_output! : InternalCmd.Command => InternalCmd.OutputFromHost
 
 # FILE
-fileWriteBytes! : List U8, List U8 => Result {} InternalIOErr
-fileWriteUtf8! : List U8, Str => Result {} InternalIOErr
-fileDelete! : List U8 => Result {} InternalIOErr
-fileReadBytes! : List U8 => Result (List U8) InternalIOErr
+file_write_bytes! : List U8, List U8 => Result {} InternalIOErr.IOErrFromHost
+file_write_utf8! : List U8, Str => Result {} InternalIOErr.IOErrFromHost
+file_delete! : List U8 => Result {} InternalIOErr.IOErrFromHost
+file_read_bytes! : List U8 => Result (List U8) InternalIOErr.IOErrFromHost
 
 FileReader := Box {}
-fileReader! : List U8, U64 => Result FileReader InternalIOErr
-fileReadLine! : FileReader => Result (List U8) InternalIOErr
+file_reader! : List U8, U64 => Result FileReader InternalIOErr.IOErrFromHost
+file_read_line! : FileReader => Result (List U8) InternalIOErr.IOErrFromHost
 
-dirList! : List U8 => Result (List (List U8)) InternalIOErr
-dirCreate! : List U8 => Result {} InternalIOErr
-dirCreateAll! : List U8 => Result {} InternalIOErr
-dirDeleteEmpty! : List U8 => Result {} InternalIOErr
-dirDeleteAll! : List U8 => Result {} InternalIOErr
+dir_list! : List U8 => Result (List (List U8)) InternalIOErr.IOErrFromHost
+dir_create! : List U8 => Result {} InternalIOErr.IOErrFromHost
+dir_create_all! : List U8 => Result {} InternalIOErr.IOErrFromHost
+dir_delete_empty! : List U8 => Result {} InternalIOErr.IOErrFromHost
+dir_delete_all! : List U8 => Result {} InternalIOErr.IOErrFromHost
 
-hardLink! : List U8 => Result {} InternalIOErr
-pathType! : List U8 => Result InternalPath.InternalPathType InternalIOErr
+hard_link! : List U8 => Result {} InternalIOErr.IOErrFromHost
+path_type! : List U8 => Result InternalPath.InternalPathType InternalIOErr.IOErrFromHost
 cwd! : {} => Result (List U8) {}
-tempDir! : {} => List U8
+temp_dir! : {} => List U8
 
 # STDIO
-stdoutLine! : Str => Result {} InternalIOErr
-stdoutWrite! : Str => Result {} InternalIOErr
-stderrLine! : Str => Result {} InternalIOErr
-stderrWrite! : Str => Result {} InternalIOErr
-stdinLine! : {} => Result Str InternalIOErr
-stdinBytes! : {} => Result (List U8) InternalIOErr
-stdinReadToEnd! : {} => Result (List U8) InternalIOErr
+stdout_line! : Str => Result {} InternalIOErr.IOErrFromHost
+stdout_write! : Str => Result {} InternalIOErr.IOErrFromHost
+stderr_line! : Str => Result {} InternalIOErr.IOErrFromHost
+stderr_write! : Str => Result {} InternalIOErr.IOErrFromHost
+stdin_line! : {} => Result Str InternalIOErr.IOErrFromHost
+stdin_bytes! : {} => Result (List U8) InternalIOErr.IOErrFromHost
+stdin_read_to_end! : {} => Result (List U8) InternalIOErr.IOErrFromHost
 
 # TCP
-sendRequest! : Box Request => InternalResponse
+send_request! : InternalHttp.RequestToAndFromHost => InternalHttp.ResponseToAndFromHost
 
 TcpStream := Box {}
-tcpConnect! : Str, U16 => Result TcpStream Str
-tcpReadUpTo! : TcpStream, U64 => Result (List U8) Str
-tcpReadExactly! : TcpStream, U64 => Result (List U8) Str
-tcpReadUntil! : TcpStream, U8 => Result (List U8) Str
-tcpWrite! : TcpStream, List U8 => Result {} Str
+tcp_connect! : Str, U16 => Result TcpStream Str
+tcp_read_up_to! : TcpStream, U64 => Result (List U8) Str
+tcp_read_exactly! : TcpStream, U64 => Result (List U8) Str
+tcp_read_until! : TcpStream, U8 => Result (List U8) Str
+tcp_write! : TcpStream, List U8 => Result {} Str
 
 # OTHERS
-currentArchOS! : {} => { arch : Str, os : Str }
+current_arch_os! : {} => { arch : Str, os : Str }
 
-getLocale! : {} => Result Str {}
-getLocales! : {} => List Str
+get_locale! : {} => Result Str {}
+get_locales! : {} => List Str
 
-posixTime! : {} => U128 # TODO why is this a U128 but then getting converted to a I128 in Utc.roc?
+posix_time! : {} => U128 # TODO why is this a U128 but then getting converted to a I128 in Utc.roc?
 
-sleepMillis! : U64 => {}
+sleep_millis! : U64 => {}
 
-ttyModeCanonical! : {} => {}
-ttyModeRaw! : {} => {}
+tty_mode_canonical! : {} => {}
+tty_mode_raw! : {} => {}
 
-envDict! : {} => List (Str, Str)
-envVar! : Str => Result Str {}
-exePath! : {} => Result (List U8) {}
-setCwd! : List U8 => Result {} {}
+env_dict! : {} => List (Str, Str)
+env_var! : Str => Result Str {}
+exe_path! : {} => Result (List U8) {}
+set_cwd! : List U8 => Result {} {}
 
 # If we encounter a Unicode error in any of the args, it will be replaced with
 # the Unicode replacement char where necessary.

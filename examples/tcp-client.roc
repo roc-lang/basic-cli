@@ -8,13 +8,13 @@ import pf.Stderr
 main! = \_args ->
     when run! {} is
         Ok {} -> Ok {}
-        Err err -> handleErr! err
+        Err err -> handle_err! err
 
-handleErr! : []_ => Result {} _
-handleErr! = \error ->
+handle_err! : []_ => Result {} _
+handle_err! = \error ->
     when error is
         TcpConnectErr err ->
-            errStr = Tcp.connectErrToStr err
+            errStr = Tcp.connect_err_to_str err
             Stderr.line!
                 """
                 Failed to connect: $(errStr)
@@ -30,11 +30,11 @@ handleErr! = \error ->
             Stderr.line! "Received invalid UTF-8 data"
 
         TcpReadErr err ->
-            errStr = Tcp.streamErrToStr err
+            errStr = Tcp.stream_err_to_str err
             Stderr.line! "Error while reading: $(errStr)"
 
         TcpWriteErr err ->
-            errStr = Tcp.streamErrToStr err
+            errStr = Tcp.stream_err_to_str err
             Stderr.line! "Error while writing: $(errStr)"
 
         other -> Stderr.line! "Got other error: $(Inspect.toStr other)"
@@ -53,13 +53,13 @@ tick! : Tcp.Stream => Result {} _
 tick! = \stream ->
     try Stdout.write! "> "
 
-    outMsg = try Stdin.line! {}
+    out_msg = try Stdin.line! {}
 
-    try Tcp.writeUtf8! stream "$(outMsg)\n"
+    try Tcp.write_utf8! stream "$(out_msg)\n"
 
-    inMsg = try Tcp.readLine! stream
+    in_msg = try Tcp.read_line! stream
 
-    Stdout.line! "< $(inMsg)"
+    Stdout.line! "< $(in_msg)"
 
 loop! : state, (state => Result [Step state, Done done] err) => Result done err
 loop! = \state, fn! ->

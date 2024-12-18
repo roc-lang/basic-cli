@@ -6,7 +6,7 @@ import pf.File
 # Buffered File Reading
 #
 # Instead of reading an entire file and storing all of it in memory,
-# like with File.readUtf8, you may want to read it in parts.
+# like with File.read_utf8, you may want to read it in parts.
 # A part of the file is stored in a buffer.
 # Typically you process a part and then you ask for the next one.
 #
@@ -16,26 +16,30 @@ import pf.File
 #
 # See examples/file-read.roc if you want to read the full contents at once.
 
+
 main! = \_args ->
-    reader = try File.openReader! "LICENSE"
+    reader = try File.open_reader! "LICENSE"
 
-    readSummary = try processLine! reader { linesRead: 0, bytesRead: 0 }
+    read_summary = try process_line! reader { lines_read: 0, bytes_read: 0 }
 
-    Stdout.line! "Done reading file: $(Inspect.toStr readSummary)"
+    Stdout.line! "Done reading file: $(Inspect.toStr read_summary)"
 
-ReadSummary : { linesRead : U64, bytesRead : U64 }
+ReadSummary : {
+    lines_read : U64,
+    bytes_read : U64,
+}
 
 ## Count the number of lines and the number of bytes read.
-processLine! : File.Reader, ReadSummary => Result ReadSummary _
-processLine! = \reader, { linesRead, bytesRead } ->
-    when File.readLine! reader is
+process_line! : File.Reader, ReadSummary => Result ReadSummary _
+process_line! = \reader, { lines_read, bytes_read } ->
+    when File.read_line! reader is
         Ok bytes if List.len bytes == 0 ->
-            Ok { linesRead, bytesRead }
+            Ok { lines_read, bytes_read }
 
         Ok bytes ->
-            processLine! reader {
-                linesRead: linesRead + 1,
-                bytesRead: bytesRead + (List.len bytes |> Num.intCast),
+            process_line! reader {
+                lines_read: lines_read + 1,
+                bytes_read: bytes_read + (List.len bytes |> Num.intCast),
             }
 
         Err err ->
