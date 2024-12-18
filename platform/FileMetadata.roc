@@ -1,4 +1,10 @@
-module [FileMetadata, bytes, type, isReadonly, mode]
+module [
+    FileMetadata,
+    bytes,
+    type,
+    is_readonly,
+    mode,
+]
 
 # Design note: this is an opaque type rather than a type alias so that
 # we can add new operating system info if new OS releases introduce them,
@@ -7,7 +13,7 @@ module [FileMetadata, bytes, type, isReadonly, mode]
 FileMetadata := {
     bytes : U64,
     type : [File, Dir, Symlink],
-    isReadonly : Bool,
+    is_readonly : Bool,
     mode : [Unix U32, NonUnix],
 }
     implements [Inspect]
@@ -17,8 +23,8 @@ bytes : FileMetadata -> U64
 bytes = \@FileMetadata info -> info.bytes
 
 ## Returns [Bool.true] if the associated file is read-only.
-isReadonly : FileMetadata -> Bool
-isReadonly = \@FileMetadata info -> info.isReadonly
+is_readonly : FileMetadata -> Bool
+is_readonly = \@FileMetadata info -> info.is_readonly
 
 ## Returns the type of the associated file.
 type : FileMetadata -> [File, Dir, Symlink]

@@ -10,7 +10,7 @@ import pf.Path
 ## for example: `roc build examples/temp-dir.roc --linker=legacy`
 main! = \{} ->
 
-    tempDirStr = Path.display (Env.tempDir! {})
+    temp_dir_str = Path.display (Env.temp_dir! {})
 
-    Stdout.line! "The temp dir path is $(tempDirStr)"
+    Stdout.line! "The temp dir path is $(temp_dir_str)"
     |> Result.mapErr \err -> Exit 1 "Failed to print temp dir:\n\t$(Inspect.toStr err)"

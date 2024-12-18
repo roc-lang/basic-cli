@@ -1,9 +1,8 @@
 module [
     IOErr,
-    handleErr,
+    IOErrFromHost,
+    handle_err,
 ]
-
-import Host
 
 ## **NotFound** - An entity was not found, often a file.
 ##
@@ -31,8 +30,23 @@ IOErr : [
     Other Str,
 ]
 
-handleErr : Host.InternalIOErr -> IOErr
-handleErr = \{ tag, msg } ->
+IOErrFromHost : {
+    tag : [
+        EndOfFile,
+        NotFound,
+        PermissionDenied,
+        BrokenPipe,
+        AlreadyExists,
+        Interrupted,
+        Unsupported,
+        OutOfMemory,
+        Other,
+    ],
+    msg : Str,
+}
+
+handle_err : IOErrFromHost -> IOErr
+handle_err = \{ tag, msg } ->
     when tag is
         NotFound -> NotFound
         PermissionDenied -> PermissionDenied

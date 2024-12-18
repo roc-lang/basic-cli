@@ -6,6 +6,7 @@ module [
 ]
 
 import Host
+import InternalIOErr
 
 ## **NotFound** - An entity was not found, often a file.
 ##
@@ -33,7 +34,7 @@ Err : [
     Other Str,
 ]
 
-handleErr : Host.InternalIOErr -> [EndOfFile, StdinErr Err]
+handleErr : InternalIOErr.IOErrFromHost -> [EndOfFile, StdinErr Err]
 handleErr = \{ tag, msg } ->
     when tag is
         NotFound -> StdinErr NotFound
@@ -54,24 +55,24 @@ handleErr = \{ tag, msg } ->
 ## the user knows it's necessary to enter something before the program will continue.
 line! : {} => Result Str [EndOfFile, StdinErr Err]
 line! = \{} ->
-    Host.stdinLine! {}
+    Host.stdin_line! {}
     |> Result.mapErr handleErr
 
 ## Read bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
 ## ‼️ This function can read no more than 16,384 bytes at a time. Use [readToEnd!] if you need more.
 ##
-## > This is typically used in combintation with [Tty.enableRawMode!],
+## > This is typically used in combintation with [Tty.enable_raw_mode!],
 ## which disables defaults terminal bevahiour and allows reading input
 ## without buffering until Enter key is pressed.
 bytes! : {} => Result (List U8) [EndOfFile, StdinErr Err]
 bytes! = \{} ->
-    Host.stdinBytes! {}
+    Host.stdin_bytes! {}
     |> Result.mapErr handleErr
 
 ## Read all bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)) until EOF in this source.
 readToEnd! : {} => Result (List U8) [StdinErr Err]
 readToEnd! = \{} ->
-    Host.stdinReadToEnd! {}
+    Host.stdin_read_to_end! {}
     |> Result.mapErr \{ tag, msg } ->
         when tag is
             NotFound -> StdinErr NotFound

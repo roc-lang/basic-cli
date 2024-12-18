@@ -1,4 +1,7 @@
-module [EnvFormat, format]
+module [
+    EnvFormat,
+    format,
+]
 
 EnvFormat := {} implements [
         DecoderFormatting {

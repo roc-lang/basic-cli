@@ -18,8 +18,8 @@ main! = \{} ->
             Err (Exit 1 "unable to read file: $(msg)") # non-zero exit code to indicate failure
 
 run! = \{} ->
-    fileName = "LICENSE"
-    contents = try File.readUtf8! fileName
+    file_name = "LICENSE"
+    contents = try File.read_utf8! file_name
     lines = Str.splitOn contents "\n"
 
-    Stdout.line! (Str.concat "First line of $(fileName): " (List.first lines |> Result.withDefault "err"))
+    Stdout.line! (Str.concat "First line of $(file_name): " (List.first lines |> Result.withDefault "err"))

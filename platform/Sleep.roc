@@ -1,4 +1,6 @@
-module [millis!]
+module [
+    millis!,
+]
 
 import Host
 
@@ -7,4 +9,4 @@ import Host
 ##
 millis! : U64 => {}
 millis! = \n ->
-    Host.sleepMillis! n
+    Host.sleep_millis! n

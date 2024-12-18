@@ -13,20 +13,20 @@ name = "roc_host"
 path = "src/lib.rs"
 
 [dependencies]
+crossterm.workspace = true
+memmap2.workspace = true
+memchr.workspace = true
+sys-locale.workspace = true
+libc.workspace = true
+backtrace.workspace = true
 roc_std.workspace = true
 roc_std_heap.workspace = true
 roc_command.workspace = true
 roc_file.workspace = true
 roc_io_error.workspace = true
-roc_tcp.workspace = true
+roc_http.workspace = true
 roc_stdio.workspace = true
 roc_env.workspace = true
-libc = "=0.2.155"
-backtrace = "=0.3.69"
 hyper.workspace = true
 hyper-rustls.workspace = true
 tokio.workspace = true
-crossterm = "=0.27.0"
-memmap2 = "=0.9.4"
-memchr = "=2.7.4"
-sys-locale = "0.3.2"

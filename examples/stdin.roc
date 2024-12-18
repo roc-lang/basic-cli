@@ -7,27 +7,27 @@ import pf.Stdin
 main! = \{} ->
     try Stdout.line! "Enter a series of number characters (0-9):"
 
-    numberBytes = try takeNumberBytes! {}
+    number_bytes = try take_number_bytes! {}
 
-    if List.isEmpty numberBytes then
+    if List.isEmpty number_bytes then
         Stderr.line! "Expected a series of number characters (0-9)"
     else
-        when Str.fromUtf8 numberBytes is
+        when Str.fromUtf8 number_bytes is
             Ok nStr ->
                 Stdout.line! "Got number $(nStr)"
 
             Err _ ->
                 Stderr.line! "Error, bad utf8"
 
-takeNumberBytes! : {} => Result (List U8) _
-takeNumberBytes! = \{} ->
-    bytesRead = try Stdin.bytes! {}
+take_number_bytes! : {} => Result (List U8) _
+take_number_bytes! = \{} ->
+    bytes_read = try Stdin.bytes! {}
 
-    numberBytes =
-        List.walk bytesRead [] \bytes, b ->
+    number_bytes =
+        List.walk bytes_read [] \bytes, b ->
             if b >= '0' && b <= '9' then
                 List.append bytes b
             else
                 bytes
 
-    Ok numberBytes
+    Ok number_bytes

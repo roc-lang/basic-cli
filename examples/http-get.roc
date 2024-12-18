@@ -7,15 +7,14 @@ import pf.Stdout
 
 main! = \{} ->
 
-    response = try Http.send! {
+    response = Http.send! {
         method: Get,
         headers: [],
-        url: "http://www.example.com",
-        mimeType: "",
+        uri: "http://www.example.com",
         body: [],
-        timeout: TimeoutMilliseconds 5000,
+        timeout_ms: TimeoutMilliseconds 5000,
     }
 
-    body = try Http.handleStringResponse response
+    body = (Str.fromUtf8 response.body)?
 
     Stdout.line! "Response body:\n\t$(body)."

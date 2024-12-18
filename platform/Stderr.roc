@@ -1,6 +1,11 @@
-module [line!, write!, Err]
+module [
+    Err,
+    line!,
+    write!,
+]
 
 import Host
+import InternalIOErr
 
 ## **NotFound** - An entity was not found, often a file.
 ##
@@ -28,7 +33,7 @@ Err : [
     Other Str,
 ]
 
-handleErr : Host.InternalIOErr -> [StderrErr Err]
+handleErr : InternalIOErr.IOErrFromHost -> [StderrErr Err]
 handleErr = \{ tag, msg } ->
     when tag is
         NotFound -> StderrErr NotFound
@@ -46,7 +51,7 @@ handleErr = \{ tag, msg } ->
 ## > To write to `stderr` without the newline, see [Stderr.write!].
 line! : Str => Result {} [StderrErr Err]
 line! = \str ->
-    Host.stderrLine! str
+    Host.stderr_line! str
     |> Result.mapErr handleErr
 
 ## Write the given string to [standard error](https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)).
@@ -57,5 +62,5 @@ line! = \str ->
 ## > To write to `stderr` with a newline at the end, see [Stderr.line!].
 write! : Str => Result {} [StderrErr Err]
 write! = \str ->
-    Host.stderrWrite! str
+    Host.stderr_write! str
     |> Result.mapErr handleErr

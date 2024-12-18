@@ -3,13 +3,13 @@ app [main!] { pf: platform "../platform/main.roc" }
 import pf.Stdout
 
 main! = \{} ->
-    when checkFile! "good" is
+    when check_file! "good" is
         Ok Good -> Stdout.line! "GOOD"
         Ok Bad -> Stdout.line! "BAD"
         Err IOError -> Stdout.line! "IOError"
 
-checkFile! : Str => Result [Good, Bad] [IOError]
-checkFile! = \str ->
+check_file! : Str => Result [Good, Bad] [IOError]
+check_file! = \str ->
     if str == "good" then
         Ok Good
     else if str == "bad" then
