@@ -548,16 +548,19 @@ pub extern "C" fn roc_fx_send_request(
 }
 
 async fn async_send_request(request: hyper::Request<String>) -> roc_http::ResponseToAndFromHost {
-    use hyper::Client;
+    use http_body_util::BodyExt;
     use hyper_rustls::HttpsConnectorBuilder;
+    use hyper_util::client::legacy::Client;
+    use hyper_util::rt::TokioExecutor;
 
     let https = HttpsConnectorBuilder::new()
         .with_native_roots()
+        .unwrap()
         .https_or_http()
         .enable_http1()
         .build();
 
-    let client: Client<_, String> = Client::builder().build(https);
+    let client: Client<_, String> = Client::builder(TokioExecutor::new()).build(https);
     let res = client.request(request).await;
 
     match res {
@@ -570,8 +573,8 @@ async fn async_send_request(request: hyper::Request<String>) -> roc_http::Respon
 
             let status = status.as_u16();
 
-            let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
-            let body: RocList<u8> = RocList::from_iter(bytes);
+            let bytes = response.into_body().collect().await.unwrap().to_bytes();
+            let body: RocList<u8> = RocList::from_slice(&bytes);
 
             roc_http::ResponseToAndFromHost {
                 body,
@@ -579,27 +582,11 @@ async fn async_send_request(request: hyper::Request<String>) -> roc_http::Respon
                 headers,
             }
         }
-        Err(err) => {
-            if err.is_timeout() {
-                roc_http::ResponseToAndFromHost {
-                    status: 408,
-                    headers: RocList::empty(),
-                    body: "Request Timeout".as_bytes().into(),
-                }
-            } else if err.is_connect() || err.is_closed() {
-                roc_http::ResponseToAndFromHost {
-                    status: 500,
-                    headers: RocList::empty(),
-                    body: "Network Error".as_bytes().into(),
-                }
-            } else {
-                roc_http::ResponseToAndFromHost {
-                    status: 500,
-                    headers: RocList::empty(),
-                    body: err.to_string().as_bytes().into(),
-                }
-            }
-        }
+        Err(err) => roc_http::ResponseToAndFromHost {
+            status: 500,
+            headers: RocList::empty(),
+            body: err.to_string().as_bytes().into(),
+        },
     }
 }
 

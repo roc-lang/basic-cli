@@ -1,4 +1,5 @@
 //! This crate provides common functionality for Roc to interface with `std::net::tcp`
+use bytes::Buf;
 use roc_std::{RocBox, RocList, RocRefcounted, RocResult, RocStr};
 use roc_std_heap::ThreadSafeRefcountedResourceHeap;
 use std::env;
@@ -187,7 +188,25 @@ impl From<hyper::http::Error> for ResponseToAndFromHost {
     }
 }
 
-impl From<ResponseToAndFromHost> for hyper::Response<hyper::Body> {
+struct RocListBuf(RocList<u8>);
+impl Buf for RocListBuf {
+    fn remaining(&self) -> usize {
+        self.0.len()
+    }
+
+    fn chunk(&self) -> &[u8] {
+        self.0.as_slice()
+    }
+
+    fn advance(&mut self, cnt: usize) {
+        match self.0.try_slice_range(cnt..self.0.len()) {
+            Some(remaining) => self.0 = remaining,
+            None => self.0 = RocList::empty(),
+        }
+    }
+}
+
+impl From<ResponseToAndFromHost> for hyper::Response<RocListBuf> {
     fn from(roc_response: ResponseToAndFromHost) -> Self {
         let mut builder = hyper::Response::builder();
 
@@ -201,9 +220,7 @@ impl From<ResponseToAndFromHost> for hyper::Response<hyper::Body> {
             builder = builder.header(header.name.as_str(), header.value.as_bytes());
         }
 
-        builder
-            .body(Vec::from(roc_response.body.as_slice()).into()) // TODO try not to use Vec here
-            .unwrap() // TODO don't unwrap this
+        builder.body(RocListBuf(roc_response.body)).unwrap() // TODO don't unwrap this
     }
 }
 
