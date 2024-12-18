@@ -48,6 +48,12 @@ jobs:
 
       - run: expect -v
 
+      - name: Update GCC
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc build-essential
+          gcc --version
+
       - name: Run all tests
         run: ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
 
