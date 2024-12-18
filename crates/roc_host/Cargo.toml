@@ -29,4 +29,6 @@ roc_stdio.workspace = true
 roc_env.workspace = true
 hyper.workspace = true
 hyper-rustls.workspace = true
+hyper-util.workspace = true
+http-body-util.workspace = true
 tokio.workspace = true
