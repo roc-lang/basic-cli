@@ -51,7 +51,8 @@ jobs:
       - name: Update GCC
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc build-essential
+          sudo apt remove gcc-9
+          sudo apt install gcc-10
           gcc --version
 
       - name: Run all tests
