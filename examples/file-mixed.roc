@@ -7,7 +7,7 @@ import pf.Path
 import pf.Env
 import pf.Dir
 
-outTxtPath = "out.txt"
+out_txt_path = "out.txt"
 
 task! = \{} ->
 
@@ -23,9 +23,9 @@ task! = \{} ->
 
     try Stdout.line! "Writing a string to out.txt"
 
-    try File.write_utf8! "a string!" outTxtPath
+    try File.write_utf8! "a string!" out_txt_path
 
-    contents = try File.read_utf8! outTxtPath
+    contents = try File.read_utf8! out_txt_path
 
     Stdout.line! "I read the file back. Its contents: \"$(contents)\""
 

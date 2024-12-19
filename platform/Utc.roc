@@ -45,15 +45,15 @@ from_nanos_since_epoch = @Utc
 
 ## Calculate milliseconds between two Utc timestamps
 delta_as_millis : Utc, Utc -> U128
-delta_as_millis = \utcA, utcB ->
-    (delta_as_nanos utcA utcB) // nanos_per_milli
+delta_as_millis = \utc_a, utc_b ->
+    (delta_as_nanos utc_a utc_b) // nanos_per_milli
 
 ## Calculate nanoseconds between two Utc timestamps
 delta_as_nanos : Utc, Utc -> U128
-delta_as_nanos = \@Utc nanosA, @Utc nanosB ->
+delta_as_nanos = \@Utc nanos_a, @Utc nanos_b ->
     # bitwiseXor for best performance
-    nanos_a_shifted = Num.bitwiseXor (Num.toU128 nanosA) (Num.shiftLeftBy 1 127)
-    nanos_b_shifted = Num.bitwiseXor (Num.toU128 nanosB) (Num.shiftLeftBy 1 127)
+    nanos_a_shifted = Num.bitwiseXor (Num.toU128 nanos_a) (Num.shiftLeftBy 1 127)
+    nanos_b_shifted = Num.bitwiseXor (Num.toU128 nanos_b) (Num.shiftLeftBy 1 127)
 
     Num.absDiff nanos_a_shifted nanos_b_shifted
 

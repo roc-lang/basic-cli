@@ -222,11 +222,11 @@ Reader := { reader : Host.FileReader, path : Path }
 ##
 ## Use [read_utf8!] if you want to get the entire file contents at once.
 open_reader! : Str => Result Reader [GetFileReadErr Path Err]
-open_reader! = \pathStr ->
-    path = Path.from_str pathStr
+open_reader! = \path_str ->
+    path = Path.from_str path_str
 
     # 0 means with default capacity
-    Host.file_reader! (Str.toUtf8 pathStr) 0
+    Host.file_reader! (Str.toUtf8 path_str) 0
     |> Result.mapErr \err -> GetFileReadErr path (InternalIOErr.handle_err err)
     |> Result.map \reader -> @Reader { reader, path }
 
@@ -238,10 +238,10 @@ open_reader! = \pathStr ->
 ##
 ## Use [read_utf8!] if you want to get the entire file contents at once.
 open_reader_with_capacity! : Str, U64 => Result Reader [GetFileReadErr Path Err]
-open_reader_with_capacity! = \pathStr, capacity ->
-    path = Path.from_str pathStr
+open_reader_with_capacity! = \path_str, capacity ->
+    path = Path.from_str path_str
 
-    Host.file_reader! (Str.toUtf8 pathStr) capacity
+    Host.file_reader! (Str.toUtf8 path_str) capacity
     |> Result.mapErr \err -> GetFileReadErr path (InternalIOErr.handle_err err)
     |> Result.map \reader -> @Reader { reader, path }
 

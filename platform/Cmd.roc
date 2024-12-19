@@ -79,12 +79,9 @@ env = \@Cmd cmd, key, value ->
 ## ```
 ##
 envs : Cmd, List (Str, Str) -> Cmd
-envs = \@Cmd cmd, keyValues ->
-    values = keyValues |> List.joinMap \(key, value) -> [key, value]
-    @Cmd
-        { cmd &
-            envs: List.concat cmd.envs values,
-        }
+envs = \@Cmd cmd, key_values ->
+    values = key_values |> List.joinMap \(key, value) -> [key, value]
+    @Cmd { cmd & envs: List.concat cmd.envs values }
 
 ## Clear all environment variables, and prevent inheriting from parent, only
 ## the environment variables provided to command are available to the child.

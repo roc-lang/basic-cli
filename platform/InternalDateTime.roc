@@ -8,49 +8,49 @@ DateTime : { year : I128, month : I128, day : I128, hours : I128, minutes : I128
 
 to_iso_8601 : DateTime -> Str
 to_iso_8601 = \{ year, month, day, hours, minutes, seconds } ->
-    yearStr = yearWithPaddedZeros year
-    monthStr = monthWithPaddedZeros month
-    dayStr = dayWithPaddedZeros day
-    hourStr = hoursWithPaddedZeros hours
-    minuteStr = minutesWithPaddedZeros minutes
-    secondsStr = secondsWithPaddedZeros seconds
+    year_str = year_with_padded_zeros year
+    month_str = month_with_padded_zeros month
+    day_str = day_with_padded_zeros day
+    hour_str = hours_with_padded_zeros hours
+    minute_str = minutes_with_padded_zeros minutes
+    seconds_str = seconds_with_padded_zeros seconds
 
-    "$(yearStr)-$(monthStr)-$(dayStr)T$(hourStr):$(minuteStr):$(secondsStr)Z"
+    "$(year_str)-$(month_str)-$(day_str)T$(hour_str):$(minute_str):$(seconds_str)Z"
 
-yearWithPaddedZeros : I128 -> Str
-yearWithPaddedZeros = \year ->
-    yearStr = Num.toStr year
+year_with_padded_zeros : I128 -> Str
+year_with_padded_zeros = \year ->
+    year_str = Num.toStr year
     if year < 10 then
-        "000$(yearStr)"
+        "000$(year_str)"
     else if year < 100 then
-        "00$(yearStr)"
+        "00$(year_str)"
     else if year < 1000 then
-        "0$(yearStr)"
+        "0$(year_str)"
     else
-        yearStr
+        year_str
 
-monthWithPaddedZeros : I128 -> Str
-monthWithPaddedZeros = \month ->
-    monthStr = Num.toStr month
+month_with_padded_zeros : I128 -> Str
+month_with_padded_zeros = \month ->
+    month_str = Num.toStr month
     if month < 10 then
-        "0$(monthStr)"
+        "0$(month_str)"
     else
-        monthStr
+        month_str
 
-dayWithPaddedZeros : I128 -> Str
-dayWithPaddedZeros = monthWithPaddedZeros
+day_with_padded_zeros : I128 -> Str
+day_with_padded_zeros = month_with_padded_zeros
 
-hoursWithPaddedZeros : I128 -> Str
-hoursWithPaddedZeros = monthWithPaddedZeros
+hours_with_padded_zeros : I128 -> Str
+hours_with_padded_zeros = month_with_padded_zeros
 
-minutesWithPaddedZeros : I128 -> Str
-minutesWithPaddedZeros = monthWithPaddedZeros
+minutes_with_padded_zeros : I128 -> Str
+minutes_with_padded_zeros = month_with_padded_zeros
 
-secondsWithPaddedZeros : I128 -> Str
-secondsWithPaddedZeros = monthWithPaddedZeros
+seconds_with_padded_zeros : I128 -> Str
+seconds_with_padded_zeros = month_with_padded_zeros
 
-isLeapYear : I128 -> Bool
-isLeapYear = \year ->
+is_leap_year : I128 -> Bool
+is_leap_year = \year ->
     (year % 4 == 0)
     && # divided evenly by 4 unless...
     (
@@ -59,37 +59,37 @@ isLeapYear = \year ->
         (year % 400 == 0) # expecpt when also divisible by 400
     )
 
-expect isLeapYear 2000
-expect isLeapYear 2012
-expect !(isLeapYear 1900)
-expect !(isLeapYear 2015)
-expect List.map [2023, 1988, 1992, 1996] isLeapYear == [Bool.false, Bool.true, Bool.true, Bool.true]
-expect List.map [1700, 1800, 1900, 2100, 2200, 2300, 2500, 2600] isLeapYear == [Bool.false, Bool.false, Bool.false, Bool.false, Bool.false, Bool.false, Bool.false, Bool.false]
+expect is_leap_year 2000
+expect is_leap_year 2012
+expect !(is_leap_year 1900)
+expect !(is_leap_year 2015)
+expect List.map [2023, 1988, 1992, 1996] is_leap_year == [Bool.false, Bool.true, Bool.true, Bool.true]
+expect List.map [1700, 1800, 1900, 2100, 2200, 2300, 2500, 2600] is_leap_year == [Bool.false, Bool.false, Bool.false, Bool.false, Bool.false, Bool.false, Bool.false, Bool.false]
 
-daysInMonth : I128, I128 -> I128
-daysInMonth = \year, month ->
+days_in_month : I128, I128 -> I128
+days_in_month = \year, month ->
     if List.contains [1, 3, 5, 7, 8, 10, 12] month then
         31
     else if List.contains [4, 6, 9, 11] month then
         30
     else if month == 2 then
-        (if isLeapYear year then 29 else 28)
+        (if is_leap_year year then 29 else 28)
     else
         0
 
-expect daysInMonth 2023 1 == 31 # January
-expect daysInMonth 2023 2 == 28 # February
-expect daysInMonth 1996 2 == 29 # February in a leap year
-expect daysInMonth 2023 3 == 31 # March
-expect daysInMonth 2023 4 == 30 # April
-expect daysInMonth 2023 5 == 31 # May
-expect daysInMonth 2023 6 == 30 # June
-expect daysInMonth 2023 7 == 31 # July
-expect daysInMonth 2023 8 == 31 # August
-expect daysInMonth 2023 9 == 30 # September
-expect daysInMonth 2023 10 == 31 # October
-expect daysInMonth 2023 11 == 30 # November
-expect daysInMonth 2023 12 == 31 # December
+expect days_in_month 2023 1 == 31 # January
+expect days_in_month 2023 2 == 28 # February
+expect days_in_month 1996 2 == 29 # February in a leap year
+expect days_in_month 2023 3 == 31 # March
+expect days_in_month 2023 4 == 30 # April
+expect days_in_month 2023 5 == 31 # May
+expect days_in_month 2023 6 == 30 # June
+expect days_in_month 2023 7 == 31 # July
+expect days_in_month 2023 8 == 31 # August
+expect days_in_month 2023 9 == 30 # September
+expect days_in_month 2023 10 == 31 # October
+expect days_in_month 2023 11 == 30 # November
+expect days_in_month 2023 12 == 31 # December
 
 epoch_millis_to_datetime : I128 -> DateTime
 epoch_millis_to_datetime = \millis ->
@@ -111,19 +111,19 @@ epoch_millis_to_datetime = \millis ->
 
 epoch_millis_to_datetimeHelp : DateTime -> DateTime
 epoch_millis_to_datetimeHelp = \current ->
-    countDaysInMonth = daysInMonth current.year current.month
-    countDaysInPrevMonth =
+    count_days_in_month = days_in_month current.year current.month
+    count_days_in_prev_month =
         if current.month == 1 then
-            daysInMonth (current.year - 1) 12
+            days_in_month (current.year - 1) 12
         else
-            daysInMonth current.year (current.month - 1)
+            days_in_month current.year (current.month - 1)
 
     if current.day < 1 then
         epoch_millis_to_datetimeHelp
             { current &
                 year: if current.month == 1 then current.year - 1 else current.year,
                 month: if current.month == 1 then 12 else current.month - 1,
-                day: current.day + countDaysInPrevMonth,
+                day: current.day + count_days_in_prev_month,
             }
     else if current.hours < 0 then
         epoch_millis_to_datetimeHelp
@@ -143,12 +143,12 @@ epoch_millis_to_datetimeHelp = \current ->
                 minutes: current.minutes - 1,
                 seconds: current.seconds + 60,
             }
-    else if current.day > countDaysInMonth then
+    else if current.day > count_days_in_month then
         epoch_millis_to_datetimeHelp
             { current &
                 year: if current.month == 12 then current.year + 1 else current.year,
                 month: if current.month == 12 then 1 else current.month + 1,
-                day: current.day - countDaysInMonth,
+                day: current.day - count_days_in_month,
             }
     else
         current

@@ -13,8 +13,8 @@ main! = \{} ->
         Stderr.line! "Expected a series of number characters (0-9)"
     else
         when Str.fromUtf8 number_bytes is
-            Ok nStr ->
-                Stdout.line! "Got number $(nStr)"
+            Ok n_str ->
+                Stdout.line! "Got number $(n_str)"
 
             Err _ ->
                 Stderr.line! "Error, bad utf8"

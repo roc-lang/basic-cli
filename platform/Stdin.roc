@@ -2,7 +2,7 @@ module [
     Err,
     line!,
     bytes!,
-    readToEnd!,
+    read_to_end!,
 ]
 
 import Host
@@ -34,8 +34,8 @@ Err : [
     Other Str,
 ]
 
-handleErr : InternalIOErr.IOErrFromHost -> [EndOfFile, StdinErr Err]
-handleErr = \{ tag, msg } ->
+handle_err : InternalIOErr.IOErrFromHost -> [EndOfFile, StdinErr Err]
+handle_err = \{ tag, msg } ->
     when tag is
         NotFound -> StdinErr NotFound
         PermissionDenied -> StdinErr PermissionDenied
@@ -56,7 +56,7 @@ handleErr = \{ tag, msg } ->
 line! : {} => Result Str [EndOfFile, StdinErr Err]
 line! = \{} ->
     Host.stdin_line! {}
-    |> Result.mapErr handleErr
+    |> Result.mapErr handle_err
 
 ## Read bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
 ## ‼️ This function can read no more than 16,384 bytes at a time. Use [readToEnd!] if you need more.
@@ -67,11 +67,11 @@ line! = \{} ->
 bytes! : {} => Result (List U8) [EndOfFile, StdinErr Err]
 bytes! = \{} ->
     Host.stdin_bytes! {}
-    |> Result.mapErr handleErr
+    |> Result.mapErr handle_err
 
 ## Read all bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)) until EOF in this source.
-readToEnd! : {} => Result (List U8) [StdinErr Err]
-readToEnd! = \{} ->
+read_to_end! : {} => Result (List U8) [StdinErr Err]
+read_to_end! = \{} ->
     Host.stdin_read_to_end! {}
     |> Result.mapErr \{ tag, msg } ->
         when tag is

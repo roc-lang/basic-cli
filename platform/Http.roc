@@ -7,6 +7,7 @@ module [
     default_request,
     send!,
     get!,
+    get_utf8!,
 ]
 
 import InternalHttp
@@ -85,3 +86,11 @@ get! = \uri, fmt ->
 
     Decode.fromBytes response.body fmt
     |> Result.mapErr \_ -> HttpDecodingFailed
+
+get_utf8! : Str => Result Str [BadBody Str]
+get_utf8! = \uri ->
+    response = send! { default_request & uri }
+
+    response.body
+    |> Str.fromUtf8
+    |> Result.mapErr \_ -> BadBody "Invalid UTF-8"

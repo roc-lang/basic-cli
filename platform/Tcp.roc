@@ -15,7 +15,7 @@ module [
 
 import Host
 
-unexpectedEofErrorMessage = "UnexpectedEof"
+unexpected_eof_error_message = "UnexpectedEof"
 
 ## Represents a TCP stream.
 Stream := Host.TcpStream
@@ -32,8 +32,8 @@ ConnectErr : [
     Unrecognized Str,
 ]
 
-parseConnectErr : Str -> ConnectErr
-parseConnectErr = \err ->
+parse_connect_err : Str -> ConnectErr
+parse_connect_err = \err ->
     when err is
         "ErrorKind::PermissionDenied" -> PermissionDenied
         "ErrorKind::AddrInUse" -> AddrInUse
@@ -56,8 +56,8 @@ StreamErr : [
     Unrecognized Str,
 ]
 
-parseStreamErr : Str -> StreamErr
-parseStreamErr = \err ->
+parse_stream_err : Str -> StreamErr
+parse_stream_err = \err ->
     when err is
         "StreamNotFound" -> StreamNotFound
         "ErrorKind::PermissionDenied" -> PermissionDenied
@@ -87,7 +87,7 @@ connect! : Str, U16 => Result Stream ConnectErr
 connect! = \host, port ->
     Host.tcp_connect! host port
     |> Result.map @Stream
-    |> Result.mapErr parseConnectErr
+    |> Result.mapErr parse_connect_err
 
 ## Read up to a number of bytes from the TCP stream.
 ##
@@ -99,9 +99,9 @@ connect! = \host, port ->
 ##
 ## > To read an exact number of bytes or fail, you can use [Tcp.read_exactly!] instead.
 read_up_to! : Stream, U64 => Result (List U8) [TcpReadErr StreamErr]
-read_up_to! = \@Stream stream, bytesToRead ->
-    Host.tcp_read_up_to! stream bytesToRead
-    |> Result.mapErr \err -> TcpReadErr (parseStreamErr err)
+read_up_to! = \@Stream stream, bytes_to_read ->
+    Host.tcp_read_up_to! stream bytes_to_read
+    |> Result.mapErr \err -> TcpReadErr (parse_stream_err err)
 
 ## Read an exact number of bytes or fail.
 ##
@@ -112,13 +112,13 @@ read_up_to! = \@Stream stream, bytesToRead ->
 ## `TcpUnexpectedEOF` is returned if the stream ends before the specfied number of bytes is reached.
 ##
 read_exactly! : Stream, U64 => Result (List U8) [TcpReadErr StreamErr, TcpUnexpectedEOF]
-read_exactly! = \@Stream stream, bytesToRead ->
-    Host.tcp_read_exactly! stream bytesToRead
+read_exactly! = \@Stream stream, bytes_to_read ->
+    Host.tcp_read_exactly! stream bytes_to_read
     |> Result.mapErr \err ->
-        if err == unexpectedEofErrorMessage then
+        if err == unexpected_eof_error_message then
             TcpUnexpectedEOF
         else
-            TcpReadErr (parseStreamErr err)
+            TcpReadErr (parse_stream_err err)
 
 ## Read until a delimiter or EOF is reached.
 ##
@@ -134,7 +134,7 @@ read_exactly! = \@Stream stream, bytesToRead ->
 read_until! : Stream, U8 => Result (List U8) [TcpReadErr StreamErr]
 read_until! = \@Stream stream, byte ->
     Host.tcp_read_until! stream byte
-    |> Result.mapErr \err -> TcpReadErr (parseStreamErr err)
+    |> Result.mapErr \err -> TcpReadErr (parse_stream_err err)
 
 ## Read until a newline or EOF is reached.
 ##
@@ -164,7 +164,7 @@ read_line! = \stream ->
 write! : Stream, List U8 => Result {} [TcpWriteErr StreamErr]
 write! = \@Stream stream, bytes ->
     Host.tcp_write! stream bytes
-    |> Result.mapErr \err -> TcpWriteErr (parseStreamErr err)
+    |> Result.mapErr \err -> TcpWriteErr (parse_stream_err err)
 
 ## Writes a [Str] to a TCP stream, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##

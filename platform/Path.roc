@@ -86,9 +86,9 @@ write! = \val, path, fmt ->
 ## > To format data before writing it to a file, you can use [Path.write!] instead.
 write_bytes! : List U8, Path => Result {} [FileWriteErr Path Err]
 write_bytes! = \bytes, path ->
-    pathBytes = InternalPath.to_bytes path
+    path_bytes = InternalPath.to_bytes path
 
-    Host.file_write_bytes! pathBytes bytes
+    Host.file_write_bytes! path_bytes bytes
     |> Result.mapErr \err -> FileWriteErr path (InternalIOErr.handle_err err)
 
 ## Writes a [Str] to a file, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
@@ -103,9 +103,9 @@ write_bytes! = \bytes, path ->
 ## > To write unformatted bytes to a file, you can use [Path.write_bytes!] instead.
 write_utf8! : Str, Path => Result {} [FileWriteErr Path Err]
 write_utf8! = \str, path ->
-    pathBytes = InternalPath.to_bytes path
+    path_bytes = InternalPath.to_bytes path
 
-    Host.file_write_utf8! pathBytes str
+    Host.file_write_utf8! path_bytes str
     |> Result.mapErr \err -> FileWriteErr path (InternalIOErr.handle_err err)
 
 ## Note that the path may not be valid depending on the filesystem where it is used.
@@ -237,12 +237,12 @@ with_extension : Path, Str -> Path
 with_extension = \path, extension ->
     when InternalPath.unwrap path is
         FromOperatingSystem bytes | ArbitraryBytes bytes ->
-            beforeDot =
+            before_dot =
                 when List.splitLast bytes (Num.toU8 '.') is
                     Ok { before } -> before
                     Err NotFound -> bytes
 
-            beforeDot
+            before_dot
             |> List.reserve (Str.countUtf8Bytes extension |> Num.intCast |> Num.addSaturated 1)
             |> List.append (Num.toU8 '.')
             |> List.concat (Str.toUtf8 extension)
@@ -250,12 +250,12 @@ with_extension = \path, extension ->
             |> InternalPath.wrap
 
         FromStr str ->
-            beforeDot =
+            before_dot =
                 when Str.splitLast str "." is
                     Ok { before } -> before
                     Err NotFound -> str
 
-            beforeDot
+            before_dot
             |> Str.reserve (Str.countUtf8Bytes extension |> Num.addSaturated 1)
             |> Str.concat "."
             |> Str.concat extension
@@ -304,7 +304,7 @@ read_utf8! : Path => Result Str [FileReadErr Path Err, FileReadUtf8Err Path _]
 read_utf8! = \path ->
     bytes =
         Host.file_read_bytes! (InternalPath.to_bytes path)
-        |> Result.mapErr? \readErr -> FileReadErr path (InternalIOErr.handle_err readErr)
+        |> Result.mapErr? \read_err -> FileReadErr path (InternalIOErr.handle_err read_err)
 
     Str.fromUtf8 bytes
     |> Result.mapErr \err -> FileReadUtf8Err path err
