@@ -1,5 +1,5 @@
 platform "cli"
-    requires {} { main! : {} => Result {} [Exit I32 Str]_ }
+    requires {} { main! : List Arg.Arg => Result {} [Exit I32 Str]_ }
     exposes [
         Path,
         Arg,
@@ -23,11 +23,13 @@ platform "cli"
     imports []
     provides [main_for_host!]
 
+import Arg
 import Stderr
+import InternalArg
 
-main_for_host! : I32 => I32
-main_for_host! = \_ ->
-    when main! {} is
+main_for_host! : List InternalArg.ArgToAndFromHost => I32
+main_for_host! = \args ->
+    when main! (List.map args Arg.from_os_raw) is
         Ok {} -> 0
         Err (Exit code msg) ->
             if Str.isEmpty msg then
