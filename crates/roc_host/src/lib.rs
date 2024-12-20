@@ -343,24 +343,28 @@ pub extern "C" fn rust_main(args: RocList<ArgToAndFromHost>) -> i32 {
     init();
 
     extern "C" {
-        #[link_name = "roc__main_for_host_1_exposed"]
-        pub fn roc_main_for_host_caller(args: &mut RocList<ArgToAndFromHost>) -> i32;
+        #[link_name = "roc__main_for_host_1_exposed_generic"]
+        pub fn roc_main_for_host_caller(
+            exit_code: &mut i32,
+            args: *const RocList<ArgToAndFromHost>,
+        );
 
         #[link_name = "roc__main_for_host_1_exposed_size"]
         pub fn roc_main__for_host_size() -> usize;
     }
 
     let exit_code: i32 = unsafe {
-        let mut args = args;
-        let code = roc_main_for_host_caller(&mut args);
+        let mut exit_code: i32 = -1;
+        let args = args;
+        roc_main_for_host_caller(&mut exit_code, &args);
 
-        debug_assert_eq!(std::mem::size_of_val(&code), roc_main__for_host_size());
+        debug_assert_eq!(std::mem::size_of_val(&exit_code), roc_main__for_host_size());
 
         // roc now owns the args so prevent the args from being
         // dropped by rust and causing a double free
         std::mem::forget(args);
 
-        code
+        exit_code
     };
 
     exit_code
