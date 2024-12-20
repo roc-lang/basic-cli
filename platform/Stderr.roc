@@ -1,5 +1,5 @@
 module [
-    Err,
+    IOErr,
     line!,
     write!,
 ]
@@ -22,7 +22,7 @@ import InternalIOErr
 ## **OutOfMemory** - An operation could not be completed, because it failed to allocate enough memory.
 ##
 ## **Other** - A custom error that does not fall under any other I/O error kind.
-Err : [
+IOErr : [
     NotFound,
     PermissionDenied,
     BrokenPipe,
@@ -33,7 +33,7 @@ Err : [
     Other Str,
 ]
 
-handle_err : InternalIOErr.IOErrFromHost -> [StderrErr Err]
+handle_err : InternalIOErr.IOErrFromHost -> [StderrErr IOErr]
 handle_err = \{ tag, msg } ->
     when tag is
         NotFound -> StderrErr NotFound
@@ -49,7 +49,7 @@ handle_err = \{ tag, msg } ->
 ## followed by a newline.
 ##
 ## > To write to `stderr` without the newline, see [Stderr.write!].
-line! : Str => Result {} [StderrErr Err]
+line! : Str => Result {} [StderrErr IOErr]
 line! = \str ->
     Host.stderr_line! str
     |> Result.mapErr handle_err
@@ -60,7 +60,7 @@ line! = \str ->
 ## so this may appear to do nothing until you write a newline!
 ##
 ## > To write to `stderr` with a newline at the end, see [Stderr.line!].
-write! : Str => Result {} [StderrErr Err]
+write! : Str => Result {} [StderrErr IOErr]
 write! = \str ->
     Host.stderr_write! str
     |> Result.mapErr handle_err
