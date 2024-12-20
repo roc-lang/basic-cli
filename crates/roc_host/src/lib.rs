@@ -4,9 +4,10 @@
 //! writing to stdio or making HTTP requests.
 
 use core::ffi::c_void;
+use roc_env::arg::ArgToAndFromHost;
 use roc_io_error::IOErr;
-use roc_std::{ReadOnlyRocList, ReadOnlyRocStr, RocBox, RocList, RocResult, RocStr};
-use std::{sync::OnceLock, time::Duration};
+use roc_std::{RocBox, RocList, RocResult, RocStr};
+use std::time::Duration;
 use tokio::runtime::Runtime;
 
 thread_local! {
@@ -16,8 +17,6 @@ thread_local! {
        .build()
        .unwrap();
 }
-
-static ARGS: OnceLock<ReadOnlyRocList<ReadOnlyRocStr>> = OnceLock::new();
 
 /// # Safety
 ///
@@ -289,7 +288,6 @@ pub fn init() {
         roc_dbg as _,
         roc_memset as _,
         roc_fx_env_dict as _,
-        roc_fx_args as _,
         roc_fx_env_var as _,
         roc_fx_set_cwd as _,
         roc_fx_exe_path as _,
@@ -341,23 +339,26 @@ pub fn init() {
 }
 
 #[no_mangle]
-pub extern "C" fn rust_main(args: ReadOnlyRocList<ReadOnlyRocStr>) -> i32 {
-    ARGS.set(args)
-        .unwrap_or_else(|_| panic!("only one thread running, must be able to set args"));
+pub extern "C" fn rust_main(args: RocList<ArgToAndFromHost>) -> i32 {
     init();
 
     extern "C" {
         #[link_name = "roc__main_for_host_1_exposed"]
-        pub fn roc_main_for_host_caller(not_used: i32) -> i32;
+        pub fn roc_main_for_host_caller(args: &mut RocList<ArgToAndFromHost>) -> i32;
 
         #[link_name = "roc__main_for_host_1_exposed_size"]
         pub fn roc_main__for_host_size() -> usize;
     }
 
     let exit_code: i32 = unsafe {
-        let code = roc_main_for_host_caller(0);
+        let mut args = args;
+        let code = roc_main_for_host_caller(&mut args);
 
         debug_assert_eq!(std::mem::size_of_val(&code), roc_main__for_host_size());
+
+        // roc now owns the args so prevent the args from being
+        // dropped by rust and causing a double free
+        std::mem::forget(args);
 
         code
     };
@@ -368,14 +369,6 @@ pub extern "C" fn rust_main(args: ReadOnlyRocList<ReadOnlyRocStr>) -> i32 {
 #[no_mangle]
 pub extern "C" fn roc_fx_env_dict() -> RocList<(RocStr, RocStr)> {
     roc_env::env_dict()
-}
-
-#[no_mangle]
-pub extern "C" fn roc_fx_args() -> ReadOnlyRocList<ReadOnlyRocStr> {
-    // Note: the clone here is no-op since the refcount is readonly. Just goes from &RocList to RocList.
-    ARGS.get()
-        .expect("args was set during init and must be here")
-        .clone()
 }
 
 #[no_mangle]

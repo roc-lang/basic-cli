@@ -12,8 +12,8 @@ import cli.Env
 ##
 ## Check basic-cli-build-steps.png for a diagram that shows what the code does.
 ##
-main! : {} => Result {} _
-main! = \{} ->
+main! : _ => Result {} _
+main! = \_ ->
 
     roc_cmd = Env.var! "ROC" |> Result.withDefault "roc"
 
