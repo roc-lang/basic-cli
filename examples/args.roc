@@ -3,12 +3,12 @@ app [main!] {
 }
 
 import pf.Stdout
-import pf.Arg
+import pf.Arg exposing [Arg]
 
-main! : {} => Result {} _
-main! = \{} ->
+main! : List Arg => Result {} _
+main! = \raw_args ->
 
-    args = Arg.list! {}
+    args = List.map raw_args Arg.display
 
     # get the second argument, the first is the executable's path
     when List.get args 1 |> Result.mapErr (\_ -> ZeroArgsGiven) is

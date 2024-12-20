@@ -5,7 +5,7 @@ import pf.Stdout
 
 # Basic HTTP GET request
 
-main! = \{} ->
+main! = \_ ->
 
     response = Http.send! {
         method: Get,

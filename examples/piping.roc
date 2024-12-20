@@ -4,7 +4,7 @@ import pf.Stdout
 import pf.Stdin
 
 # Try piping in some text like this: `echo -e "test\n123" | roc piping.roc`
-main! = \{} ->
+main! = \_ ->
     lines = count! 0
     Stdout.line! "I read $(Num.toStr lines) lines from stdin."
 

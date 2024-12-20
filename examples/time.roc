@@ -4,7 +4,7 @@ import pf.Stdout
 import pf.Utc
 import pf.Sleep
 
-main! = \{} ->
+main! = \_ ->
     start = Utc.now! {}
 
     Sleep.millis! 1500

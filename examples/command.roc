@@ -3,7 +3,7 @@ app [main!] { pf: platform "../platform/main.roc" }
 import pf.Stdout
 import pf.Cmd
 
-main! = \{} ->
+main! = \_ ->
     try status_example! {}
 
     try output_example! {}

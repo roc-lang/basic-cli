@@ -2,7 +2,7 @@ app [main!] { pf: platform "../platform/main.roc" }
 
 import pf.Stdout
 
-main! = \{} ->
+main! = \_ ->
     # Prints out each of the authors
     print! ["Foo", "Bar", "Baz"]
 

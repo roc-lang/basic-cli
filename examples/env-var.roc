@@ -5,7 +5,7 @@ import pf.Env
 
 # How to read environment variables with Env.decode
 
-main! = \{} ->
+main! = \_ ->
 
     editor = try Env.decode! "EDITOR"
 
