@@ -12,7 +12,7 @@ import InternalArg
 # common mistakes
 Arg := InternalArg.ArgToAndFromHost
 
-## Unwrap the raw bytes for decoding, typically this will be
+## Unwrap the raw bytes for decoding, typically this is
 ## consumed by a package and not an end user
 to_os_raw : Arg -> [Unix (List U8), Windows (List U16)]
 to_os_raw = \@Arg inner ->
@@ -21,10 +21,11 @@ to_os_raw = \@Arg inner ->
         Windows -> Windows inner.windows
 
 from_os_raw : InternalArg.ArgToAndFromHost -> Arg
-from_os_raw = @Arg
+from_os_raw = \raw -> @Arg raw
 
-## Convert an Arg to a Utf8 string for display purposes
+## Convert an Arg to a `Str` for display purposes
 ##
+## NB: this will currently crash if there is invalid utf8 bytes, in future this will be lossy and replace any invalid bytes with the [Unicode Replacement Character U+FFFD �](https://en.wikipedia.org/wiki/Specials_(Unicode_block))
 display : Arg -> Str
 display = \@Arg inner ->
     when inner.type is
