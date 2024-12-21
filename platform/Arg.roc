@@ -15,6 +15,16 @@ module [
 ## encoding for you, but for quick-and-dirty code you can use [display] to
 ## convert these to [Str] in a lossy way.
 Arg := [Unix (List U8), Windows (List U16)]
+    implements [Eq, Inspect { toInspector: arg_inspector }]
+
+arg_inspector : Arg -> Inspector f where f implements InspectFormatter
+arg_inspector = \arg -> Inspect.str (display arg)
+
+test_hello : Arg
+test_hello = Arg.from_os_raw (Unix [72, 101, 108, 108, 111])
+
+expect Arg.display test_hello == "Hello"
+expect Inspect.toStr test_hello == "\"Hello\""
 
 ## Unwrap an [Arg] into a raw, OS-aware numeric list.
 ##
@@ -37,9 +47,9 @@ display = \@Arg inner ->
             # see https://github.com/roc-lang/roc/issues/7390
             when Str.fromUtf8 bytes is
                 Ok str -> str
-                Err _ -> crash "tried to display invalid utf-8"
+                Err _ -> crash "tried to display Arg containing invalid utf-8"
 
         Windows _ ->
             # TODO replace with Str.from_utf16_lossy : List U16 -> Str
             # see https://github.com/roc-lang/roc/issues/7390
-            crash "display for utf-16 not yet supported"
+            crash "display for utf-16 Arg not yet supported"
