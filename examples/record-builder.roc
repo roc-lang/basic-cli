@@ -4,7 +4,7 @@ app [main!] {
 
 import pf.Stdout
 
-main! = \_ ->
+main! = \_args ->
     { apples, oranges } = try
         { Result.map2 <-
             apples: get_fruit! Apples |> Result.map join_strs,

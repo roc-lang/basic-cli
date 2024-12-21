@@ -3,7 +3,7 @@ app [main!] { pf: platform "../platform/main.roc" }
 import pf.Stdout
 import pf.Path
 
-main! = \_ ->
+main! = \_args ->
 
     path = Path.from_str "path.roc"
 

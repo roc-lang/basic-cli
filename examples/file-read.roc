@@ -3,7 +3,7 @@ app [main!] { pf: platform "../platform/main.roc" }
 import pf.Stdout
 import pf.File
 
-main! = \_ ->
+main! = \_args ->
     when run! {} is
         Ok {} -> Ok {}
         Err err ->

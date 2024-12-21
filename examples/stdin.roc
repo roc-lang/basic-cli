@@ -4,7 +4,7 @@ import pf.Stdout
 import pf.Stderr
 import pf.Stdin
 
-main! = \_ ->
+main! = \_args ->
     try Stdout.line! "Enter a series of number characters (0-9):"
 
     number_bytes = try take_number_bytes! {}
