@@ -5,38 +5,41 @@ module [
     from_os_raw,
 ]
 
-import InternalArg
+## An OS-aware representation of a command-line argument.
+##
+## Though we tend to think of args as Unicode strings, most operating systems
+## represent command-line arguments as lists of bytes that aren't necessarily
+## UTF-8 encoded. Windows doesn't even use bytes, but U16s.
+##
+## Most of the time, you will pass these to packages and they will handle the
+## encoding for you, but for quick-and-dirty code you can use [display] to
+## convert these to [Str] in a lossy way.
+Arg := [Unix (List U8), Windows (List U16)]
 
-# os_str's are not necessarily valid utf-8 or utf-16
-# so we store as raw bytes internally to avoid
-# common mistakes
-Arg := InternalArg.ArgToAndFromHost
-
-## Unwrap the raw bytes for decoding, typically this is
-## consumed by a package and not an end user
+## Unwrap an [Arg] into a raw, OS-aware numeric list.
+##
+## This is a good way to pass [Arg]s to Roc packages.
 to_os_raw : Arg -> [Unix (List U8), Windows (List U16)]
-to_os_raw = \@Arg inner ->
-    when inner.type is
-        Unix -> Unix inner.unix
-        Windows -> Windows inner.windows
+to_os_raw = \@Arg inner -> inner
 
-from_os_raw : InternalArg.ArgToAndFromHost -> Arg
-from_os_raw = \raw -> @Arg raw
+## Wrap a raw, OS-aware numeric list into an [Arg].
+from_os_raw : [Unix (List U8), Windows (List U16)] -> Arg
+from_os_raw = @Arg
 
-## Convert an Arg to a `Str` for display purposes
+## Convert an Arg to a `Str` for display purposes.
 ##
 ## NB: this will currently crash if there is invalid utf8 bytes, in future this will be lossy and replace any invalid bytes with the [Unicode Replacement Character U+FFFD �](https://en.wikipedia.org/wiki/Specials_(Unicode_block))
 display : Arg -> Str
 display = \@Arg inner ->
-    when inner.type is
-        Unix ->
+    when inner is
+        Unix bytes ->
             # TODO replace with Str.from_utf8_lossy : List U8 -> Str
             # see https://github.com/roc-lang/roc/issues/7390
-            when Str.fromUtf8 inner.unix is
+            when Str.fromUtf8 bytes is
                 Ok str -> str
                 Err _ -> crash "tried to display invalid utf-8"
 
-        Windows ->
+        Windows _ ->
             # TODO replace with Str.from_utf16_lossy : List U16 -> Str
             # see https://github.com/roc-lang/roc/issues/7390
             crash "display for utf-16 not yet supported"
