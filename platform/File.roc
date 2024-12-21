@@ -1,5 +1,5 @@
 module [
-    Err,
+    IOErr,
     Reader,
     write_utf8!,
     write_bytes!,
@@ -38,7 +38,7 @@ import Host
 ## **OutOfMemory** - An operation could not be completed, because it failed to allocate enough memory.
 ##
 ## **Other** - A custom error that does not fall under any other I/O error kind.
-Err : InternalIOErr.IOErr
+IOErr : InternalIOErr.IOErr
 
 ## Write data to a file.
 ##
@@ -63,7 +63,7 @@ Err : InternalIOErr.IOErr
 ## > To write unformatted bytes to a file, you can use [File.write_bytes!] instead.
 ## >
 ## > [Path.write!] does the same thing, except it takes a [Path] instead of a [Str].
-write! : val, Str, fmt => Result {} [FileWriteErr Path Err] where val implements Encoding, fmt implements EncoderFormatting
+write! : val, Str, fmt => Result {} [FileWriteErr Path IOErr] where val implements Encoding, fmt implements EncoderFormatting
 write! = \val, path, fmt ->
     Path.write! val (Path.from_str path) fmt
 
@@ -79,7 +79,7 @@ write! = \val, path, fmt ->
 ## > To format data before writing it to a file, you can use [File.write!] instead.
 ## >
 ## > [Path.write_bytes!] does the same thing, except it takes a [Path] instead of a [Str].
-write_bytes! : List U8, Str => Result {} [FileWriteErr Path Err]
+write_bytes! : List U8, Str => Result {} [FileWriteErr Path IOErr]
 write_bytes! = \bytes, path ->
     Path.write_bytes! bytes (Path.from_str path)
 
@@ -95,7 +95,7 @@ write_bytes! = \bytes, path ->
 ## > To write unformatted bytes to a file, you can use [File.write_bytes!] instead.
 ## >
 ## > [Path.write_utf8!] does the same thing, except it takes a [Path] instead of a [Str].
-write_utf8! : Str, Str => Result {} [FileWriteErr Path Err]
+write_utf8! : Str, Str => Result {} [FileWriteErr Path IOErr]
 write_utf8! = \str, path ->
     Path.write_utf8! str (Path.from_str path)
 
@@ -119,7 +119,7 @@ write_utf8! = \str, path ->
 ## [hard link](https://en.wikipedia.org/wiki/Hard_link) to it has been deleted.
 ## >
 ## > [Path.delete!] does the same thing, except it takes a [Path] instead of a [Str].
-delete! : Str => Result {} [FileWriteErr Path Err]
+delete! : Str => Result {} [FileWriteErr Path IOErr]
 delete! = \path ->
     Path.delete! (Path.from_str path)
 
@@ -135,7 +135,7 @@ delete! = \path ->
 ## > To read and decode data from a file, you can use `File.read` instead.
 ## >
 ## > [Path.read_bytes!] does the same thing, except it takes a [Path] instead of a [Str].
-read_bytes! : Str => Result (List U8) [FileReadErr Path Err]
+read_bytes! : Str => Result (List U8) [FileReadErr Path IOErr]
 read_bytes! = \path ->
     Path.read_bytes! (Path.from_str path)
 
@@ -152,7 +152,7 @@ read_bytes! = \path ->
 ## > To read unformatted bytes from a file, you can use [File.read_bytes!] instead.
 ##
 ## > [Path.read_utf8!] does the same thing, except it takes a [Path] instead of a [Str].
-read_utf8! : Str => Result Str [FileReadErr Path Err, FileReadUtf8Err Path _]
+read_utf8! : Str => Result Str [FileReadErr Path IOErr, FileReadUtf8Err Path _]
 read_utf8! = \path ->
     Path.read_utf8! (Path.from_str path)
 
@@ -168,7 +168,7 @@ read_utf8! = \path ->
 ## This uses [rust's std::fs::hard_link](https://doc.rust-lang.org/std/fs/fn.hard_link.html).
 ##
 ## > [Path.hard_link!] does the same thing, except it takes a [Path] instead of a [Str].
-hard_link! : Str => Result {} [LinkErr Err]
+hard_link! : Str => Result {} [LinkErr IOErr]
 hard_link! = \path ->
     Path.hard_link! (Path.from_str path)
 
@@ -179,7 +179,7 @@ hard_link! = \path ->
 ## This uses [rust's std::path::is_dir](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_dir).
 ##
 ## > [Path.is_dir!] does the same thing, except it takes a [Path] instead of a [Str].
-is_dir! : Str => Result Bool [PathErr Err]
+is_dir! : Str => Result Bool [PathErr IOErr]
 is_dir! = \path ->
     Path.is_dir! (Path.from_str path)
 
@@ -190,7 +190,7 @@ is_dir! = \path ->
 ## This uses [rust's std::path::is_file](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_file).
 ##
 ## > [Path.is_file!] does the same thing, except it takes a [Path] instead of a [Str].
-is_file! : Str => Result Bool [PathErr Err]
+is_file! : Str => Result Bool [PathErr IOErr]
 is_file! = \path ->
     Path.is_file! (Path.from_str path)
 
@@ -201,7 +201,7 @@ is_file! = \path ->
 ## This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
 ##
 ## > [Path.is_sym_link!] does the same thing, except it takes a [Path] instead of a [Str].
-is_sym_link! : Str => Result Bool [PathErr Err]
+is_sym_link! : Str => Result Bool [PathErr IOErr]
 is_sym_link! = \path ->
     Path.is_sym_link! (Path.from_str path)
 
@@ -209,7 +209,7 @@ is_sym_link! = \path ->
 ## This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
 ##
 ## > [Path.type!] does the same thing, except it takes a [Path] instead of a [Str].
-type! : Str => Result [IsFile, IsDir, IsSymLink] [PathErr Err]
+type! : Str => Result [IsFile, IsDir, IsSymLink] [PathErr IOErr]
 type! = \path ->
     Path.type! (Path.from_str path)
 
@@ -221,7 +221,7 @@ Reader := { reader : Host.FileReader, path : Path }
 ## This uses [rust's std::io::BufReader](https://doc.rust-lang.org/std/io/struct.BufReader.html).
 ##
 ## Use [read_utf8!] if you want to get the entire file contents at once.
-open_reader! : Str => Result Reader [GetFileReadErr Path Err]
+open_reader! : Str => Result Reader [GetFileReadErr Path IOErr]
 open_reader! = \path_str ->
     path = Path.from_str path_str
 
@@ -237,7 +237,7 @@ open_reader! = \path_str ->
 ## This uses [rust's std::io::BufReader](https://doc.rust-lang.org/std/io/struct.BufReader.html).
 ##
 ## Use [read_utf8!] if you want to get the entire file contents at once.
-open_reader_with_capacity! : Str, U64 => Result Reader [GetFileReadErr Path Err]
+open_reader_with_capacity! : Str, U64 => Result Reader [GetFileReadErr Path IOErr]
 open_reader_with_capacity! = \path_str, capacity ->
     path = Path.from_str path_str
 
@@ -253,7 +253,7 @@ open_reader_with_capacity! = \path_str, capacity ->
 ## This uses [rust's `BufRead::read_line`](https://doc.rust-lang.org/std/io/trait.BufRead.html#method.read_line).
 ##
 ## Use [read_utf8!] if you want to get the entire file contents at once.
-read_line! : Reader => Result (List U8) [FileReadErr Path Err]
+read_line! : Reader => Result (List U8) [FileReadErr Path IOErr]
 read_line! = \@Reader { reader, path } ->
     Host.file_read_line! reader
     |> Result.mapErr \err -> FileReadErr path (InternalIOErr.handle_err err)
