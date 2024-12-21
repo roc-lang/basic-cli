@@ -12,11 +12,7 @@ pub unsafe extern "C" fn main(argc: usize, argv: *const *const i8) -> i32 {
         .map(|&c_ptr| {
             let c_str = std::ffi::CStr::from_ptr(c_ptr);
 
-            // TODO confirm this is ok... feels dangerous
-            let os_str =
-                std::ffi::OsString::from_encoded_bytes_unchecked(c_str.to_bytes().to_owned());
-
-            ArgToAndFromHost::from(os_str)
+            ArgToAndFromHost::from(c_str.to_bytes())
         })
         .collect();
 

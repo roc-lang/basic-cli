@@ -9,6 +9,34 @@ pub struct ArgToAndFromHost {
     pub tag: ArgTag,
 }
 
+impl From<&[u8]> for ArgToAndFromHost {
+    #[cfg(target_os = "macos")]
+    fn from(bytes: &[u8]) -> Self {
+        ArgToAndFromHost {
+            unix: RocList::from_slice(bytes),
+            windows: RocList::empty(),
+            tag: ArgTag::Unix,
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    fn from(bytes: &[u8]) -> Self {
+        ArgToAndFromHost {
+            unix: RocList::from_slice(bytes),
+            windows: RocList::empty(),
+            tag: ArgTag::Unix,
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    fn from(bytes: &[u8]) -> Self {
+        todo!()
+        // use something like
+        // https://docs.rs/widestring/latest/widestring/
+        // to support Windows
+    }
+}
+
 impl From<OsString> for ArgToAndFromHost {
     #[cfg(target_os = "macos")]
     fn from(os_str: OsString) -> Self {
