@@ -8,7 +8,7 @@ import pf.Stdout
 import json.Json
 
 # HTTP GET request with easy decoding to json
-main! = \{} ->
+main! = \_args ->
 
     # Easy decoding/deserialization of { "foo": "something" } into a Roc var
     { foo } = try Http.get! "http://localhost:8000" Json.utf8

@@ -29,7 +29,7 @@ task! = \{} ->
 
     Stdout.line! "I read the file back. Its contents: \"$(contents)\""
 
-main! = \{} ->
+main! = \_args ->
     when task! {} is
         Ok {} -> Stdout.line! "Successfully wrote a string to out.txt"
         Err err ->

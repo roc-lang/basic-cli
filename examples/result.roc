@@ -2,7 +2,7 @@ app [main!] { pf: platform "../platform/main.roc" }
 
 import pf.Stdout
 
-main! = \{} ->
+main! = \_args ->
     when check_file! "good" is
         Ok Good -> Stdout.line! "GOOD"
         Ok Bad -> Stdout.line! "BAD"

@@ -2,7 +2,6 @@ hosted Host
     exposes [
         TcpStream,
         FileReader,
-        args!,
         dir_list!,
         dir_create!,
         dir_create_all!,
@@ -113,7 +112,3 @@ env_dict! : {} => List (Str, Str)
 env_var! : Str => Result Str {}
 exe_path! : {} => Result (List U8) {}
 set_cwd! : List U8 => Result {} {}
-
-# If we encounter a Unicode error in any of the args, it will be replaced with
-# the Unicode replacement char where necessary.
-args! : {} => List Str

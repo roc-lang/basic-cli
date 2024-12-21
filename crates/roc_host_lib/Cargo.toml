@@ -14,3 +14,4 @@ crate-type = ["staticlib"]
 [dependencies]
 roc_std.workspace = true
 roc_host.workspace = true
+roc_env.workspace = true

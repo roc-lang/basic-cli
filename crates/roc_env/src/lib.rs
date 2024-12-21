@@ -1,4 +1,6 @@
 //! This crate provides common functionality common functionality for Roc to interface with `std::env`
+pub mod arg;
+
 use roc_std::{roc_refcounted_noop_impl, RocList, RocRefcounted, RocResult, RocStr};
 use std::borrow::Borrow;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};

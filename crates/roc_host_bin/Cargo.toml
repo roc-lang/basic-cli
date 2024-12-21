@@ -13,3 +13,4 @@ path = "src/main.rs"
 [dependencies]
 roc_std.workspace = true
 roc_host.workspace = true
+roc_env.workspace = true
