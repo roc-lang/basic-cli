@@ -7,11 +7,17 @@ import pf.Sqlite
 main! = \_args ->
     db_path = Env.var!? "DB_PATH"
 
-    rows = query_todos_by_status!? db_path "completed"
+    todo = query_todos_by_status!? db_path "todo"
 
-    Stdout.line!? "Completed Tasks:"
-    List.forEachTry!? rows \{ id, task } ->
-        Stdout.line! "row $(id), task: $(task)"
+    Stdout.line!? "Todo Tasks:"
+    List.forEachTry!? todo \{ id, task } ->
+        Stdout.line! "\tid: $(id), task: $(task)"
+
+    completed = query_todos_by_status!? db_path "completed"
+
+    Stdout.line!? "\nCompleted Tasks:"
+    List.forEachTry!? completed \{ id, task } ->
+        Stdout.line! "\tid: $(id), task: $(task)"
 
     Ok {}
 
