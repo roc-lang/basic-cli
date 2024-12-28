@@ -332,6 +332,12 @@ pub fn init() {
         roc_fx_temp_dir as _,
         roc_fx_get_locale as _,
         roc_fx_get_locales as _,
+        roc_fx_sqlite_bind as _,
+        roc_fx_sqlite_column_value as _,
+        roc_fx_sqlite_columns as _,
+        roc_fx_sqlite_prepare as _,
+        roc_fx_sqlite_reset as _,
+        roc_fx_sqlite_step as _,
     ];
     #[allow(forgetting_references)]
     std::mem::forget(std::hint::black_box(funcs));
