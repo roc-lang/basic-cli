@@ -1,0 +1,22 @@
+#!/usr/bin/expect
+
+# uncomment line below for debugging
+# exp_internal 1
+
+set timeout 7
+
+source ./ci/expect_scripts/shared-code.exp
+
+set env(DB_PATH) $env(EXAMPLES_DIR)todos.db
+
+spawn $env(EXAMPLES_DIR)sqlite
+
+
+expect "Your favorite editor is nano!\r\n" {
+    expect eof {
+        check_exit_and_segfault
+    }
+}
+
+puts stderr "\nError: output was different from expected value."
+exit 1
