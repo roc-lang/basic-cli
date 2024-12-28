@@ -36,6 +36,12 @@ hosted Host
         tcp_read_exactly!,
         tcp_read_until!,
         tcp_write!,
+        sqlite_prepare!,
+        sqlite_bind!,
+        sqlite_columns!,
+        sqlite_column_value!,
+        sqlite_step!,
+        sqlite_reset!,
         sleep_millis!,
         command_status!,
         command_output!,
@@ -50,6 +56,7 @@ import InternalHttp
 import InternalCmd
 import InternalPath
 import InternalIOErr
+import InternalSqlite
 
 # COMMAND
 command_status! : InternalCmd.Command => Result I32 InternalIOErr.IOErrFromHost
@@ -94,6 +101,14 @@ tcp_read_up_to! : TcpStream, U64 => Result (List U8) Str
 tcp_read_exactly! : TcpStream, U64 => Result (List U8) Str
 tcp_read_until! : TcpStream, U8 => Result (List U8) Str
 tcp_write! : TcpStream, List U8 => Result {} Str
+
+# SQLITE
+sqlite_prepare! : Str, Str => Result (Box {}) InternalSqlite.SqliteError
+sqlite_bind! : Box {}, List InternalSqlite.SqliteBindings => Result {} InternalSqlite.SqliteError
+sqlite_columns! : Box {} => List Str
+sqlite_column_value! : Box {}, U64 => Result InternalSqlite.SqliteValue InternalSqlite.SqliteError
+sqlite_step! : Box {} => Result InternalSqlite.SqliteState InternalSqlite.SqliteError
+sqlite_reset! : Box {} => Result {} InternalSqlite.SqliteError
 
 # OTHERS
 current_arch_os! : {} => { arch : Str, os : Str }

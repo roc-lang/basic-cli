@@ -206,7 +206,7 @@ pub fn bind(stmt: RocBox<()>, bindings: &RocList<SqliteBindings>) -> RocResult<(
     RocResult::ok(())
 }
 
-pub fn columns(stmt: RocBox<()>) -> RocResult<RocList<RocStr>, ()> {
+pub fn columns(stmt: RocBox<()>) -> RocList<RocStr> {
     let stmt: &SqliteStatement = ThreadSafeRefcountedResourceHeap::box_to_resource(stmt);
 
     let local_stmt = thread_local_prepare(stmt)
@@ -221,7 +221,7 @@ pub fn columns(stmt: RocBox<()>) -> RocResult<RocList<RocStr>, ()> {
         let col_name = RocStr::from(col_name.to_string_lossy().borrow());
         list.append(col_name);
     }
-    RocResult::ok(list)
+    list
 }
 
 pub fn column_value(stmt: RocBox<()>, i: u64) -> RocResult<SqliteValue, SqliteError> {

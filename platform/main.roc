@@ -18,6 +18,7 @@ platform "cli"
         Cmd,
         Tty,
         Locale,
+        Sqlite,
     ]
     packages {}
     imports []

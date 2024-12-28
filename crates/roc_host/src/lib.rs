@@ -716,7 +716,7 @@ pub extern "C" fn roc_fx_sqlite_prepare(
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_sqlite_columns(stmt: RocBox<()>) -> RocResult<RocList<RocStr>, ()> {
+pub extern "C" fn roc_fx_sqlite_columns(stmt: RocBox<()>) -> RocList<RocStr> {
     roc_sqlite::columns(stmt)
 }
 
