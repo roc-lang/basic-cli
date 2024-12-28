@@ -94,7 +94,7 @@ execute! :
     }
     => Result {} [SqlError Code Str, UnhandledRows]
 execute! = \{ path, query: q, bindings } ->
-    stmt = prepare!? { path, query: q }
+    stmt = try prepare! { path, query: q }
     execute_prepared! { stmt, bindings }
 
 execute_prepared! :
@@ -104,9 +104,9 @@ execute_prepared! :
     }
     => Result {} [SqlError Code Str, UnhandledRows]
 execute_prepared! = \{ stmt, bindings } ->
-    bind!? stmt bindings
+    try bind! stmt bindings
     res = step! stmt
-    reset!? stmt
+    try reset! stmt
     when res is
         Ok Done ->
             Ok {}
@@ -126,7 +126,7 @@ query! :
     }
     => Result a (SqlDecodeErr (RowCountErr err))
 query! = \{ path, query: q, bindings, row } ->
-    stmt = prepare!? { path, query: q }
+    stmt = try prepare! { path, query: q }
     query_prepared! { stmt, bindings, row }
 
 query_prepared! :
@@ -137,9 +137,9 @@ query_prepared! :
     }
     => Result a (SqlDecodeErr (RowCountErr err))
 query_prepared! = \{ stmt, bindings, row: decode } ->
-    bind!? stmt bindings
+    try bind! stmt bindings
     res = decode_exactly_one_row! stmt decode
-    reset!? stmt
+    try reset! stmt
     res
 
 query_many! :
@@ -151,7 +151,7 @@ query_many! :
     }
     => Result (List a) (SqlDecodeErr err)
 query_many! = \{ path, query: q, bindings, rows } ->
-    stmt = prepare!? { path, query: q }
+    stmt = try prepare! { path, query: q }
     query_many_prepared! { stmt, bindings, rows }
 
 query_many_prepared! :
@@ -162,9 +162,9 @@ query_many_prepared! :
     }
     => Result (List a) (SqlDecodeErr err)
 query_many_prepared! = \{ stmt, bindings, rows: decode } ->
-    bind!? stmt bindings
+    try bind! stmt bindings
     res = decode_rows! stmt decode
-    reset!? stmt
+    try reset! stmt
     res
 
 SqlDecodeErr err : [FieldNotFound Str, SqlError Code Str]err
@@ -177,8 +177,8 @@ decode_record = \@SqlDecode gen_first, @SqlDecode gen_second, mapper ->
         decode_second! = gen_second cols
 
         \stmt ->
-            first = decode_first!? stmt
-            second = decode_second!? stmt
+            first = try decode_first! stmt
+            second = try decode_second! stmt
             Ok (mapper first second)
 
 map_value : SqlDecode a err, (a -> b) -> SqlDecode b err
@@ -187,7 +187,7 @@ map_value = \@SqlDecode gen_decode, mapper ->
         decode! = gen_decode cols
 
         \stmt ->
-            val = decode!? stmt
+            val = try decode! stmt
             Ok (mapper val)
 
 RowCountErr err : [NoRowsReturned, TooManyRowsReturned]err
@@ -196,10 +196,10 @@ decode_exactly_one_row! = \stmt, @SqlDecode gen_decode ->
     cols = columns! stmt
     decode_row! = gen_decode cols
 
-    when step!? stmt is
+    when try step! stmt is
         Row ->
-            row = decode_row!? stmt
-            when step!? stmt is
+            row = try decode_row! stmt
+            when try step! stmt is
                 Done ->
                     Ok row
 
@@ -215,12 +215,12 @@ decode_rows! = \stmt, @SqlDecode gen_decode ->
     decode_row! = gen_decode cols
 
     helper! = \out ->
-        when step!? stmt is
+        when try step! stmt is
             Done ->
                 Ok out
 
             Row ->
-                row = decode_row!? stmt
+                row = try decode_row! stmt
 
                 List.append out row
                 |> helper!
@@ -235,7 +235,7 @@ decoder = \fn -> \name ->
         when found is
             Ok index ->
                 \stmt ->
-                    column_value!? stmt index
+                    try column_value! stmt index
                     |> fn
 
             Err NotFound ->

@@ -5,18 +5,18 @@ import pf.Stdout
 import pf.Sqlite
 
 main! = \_args ->
-    db_path = Env.var!? "DB_PATH"
+    db_path = try Env.var! "DB_PATH"
 
-    todo = query_todos_by_status!? db_path "todo"
+    todo = try query_todos_by_status! db_path "todo"
 
-    Stdout.line!? "Todo Tasks:"
-    List.forEachTry!? todo \{ id, task } ->
+    try Stdout.line! "Todo Tasks:"
+    try List.forEachTry! todo \{ id, task } ->
         Stdout.line! "\tid: $(id), task: $(task)"
 
-    completed = query_todos_by_status!? db_path "completed"
+    completed = try query_todos_by_status! db_path "completed"
 
-    Stdout.line!? "\nCompleted Tasks:"
-    List.forEachTry!? completed \{ id, task } ->
+    try Stdout.line! "\nCompleted Tasks:"
+    try List.forEachTry! completed \{ id, task } ->
         Stdout.line! "\tid: $(id), task: $(task)"
 
     Ok {}
