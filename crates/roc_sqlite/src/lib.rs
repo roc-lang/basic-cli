@@ -52,7 +52,7 @@ thread_local! {
     // That said, connections are a bit complicated cause they need to outlive all statements.
     // It is also best to avoid constantly creating new connections, so we want these to stay around.
     // For now, just caching them all and never freeing. Shouldn't matter unless there are tons of databases constantly being created and opened.
-    static SQLITE_CONNECTIONS : RefCell<Vec<(CString, SqliteConnection)>> = RefCell::new(vec![]);
+    static SQLITE_CONNECTIONS : RefCell<Vec<(CString, SqliteConnection)>> = const { RefCell::new(vec![]) };
 }
 
 fn get_connection(path: &str) -> Result<SqliteConnection, c_int> {
@@ -85,7 +85,7 @@ fn thread_local_prepare(
 ) -> Result<*mut libsqlite3_sys::sqlite3_stmt, c_int> {
     // Get the connection
     let connection = {
-        match get_connection(&stmt.db_path.as_str()) {
+        match get_connection(stmt.db_path.as_str()) {
             Ok(conn) => conn,
             Err(err) => return Err(err),
         }
@@ -106,7 +106,7 @@ fn thread_local_prepare(
             if err != libsqlite3_sys::SQLITE_OK {
                 return Err(err);
             }
-            return Ok(unsafe_stmt);
+            Ok(unsafe_stmt)
         })
         .map(|x| x.0)
 }
@@ -218,7 +218,7 @@ pub fn columns(stmt: RocBox<()>) -> RocResult<RocList<RocStr>, ()> {
         let col_name = unsafe { libsqlite3_sys::sqlite3_column_name(local_stmt, i as c_int) };
         let col_name = unsafe { CStr::from_ptr(col_name) };
         // Both of these should be safe. Sqlite should always return a utf8 string with null terminator.
-        let col_name = RocStr::try_from(col_name.to_string_lossy().borrow()).unwrap();
+        let col_name = RocStr::from(col_name.to_string_lossy().borrow());
         list.append(col_name);
     }
     RocResult::ok(list)
