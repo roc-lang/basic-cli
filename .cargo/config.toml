@@ -1,7 +1,0 @@
-[target.aarch64-unknown-linux-musl]
-linker = "aarch64-linux-musl-gcc"
-rustflags = ["-C", "target-feature=+crt-static"]
-
-[profile.release]
-lto = true
-codegen-units = 1
