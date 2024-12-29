@@ -18,11 +18,11 @@ fi
 
 $ROC build --lib ./platform/libapp.roc
 
-cargo build --release
-
 if [ -n "$CARGO_BUILD_TARGET" ]; then
+    cargo build --release --target $CARGO_BUILD_TARGET
     cp target/$CARGO_BUILD_TARGET/release/libhost.a ./platform/libhost.a
 else
+    cargo build --release
     cp target/release/libhost.a ./platform/libhost.a
 fi
 
