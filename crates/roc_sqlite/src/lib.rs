@@ -173,23 +173,31 @@ pub fn bind(stmt: RocBox<()>, bindings: &RocList<SqliteBindings>) -> RocResult<(
             },
             SqliteValueDiscriminant::String => unsafe {
                 let str = binding.value.borrow_String().as_str();
+                let transient = std::mem::transmute::<
+                    *const std::ffi::c_void,
+                    unsafe extern "C" fn(*mut std::ffi::c_void),
+                >(-1isize as *const c_void);
                 libsqlite3_sys::sqlite3_bind_text64(
                     local_stmt,
                     index,
                     str.as_ptr() as *const c_char,
                     str.len() as u64,
-                    None,
+                    Some(transient),
                     libsqlite3_sys::SQLITE_UTF8 as u8,
                 )
             },
             SqliteValueDiscriminant::Bytes => unsafe {
                 let str = binding.value.borrow_Bytes().as_slice();
+                let transient = std::mem::transmute::<
+                    *const std::ffi::c_void,
+                    unsafe extern "C" fn(*mut std::ffi::c_void),
+                >(-1isize as *const c_void);
                 libsqlite3_sys::sqlite3_bind_blob64(
                     local_stmt,
                     index,
                     str.as_ptr() as *const c_void,
                     str.len() as u64,
-                    None,
+                    Some(transient),
                 )
             },
             SqliteValueDiscriminant::Null => unsafe {
