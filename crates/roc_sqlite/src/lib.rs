@@ -146,7 +146,7 @@ pub fn bind(stmt: RocBox<()>, bindings: &RocList<SqliteBindings>) -> RocResult<(
     // Clear old bindings to ensure the users is setting all bindings
     let err = unsafe { libsqlite3_sys::sqlite3_clear_bindings(local_stmt) };
     if err != libsqlite3_sys::SQLITE_OK {
-        return roc_err_from_sqlite_errcode(&stmt, err);
+        return roc_err_from_sqlite_errcode(stmt, err);
     }
 
     for binding in bindings {
@@ -173,25 +173,23 @@ pub fn bind(stmt: RocBox<()>, bindings: &RocList<SqliteBindings>) -> RocResult<(
             },
             SqliteValueDiscriminant::String => unsafe {
                 let str = binding.value.borrow_String().as_str();
-                let transient = std::mem::transmute(!0 as *const c_void);
                 libsqlite3_sys::sqlite3_bind_text64(
                     local_stmt,
                     index,
                     str.as_ptr() as *const c_char,
                     str.len() as u64,
-                    transient,
+                    None,
                     libsqlite3_sys::SQLITE_UTF8 as u8,
                 )
             },
             SqliteValueDiscriminant::Bytes => unsafe {
                 let str = binding.value.borrow_Bytes().as_slice();
-                let transient = std::mem::transmute(!0 as *const c_void);
                 libsqlite3_sys::sqlite3_bind_blob64(
                     local_stmt,
                     index,
                     str.as_ptr() as *const c_void,
                     str.len() as u64,
-                    transient,
+                    None,
                 )
             },
             SqliteValueDiscriminant::Null => unsafe {
@@ -199,7 +197,7 @@ pub fn bind(stmt: RocBox<()>, bindings: &RocList<SqliteBindings>) -> RocResult<(
             },
         };
         if err != libsqlite3_sys::SQLITE_OK {
-            return roc_err_from_sqlite_errcode(&stmt, err);
+            return roc_err_from_sqlite_errcode(stmt, err);
         }
     }
     RocResult::ok(())
@@ -281,7 +279,7 @@ pub fn step(stmt: RocBox<()>) -> RocResult<SqliteState, SqliteError> {
     if err == libsqlite3_sys::SQLITE_DONE {
         return RocResult::ok(SqliteState::Done);
     }
-    roc_err_from_sqlite_errcode(&stmt, err)
+    roc_err_from_sqlite_errcode(stmt, err)
 }
 
 pub fn reset(stmt: RocBox<()>) -> RocResult<(), SqliteError> {
@@ -292,7 +290,7 @@ pub fn reset(stmt: RocBox<()>) -> RocResult<(), SqliteError> {
 
     let err = unsafe { libsqlite3_sys::sqlite3_reset(local_stmt) };
     if err != libsqlite3_sys::SQLITE_OK {
-        return roc_err_from_sqlite_errcode(&stmt, err);
+        return roc_err_from_sqlite_errcode(stmt, err);
     }
     RocResult::ok(())
 }
@@ -312,7 +310,7 @@ fn roc_err_from_sqlite_errcode<T>(
     }
     RocResult::err(SqliteError {
         code: code as i64,
-        message: RocStr::try_from(errstr.borrow()).unwrap_or(RocStr::empty()),
+        message: RocStr::from(errstr.borrow()),
     })
 }
 
@@ -327,7 +325,7 @@ fn err_from_sqlite_conn(conn: SqliteConnection, code: c_int) -> SqliteError {
     }
     SqliteError {
         code: code as i64,
-        message: RocStr::try_from(errstr.borrow()).unwrap_or(RocStr::empty()),
+        message: RocStr::from(errstr.borrow()),
     }
 }
 
@@ -386,7 +384,6 @@ impl SqliteValue {
 
     pub fn borrow_Bytes(&self) -> &roc_std::RocList<u8> {
         debug_assert_eq!(self.discriminant, SqliteValueDiscriminant::Bytes);
-        use core::borrow::Borrow;
         unsafe { self.payload.Bytes.borrow() }
     }
 
@@ -449,7 +446,6 @@ impl SqliteValue {
 
     pub fn borrow_String(&self) -> &roc_std::RocStr {
         debug_assert_eq!(self.discriminant, SqliteValueDiscriminant::String);
-        use core::borrow::Borrow;
         unsafe { self.payload.String.borrow() }
     }
 
