@@ -174,7 +174,19 @@ reset! = \@Stmt stmt ->
     Host.sqlite_reset! stmt
     |> Result.mapErr internal_to_external_error
 
-## TODO documentation
+## Execute a SQL statement that doesn't return any rows (like INSERT, UPDATE, DELETE).
+##
+## Example:
+## ```
+## Sqlite.execute! {
+##     path: "path/to/database.db",
+##     query: "INSERT INTO names (first, last) VALUES (:first, :last);",
+##     bindings: [
+##         { name: ":first", value: String "John" },
+##         { name: ":last", value: String "Smith" },
+##     ],
+## }
+## ```
 execute! :
     {
         path : Str,
