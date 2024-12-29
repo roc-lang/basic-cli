@@ -131,9 +131,9 @@ Code : [
 ## An error occured interacting with a Sqlite database.
 ## This includes the [Code] and a [Str] message.
 ## ```
-## [SqlError Code Str]
+## [SqliteErr Code Str]
 ## ```
-Error : [SqlError Code Str]
+Error : [SqliteErr Code Str]
 
 ## Bind a name and a value to pass to the Sqlite database.
 ## ```
@@ -226,7 +226,7 @@ execute! :
         query : Str,
         bindings : List Binding,
     }
-    => Result {} [SqlError Code Str, UnhandledRows]
+    => Result {} [SqliteErr Code Str, UnhandledRows]
 execute! = \{ path, query: q, bindings } ->
     stmt = try prepare! { path, query: q }
     execute_prepared! { stmt, bindings }
@@ -240,7 +240,7 @@ execute_prepared! :
         stmt : Stmt,
         bindings : List Binding,
     }
-    => Result {} [SqlError Code Str, UnhandledRows]
+    => Result {} [SqliteErr Code Str, UnhandledRows]
 execute_prepared! = \{ stmt, bindings } ->
     try bind! stmt bindings
     res = step! stmt
@@ -339,7 +339,7 @@ query_many_prepared! = \{ stmt, bindings, rows: decode } ->
     try reset! stmt
     res
 
-SqlDecodeErr err : [FieldNotFound Str, SqlError Code Str]err
+SqlDecodeErr err : [FieldNotFound Str, SqliteErr Code Str]err
 SqlDecode a err := List Str -> (Stmt => Result a (SqlDecodeErr err))
 
 ## Decode a Sqlite row into a record by combining decoders.
@@ -634,7 +634,7 @@ nullable_f32 = nullable_real_decoder (\x -> Num.toF32 x |> Ok)
 # internal use only
 internal_to_external_error : InternalSqlite.SqliteError -> Error
 internal_to_external_error = \{ code, message } ->
-    SqlError (code_from_i64 code) message
+    SqliteErr (code_from_i64 code) message
 
 # internal use only
 code_from_i64 : I64 -> Code
@@ -705,7 +705,7 @@ code_from_i64 = \code ->
 ## Convert a [Error] to a pretty string for display purposes.
 err_to_str : Error -> Str
 err_to_str = \err ->
-    (SqlError code msg2) = err
+    (SqliteErr code msg2) = err
 
     msg1 =
         when code is
