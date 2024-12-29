@@ -47,10 +47,10 @@ impl Drop for SqliteStatement {
 }
 
 thread_local! {
-    // We can probably do something smarter here. We need a connection per thread fundamentally.
-    // That said, connections are a bit complicated cause they need to outlive all statements.
-    // It is also best to avoid constantly creating new connections, so we want these to stay around.
-    // For now, just caching them all and never freeing. Shouldn't matter unless there are tons of databases constantly being created and opened.
+    // TODO: Once roc has atomic refcounts and sharing between threads, this really should be managed by roc.
+    // We should have a heap of connections just like statements.
+    // Each statement will need to keep a reference to the connection it uses.
+    // Connections will still need some sort of thread local to enable multithread access (connection per thread).
     static SQLITE_CONNECTIONS : RefCell<Vec<(CString, SqliteConnection)>> = const { RefCell::new(vec![]) };
 }
 
