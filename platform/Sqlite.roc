@@ -162,7 +162,7 @@ Stmt := Box {}
 ##     stmt: prepared_query,
 ##     bindings: [],
 ##     rows: { Sqlite.decode_record <-
-##         id: Sqlite.i64 "id" |> Sqlite.map_value Num.toStr,
+##         id: Sqlite.i64 "id",
 ##         task: Sqlite.str "task",
 ##     },
 ## }
@@ -433,6 +433,20 @@ decoder = \fn -> \name ->
                 \_ ->
                     Err (FieldNotFound name)
 
+## Decode a [Value] keeping it tagged. This is useful when data could be many possible types.
+##
+## For example here we build a decoder that decodes the rows into a list of records with `id` and `mixed_data` fields:
+## ```
+## Sqlite.query_many! {
+##     path: "path/to/database.db",
+##     query: "SELECT id, mix_data FROM users;",
+##     bindings: [],
+##     rows: { Sqlite.decode_record <-
+##         id: Sqlite.i64 "id",
+##         mix_data: Sqlite.tagged_value "mixed_data",
+##     },
+## }
+## ```
 tagged_value : Str -> SqlDecode Value []
 tagged_value = decoder \val ->
     Ok val
@@ -458,7 +472,7 @@ UnexpectedTypeErr : [UnexpectedType [Integer, Real, String, Bytes, Null]]
 ##     query: "SELECT id, name FROM users;",
 ##     bindings: [],
 ##     rows: { Sqlite.decode_record <-
-##         id: Sqlite.i64 "id" |> Sqlite.map_value Num.toStr,
+##         id: Sqlite.i64 "id",
 ##         task: Sqlite.str "name",
 ##     },
 ## }
@@ -501,7 +515,7 @@ real_decoder = \cast ->
 ##     query: "SELECT id, name FROM users;",
 ##     bindings: [],
 ##     rows: { Sqlite.decode_record <-
-##         id: Sqlite.i64 "id" |> Sqlite.map_value Num.toStr,
+##         id: Sqlite.i64 "id",
 ##         task: Sqlite.str "name",
 ##     },
 ## }
