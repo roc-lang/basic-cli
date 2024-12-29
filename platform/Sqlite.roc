@@ -1,6 +1,6 @@
 module [
     Value,
-    Code,
+    ErrCode,
     Error,
     Binding,
     Stmt,
@@ -94,7 +94,7 @@ Value : InternalSqlite.SqliteValue
 ##     UNKNOWN I64, # error code not known
 ## ]
 ## ```
-Code : [
+ErrCode : [
     ERROR, # SQL error or missing database
     INTERNAL, # Internal logic error in Sqlite
     PERM, # Access permission denied
@@ -129,11 +129,11 @@ Code : [
 ]
 
 ## An error occured interacting with a Sqlite database.
-## This includes the [Code] and a [Str] message.
+## This includes the [ErrCode] and a [Str] message.
 ## ```
-## [SqliteErr Code Str]
+## [SqliteErr ErrCode Str]
 ## ```
-Error : [SqliteErr Code Str]
+Error : [SqliteErr ErrCode Str]
 
 ## Bind a name and a value to pass to the Sqlite database.
 ## ```
@@ -226,7 +226,7 @@ execute! :
         query : Str,
         bindings : List Binding,
     }
-    => Result {} [SqliteErr Code Str, UnhandledRows]
+    => Result {} [SqliteErr ErrCode Str, UnhandledRows]
 execute! = \{ path, query: q, bindings } ->
     stmt = try prepare! { path, query: q }
     execute_prepared! { stmt, bindings }
@@ -240,7 +240,7 @@ execute_prepared! :
         stmt : Stmt,
         bindings : List Binding,
     }
-    => Result {} [SqliteErr Code Str, UnhandledRows]
+    => Result {} [SqliteErr ErrCode Str, UnhandledRows]
 execute_prepared! = \{ stmt, bindings } ->
     try bind! stmt bindings
     res = step! stmt
@@ -339,7 +339,7 @@ query_many_prepared! = \{ stmt, bindings, rows: decode } ->
     try reset! stmt
     res
 
-SqlDecodeErr err : [FieldNotFound Str, SqliteErr Code Str]err
+SqlDecodeErr err : [FieldNotFound Str, SqliteErr ErrCode Str]err
 SqlDecode a err := List Str -> (Stmt => Result a (SqlDecodeErr err))
 
 ## Decode a Sqlite row into a record by combining decoders.
@@ -651,7 +651,7 @@ internal_to_external_error = \{ code, message } ->
     SqliteErr (code_from_i64 code) message
 
 # internal use only
-code_from_i64 : I64 -> Code
+code_from_i64 : I64 -> ErrCode
 code_from_i64 = \code ->
     if code == 1 || code == 0 then
         ERROR
