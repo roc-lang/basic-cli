@@ -180,7 +180,7 @@ reset! = \@Stmt stmt ->
 ## ```
 ## Sqlite.execute! {
 ##     path: "path/to/database.db",
-##     query: "INSERT INTO names (first, last) VALUES (:first, :last);",
+##     query: "INSERT INTO users (first, last) VALUES (:first, :last);",
 ##     bindings: [
 ##         { name: ":first", value: String "John" },
 ##         { name: ":last", value: String "Smith" },
@@ -198,7 +198,10 @@ execute! = \{ path, query: q, bindings } ->
     stmt = try prepare! { path, query: q }
     execute_prepared! { stmt, bindings }
 
-## TODO documentation
+## Execute a prepared SQL statement that doesn't return any rows.
+##
+## This is more efficient than [execute!] when running the same query multiple times
+## as it reuses the prepared statement.
 execute_prepared! :
     {
         stmt : Stmt,
@@ -219,7 +222,18 @@ execute_prepared! = \{ stmt, bindings } ->
         Err e ->
             Err e
 
-## TODO documentation
+## Execute a SQL query and decode exactly one row into a value.
+##
+## Example:
+## ```
+## # count the number of rows in the `users` table
+## count = try Sqlite.query! {
+##     path: db_path,
+##     query: "SELECT COUNT(*) as \"count\" FROM users;",
+##     bindings: [],
+##     row: Sqlite.u64 "count",
+## }
+## ```
 query! :
     {
         path : Str,
@@ -232,7 +246,10 @@ query! = \{ path, query: q, bindings, row } ->
     stmt = try prepare! { path, query: q }
     query_prepared! { stmt, bindings, row }
 
-## TODO documentation
+## Execute a prepared SQL query and decode exactly one row into a value.
+##
+## This is more efficient than [query!] when running the same query multiple times
+## as it reuses the prepared statement.
 query_prepared! :
     {
         stmt : Stmt,
@@ -246,7 +263,20 @@ query_prepared! = \{ stmt, bindings, row: decode } ->
     try reset! stmt
     res
 
-## TODO documentation
+## Execute a SQL query and decode multiple rows into a list of values.
+##
+## Example:
+## ```
+## Sqlite.query_many! {
+##     path: "path/to/database.db",
+##     query: "SELECT * FROM todos;",
+##     bindings: [],
+##     rows: { Sqlite.decode_record <-
+##         id: Sqlite.i64 "id",
+##         task: Sqlite.str "task",
+##     },
+## }
+## ```
 query_many! :
     {
         path : Str,
@@ -259,7 +289,10 @@ query_many! = \{ path, query: q, bindings, rows } ->
     stmt = try prepare! { path, query: q }
     query_many_prepared! { stmt, bindings, rows }
 
-## TODO documentation
+## Execute a prepared SQL query and decode multiple rows into a list of values.
+##
+## This is more efficient than [query_many!] when running the same query multiple times
+## as it reuses the prepared statement.
 query_many_prepared! :
     {
         stmt : Stmt,
@@ -276,7 +309,15 @@ query_many_prepared! = \{ stmt, bindings, rows: decode } ->
 SqlDecodeErr err : [FieldNotFound Str, SqlError Code Str]err
 SqlDecode a err := List Str -> (Stmt => Result a (SqlDecodeErr err))
 
-## TODO documentation
+## Decode a Sqlite row into a record by combining decoders.
+##
+## Example:
+## ```
+## { Sqlite.decode_record <-
+##     id: Sqlite.i64 "id",
+##     task: Sqlite.str "task",
+## }
+## ```
 decode_record : SqlDecode a err, SqlDecode b err, (a, b -> c) -> SqlDecode c err
 decode_record = \@SqlDecode gen_first, @SqlDecode gen_second, mapper ->
     @SqlDecode \cols ->
@@ -288,7 +329,12 @@ decode_record = \@SqlDecode gen_first, @SqlDecode gen_second, mapper ->
             second = try decode_second! stmt
             Ok (mapper first second)
 
-## TODO documentation
+## Transform the output of a decoder by applying a function to the decoded value.
+##
+## Example:
+## ```
+## Sqlite.i64 "id" |> Sqlite.map_value Num.toStr
+## ```
 map_value : SqlDecode a err, (a -> b) -> SqlDecode b err
 map_value = \@SqlDecode gen_decode, mapper ->
     @SqlDecode \cols ->
@@ -354,7 +400,6 @@ decoder = \fn -> \name ->
                 \_ ->
                     Err (FieldNotFound name)
 
-## TODO documentation
 tagged_value : Str -> SqlDecode Value []
 tagged_value = decoder \val ->
     Ok val
