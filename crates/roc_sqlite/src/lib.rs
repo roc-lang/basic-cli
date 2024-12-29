@@ -22,7 +22,6 @@ pub fn heap() -> &'static ThreadSafeRefcountedResourceHeap<SqliteStatement> {
 }
 
 type SqliteConnection = *mut libsqlite3_sys::sqlite3;
-// type SqliteError = c_int;
 
 // We are guaranteeing that we are using these on single threads.
 // This keeps them thread safe.
@@ -55,7 +54,7 @@ thread_local! {
     static SQLITE_CONNECTIONS : RefCell<Vec<(CString, SqliteConnection)>> = const { RefCell::new(vec![]) };
 }
 
-fn get_connection(path: &str) -> Result<SqliteConnection, c_int> {
+fn get_connection(path: &str) -> Result<SqliteConnection, SqliteError> {
     SQLITE_CONNECTIONS.with(|connections| {
         for (conn_path, connection) in connections.borrow().iter() {
             if path.as_bytes() == conn_path.as_c_str().to_bytes() {
@@ -72,7 +71,7 @@ fn get_connection(path: &str) -> Result<SqliteConnection, c_int> {
             libsqlite3_sys::sqlite3_open_v2(path.as_ptr(), &mut connection, flags, std::ptr::null())
         };
         if err != libsqlite3_sys::SQLITE_OK {
-            return Err(err);
+            return Err(err_from_sqlite_conn(connection, err));
         }
 
         connections.borrow_mut().push((path, connection));
@@ -82,7 +81,7 @@ fn get_connection(path: &str) -> Result<SqliteConnection, c_int> {
 
 fn thread_local_prepare(
     stmt: &SqliteStatement,
-) -> Result<*mut libsqlite3_sys::sqlite3_stmt, c_int> {
+) -> Result<*mut libsqlite3_sys::sqlite3_stmt, SqliteError> {
     // Get the connection
     let connection = {
         match get_connection(stmt.db_path.as_str()) {
@@ -104,7 +103,7 @@ fn thread_local_prepare(
                 )
             };
             if err != libsqlite3_sys::SQLITE_OK {
-                return Err(err);
+                return Err(err_from_sqlite_conn(connection, err));
             }
             Ok(unsafe_stmt)
         })
@@ -124,7 +123,7 @@ pub fn prepare(
 
     // Always prepare once to ensure no errors and prep for current thread.
     if let Err(err) = thread_local_prepare(&stmt) {
-        return roc_err_from_sqlite_errcode(err);
+        return RocResult::err(err);
     }
 
     let heap = heap();
@@ -147,7 +146,7 @@ pub fn bind(stmt: RocBox<()>, bindings: &RocList<SqliteBindings>) -> RocResult<(
     // Clear old bindings to ensure the users is setting all bindings
     let err = unsafe { libsqlite3_sys::sqlite3_clear_bindings(local_stmt) };
     if err != libsqlite3_sys::SQLITE_OK {
-        return roc_err_from_sqlite_errcode(err);
+        return roc_err_from_sqlite_errcode(&stmt, err);
     }
 
     for binding in bindings {
@@ -200,7 +199,7 @@ pub fn bind(stmt: RocBox<()>, bindings: &RocList<SqliteBindings>) -> RocResult<(
             },
         };
         if err != libsqlite3_sys::SQLITE_OK {
-            return roc_err_from_sqlite_errcode(err);
+            return roc_err_from_sqlite_errcode(&stmt, err);
         }
     }
     RocResult::ok(())
@@ -282,7 +281,7 @@ pub fn step(stmt: RocBox<()>) -> RocResult<SqliteState, SqliteError> {
     if err == libsqlite3_sys::SQLITE_DONE {
         return RocResult::ok(SqliteState::Done);
     }
-    roc_err_from_sqlite_errcode(err)
+    roc_err_from_sqlite_errcode(&stmt, err)
 }
 
 pub fn reset(stmt: RocBox<()>) -> RocResult<(), SqliteError> {
@@ -293,17 +292,43 @@ pub fn reset(stmt: RocBox<()>) -> RocResult<(), SqliteError> {
 
     let err = unsafe { libsqlite3_sys::sqlite3_reset(local_stmt) };
     if err != libsqlite3_sys::SQLITE_OK {
-        return roc_err_from_sqlite_errcode(err);
+        return roc_err_from_sqlite_errcode(&stmt, err);
     }
     RocResult::ok(())
 }
 
-fn roc_err_from_sqlite_errcode<T>(code: c_int) -> RocResult<T, SqliteError> {
-    let msg = unsafe { CStr::from_ptr(libsqlite3_sys::sqlite3_errstr(code)) };
+fn roc_err_from_sqlite_errcode<T>(
+    stmt: &SqliteStatement,
+    code: c_int,
+) -> RocResult<T, SqliteError> {
+    let mut errstr =
+        unsafe { CStr::from_ptr(libsqlite3_sys::sqlite3_errstr(code)) }.to_string_lossy();
+    // Attempt to grab a more detailed message if it is available.
+    if let Ok(conn) = get_connection(stmt.db_path.as_str()) {
+        let errmsg = unsafe { libsqlite3_sys::sqlite3_errmsg(conn) };
+        if !errmsg.is_null() {
+            errstr = unsafe { CStr::from_ptr(errmsg).to_string_lossy() };
+        }
+    }
     RocResult::err(SqliteError {
         code: code as i64,
-        message: RocStr::try_from(msg.to_string_lossy().borrow()).unwrap_or(RocStr::empty()),
+        message: RocStr::try_from(errstr.borrow()).unwrap_or(RocStr::empty()),
     })
+}
+
+// If a connections fails to be initialized, we have to load the error directly like so.
+fn err_from_sqlite_conn(conn: SqliteConnection, code: c_int) -> SqliteError {
+    let mut errstr =
+        unsafe { CStr::from_ptr(libsqlite3_sys::sqlite3_errstr(code)) }.to_string_lossy();
+    // Attempt to grab a more detailed message if it is available.
+    let errmsg = unsafe { libsqlite3_sys::sqlite3_errmsg(conn) };
+    if !errmsg.is_null() {
+        errstr = unsafe { CStr::from_ptr(errmsg).to_string_lossy() };
+    }
+    SqliteError {
+        code: code as i64,
+        message: RocStr::try_from(errstr.borrow()).unwrap_or(RocStr::empty()),
+    }
 }
 
 // ========= Underlying Roc Type representations ==========
