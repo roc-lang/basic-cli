@@ -1,7 +1,6 @@
 module [
     Value,
     ErrCode,
-    Error,
     Binding,
     Stmt,
     query!,
@@ -11,7 +10,7 @@ module [
     query_prepared!,
     query_many_prepared!,
     execute_prepared!,
-    err_to_str,
+    errcode_to_str,
     decode_record,
     map_value,
     tagged_value,
@@ -128,13 +127,6 @@ ErrCode : [
     Unknown I64, # error code not known
 ]
 
-## An error occured interacting with a Sqlite database.
-## This includes the [ErrCode] and a [Str] message.
-## ```
-## [SqliteErr ErrCode Str]
-## ```
-Error : [SqliteErr ErrCode Str]
-
 ## Bind a name and a value to pass to the Sqlite database.
 ## ```
 ## {
@@ -172,14 +164,14 @@ prepare! :
         path : Str,
         query : Str,
     }
-    => Result Stmt Error
+    => Result Stmt [SqliteErr ErrCode Str]
 prepare! = \{ path, query: q } ->
     Host.sqlite_prepare! path q
     |> Result.map @Stmt
     |> Result.mapErr internal_to_external_error
 
 # internal use only
-bind! : Stmt, List Binding => Result {} Error
+bind! : Stmt, List Binding => Result {} [SqliteErr ErrCode Str]
 bind! = \@Stmt stmt, bindings ->
     Host.sqlite_bind! stmt bindings
     |> Result.mapErr internal_to_external_error
@@ -190,19 +182,19 @@ columns! = \@Stmt stmt ->
     Host.sqlite_columns! stmt
 
 # internal use only
-column_value! : Stmt, U64 => Result Value Error
+column_value! : Stmt, U64 => Result Value [SqliteErr ErrCode Str]
 column_value! = \@Stmt stmt, i ->
     Host.sqlite_column_value! stmt i
     |> Result.mapErr internal_to_external_error
 
 # internal use only
-step! : Stmt => Result [Row, Done] Error
+step! : Stmt => Result [Row, Done] [SqliteErr ErrCode Str]
 step! = \@Stmt stmt ->
     Host.sqlite_step! stmt
     |> Result.mapErr internal_to_external_error
 
 # internal use only
-reset! : Stmt => Result {} Error
+reset! : Stmt => Result {} [SqliteErr ErrCode Str]
 reset! = \@Stmt stmt ->
     Host.sqlite_reset! stmt
     |> Result.mapErr internal_to_external_error
@@ -646,7 +638,7 @@ nullable_f32 = nullable_real_decoder (\x -> Num.toF32 x |> Ok)
 # nullable_dec = nullable_real_decoder Ok
 
 # internal use only
-internal_to_external_error : InternalSqlite.SqliteError -> Error
+internal_to_external_error : InternalSqlite.SqliteError -> [SqliteErr ErrCode Str]
 internal_to_external_error = \{ code, message } ->
     SqliteErr (code_from_i64 code) message
 
@@ -716,43 +708,38 @@ code_from_i64 = \code ->
     else
         Unknown code
 
-## Convert a [Error] to a pretty string for display purposes.
-err_to_str : Error -> Str
-err_to_str = \err ->
-    (SqliteErr code msg2) = err
-
-    msg1 =
-        when code is
-            Error -> "Error: Sql error or missing database"
-            Internal -> "Internal: Internal logic error in Sqlite"
-            Perm -> "Perm: Access permission denied"
-            Abort -> "Abort: Callback routine requested an abort"
-            Busy -> "Busy: The database file is locked"
-            Locked -> "Locked: A table in the database is locked"
-            NoMem -> "NoMem: A malloc() failed"
-            ReadOnly -> "ReadOnly: Attempt to write a readonly database"
-            Interrupt -> "Interrupt: Operation terminated by sqlite3_interrupt("
-            IOErr -> "IOErr: Some kind of disk I/O error occurred"
-            Corrupt -> "Corrupt: The database disk image is malformed"
-            NotFound -> "NotFound: Unknown opcode in sqlite3_file_control()"
-            Full -> "Full: Insertion failed because database is full"
-            CanNotOpen -> "CanNotOpen: Unable to open the database file"
-            Protocol -> "Protocol: Database lock protocol error"
-            Empty -> "Empty: Database is empty"
-            Schema -> "Schema: The database schema changed"
-            TooBig -> "TooBig: String or BLOB exceeds size limit"
-            Constraint -> "Constraint: Abort due to constraint violation"
-            Mismatch -> "Mismatch: Data type mismatch"
-            Misuse -> "Misuse: Library used incorrectly"
-            NoLFS -> "NoLFS: Uses OS features not supported on host"
-            AuthDenied -> "AuthDenied: Authorization denied"
-            Format -> "Format: Auxiliary database format error"
-            OutOfRange -> "OutOfRange: 2nd parameter to sqlite3_bind out of range"
-            NotADatabase -> "NotADatabase: File opened that is not a database file"
-            Notice -> "Notice: Notifications from sqlite3_log()"
-            Warning -> "Warning: Warnings from sqlite3_log()"
-            Row -> "Row: sqlite3_step() has another row ready"
-            Done -> "Done: sqlite3_step() has finished executing"
-            Unknown c -> "Unknown: error code $(Num.toStr c) not known"
-
-    "$(msg1) - $(msg2)"
+## Convert a [ErrCode] to a pretty string for display purposes.
+errcode_to_str : ErrCode -> Str
+errcode_to_str = \code ->
+    when code is
+        Error -> "Error: Sql error or missing database"
+        Internal -> "Internal: Internal logic error in Sqlite"
+        Perm -> "Perm: Access permission denied"
+        Abort -> "Abort: Callback routine requested an abort"
+        Busy -> "Busy: The database file is locked"
+        Locked -> "Locked: A table in the database is locked"
+        NoMem -> "NoMem: A malloc() failed"
+        ReadOnly -> "ReadOnly: Attempt to write a readonly database"
+        Interrupt -> "Interrupt: Operation terminated by sqlite3_interrupt("
+        IOErr -> "IOErr: Some kind of disk I/O error occurred"
+        Corrupt -> "Corrupt: The database disk image is malformed"
+        NotFound -> "NotFound: Unknown opcode in sqlite3_file_control()"
+        Full -> "Full: Insertion failed because database is full"
+        CanNotOpen -> "CanNotOpen: Unable to open the database file"
+        Protocol -> "Protocol: Database lock protocol error"
+        Empty -> "Empty: Database is empty"
+        Schema -> "Schema: The database schema changed"
+        TooBig -> "TooBig: String or BLOB exceeds size limit"
+        Constraint -> "Constraint: Abort due to constraint violation"
+        Mismatch -> "Mismatch: Data type mismatch"
+        Misuse -> "Misuse: Library used incorrectly"
+        NoLFS -> "NoLFS: Uses OS features not supported on host"
+        AuthDenied -> "AuthDenied: Authorization denied"
+        Format -> "Format: Auxiliary database format error"
+        OutOfRange -> "OutOfRange: 2nd parameter to sqlite3_bind out of range"
+        NotADatabase -> "NotADatabase: File opened that is not a database file"
+        Notice -> "Notice: Notifications from sqlite3_log()"
+        Warning -> "Warning: Warnings from sqlite3_log()"
+        Row -> "Row: sqlite3_step() has another row ready"
+        Done -> "Done: sqlite3_step() has finished executing"
+        Unknown c -> "Unknown: error code $(Num.toStr c) not known"
