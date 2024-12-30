@@ -13,8 +13,8 @@ cd basic-cli
 # Fetch all tags
 git fetch --tags
 
-# Get the latest tag name
-latestTag=$(git describe --tags $(git rev-list --tags --max-count=1))
+# Get the latest tag matching pattern X.Y*
+latestTag=$(git for-each-ref --sort=-version:refname --format '%(refname:short)' refs/tags/ | grep -E '^[0-9]+\.[0-9]+.*' | head -n1)
 
 # Checkout the latest tag
 git checkout $latestTag
