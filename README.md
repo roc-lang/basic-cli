@@ -18,7 +18,8 @@ A Roc [platform](https://github.com/roc-lang/roc/wiki/Roc-concepts-explained#pla
 
 If you clone this repo instead of using the release URL you'll need to build the platform once:
 ```sh
-roc build.roc
+./jump-start.sh
+roc build.roc --linker=legacy
 ```
 Then you can run like usual:
 ```sh
