@@ -64,6 +64,8 @@ fn get_connection(path: &str) -> Result<SqliteConnection, SqliteError> {
 
         let path = CString::new(path).unwrap();
         let mut connection: SqliteConnection = std::ptr::null_mut();
+        // TODO: we should eventually allow users to decide if they want to create a database.
+        // This is errorprone and can lead to creating a database when the user wants to open a existing one.
         let flags = libsqlite3_sys::SQLITE_OPEN_CREATE
             | libsqlite3_sys::SQLITE_OPEN_READWRITE
             | libsqlite3_sys::SQLITE_OPEN_NOMUTEX;
