@@ -255,15 +255,15 @@ pub fn column_value(stmt: RocBox<()>, i: u64) -> RocResult<SqliteValue, SqliteEr
             SqliteValue::Real(val)
         }
         libsqlite3_sys::SQLITE_TEXT => unsafe {
-            let len = libsqlite3_sys::sqlite3_column_bytes(local_stmt, i);
             let text = libsqlite3_sys::sqlite3_column_text(local_stmt, i);
+            let len = libsqlite3_sys::sqlite3_column_bytes(local_stmt, i);
             let slice = std::slice::from_raw_parts(text, len as usize);
             let val = RocStr::from(std::str::from_utf8_unchecked(slice));
             SqliteValue::String(val)
         },
         libsqlite3_sys::SQLITE_BLOB => unsafe {
-            let len = libsqlite3_sys::sqlite3_column_bytes(local_stmt, i);
             let blob = libsqlite3_sys::sqlite3_column_blob(local_stmt, i) as *const u8;
+            let len = libsqlite3_sys::sqlite3_column_bytes(local_stmt, i);
             let slice = std::slice::from_raw_parts(blob, len as usize);
             let val = RocList::<u8>::from(slice);
             SqliteValue::Bytes(val)
