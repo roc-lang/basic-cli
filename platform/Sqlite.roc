@@ -61,71 +61,71 @@ Value : InternalSqlite.SqliteValue
 ## Represents various error codes that can be returned by Sqlite.
 ## ```
 ## [
-##     ERROR, # SQL error or missing database
-##     INTERNAL, # Internal logic error in Sqlite
-##     PERM, # Access permission denied
-##     ABORT, # Callback routine requested an abort
-##     BUSY, # The database file is locked
-##     LOCKED, # A table in the database is locked
-##     NOMEM, # A malloc() failed
-##     READONLY, # Attempt to write a readonly database
-##     INTERRUPT, # Operation terminated by sqlite3_interrupt(
-##     IOERR, # Some kind of disk I/O error occurred
-##     CORRUPT, # The database disk image is malformed
-##     NOTFOUND, # Unknown opcode in sqlite3_file_control()
-##     FULL, # Insertion failed because database is full
-##     CANTOPEN, # Unable to open the database file
-##     PROTOCOL, # Database lock protocol error
-##     EMPTY, # Database is empty
-##     SCHEMA, # The database schema changed
-##     TOOBIG, # String or BLOB exceeds size limit
-##     CONSTRAINT, # Abort due to constraint violation
-##     MISMATCH, # Data type mismatch
-##     MISUSE, # Library used incorrectly
-##     NOLFS, # Uses OS features not supported on host
-##     AUTH, # Authorization denied
-##     FORMAT, # Auxiliary database format error
-##     RANGE, # 2nd parameter to sqlite3_bind out of range
-##     NOTADB, # File opened that is not a database file
-##     NOTICE, # Notifications from sqlite3_log()
-##     WARNING, # Warnings from sqlite3_log()
-##     ROW, # sqlite3_step() has another row ready
-##     DONE, # sqlite3_step() has finished executing
-##     UNKNOWN I64, # error code not known
+##     Error, # SQL error or missing database
+##     Internal, # Internal logic error in Sqlite
+##     Perm, # Access permission denied
+##     Abort, # Callback routine requested an abort
+##     Busy, # The database file is locked
+##     Locked, # A table in the database is locked
+##     NoMem, # A malloc() failed
+##     ReadOnly, # Attempt to write a readonly database
+##     Interrupt, # Operation terminated by sqlite3_interrupt(
+##     IOErr, # Some kind of disk I/O error occurred
+##     Corrupt, # The database disk image is malformed
+##     NotFound, # Unknown opcode in sqlite3_file_control()
+##     Full, # Insertion failed because database is full
+##     CanNotOpen, # Unable to open the database file
+##     Protocol, # Database lock protocol error
+##     Empty, # Database is empty
+##     Schema, # The database schema changed
+##     TooBig, # String or BLOB exceeds size limit
+##     Constraint, # Abort due to constraint violation
+##     Mismatch, # Data type mismatch
+##     Misuse, # Library used incorrectly
+##     NoLfs, # Uses OS features not supported on host
+##     AuthDenied, # Authorization denied
+##     Format, # Auxiliary database format error
+##     OutOfRange, # 2nd parameter to sqlite3_bind out of range
+##     NotADatabase, # File opened that is not a database file
+##     Notice, # Notifications from sqlite3_log()
+##     Warning, # Warnings from sqlite3_log()
+##     Row, # sqlite3_step() has another row ready
+##     Done, # sqlite3_step() has finished executing
+##     Unknown I64, # error code not known
 ## ]
 ## ```
 ErrCode : [
-    ERROR, # SQL error or missing database
-    INTERNAL, # Internal logic error in Sqlite
-    PERM, # Access permission denied
-    ABORT, # Callback routine requested an abort
-    BUSY, # The database file is locked
-    LOCKED, # A table in the database is locked
-    NOMEM, # A malloc() failed
-    READONLY, # Attempt to write a readonly database
-    INTERRUPT, # Operation terminated by sqlite3_interrupt(
-    IOERR, # Some kind of disk I/O error occurred
-    CORRUPT, # The database disk image is malformed
-    NOTFOUND, # Unknown opcode in sqlite3_file_control()
-    FULL, # Insertion failed because database is full
-    CANTOPEN, # Unable to open the database file
-    PROTOCOL, # Database lock protocol error
-    EMPTY, # Database is empty
-    SCHEMA, # The database schema changed
-    TOOBIG, # String or BLOB exceeds size limit
-    CONSTRAINT, # Abort due to constraint violation
-    MISMATCH, # Data type mismatch
-    MISUSE, # Library used incorrectly
-    NOLFS, # Uses OS features not supported on host
-    AUTH, # Authorization denied
-    FORMAT, # Auxiliary database format error
-    RANGE, # 2nd parameter to sqlite3_bind out of range
-    NOTADB, # File opened that is not a database file
-    NOTICE, # Notifications from sqlite3_log()
-    WARNING, # Warnings from sqlite3_log()
-    ROW, # sqlite3_step() has another row ready
-    DONE, # sqlite3_step() has finished executing
-    UNKNOWN I64, # error code not known
+    Error, # SQL error or missing database
+    Internal, # Internal logic error in Sqlite
+    Perm, # Access permission denied
+    Abort, # Callback routine requested an abort
+    Busy, # The database file is locked
+    Locked, # A table in the database is locked
+    NoMem, # A malloc() failed
+    ReadOnly, # Attempt to write a readonly database
+    Interrupt, # Operation terminated by sqlite3_interrupt(
+    IOErr, # Some kind of disk I/O error occurred
+    Corrupt, # The database disk image is malformed
+    NotFound, # Unknown opcode in sqlite3_file_control()
+    Full, # Insertion failed because database is full
+    CanNotOpen, # Unable to open the database file
+    Protocol, # Database lock protocol error
+    Empty, # Database is empty
+    Schema, # The database schema changed
+    TooBig, # String or BLOB exceeds size limit
+    Constraint, # Abort due to constraint violation
+    Mismatch, # Data type mismatch
+    Misuse, # Library used incorrectly
+    NoLFS, # Uses OS features not supported on host
+    AuthDenied, # Authorization denied
+    Format, # Auxiliary database format error
+    OutOfRange, # 2nd parameter to sqlite3_bind out of range
+    NotADatabase, # File opened that is not a database file
+    Notice, # Notifications from sqlite3_log()
+    Warning, # Warnings from sqlite3_log()
+    Row, # sqlite3_step() has another row ready
+    Done, # sqlite3_step() has finished executing
+    Unknown I64, # error code not known
 ]
 
 ## An error occured interacting with a Sqlite database.
@@ -654,67 +654,67 @@ internal_to_external_error = \{ code, message } ->
 code_from_i64 : I64 -> ErrCode
 code_from_i64 = \code ->
     if code == 1 || code == 0 then
-        ERROR
+        Error
     else if code == 2 then
-        INTERNAL
+        Internal
     else if code == 3 then
-        PERM
+        Perm
     else if code == 4 then
-        ABORT
+        Abort
     else if code == 5 then
-        BUSY
+        Busy
     else if code == 6 then
-        LOCKED
+        Locked
     else if code == 7 then
-        NOMEM
+        NoMem
     else if code == 8 then
-        READONLY
+        ReadOnly
     else if code == 9 then
-        INTERRUPT
+        Interrupt
     else if code == 10 then
-        IOERR
+        IOErr
     else if code == 11 then
-        CORRUPT
+        Corrupt
     else if code == 12 then
-        NOTFOUND
+        NotFound
     else if code == 13 then
-        FULL
+        Full
     else if code == 14 then
-        CANTOPEN
+        CanNotOpen
     else if code == 15 then
-        PROTOCOL
+        Protocol
     else if code == 16 then
-        EMPTY
+        Empty
     else if code == 17 then
-        SCHEMA
+        Schema
     else if code == 18 then
-        TOOBIG
+        TooBig
     else if code == 19 then
-        CONSTRAINT
+        Constraint
     else if code == 20 then
-        MISMATCH
+        Mismatch
     else if code == 21 then
-        MISUSE
+        Misuse
     else if code == 22 then
-        NOLFS
+        NoLFS
     else if code == 23 then
-        AUTH
+        AuthDenied
     else if code == 24 then
-        FORMAT
+        Format
     else if code == 25 then
-        RANGE
+        OutOfRange
     else if code == 26 then
-        NOTADB
+        NotADatabase
     else if code == 27 then
-        NOTICE
+        Notice
     else if code == 28 then
-        WARNING
+        Warning
     else if code == 100 then
-        ROW
+        Row
     else if code == 101 then
-        DONE
+        Done
     else
-        UNKNOWN code
+        Unknown code
 
 ## Convert a [Error] to a pretty string for display purposes.
 err_to_str : Error -> Str
@@ -723,36 +723,36 @@ err_to_str = \err ->
 
     msg1 =
         when code is
-            ERROR -> "ERROR: Sql error or missing database"
-            INTERNAL -> "INTERNAL: Internal logic error in Sqlite"
-            PERM -> "PERM: Access permission denied"
-            ABORT -> "ABORT: Callback routine requested an abort"
-            BUSY -> "BUSY: The database file is locked"
-            LOCKED -> "LOCKED: A table in the database is locked"
-            NOMEM -> "NOMEM: A malloc() failed"
-            READONLY -> "READONLY: Attempt to write a readonly database"
-            INTERRUPT -> "INTERRUPT: Operation terminated by sqlite3_interrupt("
-            IOERR -> "IOERR: Some kind of disk I/O error occurred"
-            CORRUPT -> "CORRUPT: The database disk image is malformed"
-            NOTFOUND -> "NOTFOUND: Unknown opcode in sqlite3_file_control()"
-            FULL -> "FULL: Insertion failed because database is full"
-            CANTOPEN -> "CANTOPEN: Unable to open the database file"
-            PROTOCOL -> "PROTOCOL: Database lock protocol error"
-            EMPTY -> "EMPTY: Database is empty"
-            SCHEMA -> "SCHEMA: The database schema changed"
-            TOOBIG -> "TOOBIG: String or BLOB exceeds size limit"
-            CONSTRAINT -> "CONSTRAINT: Abort due to constraint violation"
-            MISMATCH -> "MISMATCH: Data type mismatch"
-            MISUSE -> "MISUSE: Library used incorrectly"
-            NOLFS -> "NOLFS: Uses OS features not supported on host"
-            AUTH -> "AUTH: Authorization denied"
-            FORMAT -> "FORMAT: Auxiliary database format error"
-            RANGE -> "RANGE: 2nd parameter to sqlite3_bind out of range"
-            NOTADB -> "NOTADB: File opened that is not a database file"
-            NOTICE -> "NOTICE: Notifications from sqlite3_log()"
-            WARNING -> "WARNING: Warnings from sqlite3_log()"
-            ROW -> "ROW: sqlite3_step() has another row ready"
-            DONE -> "DONE: sqlite3_step() has finished executing"
-            UNKNOWN c -> "UNKNOWN: error code $(Num.toStr c) not known"
+            Error -> "Error: Sql error or missing database"
+            Internal -> "Internal: Internal logic error in Sqlite"
+            Perm -> "Perm: Access permission denied"
+            Abort -> "Abort: Callback routine requested an abort"
+            Busy -> "Busy: The database file is locked"
+            Locked -> "Locked: A table in the database is locked"
+            NoMem -> "NoMem: A malloc() failed"
+            ReadOnly -> "ReadOnly: Attempt to write a readonly database"
+            Interrupt -> "Interrupt: Operation terminated by sqlite3_interrupt("
+            IOErr -> "IOErr: Some kind of disk I/O error occurred"
+            Corrupt -> "Corrupt: The database disk image is malformed"
+            NotFound -> "NotFound: Unknown opcode in sqlite3_file_control()"
+            Full -> "Full: Insertion failed because database is full"
+            CanNotOpen -> "CanNotOpen: Unable to open the database file"
+            Protocol -> "Protocol: Database lock protocol error"
+            Empty -> "Empty: Database is empty"
+            Schema -> "Schema: The database schema changed"
+            TooBig -> "TooBig: String or BLOB exceeds size limit"
+            Constraint -> "Constraint: Abort due to constraint violation"
+            Mismatch -> "Mismatch: Data type mismatch"
+            Misuse -> "Misuse: Library used incorrectly"
+            NoLFS -> "NoLFS: Uses OS features not supported on host"
+            AuthDenied -> "AuthDenied: Authorization denied"
+            Format -> "Format: Auxiliary database format error"
+            OutOfRange -> "OutOfRange: 2nd parameter to sqlite3_bind out of range"
+            NotADatabase -> "NotADatabase: File opened that is not a database file"
+            Notice -> "Notice: Notifications from sqlite3_log()"
+            Warning -> "Warning: Warnings from sqlite3_log()"
+            Row -> "Row: sqlite3_step() has another row ready"
+            Done -> "Done: sqlite3_step() has finished executing"
+            Unknown c -> "Unknown: error code $(Num.toStr c) not known"
 
     "$(msg1) - $(msg2)"
