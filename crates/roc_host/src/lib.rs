@@ -54,6 +54,11 @@ pub unsafe extern "C" fn roc_dealloc(c_ptr: *mut c_void, _alignment: u32) {
         heap.dealloc(c_ptr);
         return;
     }
+    let heap = roc_sqlite::heap();
+    if heap.in_range(c_ptr) {
+        heap.dealloc(c_ptr);
+        return;
+    }
     libc::free(c_ptr)
 }
 
@@ -327,6 +332,12 @@ pub fn init() {
         roc_fx_temp_dir as _,
         roc_fx_get_locale as _,
         roc_fx_get_locales as _,
+        roc_fx_sqlite_bind as _,
+        roc_fx_sqlite_column_value as _,
+        roc_fx_sqlite_columns as _,
+        roc_fx_sqlite_prepare as _,
+        roc_fx_sqlite_reset as _,
+        roc_fx_sqlite_step as _,
     ];
     #[allow(forgetting_references)]
     std::mem::forget(std::hint::black_box(funcs));
@@ -692,4 +703,45 @@ pub extern "C" fn roc_fx_get_locale() -> RocResult<RocStr, ()> {
 #[no_mangle]
 pub extern "C" fn roc_fx_get_locales() -> RocList<RocStr> {
     roc_env::get_locales()
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_sqlite_bind(
+    stmt: RocBox<()>,
+    bindings: &RocList<roc_sqlite::SqliteBindings>,
+) -> RocResult<(), roc_sqlite::SqliteError> {
+    roc_sqlite::bind(stmt, bindings)
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_sqlite_prepare(
+    db_path: &roc_std::RocStr,
+    query: &roc_std::RocStr,
+) -> roc_std::RocResult<RocBox<()>, roc_sqlite::SqliteError> {
+    roc_sqlite::prepare(db_path, query)
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_sqlite_columns(stmt: RocBox<()>) -> RocList<RocStr> {
+    roc_sqlite::columns(stmt)
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_sqlite_column_value(
+    stmt: RocBox<()>,
+    i: u64,
+) -> RocResult<roc_sqlite::SqliteValue, roc_sqlite::SqliteError> {
+    roc_sqlite::column_value(stmt, i)
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_sqlite_step(
+    stmt: RocBox<()>,
+) -> RocResult<roc_sqlite::SqliteState, roc_sqlite::SqliteError> {
+    roc_sqlite::step(stmt)
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_sqlite_reset(stmt: RocBox<()>) -> RocResult<(), roc_sqlite::SqliteError> {
+    roc_sqlite::reset(stmt)
 }

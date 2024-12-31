@@ -101,6 +101,8 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         cd $EXAMPLES_DIR
         $absolute_roc dev $base_file $ROC_BUILD_FLAGS
         cd ..
+    elif [ "$base_file" == "sqlite.roc" ]; then
+        DB_PATH=${EXAMPLES_DIR}todos.db $ROC dev $roc_file $ROC_BUILD_FLAGS
     elif [ "$base_file" == "temp-dir.roc" ]; then
         $ROC dev $roc_file $ROC_BUILD_FLAGS --linker=legacy
     else

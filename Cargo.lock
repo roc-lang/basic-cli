@@ -64,9 +64,9 @@ checksum = "b700ce4376041dcd0a327fd0097c41095743c4c8af8887265942faf1100bd040"
 
 [[package]]
 name = "cc"
-version = "1.2.4"
+version = "1.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9157bbaa6b165880c27a4293a474c91cdcf265cc68cc829bf10be0964a391caf"
+checksum = "8d6dbb628b8f8555f86d0323c2eb39e3ec81901f4b83e091db8a6a76d316a333"
 dependencies = [
  "shlex",
 ]
@@ -268,6 +268,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97b3888a4aecf77e811145cadf6eef5901f4782c53886191b2f693f24761847c"
 
 [[package]]
+name = "libsqlite3-sys"
+version = "0.30.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e99fb7a497b1e3339bc746195567ed8d3e24945ecd636e3619d20b9de9e9149"
+dependencies = [
+ "cc",
+ "pkg-config",
+ "vcpkg",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -376,6 +387,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
+name = "pkg-config"
+version = "0.3.31"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "953ec861398dccce10c670dfeaf3ec4911ca479e9c02154b3a215178c5f566f2"
+
+[[package]]
 name = "redox_syscall"
 version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -442,6 +459,7 @@ dependencies = [
  "roc_file",
  "roc_http",
  "roc_io_error",
+ "roc_sqlite",
  "roc_std",
  "roc_std_heap",
  "roc_stdio",
@@ -482,9 +500,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "roc_sqlite"
+version = "0.0.1"
+dependencies = [
+ "libsqlite3-sys",
+ "roc_std",
+ "roc_std_heap",
+ "thread_local",
+]
+
+[[package]]
 name = "roc_std"
 version = "0.0.1"
-source = "git+https://github.com/roc-lang/roc.git#edd7c650b9ab385a2603cdd5004b4a35b43d2b31"
+source = "git+https://github.com/roc-lang/roc.git#0ce43ffd1e2f1387370006e1c300fe8ec74343c7"
 dependencies = [
  "arrayvec",
  "static_assertions",
@@ -493,7 +521,7 @@ dependencies = [
 [[package]]
 name = "roc_std_heap"
 version = "0.0.1"
-source = "git+https://github.com/roc-lang/roc.git#edd7c650b9ab385a2603cdd5004b4a35b43d2b31"
+source = "git+https://github.com/roc-lang/roc.git#0ce43ffd1e2f1387370006e1c300fe8ec74343c7"
 dependencies = [
  "memmap2",
  "roc_std",
@@ -595,9 +623,9 @@ dependencies = [
 
 [[package]]
 name = "security-framework-sys"
-version = "2.12.1"
+version = "2.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa39c7303dc58b5543c94d22c1766b0d31f2ee58306363ea622b10bbc075eaa2"
+checksum = "1863fd3768cd83c56a7f60faa4dc0d403f1b6df0a38c3c25f44b7894e45370d5"
 dependencies = [
  "core-foundation-sys",
  "libc",
@@ -687,6 +715,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "thread_local"
+version = "1.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b9ef9bad013ada3808854ceac7b46812a6465ba368859a37e2100283d2d719c"
+dependencies = [
+ "cfg-if",
+ "once_cell",
+]
+
+[[package]]
 name = "tokio"
 version = "1.31.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -746,6 +784,12 @@ name = "untrusted"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
+
+[[package]]
+name = "vcpkg"
+version = "0.2.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 
 [[package]]
 name = "want"

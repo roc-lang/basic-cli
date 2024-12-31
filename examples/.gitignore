@@ -19,6 +19,7 @@ piping
 record-builder
 result
 stdin
+sqlite
 task-list
 tcp-client
 time

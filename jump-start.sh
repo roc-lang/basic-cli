@@ -27,3 +27,5 @@ else
 fi
 
 $ROC build --linker=legacy build.roc
+
+./build
