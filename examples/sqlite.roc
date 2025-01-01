@@ -4,6 +4,8 @@ import pf.Env
 import pf.Stdout
 import pf.Sqlite
 
+# To run this example: check the README.md in this folder
+
 main! = \_args ->
     db_path = try Env.var! "DB_PATH"
 

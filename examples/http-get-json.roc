@@ -3,6 +3,8 @@ app [main!] {
     json: "https://github.com/lukewilliamboswell/roc-json/releases/download/0.11.0/z45Wzc-J39TLNweQUoLw3IGZtkQiEN3lTBv3BXErRjQ.tar.br",
 }
 
+# To run this example: check the README.md in this folder
+
 import pf.Http
 import pf.Stdout
 import json.Json

@@ -4,6 +4,7 @@ import pf.Http
 import pf.Stdout
 
 # Basic HTTP GET request
+# To run this example: check the README.md in this folder
 
 main! = \_args ->
 

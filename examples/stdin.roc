@@ -4,6 +4,8 @@ import pf.Stdout
 import pf.Stderr
 import pf.Stdin
 
+# To run this example: check the README.md in this folder
+
 main! = \_args ->
     try Stdout.line! "Enter a series of number characters (0-9):"
 

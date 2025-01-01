@@ -4,6 +4,8 @@ app [main!] {
 
 import pf.Stdout
 
+# To run this example: check the README.md in this folder
+
 main! = \_args ->
     { apples, oranges } = try
         { Result.map2 <-

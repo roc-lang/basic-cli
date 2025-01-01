@@ -5,6 +5,8 @@ import pf.Stdout
 import pf.Stdin
 import pf.Stderr
 
+# To run this example: check the README.md in this folder
+
 main! = \_args ->
     when run! {} is
         Ok {} -> Ok {}
