@@ -1,5 +1,8 @@
 [![Roc-Lang][roc_badge]][roc_link]
 
+[roc_badge]: https://img.shields.io/endpoint?url=https%3A%2F%2Fpastebin.com%2Fraw%2FcFzuCCd7
+[roc_link]: https://github.com/roc-lang/roc
+
 # basic-cli
 
 A Roc [platform](https://github.com/roc-lang/roc/wiki/Roc-concepts-explained#platform) to work with files, commands, HTTP, TCP, command line arguments,...
@@ -28,5 +31,3 @@ Then you can run like usual:
 $ roc examples/hello-world.roc
 Hello, World!
 ```
-
-[roc_link]: https://github.com/roc-lang/roc
