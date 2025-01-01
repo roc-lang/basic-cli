@@ -1,4 +1,6 @@
-# Examples
+> [!IMPORTANT]
+> - If you want to run an example here but don't want to build basic-cli from source; go to the examples of a specific version: https://github.com/roc-lang/basic-cli/tree/0.VERSION.0/examples and in the example; replace the `"../platform/main.roc"` with the release link, for example `"https://github.com/roc-lang/basic-cli/releases/download/0.17.0/lZFLstMUCUvd5bjnnpYromZJXkQUrdhbva4xdBInicE.tar.br"`.
+> - To use these examples as is with basic-cli built from source you'll need to [build the platform first](https://github.com/roc-lang/basic-cli?tab=readme-ov-file#running-locally).
 
 These are examples of how to make basic CLI (command-line interface) and apps using `basic-cli` as a platform.
 
