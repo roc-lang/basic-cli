@@ -4,6 +4,8 @@ import pf.Stdout
 import pf.Utc
 import pf.Sleep
 
+# To run this example: check the README.md in this folder
+
 main! = \_args ->
     start = Utc.now! {}
 
