@@ -95,6 +95,10 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         fi
     done
 
+    # temporary for debugging
+    echo "heyy"
+    echo $(which $ROC | xargs realpath)
+
     # For path.roc we need be inside the EXAMPLES_DIR
     if [ "$base_file" == "path.roc" ]; then
         absolute_roc=$(which $ROC | xargs realpath)
