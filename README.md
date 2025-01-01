@@ -1,3 +1,5 @@
+[![Roc-Lang][roc_badge]][roc_link]
+
 # basic-cli
 
 A Roc [platform](https://github.com/roc-lang/roc/wiki/Roc-concepts-explained#platform) to work with files, commands, HTTP, TCP, command line arguments,...
@@ -26,3 +28,5 @@ Then you can run like usual:
 $ roc examples/hello-world.roc
 Hello, World!
 ```
+
+[roc_link]: https://github.com/roc-lang/roc
