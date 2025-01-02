@@ -52,7 +52,7 @@ var! = \name ->
 ## Reads the given environment variable and attempts to decode it.
 ##
 ## The type being decoded into will be determined by type inference. For example,
-## if this ends up being used like a `Task U16 _` then the environment variable
+## if this ends up being used like a `Result U16 _` then the environment variable
 ## will be decoded as a string representation of a `U16`. Trying to decode into
 ## any other type will fail with a `DecodeErr`.
 ##
@@ -65,8 +65,8 @@ var! = \name ->
 ##
 ## ```
 ## # Reads "NUM_THINGS" and decodes into a U16
-## getU16Var : Str -> Task U16 [VarNotFound, DecodeErr DecodeError] [Read [Env]]
-## getU16Var = \var -> Env.decode! var
+## get_u16_var! : Str => Result U16 [VarNotFound, DecodeErr DecodeError] [Read [Env]]
+## get_u16_var! = \var -> Env.decode! var
 ## ```
 ##
 ## If `NUM_THINGS=123` then `getU16Var` succeeds with the value of `123u16`.
@@ -108,10 +108,9 @@ dict! = \{} ->
 # ##
 # ## If any key or value contains invalid Unicode, the [Unicode replacement character](https://unicode.org/glossary/#replacement_character)
 # ## (`�`) will be used in place of any parts of keys or values that are invalid Unicode.
-# walk : state, (state, Str, Str -> state) -> Task state [NonUnicodeEnv state] [Read [Env]]
-# walk = \state, walker ->
-#     Effect.envWalk state walker
-#     |> InternalTask.fromEffect
+# walk! : state, (state, Str, Str -> state) => Result state [NonUnicodeEnv state] [Read [Env]]
+# walk! = \state, walker ->
+#     Host.env_walk! state walker
 # TODO could potentially offer something like walkNonUnicode which takes (state, Result Str Str, Result Str Str) so it
 # tells you when there's invalid Unicode. This is both faster than (and would give you more accurate info than)
 # using regular `walk` and searching for the presence of the replacement character in the resulting
@@ -123,7 +122,7 @@ dict! = \{} ->
 # decode all the required vars only, and then decode the optional ones separately some other way.
 # Alternatively, it could make sense to have some sort of tag union convention here, e.g.
 # if decoding into a tag union of [Present val, Missing], then it knows what to do.
-# decodeAll : Task val [] [EnvDecodingFailed Str] [Env] where val implements Decoding
+# decode_all : Result val [] [EnvDecodingFailed Str] [Env] where val implements Decoding
 
 ARCH : [X86, X64, ARM, AARCH64, OTHER Str]
 OS : [LINUX, MACOS, WINDOWS, OTHER Str]

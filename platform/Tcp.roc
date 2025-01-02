@@ -44,7 +44,7 @@ parse_connect_err = \err ->
         "ErrorKind::Unsupported" -> Unsupported
         other -> Unrecognized other
 
-## Represents errors that can occur when performing a [Task] with a [Stream].
+## Represents errors that can occur when performing an effect with a [Stream].
 StreamErr : [
     StreamNotFound,
     PermissionDenied,

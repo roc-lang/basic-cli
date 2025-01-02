@@ -174,8 +174,8 @@ display = \path ->
                 Err _ -> "�"
 
 ## Returns true if the path exists on disk and is pointing at a directory.
-## Returns `Task.ok false` if the path exists and it is not a directory. If the path does not exist,
-## this function will return `Task.err PathErr PathDoesNotExist`.
+## Returns `Ok false` if the path exists and it is not a directory. If the path does not exist,
+## this function will return `Err (PathErr PathDoesNotExist)`.
 ##
 ## This uses [rust's std::path::is_dir](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_dir).
 ##
@@ -186,8 +186,8 @@ is_dir! = \path ->
     Ok (res == IsDir)
 
 ## Returns true if the path exists on disk and is pointing at a regular file.
-## Returns `Task.ok false` if the path exists and it is not a file. If the path does not exist,
-## this function will return `Task.err PathErr PathDoesNotExist`.
+## Returns `Ok false` if the path exists and it is not a file. If the path does not exist,
+## this function will return `Err (PathErr PathDoesNotExist)`.
 ##
 ## This uses [rust's std::path::is_file](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_file).
 ##
@@ -198,8 +198,8 @@ is_file! = \path ->
     Ok (res == IsFile)
 
 ## Returns true if the path exists on disk and is pointing at a symbolic link.
-## Returns `Task.ok false` if the path exists and it is not a symbolic link. If the path does not exist,
-## this function will return `Task.err PathErr PathDoesNotExist`.
+## Returns `Ok false` if the path exists and it is not a symbolic link. If the path does not exist,
+## this function will return `Err (PathErr PathDoesNotExist)`.
 ##
 ## This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
 ##
