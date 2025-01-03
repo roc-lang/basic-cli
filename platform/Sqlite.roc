@@ -6,10 +6,9 @@ module [
     query!,
     query_many!,
     execute!,
-    prepare!,
-    query_prepared!,
-    query_many_prepared!,
-    execute_prepared!,
+    prepare_query!,
+    prepare_query_many!,
+    prepare_execute!,
     errcode_to_str,
     decode_record,
     map_value,
@@ -223,6 +222,32 @@ execute! = \{ path, query: q, bindings } ->
     stmt = try prepare! { path, query: q }
     execute_prepared! { stmt, bindings }
 
+## Prepare a lambda to execute a SQL statement that doesn't return any rows (like INSERT, UPDATE, DELETE).
+##
+## This is useful when you have a query that will be called many times, as it is more efficient than
+## preparing the query each time it is called. This is usually done in `init!` with the prepared `Stmt` stored in the model.
+##
+## ```
+## prepared_query! = try Sqlite.prepare_execute! {
+##     path: "path/to/database.db",
+##     query: "INSERT INTO todos (task, status) VALUES (:task, :status)",
+##     bindings: \{task, status} -> [{name: ":task", value: String task}, {name: ":status", value: String task}]
+## }
+##
+## try prepared_query! { task: "create a todo", status: "completed" }
+## ```
+prepare_execute! :
+    {
+        path : Str,
+        query : Str,
+        bindings : in -> List Binding,
+    }
+    => Result (in => Result {} [SqliteErr ErrCode Str, UnhandledRows]) [SqliteErr ErrCode Str]
+prepare_execute! = \{ path, query: q, bindings: tranform } ->
+    stmt = try prepare! { path, query: q }
+    Ok \input ->
+        execute_prepared! { stmt, bindings: tranform input }
+
 ## Execute a prepared SQL statement that doesn't return any rows.
 ##
 ## This is more efficient than [execute!] when running the same query multiple times
@@ -264,12 +289,40 @@ query! :
         path : Str,
         query : Str,
         bindings : List Binding,
-        row : SqlDecode a (RowCountErr err),
+        row : SqlDecode out (RowCountErr err),
     }
-    => Result a (SqlDecodeErr (RowCountErr err))
+    => Result out (SqlDecodeErr (RowCountErr err))
 query! = \{ path, query: q, bindings, row } ->
     stmt = try prepare! { path, query: q }
     query_prepared! { stmt, bindings, row }
+
+## Prepare a lambda to execute a SQL query and decode exactly one row into a value.
+##
+## This is useful when you have a query that will be called many times, as it is more efficient than
+## preparing the query each time it is called. This is usually done in `init!` with the prepared `Stmt` stored in the model.
+##
+## ```
+## prepared_query! = try Sqlite.prepare_query! {
+##     path: "path/to/database.db",
+##     query: "SELECT COUNT(*) as \"count\" FROM users;",
+##     bindings: \{} -> []
+##     row: Sqlite.u64 "count",
+## }
+##
+## count = try prepared_query! {}
+## ```
+prepare_query! :
+    {
+        path : Str,
+        query : Str,
+        bindings : in -> List Binding,
+        row : SqlDecode out (RowCountErr err),
+    }
+    => Result (in => Result out (SqlDecodeErr (RowCountErr err))) [SqliteErr ErrCode Str]
+prepare_query! = \{ path, query: q, bindings: tranform, row } ->
+    stmt = try prepare! { path, query: q }
+    Ok \input ->
+        query_prepared! { stmt, bindings: tranform input, row }
 
 ## Execute a prepared SQL query and decode exactly one row into a value.
 ##
@@ -279,9 +332,9 @@ query_prepared! :
     {
         stmt : Stmt,
         bindings : List Binding,
-        row : SqlDecode a (RowCountErr err),
+        row : SqlDecode out (RowCountErr err),
     }
-    => Result a (SqlDecodeErr (RowCountErr err))
+    => Result out (SqlDecodeErr (RowCountErr err))
 query_prepared! = \{ stmt, bindings, row: decode } ->
     try bind! stmt bindings
     res = decode_exactly_one_row! stmt decode
@@ -307,12 +360,43 @@ query_many! :
         path : Str,
         query : Str,
         bindings : List Binding,
-        rows : SqlDecode a err,
+        rows : SqlDecode out err,
     }
-    => Result (List a) (SqlDecodeErr err)
+    => Result (List out) (SqlDecodeErr err)
 query_many! = \{ path, query: q, bindings, rows } ->
     stmt = try prepare! { path, query: q }
     query_many_prepared! { stmt, bindings, rows }
+
+## Prepare a lambda to execute a SQL query and decode multiple rows into a list of values.
+##
+## This is useful when you have a query that will be called many times, as it is more efficient than
+## preparing the query each time it is called. This is usually done in `init!` with the prepared `Stmt` stored in the model.
+##
+## ```
+## prepared_query! = try Sqlite.prepare_query_many! {
+##     path: "path/to/database.db",
+##     query: "SELECT * FROM todos;",
+##     bindings: \{} -> []
+##     rows: { Sqlite.decode_record <-
+##         id: Sqlite.i64 "id",
+##         task: Sqlite.str "task",
+##     },
+## }
+##
+## rows = try prepared_query! {}
+## ```
+prepare_query_many! :
+    {
+        path : Str,
+        query : Str,
+        bindings : in -> List Binding,
+        rows : SqlDecode out err,
+    }
+    => Result (in => Result (List out) (SqlDecodeErr err)) [SqliteErr ErrCode Str]
+prepare_query_many! = \{ path, query: q, bindings: tranform, rows } ->
+    stmt = try prepare! { path, query: q }
+    Ok \input ->
+        query_many_prepared! { stmt, bindings: tranform input, rows }
 
 ## Execute a prepared SQL query and decode multiple rows into a list of values.
 ##
@@ -322,9 +406,9 @@ query_many_prepared! :
     {
         stmt : Stmt,
         bindings : List Binding,
-        rows : SqlDecode a err,
+        rows : SqlDecode out err,
     }
-    => Result (List a) (SqlDecodeErr err)
+    => Result (List out) (SqlDecodeErr err)
 query_many_prepared! = \{ stmt, bindings, rows: decode } ->
     try bind! stmt bindings
     res = decode_rows! stmt decode
@@ -411,19 +495,20 @@ decode_rows! = \stmt, @SqlDecode gen_decode ->
 
 # internal use only
 decoder : (Value -> Result a (SqlDecodeErr err)) -> (Str -> SqlDecode a err)
-decoder = \fn -> \name ->
-    @SqlDecode \cols ->
+decoder = \fn ->
+    \name ->
+        @SqlDecode \cols ->
 
-        found = List.findFirstIndex cols \x -> x == name
-        when found is
-            Ok index ->
-                \stmt ->
-                    try column_value! stmt index
-                    |> fn
+            found = List.findFirstIndex cols \x -> x == name
+            when found is
+                Ok index ->
+                    \stmt ->
+                        try column_value! stmt index
+                        |> fn
 
-            Err NotFound ->
-                \_ ->
-                    Err (FieldNotFound name)
+                Err NotFound ->
+                    \_ ->
+                        Err (FieldNotFound name)
 
 ## Decode a [Value] keeping it tagged. This is useful when data could be many possible types.
 ##
