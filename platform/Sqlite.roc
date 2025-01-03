@@ -9,10 +9,10 @@ module [
     prepare_query_many!,
     prepare_execute!,
     prepare_transaction!,
-    PreparedExecuteStmt,
-    PreparedQueryStmt,
-    PreparedQueryManyStmt,
-    ExecuteTransaction,
+    ExecuteFn,
+    QueryFn,
+    QueryManyFn,
+    TransactionFn,
     errcode_to_str,
     decode_record,
     map_value,
@@ -227,7 +227,7 @@ execute! = \{ path, query: q, bindings } ->
     execute_prepared! { stmt, bindings }
 
 ## A function that executes a prepared execute stmt that doesn't return any data.
-PreparedExecuteStmt in : in => Result {} [SqliteErr ErrCode Str, UnhandledRows]
+ExecuteFn in : in => Result {} [SqliteErr ErrCode Str, UnhandledRows]
 
 ## Prepare a lambda to execute a SQL statement that doesn't return any rows (like INSERT, UPDATE, DELETE).
 ##
@@ -249,7 +249,7 @@ prepare_execute! :
         query : Str,
         bindings : in -> List Binding,
     }
-    => Result (PreparedExecuteStmt in) [SqliteErr ErrCode Str]
+    => Result (ExecuteFn in) [SqliteErr ErrCode Str]
 prepare_execute! = \{ path, query: q, bindings: tranform } ->
     stmt = try prepare! { path, query: q }
     Ok \input ->
@@ -304,7 +304,7 @@ query! = \{ path, query: q, bindings, row } ->
     query_prepared! { stmt, bindings, row }
 
 ## A function that executes a perpared query and decodes exactly one row into a value.
-PreparedQueryStmt in out err : in => Result out (SqlDecodeErr (RowCountErr err))
+QueryFn in out err : in => Result out (SqlDecodeErr (RowCountErr err))
 
 ## Prepare a lambda to execute a SQL query and decode exactly one row into a value.
 ##
@@ -328,7 +328,7 @@ prepare_query! :
         bindings : in -> List Binding,
         row : SqlDecode out (RowCountErr err),
     }
-    => Result (PreparedQueryStmt in out err) [SqliteErr ErrCode Str]
+    => Result (QueryFn in out err) [SqliteErr ErrCode Str]
 prepare_query! = \{ path, query: q, bindings: tranform, row } ->
     stmt = try prepare! { path, query: q }
     Ok \input ->
@@ -378,7 +378,7 @@ query_many! = \{ path, query: q, bindings, rows } ->
     query_many_prepared! { stmt, bindings, rows }
 
 ## A function that executes a perpared query and decodes mutliple rows into a list of values.
-PreparedQueryManyStmt in out err : in => Result (List out) (SqlDecodeErr err)
+QueryManyFn in out err : in => Result (List out) (SqlDecodeErr err)
 
 ## Prepare a lambda to execute a SQL query and decode multiple rows into a list of values.
 ##
@@ -405,7 +405,7 @@ prepare_query_many! :
         bindings : in -> List Binding,
         rows : SqlDecode out err,
     }
-    => Result (PreparedQueryManyStmt in out err) [SqliteErr ErrCode Str]
+    => Result (QueryManyFn in out err) [SqliteErr ErrCode Str]
 prepare_query_many! = \{ path, query: q, bindings: tranform, rows } ->
     stmt = try prepare! { path, query: q }
     Ok \input ->
@@ -429,7 +429,7 @@ query_many_prepared! = \{ stmt, bindings, rows: decode } ->
     res
 
 ## A function to execute a transaction lambda and automatically rollback on failure.
-ExecuteTransaction ok err : ({} => Result ok err) => Result ok [FailedToBeginTransaction, FailedToEndTransaction, FailedToRollbackTransaction, TransactionFailed err]
+TransactionFn ok err : ({} => Result ok err) => Result ok [FailedToBeginTransaction, FailedToEndTransaction, FailedToRollbackTransaction, TransactionFailed err]
 
 ## Generates a higher order function for running a transaction.
 ## The transaction will automatically rollback on any error.
@@ -461,7 +461,7 @@ prepare_transaction! :
         mode ? [Deferred, Immediate, Exclusive],
     }
     =>
-    Result (ExecuteTransaction ok err) [SqliteErr ErrCode Str]
+    Result (TransactionFn ok err) [SqliteErr ErrCode Str]
 prepare_transaction! = \{ path, mode ? Deferred } ->
     mode_str =
         when mode is
