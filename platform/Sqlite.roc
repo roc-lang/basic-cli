@@ -9,6 +9,7 @@ module [
     prepare_query!,
     prepare_query_many!,
     prepare_execute!,
+    prepare_transaction!,
     errcode_to_str,
     decode_record,
     map_value,
@@ -414,6 +415,84 @@ query_many_prepared! = \{ stmt, bindings, rows: decode } ->
     res = decode_rows! stmt decode
     try reset! stmt
     res
+
+## Generates a higher order function for running a transaction.
+## The transaction will automatically rollback on any error.
+##
+## Deferred means that the transaction does not actually start until the database is first accessed.
+## Immediate causes the database connection to start a new write immediately, without waiting for a write statement.
+## Exclusive is similar to Immediate in that a write transaction is started immediately. Exclusive and Immediate are the same in WAL mode, but in other journaling modes, Exclusive prevents other database connections from reading the database while the transaction is underway.
+##
+## ```
+## exec_transaction! = try prepare_transaction! { path: "path/to/database.db" }
+##
+## try exec_transaction! \{} ->
+##     try Sqlite.execute! {
+##         path: "path/to/database.db",
+##         query: "INSERT INTO users (first, last) VALUES (:first, :last);",
+##         bindings: [
+##             { name: ":first", value: String "John" },
+##             { name: ":last", value: String "Smith" },
+##         ],
+##     }
+##
+##     # Oh no, hit an error. Need to rollback.
+##     # Note: Error could be anything.
+##     Err NeedToRollback
+## ```
+prepare_transaction! :
+    {
+        path : Str,
+        mode ? [Deferred, Immediate, Exclusive],
+    }
+    =>
+    Result (({} => Result ok err) => Result ok [FailedToBeginTransaction, FailedToEndTransaction, FailedToRollbackTransaction, TransactionFailed err]) [SqliteErr ErrCode Str]
+prepare_transaction! = \{ path, mode ? Deferred } ->
+    mode_str =
+        when mode is
+            Deferred -> "DEFERRED"
+            Immediate -> "IMMEDIATE"
+            Exclusive -> "EXCLUSIVE"
+
+    begin_stmt = try prepare! { path, query: "BEGIN $(mode_str)" }
+    end_stmt = try prepare! { path, query: "END" }
+    rollback_stmt = try prepare! { path, query: "ROLLBACK" }
+
+    Ok \transaction! ->
+        Sqlite.execute_prepared! {
+            stmt: begin_stmt,
+            bindings: [],
+        }
+        |> Result.mapErr \_ -> FailedToBeginTransaction
+        |> try
+
+        end_transaction! = \res ->
+            when res is
+                Ok v ->
+                    Sqlite.execute_prepared! {
+                        stmt: end_stmt,
+                        bindings: [],
+                    }
+                    |> Result.mapErr \_ -> FailedToEndTransaction
+                    |> try
+                    Ok v
+
+                Err e ->
+                    Err (TransactionFailed e)
+
+        when transaction! {} |> end_transaction! is
+            Ok v ->
+                Ok v
+
+            Err e ->
+                Sqlite.execute_prepared! {
+                    stmt: rollback_stmt,
+                    bindings: [],
+                }
+                |> Result.mapErr \_ -> FailedToRollbackTransaction
+                |> try
+
+                Err e
 
 SqlDecodeErr err : [FieldNotFound Str, SqliteErr ErrCode Str]err
 SqlDecode a err := List Str -> (Stmt => Result a (SqlDecodeErr err))
