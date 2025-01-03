@@ -2,7 +2,6 @@ module [
     Value,
     ErrCode,
     Binding,
-    Stmt,
     query!,
     query_many!,
     execute!,
@@ -10,6 +9,10 @@ module [
     prepare_query_many!,
     prepare_execute!,
     prepare_transaction!,
+    PreparedExecuteStmt,
+    PreparedQueryStmt,
+    PreparedQueryManyStmt,
+    ExecuteTransaction,
     errcode_to_str,
     decode_record,
     map_value,
@@ -223,6 +226,9 @@ execute! = \{ path, query: q, bindings } ->
     stmt = try prepare! { path, query: q }
     execute_prepared! { stmt, bindings }
 
+## A function that executes a prepared execute stmt that doesn't return any data.
+PreparedExecuteStmt in : in => Result {} [SqliteErr ErrCode Str, UnhandledRows]
+
 ## Prepare a lambda to execute a SQL statement that doesn't return any rows (like INSERT, UPDATE, DELETE).
 ##
 ## This is useful when you have a query that will be called many times, as it is more efficient than
@@ -243,7 +249,7 @@ prepare_execute! :
         query : Str,
         bindings : in -> List Binding,
     }
-    => Result (in => Result {} [SqliteErr ErrCode Str, UnhandledRows]) [SqliteErr ErrCode Str]
+    => Result (PreparedExecuteStmt in) [SqliteErr ErrCode Str]
 prepare_execute! = \{ path, query: q, bindings: tranform } ->
     stmt = try prepare! { path, query: q }
     Ok \input ->
@@ -297,6 +303,9 @@ query! = \{ path, query: q, bindings, row } ->
     stmt = try prepare! { path, query: q }
     query_prepared! { stmt, bindings, row }
 
+## A function that executes a perpared query and decodes exactly one row into a value.
+PreparedQueryStmt in out err : in => Result out (SqlDecodeErr (RowCountErr err))
+
 ## Prepare a lambda to execute a SQL query and decode exactly one row into a value.
 ##
 ## This is useful when you have a query that will be called many times, as it is more efficient than
@@ -319,7 +328,7 @@ prepare_query! :
         bindings : in -> List Binding,
         row : SqlDecode out (RowCountErr err),
     }
-    => Result (in => Result out (SqlDecodeErr (RowCountErr err))) [SqliteErr ErrCode Str]
+    => Result (PreparedQueryStmt in out err) [SqliteErr ErrCode Str]
 prepare_query! = \{ path, query: q, bindings: tranform, row } ->
     stmt = try prepare! { path, query: q }
     Ok \input ->
@@ -368,6 +377,9 @@ query_many! = \{ path, query: q, bindings, rows } ->
     stmt = try prepare! { path, query: q }
     query_many_prepared! { stmt, bindings, rows }
 
+## A function that executes a perpared query and decodes mutliple rows into a list of values.
+PreparedQueryManyStmt in out err : in => Result (List out) (SqlDecodeErr err)
+
 ## Prepare a lambda to execute a SQL query and decode multiple rows into a list of values.
 ##
 ## This is useful when you have a query that will be called many times, as it is more efficient than
@@ -393,7 +405,7 @@ prepare_query_many! :
         bindings : in -> List Binding,
         rows : SqlDecode out err,
     }
-    => Result (in => Result (List out) (SqlDecodeErr err)) [SqliteErr ErrCode Str]
+    => Result (PreparedQueryManyStmt in out err) [SqliteErr ErrCode Str]
 prepare_query_many! = \{ path, query: q, bindings: tranform, rows } ->
     stmt = try prepare! { path, query: q }
     Ok \input ->
@@ -415,6 +427,9 @@ query_many_prepared! = \{ stmt, bindings, rows: decode } ->
     res = decode_rows! stmt decode
     try reset! stmt
     res
+
+## A function to execute a transaction lambda and automatically rollback on failure.
+ExecuteTransaction ok err : ({} => Result ok err) => Result ok [FailedToBeginTransaction, FailedToEndTransaction, FailedToRollbackTransaction, TransactionFailed err]
 
 ## Generates a higher order function for running a transaction.
 ## The transaction will automatically rollback on any error.
@@ -446,7 +461,7 @@ prepare_transaction! :
         mode ? [Deferred, Immediate, Exclusive],
     }
     =>
-    Result (({} => Result ok err) => Result ok [FailedToBeginTransaction, FailedToEndTransaction, FailedToRollbackTransaction, TransactionFailed err]) [SqliteErr ErrCode Str]
+    Result (ExecuteTransaction ok err) [SqliteErr ErrCode Str]
 prepare_transaction! = \{ path, mode ? Deferred } ->
     mode_str =
         when mode is
