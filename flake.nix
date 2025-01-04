@@ -23,7 +23,7 @@
         pkgs = import nixpkgs { inherit system overlays; };
 
         rocPkgs = roc.packages.${system};
-        llvmPkgs = pkgs.llvmPackages_16;
+        llvmPkgs = pkgs.llvmPackages_18;
 
         # get current working directory
         cwd = builtins.toString ./.;
@@ -39,6 +39,9 @@
           lib.optionals stdenv.isDarwin
           (with pkgs.darwin.apple_sdk.frameworks; [
             Security
+            CoreFoundation
+            CoreServices
+            SystemConfiguration
           ]);
 
         sharedInputs = (with pkgs; [

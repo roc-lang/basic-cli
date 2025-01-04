@@ -38,22 +38,29 @@ roc_io_error = { path = "crates/roc_io_error" }
 roc_stdio = { path = "crates/roc_stdio" }
 roc_env = { path = "crates/roc_env" }
 roc_sqlite = { path = "crates/roc_sqlite" }
-memchr = "=2.7.4"
-hyper = { version = "=0.14.27", default-features = false, features = [
+memchr = "2.7.4"
+hyper = { version = "1.5.2", default-features = false, features = [
     "http1",
     "client",
 ] }
-hyper-rustls = { version = "=0.24.2", default-features = false, features = [
+hyper-rustls = { version = "0.27.4", default-features = false, features = [
     "http1",
     "tls12",
     "native-tokio",
+    "rustls-native-certs",
+    "aws-lc-rs",
 ] }
-tokio = { version = "=1.31.0", default-features = false }
-sys-locale = "=0.3.2"
-bytes = "=1.0"
-crossterm = "=0.27.0"
+hyper-util = {version = "0.1.10", default-features = false, features = [
+    "client",
+    "client-legacy",
+]}
+http-body-util = {version = "0.1.2" }
+tokio = { version = "1.42.0", default-features = false }
+sys-locale = "0.3.2"
+bytes = "1.9"
+crossterm = "0.28.1"
 memmap2 = "0.9.4"
-libc = "=0.2.155"
-backtrace = "=0.3.69"
+libc = "0.2.168"
+backtrace = "0.3.74"
 libsqlite3-sys = { version = "0.30.1", features = ["bundled"] }
 thread_local = "1.1.8"
