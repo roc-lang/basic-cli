@@ -132,7 +132,7 @@ delete! = \path ->
 ##
 ## This opens the file first and closes it after reading its contents.
 ##
-## > To read and decode data from a file, you can use `File.read` instead.
+## > To read and decode data from a file into a [Str], you can use [File.read_utf8!] instead.
 ## >
 ## > [Path.read_bytes!] does the same thing, except it takes a [Path] instead of a [Str].
 read_bytes! : Str => Result (List U8) [FileReadErr Path IOErr]
@@ -146,7 +146,7 @@ read_bytes! = \path ->
 ## File.read_utf8! "myfile.txt"
 ## ```
 ##
-## This opens the file first and closes it after writing to it.
+## This opens the file first and closes it after reading its contents.
 ## The task will fail with `FileReadUtf8Err` if the given file contains invalid UTF-8.
 ##
 ## > To read unformatted bytes from a file, you can use [File.read_bytes!] instead.
