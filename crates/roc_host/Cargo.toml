@@ -30,4 +30,6 @@ roc_env.workspace = true
 roc_sqlite.workspace = true
 hyper.workspace = true
 hyper-rustls.workspace = true
+hyper-util.workspace = true
+http-body-util.workspace = true
 tokio.workspace = true

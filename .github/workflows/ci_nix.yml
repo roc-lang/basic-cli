@@ -32,7 +32,7 @@ jobs:
         run: uname -m
 
       - name: Run all tests
-        run: nix develop -c sh -c 'export ROC=roc && export EXAMPLES_DIR=./examples/ && ./ci/all_tests.sh'
+        run: nix develop -c sh -c 'export AWS_LC_SYS_CMAKE_BUILDER=1 && export ROC=roc && export EXAMPLES_DIR=./examples/ && ./ci/all_tests.sh'
 
       - name: Run all tests and capture output to check for crash later
         run: nix develop -c sh -c 'export ROC=roc && export EXAMPLES_DIR=./examples/ && ./ci/all_tests.sh 2>&1 | tee all_tests_output.log'
