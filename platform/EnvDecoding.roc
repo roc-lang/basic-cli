@@ -38,19 +38,19 @@ decode_bytes_to_num = \bytes, transformer ->
 
         Err _ -> { result: Err TooShort, rest: bytes }
 
-env_u8 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toU8
-env_u16 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toU16
-env_u32 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toU32
-env_u64 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toU64
-env_u128 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toU128
-env_i8 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toI8
-env_i16 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toI16
-env_i32 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toI32
-env_i64 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toI64
-env_i128 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toI128
-env_f32 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toF32
-env_f64 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toF64
-env_dec = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toDec
+env_u8 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.to_u8
+env_u16 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.to_u16
+env_u32 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.to_u32
+env_u64 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.to_u64
+env_u128 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.to_u128
+env_i8 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.to_i8
+env_i16 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.to_i16
+env_i32 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.to_i32
+env_i64 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.to_i64
+env_i128 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.to_i128
+env_f32 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.to_f32
+env_f64 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.to_f64
+env_dec = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.to_dec
 
 env_bool = Decode.custom \bytes, @EnvFormat {} ->
     when Str.from_utf8 bytes is
@@ -71,14 +71,14 @@ env_list = \decode_elem -> Decode.custom \bytes, @EnvFormat {} ->
     # a whole list of bytes anyway.
     decode_elems = \all_bytes, accum ->
         { to_parse, remainder } =
-            when List.splitFirst all_bytes (Num.to_u8 ',') is
+            when List.split_first all_bytes (Num.to_u8 ',') is
                 Ok { before, after } ->
                     { to_parse: before, remainder: Some after }
 
                 Err NotFound ->
                     { to_parse: all_bytes, remainder: None }
 
-        when Decode.decodeWith to_parse decode_elem (@EnvFormat {}) is
+        when Decode.decode_with to_parse decode_elem (@EnvFormat {}) is
             { result, rest } ->
                 when result is
                     Ok val ->

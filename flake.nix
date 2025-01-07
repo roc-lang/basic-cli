@@ -2,7 +2,9 @@
   description = "Basic cli devShell flake";
 
   inputs = {
-    roc.url = "github:roc-lang/roc";
+
+    # TODO restore when https://github.com/roc-lang/roc/pull/7463 lands in main
+    roc.url = "github:smores56/roc?ref=auto-snake-case";
 
     nixpkgs.follows = "roc/nixpkgs";
 

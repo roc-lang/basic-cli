@@ -90,7 +90,7 @@ decode! = \name ->
 dict! : {} => Dict Str Str
 dict! = \{} ->
     Host.env_dict! {}
-    |> Dict.fromList
+    |> Dict.from_list
 
 # ## Walks over the process's environment variables as key-value arguments to the walking function.
 # ##

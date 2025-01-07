@@ -19,7 +19,7 @@ task! = \{} ->
 
     dir_entries = try Dir.list! cwd_str
 
-    dir_entries_tr = Str.joinWith (List.map dir_entries Path.display) "\n    "
+    dir_entries_tr = Str.join_with (List.map dir_entries Path.display) "\n    "
 
     try Stdout.line! "Directory contents:\n    $(dir_entries_tr)\n"
 

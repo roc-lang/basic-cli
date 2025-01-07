@@ -12,13 +12,13 @@ main! = \_args ->
     todo = try query_todos_by_status! db_path "todo"
 
     try Stdout.line! "Todo Tasks:"
-    try List.forEachTry! todo \{ id, task } ->
+    try List.for_each_try! todo \{ id, task } ->
         Stdout.line! "\tid: $(id), task: $(task)"
 
     completed = try query_todos_by_status! db_path "completed"
 
     try Stdout.line! "\nCompleted Tasks:"
-    try List.forEachTry! completed \{ id, task } ->
+    try List.for_each_try! completed \{ id, task } ->
         Stdout.line! "\tid: $(id), task: $(task)"
 
     Ok {}

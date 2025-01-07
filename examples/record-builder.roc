@@ -15,7 +15,7 @@ main! = \_args ->
 
     Stdout.line! "Apples: $(apples)\nOranges: $(oranges)"
 
-join_strs = \fruits -> Str.joinWith fruits ", "
+join_strs = \fruits -> Str.join_with fruits ", "
 
 ## This doesn't actually perform any effects, but we can imagine that it does
 ## for the sake of this example, maybe it fetches data from a server or reads a file.
