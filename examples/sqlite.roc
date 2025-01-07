@@ -29,7 +29,7 @@ query_todos_by_status! = \db_path, status ->
         query: "SELECT id, task FROM todos WHERE status = :status;",
         bindings: [{ name: ":status", value: String status }],
         rows: { Sqlite.decode_record <-
-            id: Sqlite.i64 "id" |> Sqlite.map_value Num.toStr,
+            id: Sqlite.i64 "id" |> Sqlite.map_value Num.to_str,
             task: Sqlite.str "task",
         },
     }

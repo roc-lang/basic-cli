@@ -22,6 +22,6 @@ main! = \_args ->
 run! = \{} ->
     file_name = "LICENSE"
     contents = try File.read_utf8! file_name
-    lines = Str.splitOn contents "\n"
+    lines = Str.split_on contents "\n"
 
-    Stdout.line! (Str.concat "First line of $(file_name): " (List.first lines |> Result.withDefault "err"))
+    Stdout.line! (Str.concat "First line of $(file_name): " (List.first lines |> Result.with_default "err"))

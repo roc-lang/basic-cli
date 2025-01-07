@@ -18,9 +18,9 @@ import Host
 ## from the environment. File operations on relative [Path]s are relative to this directory.
 cwd! : {} => Result Path [CwdUnavailable]
 cwd! = \{} ->
-    bytes = Host.cwd! {} |> Result.withDefault []
+    bytes = Host.cwd! {} |> Result.with_default []
 
-    if List.isEmpty bytes then
+    if List.is_empty bytes then
         Err CwdUnavailable
     else
         Ok (InternalPath.from_arbitrary_bytes bytes)
@@ -31,7 +31,7 @@ cwd! = \{} ->
 set_cwd! : Path => Result {} [InvalidCwd]
 set_cwd! = \path ->
     Host.set_cwd! (InternalPath.to_bytes path)
-    |> Result.mapErr \{} -> InvalidCwd
+    |> Result.map_err \{} -> InvalidCwd
 
 ## Gets the path to the currently-running executable.
 exe_path! : {} => Result Path [ExePathUnavailable]
@@ -47,7 +47,7 @@ exe_path! = \{} ->
 var! : Str => Result Str [VarNotFound]
 var! = \name ->
     Host.env_var! name
-    |> Result.mapErr \{} -> VarNotFound
+    |> Result.map_err \{} -> VarNotFound
 
 ## Reads the given environment variable and attempts to decode it.
 ##
@@ -79,9 +79,9 @@ decode! = \name ->
     when Host.env_var! name is
         Err {} -> Err VarNotFound
         Ok var_str ->
-            Str.toUtf8 var_str
-            |> Decode.fromBytes (EnvDecoding.format {})
-            |> Result.mapErr (\_ -> DecodeErr TooShort)
+            Str.to_utf8 var_str
+            |> Decode.from_bytes (EnvDecoding.format {})
+            |> Result.map_err (\_ -> DecodeErr TooShort)
 
 ## Reads all the process's environment variables into a [Dict].
 ##

@@ -15,4 +15,4 @@ main! = \_args ->
     temp_dir_str = Path.display (Env.temp_dir! {})
 
     Stdout.line! "The temp dir path is $(temp_dir_str)"
-    |> Result.mapErr \err -> Exit 1 "Failed to print temp dir:\n\t$(Inspect.toStr err)"
+    |> Result.map_err \err -> Exit 1 "Failed to print temp dir:\n\t$(Inspect.to_str err)"

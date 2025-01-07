@@ -14,4 +14,4 @@ main! = \_args ->
     c = try Path.is_sym_link! path
     d = try Path.type! path
 
-    Stdout.line! "isFile: $(Inspect.toStr a) isDir: $(Inspect.toStr b) isSymLink: $(Inspect.toStr c) type: $(Inspect.toStr d)"
+    Stdout.line! "isFile: $(Inspect.to_str a) isDir: $(Inspect.to_str b) isSymLink: $(Inspect.to_str c) type: $(Inspect.to_str d)"

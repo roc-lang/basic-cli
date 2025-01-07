@@ -15,6 +15,6 @@ tick! = \n ->
         try Stdout.line! "🎉 SURPRISE! Happy Birthday! 🎂"
         Ok {}
     else
-        try Stdout.line! (n |> Num.toStr |> \s -> "$(s)...")
+        try Stdout.line! (n |> Num.to_str |> \s -> "$(s)...")
         _ = Stdin.line! {}
         tick! (n - 1)

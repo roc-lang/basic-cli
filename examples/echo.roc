@@ -22,7 +22,7 @@ tick! = \{} ->
             Ok {}
 
         Err (StdinErr err) ->
-            try Stdout.line! (echo "Unable to read input $(Inspect.toStr err)")
+            try Stdout.line! (echo "Unable to read input $(Inspect.to_str err)")
             Ok {}
 
 echo : Str -> Str
@@ -30,15 +30,15 @@ echo = \shout ->
     silence = \length -> List.repeat ' ' length
 
     shout
-    |> Str.toUtf8
-    |> List.mapWithIndex \_, i ->
-        length = (List.len (Str.toUtf8 shout) - i)
-        phrase = (List.splitAt (Str.toUtf8 shout) length).before
+    |> Str.to_utf8
+    |> List.map_with_index \_, i ->
+        length = (List.len (Str.to_utf8 shout) - i)
+        phrase = (List.split_at (Str.to_utf8 shout) length).before
 
         List.concat (silence (if i == 0 then 2 * length else length)) phrase
     |> List.join
-    |> Str.fromUtf8
-    |> Result.withDefault ""
+    |> Str.from_utf8
+    |> Result.with_default ""
 
 expect
     message = "hello!"

@@ -60,8 +60,8 @@ header = \(name, value) -> { name, value }
 ##     |> Http.send!
 ##
 ## response.body
-## |> Str.fromUtf8
-## |> Result.withDefault "Invalid UTF-8"
+## |> Str.from_utf8
+## |> Result.with_default "Invalid UTF-8"
 ## |> Stdout.line
 ## ```
 send! : Request => Response
@@ -77,20 +77,20 @@ send! = \request ->
 ## ```
 ## import json.Json
 ##
-## # On the server side we send `Encode.toBytes {foo: "Hello Json!"} Json.utf8`
+## # On the server side we send `Encode.to_bytes {foo: "Hello Json!"} Json.utf8`
 ## { foo } = Http.get! "http://localhost:8000" Json.utf8
 ## ```
 get! : Str, fmt => Result body [HttpDecodingFailed] where body implements Decoding, fmt implements DecoderFormatting
 get! = \uri, fmt ->
     response = send! { default_request & uri }
 
-    Decode.fromBytes response.body fmt
-    |> Result.mapErr \_ -> HttpDecodingFailed
+    Decode.from_bytes response.body fmt
+    |> Result.map_err \_ -> HttpDecodingFailed
 
 get_utf8! : Str => Result Str [BadBody Str]
 get_utf8! = \uri ->
     response = send! { default_request & uri }
 
     response.body
-    |> Str.fromUtf8
-    |> Result.mapErr \_ -> BadBody "Invalid UTF-8"
+    |> Str.from_utf8
+    |> Result.map_err \_ -> BadBody "Invalid UTF-8"

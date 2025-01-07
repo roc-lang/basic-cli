@@ -226,8 +226,8 @@ open_reader! = \path_str ->
     path = Path.from_str path_str
 
     # 0 means with default capacity
-    Host.file_reader! (Str.toUtf8 path_str) 0
-    |> Result.mapErr \err -> GetFileReadErr path (InternalIOErr.handle_err err)
+    Host.file_reader! (Str.to_utf8 path_str) 0
+    |> Result.map_err \err -> GetFileReadErr path (InternalIOErr.handle_err err)
     |> Result.map \reader -> @Reader { reader, path }
 
 ## Try to open a `File.Reader` for buffered (= part by part) reading given a path string.
@@ -241,8 +241,8 @@ open_reader_with_capacity! : Str, U64 => Result Reader [GetFileReadErr Path IOEr
 open_reader_with_capacity! = \path_str, capacity ->
     path = Path.from_str path_str
 
-    Host.file_reader! (Str.toUtf8 path_str) capacity
-    |> Result.mapErr \err -> GetFileReadErr path (InternalIOErr.handle_err err)
+    Host.file_reader! (Str.to_utf8 path_str) capacity
+    |> Result.map_err \err -> GetFileReadErr path (InternalIOErr.handle_err err)
     |> Result.map \reader -> @Reader { reader, path }
 
 ## Try to read a line from a file given a Reader.
@@ -256,4 +256,4 @@ open_reader_with_capacity! = \path_str, capacity ->
 read_line! : Reader => Result (List U8) [FileReadErr Path IOErr]
 read_line! = \@Reader { reader, path } ->
     Host.file_read_line! reader
-    |> Result.mapErr \err -> FileReadErr path (InternalIOErr.handle_err err)
+    |> Result.map_err \err -> FileReadErr path (InternalIOErr.handle_err err)

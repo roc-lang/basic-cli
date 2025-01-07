@@ -80,7 +80,7 @@ env = \@Cmd cmd, key, value ->
 ##
 envs : Cmd, List (Str, Str) -> Cmd
 envs = \@Cmd cmd, key_values ->
-    values = key_values |> List.joinMap \(key, value) -> [key, value]
+    values = key_values |> List.join_map \(key, value) -> [key, value]
     @Cmd { cmd & envs: List.concat cmd.envs values }
 
 ## Clear all environment variables, and prevent inheriting from parent, only
@@ -112,8 +112,8 @@ output! = \@Cmd cmd ->
 status! : Cmd => Result I32 [CmdStatusErr InternalIOErr.IOErr]
 status! = \@Cmd cmd ->
     Host.command_status! cmd
-    |> Result.mapErr InternalIOErr.handle_err
-    |> Result.mapErr CmdStatusErr
+    |> Result.map_err InternalIOErr.handle_err
+    |> Result.map_err CmdStatusErr
 
 ## Execute command and inherit stdin, stdout and stderr from parent
 ##
@@ -131,4 +131,4 @@ exec! = \program, arguments ->
     if exit_code == 0i32 then
         Ok {}
     else
-        Err (CmdStatusErr (Other "Non-zero exit code $(Num.toStr exit_code)"))
+        Err (CmdStatusErr (Other "Non-zero exit code $(Num.to_str exit_code)"))

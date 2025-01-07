@@ -67,7 +67,7 @@ to_bytes = \@InternalPath path ->
     when path is
         FromOperatingSystem bytes -> bytes
         ArbitraryBytes bytes -> bytes
-        FromStr str -> Str.toUtf8 str
+        FromStr str -> Str.to_utf8 str
 
 from_arbitrary_bytes : List U8 -> InternalPath
 from_arbitrary_bytes = \bytes ->

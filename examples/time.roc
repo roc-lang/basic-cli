@@ -13,6 +13,6 @@ main! = \_args ->
 
     finish = Utc.now! {}
 
-    duration = Num.toStr (Utc.delta_as_nanos start finish)
+    duration = Num.to_str (Utc.delta_as_nanos start finish)
 
     Stdout.line! "Completed in $(duration)ns"

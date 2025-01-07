@@ -53,7 +53,7 @@ handle_err = \{ tag, msg } ->
 line! : Str => Result {} [StdoutErr IOErr]
 line! = \str ->
     Host.stdout_line! str
-    |> Result.mapErr handle_err
+    |> Result.map_err handle_err
 
 ## Write the given string to [standard output](https://en.wikipedia.org/wiki/Standard_streams#Standard_output_(stdout)).
 ##
@@ -64,4 +64,4 @@ line! = \str ->
 write! : Str => Result {} [StdoutErr IOErr]
 write! = \str ->
     Host.stdout_write! str
-    |> Result.mapErr handle_err
+    |> Result.map_err handle_err

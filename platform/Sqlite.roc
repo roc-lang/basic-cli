@@ -168,13 +168,13 @@ prepare! :
 prepare! = \{ path, query: q } ->
     Host.sqlite_prepare! path q
     |> Result.map @Stmt
-    |> Result.mapErr internal_to_external_error
+    |> Result.map_err internal_to_external_error
 
 # internal use only
 bind! : Stmt, List Binding => Result {} [SqliteErr ErrCode Str]
 bind! = \@Stmt stmt, bindings ->
     Host.sqlite_bind! stmt bindings
-    |> Result.mapErr internal_to_external_error
+    |> Result.map_err internal_to_external_error
 
 # internal use only
 columns! : Stmt => List Str
@@ -185,19 +185,19 @@ columns! = \@Stmt stmt ->
 column_value! : Stmt, U64 => Result Value [SqliteErr ErrCode Str]
 column_value! = \@Stmt stmt, i ->
     Host.sqlite_column_value! stmt i
-    |> Result.mapErr internal_to_external_error
+    |> Result.map_err internal_to_external_error
 
 # internal use only
 step! : Stmt => Result [Row, Done] [SqliteErr ErrCode Str]
 step! = \@Stmt stmt ->
     Host.sqlite_step! stmt
-    |> Result.mapErr internal_to_external_error
+    |> Result.map_err internal_to_external_error
 
 # internal use only
 reset! : Stmt => Result {} [SqliteErr ErrCode Str]
 reset! = \@Stmt stmt ->
     Host.sqlite_reset! stmt
-    |> Result.mapErr internal_to_external_error
+    |> Result.map_err internal_to_external_error
 
 ## Execute a SQL statement that doesn't return any rows (like INSERT, UPDATE, DELETE).
 ##
@@ -358,7 +358,7 @@ decode_record = \@SqlDecode gen_first, @SqlDecode gen_second, mapper ->
 ##
 ## Example:
 ## ```
-## Sqlite.i64 "id" |> Sqlite.map_value Num.toStr
+## Sqlite.i64 "id" |> Sqlite.map_value Num.to_str
 ## ```
 map_value : SqlDecode a err, (a -> b) -> SqlDecode b err
 map_value = \@SqlDecode gen_decode, mapper ->
@@ -414,7 +414,7 @@ decoder : (Value -> Result a (SqlDecodeErr err)) -> (Str -> SqlDecode a err)
 decoder = \fn -> \name ->
     @SqlDecode \cols ->
 
-        found = List.findFirstIndex cols \x -> x == name
+        found = List.find_first_index cols \x -> x == name
         when found is
             Ok index ->
                 \stmt ->
@@ -487,7 +487,7 @@ int_decoder : (I64 -> Result a err) -> (Str -> SqlDecode a [FailedToDecodeIntege
 int_decoder = \cast ->
     decoder \val ->
         when val is
-            Integer i -> cast i |> Result.mapErr FailedToDecodeInteger
+            Integer i -> cast i |> Result.map_err FailedToDecodeInteger
             _ -> to_unexpected_type_err val
 
 # internal use only
@@ -495,7 +495,7 @@ real_decoder : (F64 -> Result a err) -> (Str -> SqlDecode a [FailedToDecodeReal 
 real_decoder = \cast ->
     decoder \val ->
         when val is
-            Real r -> cast r |> Result.mapErr FailedToDecodeReal
+            Real r -> cast r |> Result.map_err FailedToDecodeReal
             _ -> to_unexpected_type_err val
 
 ## Decode a [Value] to a [I64].
@@ -517,31 +517,31 @@ i64 = int_decoder Ok
 
 ## Decode a [Value] to a [I32].
 i32 : Str -> SqlDecode I32 [FailedToDecodeInteger [OutOfBounds]]UnexpectedTypeErr
-i32 = int_decoder Num.toI32Checked
+i32 = int_decoder Num.to_i32_checked
 
 ## Decode a [Value] to a [I16].
 i16 : Str -> SqlDecode I16 [FailedToDecodeInteger [OutOfBounds]]UnexpectedTypeErr
-i16 = int_decoder Num.toI16Checked
+i16 = int_decoder Num.to_i16_checked
 
 ## Decode a [Value] to a [I8].
 i8 : Str -> SqlDecode I8 [FailedToDecodeInteger [OutOfBounds]]UnexpectedTypeErr
-i8 = int_decoder Num.toI8Checked
+i8 = int_decoder Num.to_i8_checked
 
 ## Decode a [Value] to a [U64].
 u64 : Str -> SqlDecode U64 [FailedToDecodeInteger [OutOfBounds]]UnexpectedTypeErr
-u64 = int_decoder Num.toU64Checked
+u64 = int_decoder Num.to_u64_checked
 
 ## Decode a [Value] to a [U32].
 u32 : Str -> SqlDecode U32 [FailedToDecodeInteger [OutOfBounds]]UnexpectedTypeErr
-u32 = int_decoder Num.toU32Checked
+u32 = int_decoder Num.to_u32_checked
 
 ## Decode a [Value] to a [U16].
 u16 : Str -> SqlDecode U16 [FailedToDecodeInteger [OutOfBounds]]UnexpectedTypeErr
-u16 = int_decoder Num.toU16Checked
+u16 = int_decoder Num.to_u16_checked
 
 ## Decode a [Value] to a [U8].
 u8 : Str -> SqlDecode U8 [FailedToDecodeInteger [OutOfBounds]]UnexpectedTypeErr
-u8 = int_decoder Num.toU8Checked
+u8 = int_decoder Num.to_u8_checked
 
 ## Decode a [Value] to a [F64].
 f64 : Str -> SqlDecode F64 [FailedToDecodeReal []]UnexpectedTypeErr
@@ -549,7 +549,7 @@ f64 = real_decoder Ok
 
 ## Decode a [Value] to a [F32].
 f32 : Str -> SqlDecode F32 [FailedToDecodeReal []]UnexpectedTypeErr
-f32 = real_decoder (\x -> Num.toF32 x |> Ok)
+f32 = real_decoder (\x -> Num.to_f32 x |> Ok)
 
 # TODO: Mising Num.toDec and Num.toDecChecked
 # dec = realSqlDecoder Ok
@@ -581,7 +581,7 @@ nullable_int_decoder : (I64 -> Result a err) -> (Str -> SqlDecode (Nullable a) [
 nullable_int_decoder = \cast ->
     decoder \val ->
         when val is
-            Integer i -> cast i |> Result.map NotNull |> Result.mapErr FailedToDecodeInteger
+            Integer i -> cast i |> Result.map NotNull |> Result.map_err FailedToDecodeInteger
             Null -> Ok Null
             _ -> to_unexpected_type_err val
 
@@ -590,7 +590,7 @@ nullable_real_decoder : (F64 -> Result a err) -> (Str -> SqlDecode (Nullable a) 
 nullable_real_decoder = \cast ->
     decoder \val ->
         when val is
-            Real r -> cast r |> Result.map NotNull |> Result.mapErr FailedToDecodeReal
+            Real r -> cast r |> Result.map NotNull |> Result.map_err FailedToDecodeReal
             Null -> Ok Null
             _ -> to_unexpected_type_err val
 
@@ -600,31 +600,31 @@ nullable_i64 = nullable_int_decoder Ok
 
 ## Decode a [Value] to a [Nullable I32].
 nullable_i32 : Str -> SqlDecode (Nullable I32) [FailedToDecodeInteger [OutOfBounds]]UnexpectedTypeErr
-nullable_i32 = nullable_int_decoder Num.toI32Checked
+nullable_i32 = nullable_int_decoder Num.to_i32_checked
 
 ## Decode a [Value] to a [Nullable I16].
 nullable_i16 : Str -> SqlDecode (Nullable I16) [FailedToDecodeInteger [OutOfBounds]]UnexpectedTypeErr
-nullable_i16 = nullable_int_decoder Num.toI16Checked
+nullable_i16 = nullable_int_decoder Num.to_i16_checked
 
 ## Decode a [Value] to a [Nullable I8].
 nullable_i8 : Str -> SqlDecode (Nullable I8) [FailedToDecodeInteger [OutOfBounds]]UnexpectedTypeErr
-nullable_i8 = nullable_int_decoder Num.toI8Checked
+nullable_i8 = nullable_int_decoder Num.to_i8_checked
 
 ## Decode a [Value] to a [Nullable U64].
 nullable_u64 : Str -> SqlDecode (Nullable U64) [FailedToDecodeInteger [OutOfBounds]]UnexpectedTypeErr
-nullable_u64 = nullable_int_decoder Num.toU64Checked
+nullable_u64 = nullable_int_decoder Num.to_u64_checked
 
 ## Decode a [Value] to a [Nullable U32].
 nullable_u32 : Str -> SqlDecode (Nullable U32) [FailedToDecodeInteger [OutOfBounds]]UnexpectedTypeErr
-nullable_u32 = nullable_int_decoder Num.toU32Checked
+nullable_u32 = nullable_int_decoder Num.to_u32_checked
 
 ## Decode a [Value] to a [Nullable U16].
 nullable_u16 : Str -> SqlDecode (Nullable U16) [FailedToDecodeInteger [OutOfBounds]]UnexpectedTypeErr
-nullable_u16 = nullable_int_decoder Num.toU16Checked
+nullable_u16 = nullable_int_decoder Num.to_u16_checked
 
 ## Decode a [Value] to a [Nullable U8].
 nullable_u8 : Str -> SqlDecode (Nullable U8) [FailedToDecodeInteger [OutOfBounds]]UnexpectedTypeErr
-nullable_u8 = nullable_int_decoder Num.toU8Checked
+nullable_u8 = nullable_int_decoder Num.to_u8_checked
 
 ## Decode a [Value] to a [Nullable F64].
 nullable_f64 : Str -> SqlDecode (Nullable F64) [FailedToDecodeReal []]UnexpectedTypeErr
@@ -632,7 +632,7 @@ nullable_f64 = nullable_real_decoder Ok
 
 ## Decode a [Value] to a [Nullable F32].
 nullable_f32 : Str -> SqlDecode (Nullable F32) [FailedToDecodeReal []]UnexpectedTypeErr
-nullable_f32 = nullable_real_decoder (\x -> Num.toF32 x |> Ok)
+nullable_f32 = nullable_real_decoder (\x -> Num.to_f32 x |> Ok)
 
 # TODO: Mising Num.toDec and Num.toDecChecked
 # nullable_dec = nullable_real_decoder Ok
@@ -742,4 +742,4 @@ errcode_to_str = \code ->
         Warning -> "Warning: Warnings from sqlite3_log()"
         Row -> "Row: sqlite3_step() has another row ready"
         Done -> "Done: sqlite3_step() has finished executing"
-        Unknown c -> "Unknown: error code $(Num.toStr c) not known"
+        Unknown c -> "Unknown: error code $(Num.to_str c) not known"

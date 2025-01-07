@@ -39,7 +39,7 @@ handle_err! = \error ->
             err_str = Tcp.stream_err_to_str err
             Stderr.line! "Error while writing: $(err_str)"
 
-        other -> Stderr.line! "Got other error: $(Inspect.toStr other)"
+        other -> Stderr.line! "Got other error: $(Inspect.to_str other)"
 
 run! : {} => Result {} _
 run! = \{} ->

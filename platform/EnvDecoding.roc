@@ -30,7 +30,7 @@ format : {} -> EnvFormat
 format = \{} -> @EnvFormat {}
 
 decode_bytes_to_num = \bytes, transformer ->
-    when Str.fromUtf8 bytes is
+    when Str.from_utf8 bytes is
         Ok s ->
             when transformer s is
                 Ok n -> { result: Ok n, rest: [] }
@@ -53,13 +53,13 @@ env_f64 = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.t
 env_dec = Decode.custom \bytes, @EnvFormat {} -> decode_bytes_to_num bytes Str.toDec
 
 env_bool = Decode.custom \bytes, @EnvFormat {} ->
-    when Str.fromUtf8 bytes is
+    when Str.from_utf8 bytes is
         Ok "true" -> { result: Ok Bool.true, rest: [] }
         Ok "false" -> { result: Ok Bool.false, rest: [] }
         _ -> { result: Err TooShort, rest: bytes }
 
 env_string = Decode.custom \bytes, @EnvFormat {} ->
-    when Str.fromUtf8 bytes is
+    when Str.from_utf8 bytes is
         Ok s -> { result: Ok s, rest: [] }
         Err _ -> { result: Err TooShort, rest: bytes }
 
@@ -71,7 +71,7 @@ env_list = \decode_elem -> Decode.custom \bytes, @EnvFormat {} ->
     # a whole list of bytes anyway.
     decode_elems = \all_bytes, accum ->
         { to_parse, remainder } =
-            when List.splitFirst all_bytes (Num.toU8 ',') is
+            when List.splitFirst all_bytes (Num.to_u8 ',') is
                 Ok { before, after } ->
                     { to_parse: before, remainder: Some after }
 

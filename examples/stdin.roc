@@ -11,10 +11,10 @@ main! = \_args ->
 
     number_bytes = try take_number_bytes! {}
 
-    if List.isEmpty number_bytes then
+    if List.is_empty number_bytes then
         Stderr.line! "Expected a series of number characters (0-9)"
     else
-        when Str.fromUtf8 number_bytes is
+        when Str.from_utf8 number_bytes is
             Ok n_str ->
                 Stdout.line! "Got number $(n_str)"
 

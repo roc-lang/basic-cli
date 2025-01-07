@@ -56,7 +56,7 @@ handle_err = \{ tag, msg } ->
 line! : {} => Result Str [EndOfFile, StdinErr IOErr]
 line! = \{} ->
     Host.stdin_line! {}
-    |> Result.mapErr handle_err
+    |> Result.map_err handle_err
 
 ## Read bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
 ## ‼️ This function can read no more than 16,384 bytes at a time. Use [readToEnd!] if you need more.
@@ -67,13 +67,13 @@ line! = \{} ->
 bytes! : {} => Result (List U8) [EndOfFile, StdinErr IOErr]
 bytes! = \{} ->
     Host.stdin_bytes! {}
-    |> Result.mapErr handle_err
+    |> Result.map_err handle_err
 
 ## Read all bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)) until EOF in this source.
 read_to_end! : {} => Result (List U8) [StdinErr IOErr]
 read_to_end! = \{} ->
     Host.stdin_read_to_end! {}
-    |> Result.mapErr \{ tag, msg } ->
+    |> Result.map_err \{ tag, msg } ->
         when tag is
             NotFound -> StdinErr NotFound
             PermissionDenied -> StdinErr PermissionDenied

@@ -31,14 +31,14 @@ Url := Str implements [Inspect]
 ## |> Url.append_param "café" "du Monde"
 ## |> Url.append_param "email" "hi@example.com"
 ## ```
-## The [Str.countUtf8Bytes](https://www.roc-lang.org/builtins/Str#countUtf8Bytes) function can be helpful in finding out how many bytes to reserve.
+## The [Str.count_utf8_bytes](https://www.roc-lang.org/builtins/Str#countUtf8Bytes) function can be helpful in finding out how many bytes to reserve.
 ##
 ## There is no `Url.withCapacity` because it's better to reserve extra capacity
 ## on a [Str] first, and then pass that string to [Url.from_str]. This function will make use
 ## of the extra capacity.
 reserve : Url, U64 -> Url
 reserve = \@Url str, cap ->
-    @Url (Str.reserve str (Num.intCast cap))
+    @Url (Str.reserve str (Num.int_cast cap))
 
 ## Create a [Url] without validating or [percent-encoding](https://en.wikipedia.org/wiki/Percent-encoding)
 ## anything.
@@ -103,14 +103,14 @@ append : Url, Str -> Url
 append = \@Url url_str, suffix_unencoded ->
     suffix = percent_encode suffix_unencoded
 
-    when Str.splitFirst url_str "?" is
+    when Str.split_first url_str "?" is
         Ok { before, after } ->
             bytes =
-                Str.countUtf8Bytes before
+                Str.count_utf8_bytes before
                 + 1 # for "/"
-                + Str.countUtf8Bytes suffix
+                + Str.count_utf8_bytes suffix
                 + 1 # for "?"
-                + Str.countUtf8Bytes after
+                + Str.count_utf8_bytes after
 
             before
             |> Str.reserve bytes
@@ -121,14 +121,14 @@ append = \@Url url_str, suffix_unencoded ->
 
         Err NotFound ->
             # There wasn't a query, but there might still be a fragment
-            when Str.splitFirst url_str "#" is
+            when Str.split_first url_str "#" is
                 Ok { before, after } ->
                     bytes =
-                        Str.countUtf8Bytes before
+                        Str.count_utf8_bytes before
                         + 1 # for "/"
-                        + Str.countUtf8Bytes suffix
+                        + Str.count_utf8_bytes suffix
                         + 1 # for "#"
-                        + Str.countUtf8Bytes after
+                        + Str.count_utf8_bytes after
 
                     before
                     |> Str.reserve bytes
@@ -144,10 +144,10 @@ append = \@Url url_str, suffix_unencoded ->
 ## Internal helper
 append_help : Str, Str -> Str
 append_help = \prefix, suffix ->
-    if Str.endsWith prefix "/" then
-        if Str.startsWith suffix "/" then
+    if Str.ends_with prefix "/" then
+        if Str.starts_with suffix "/" then
             # Avoid a double-slash by appending only the part of the suffix after the "/"
-            when Str.splitFirst suffix "/" is
+            when Str.split_first suffix "/" is
                 Ok { after } ->
                     # TODO `expect before == ""`
                     Str.concat prefix after
@@ -160,13 +160,13 @@ append_help = \prefix, suffix ->
         else
             # prefix ends with "/" but suffix doesn't start with one, so just append.
             Str.concat prefix suffix
-    else if Str.startsWith suffix "/" then
+    else if Str.starts_with suffix "/" then
         # Suffix starts with "/" but prefix doesn't end with one, so just append them.
         Str.concat prefix suffix
-    else if Str.isEmpty prefix then
+    else if Str.is_empty prefix then
         # Prefix is empty; return suffix.
         suffix
-    else if Str.isEmpty suffix then
+    else if Str.is_empty suffix then
         # Suffix is empty; return prefix.
         prefix
     else
@@ -193,10 +193,10 @@ percent_encode : Str -> Str
 percent_encode = \input ->
     # Optimistically assume we won't need any percent encoding, and can have
     # the same capacity as the input string. If we're wrong, it will get doubled.
-    initial_output = List.withCapacity (Str.countUtf8Bytes input |> Num.intCast)
+    initial_output = List.with_capacity (Str.count_utf8_bytes input |> Num.int_cast)
 
     answer =
-        List.walk (Str.toUtf8 input) initial_output \output, byte ->
+        List.walk (Str.to_utf8 input) initial_output \output, byte ->
             # Spec for percent-encoding: https://www.ietf.org/rfc/rfc3986.txt
             if
                 (byte >= 97 && byte <= 122) # lowercase ASCII
@@ -218,13 +218,13 @@ percent_encode = \input ->
                     _ ->
                         # This needs encoding in a path
                         suffix =
-                            Str.toUtf8 percent_encoded
-                            |> List.sublist { len: 3, start: 3 * Num.intCast byte }
+                            Str.to_utf8 percent_encoded
+                            |> List.sublist { len: 3, start: 3 * Num.int_cast byte }
 
                         List.concat output suffix
 
-    Str.fromUtf8 answer
-    |> Result.withDefault "" # This should never fail
+    Str.from_utf8 answer
+    |> Result.with_default "" # This should never fail
 
 ## Adds a [Str] query parameter to the end of the [Url].
 ##
@@ -248,7 +248,7 @@ percent_encode = \input ->
 append_param : Url, Str, Str -> Url
 append_param = \@Url url_str, key, value ->
     { without_fragment, after_query } =
-        when Str.splitLast url_str "#" is
+        when Str.split_last url_str "#" is
             Ok { before, after } ->
                 # The fragment is almost certainly going to be a small string,
                 # so this interpolation should happen on the stack.
@@ -261,12 +261,12 @@ append_param = \@Url url_str, key, value ->
     encoded_value = percent_encode value
 
     bytes =
-        Str.countUtf8Bytes without_fragment
+        Str.count_utf8_bytes without_fragment
         + 1 # for "?" or "&"
-        + Str.countUtf8Bytes encoded_key
+        + Str.count_utf8_bytes encoded_key
         + 1 # for "="
-        + Str.countUtf8Bytes encoded_value
-        + Str.countUtf8Bytes after_query
+        + Str.count_utf8_bytes encoded_value
+        + Str.count_utf8_bytes after_query
 
     without_fragment
     |> Str.reserve bytes
@@ -294,7 +294,7 @@ append_param = \@Url url_str, key, value ->
 with_query : Url, Str -> Url
 with_query = \@Url url_str, query_str ->
     { without_fragment, after_query } =
-        when Str.splitLast url_str "#" is
+        when Str.split_last url_str "#" is
             Ok { before, after } ->
                 # The fragment is almost certainly going to be a small string,
                 # so this interpolation should happen on the stack.
@@ -304,18 +304,18 @@ with_query = \@Url url_str, query_str ->
                 { without_fragment: url_str, after_query: "" }
 
     before_query =
-        when Str.splitLast without_fragment "?" is
+        when Str.split_last without_fragment "?" is
             Ok { before } -> before
             Err NotFound -> without_fragment
 
-    if Str.isEmpty query_str then
+    if Str.is_empty query_str then
         @Url (Str.concat before_query after_query)
     else
         bytes =
-            Str.countUtf8Bytes before_query
+            Str.count_utf8_bytes before_query
             + 1 # for "?"
-            + Str.countUtf8Bytes query_str
-            + Str.countUtf8Bytes after_query
+            + Str.count_utf8_bytes query_str
+            + Str.count_utf8_bytes after_query
 
         before_query
         |> Str.reserve bytes
@@ -342,11 +342,11 @@ with_query = \@Url url_str, query_str ->
 query : Url -> Str
 query = \@Url url_str ->
     without_fragment =
-        when Str.splitLast url_str "#" is
+        when Str.split_last url_str "#" is
             Ok { before } -> before
             Err NotFound -> url_str
 
-    when Str.splitLast without_fragment "?" is
+    when Str.split_last without_fragment "?" is
         Ok { after } -> after
         Err NotFound -> ""
 
@@ -383,7 +383,7 @@ has_query = \@Url url_str ->
 ##
 fragment : Url -> Str
 fragment = \@Url url_str ->
-    when Str.splitLast url_str "#" is
+    when Str.split_last url_str "#" is
         Ok { after } -> after
         Err NotFound -> ""
 
@@ -407,9 +407,9 @@ fragment = \@Url url_str ->
 ##
 with_fragment : Url, Str -> Url
 with_fragment = \@Url url_str, fragment_str ->
-    when Str.splitLast url_str "#" is
+    when Str.split_last url_str "#" is
         Ok { before } ->
-            if Str.isEmpty fragment_str then
+            if Str.is_empty fragment_str then
                 # If the given fragment is empty, remove the URL's fragment
                 @Url before
             else
@@ -417,7 +417,7 @@ with_fragment = \@Url url_str, fragment_str ->
                 @Url "$(before)#$(fragment_str)"
 
         Err NotFound ->
-            if Str.isEmpty fragment_str then
+            if Str.is_empty fragment_str then
                 # If the given fragment is empty, leave the URL as having no fragment
                 @Url url_str
             else
@@ -449,8 +449,8 @@ percent_encoded = "%00%01%02%03%04%05%06%07%08%09%0A%0B%0C%0D%0E%0F%10%11%12%13%
 query_params : Url -> Dict Str Str
 query_params = \url ->
     query url
-    |> Str.splitOn "&"
+    |> Str.split_on "&"
     |> List.walk (Dict.empty {}) \dict, pair ->
-        when Str.splitFirst pair "=" is
+        when Str.split_first pair "=" is
             Ok { before, after } -> Dict.insert dict before after
             Err NotFound -> Dict.insert dict pair ""

@@ -52,7 +52,7 @@ handle_err = \{ tag, msg } ->
 line! : Str => Result {} [StderrErr IOErr]
 line! = \str ->
     Host.stderr_line! str
-    |> Result.mapErr handle_err
+    |> Result.map_err handle_err
 
 ## Write the given string to [standard error](https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)).
 ##
@@ -63,4 +63,4 @@ line! = \str ->
 write! : Str => Result {} [StderrErr IOErr]
 write! = \str ->
     Host.stderr_write! str
-    |> Result.mapErr handle_err
+    |> Result.map_err handle_err

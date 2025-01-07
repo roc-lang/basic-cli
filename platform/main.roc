@@ -39,7 +39,7 @@ main_for_host! = \raw_args ->
     when main! args is
         Ok {} -> 0
         Err (Exit code msg) ->
-            if Str.isEmpty msg then
+            if Str.is_empty msg then
                 code
             else
                 _ = Stderr.line! msg
@@ -49,9 +49,9 @@ main_for_host! = \raw_args ->
             help_msg =
                 """
                 Program exited with error:
-                    $(Inspect.toStr msg)
+                    $(Inspect.to_str msg)
 
-                Tip: If you do not want to exit on this error, use `Result.mapErr` to handle the error. Docs for `Result.mapErr`: <https://www.roc-lang.org/builtins/Result#mapErr>
+                Tip: If you do not want to exit on this error, use `Result.map_err` to handle the error. Docs for `Result.map_err`: <https://www.roc-lang.org/builtins/Result#mapErr>
                 """
 
             _ = Stderr.line! help_msg

@@ -23,7 +23,7 @@ main! = \_args ->
 
     read_summary = try process_line! reader { lines_read: 0, bytes_read: 0 }
 
-    Stdout.line! "Done reading file: $(Inspect.toStr read_summary)"
+    Stdout.line! "Done reading file: $(Inspect.to_str read_summary)"
 
 ReadSummary : {
     lines_read : U64,
@@ -40,8 +40,8 @@ process_line! = \reader, { lines_read, bytes_read } ->
         Ok bytes ->
             process_line! reader {
                 lines_read: lines_read + 1,
-                bytes_read: bytes_read + (List.len bytes |> Num.intCast),
+                bytes_read: bytes_read + (List.len bytes |> Num.int_cast),
             }
 
         Err err ->
-            Err (ErrorReadingLine (Inspect.toStr err))
+            Err (ErrorReadingLine (Inspect.to_str err))
