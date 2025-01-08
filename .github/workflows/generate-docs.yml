@@ -1,0 +1,33 @@
+name: Generate docs
+
+on:
+  # Run when a release is published
+  release:
+    types:
+      - published
+
+jobs:
+  generate-docs:
+    name: Generate docs
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v3
+      - name: Install Roc
+        uses: hasnep/setup-roc@main
+        with:
+          roc-version: nightly
+      - name: Generate docs
+        run: roc docs platform/main.roc
+      - name: Fix absolute paths
+        run: |
+          find generated-docs/ -type f -name '*.html' -exec sed -i "s/\(href\|src\)=\"\//\1=\"\/${{ github.event.repository.name }}\//g" {} +
+      - name: Upload docs artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: generated-docs
+      - name: Deploy docs
+        uses: actions/deploy-pages@v2
