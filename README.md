@@ -8,14 +8,14 @@
 A Roc [platform](https://github.com/roc-lang/roc/wiki/Roc-concepts-explained#platform) to work with files, commands, HTTP, TCP, command line arguments,...
 
 :eyes: **examples**:
-  - [0.18.x](https://github.com/roc-lang/basic-cli/tree/0.18.0/examples)
-  - [0.17.x](https://github.com/roc-lang/basic-cli/tree/0.17.0/examples)
-  - [0.16.x](https://github.com/roc-lang/basic-cli/tree/0.16.0/examples)
+  - [0.18.0](https://github.com/roc-lang/basic-cli/tree/0.18.0/examples)
+  - [0.17.0](https://github.com/roc-lang/basic-cli/tree/0.17.0/examples)
+  - [0.16.0](https://github.com/roc-lang/basic-cli/tree/0.16.0/examples)
   - [latest main branch](https://github.com/roc-lang/basic-cli/tree/main/examples)
 
 :book: **documentation**:
-  - [0.18.x](https://roc-lang.github.io/basic-cli/0.18.0/)
-  - [0.17.x](https://roc-lang.github.io/basic-cli/0.17.0/)
+  - [0.18.0](https://roc-lang.github.io/basic-cli/0.18.0/)
+  - [0.17.0](https://roc-lang.github.io/basic-cli/0.17.0/)
   - [latest main branch](https://roc-lang.github.io/basic-cli/)
 
 ## Running locally
