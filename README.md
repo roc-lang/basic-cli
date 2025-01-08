@@ -14,10 +14,7 @@ A Roc [platform](https://github.com/roc-lang/roc/wiki/Roc-concepts-explained#pla
   - [latest main branch](https://github.com/roc-lang/basic-cli/tree/main/examples)
 
 :book: **documentation**:
-  - [0.18.x](https://www.roc-lang.org/packages/basic-cli/0.18.0)
-  - [0.17.x](https://www.roc-lang.org/packages/basic-cli/0.17.0)
-  - [0.16.x](https://www.roc-lang.org/packages/basic-cli/0.16.0)
-  - [latest main branch](https://www.roc-lang.org/packages/basic-cli)
+  - [latest main branch](https://roc-lang.github.io/basic-cli/)
 
 ## Running locally
 
