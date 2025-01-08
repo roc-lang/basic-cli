@@ -1,0 +1,2492 @@
+# LLM Prompt for Documentation
+
+## Documentation
+
+### Path
+
+#### Path
+
+**Type Annotation**
+
+**Description**
+
+Represents a path to a file or directory on the filesystem.
+
+#### DirEntry
+
+**Type Annotation**
+
+**Description**
+
+Record which represents a directory
+
+> This is the same as [`Dir.DirEntry`](Dir#DirEntry).
+
+#### IOErr
+
+**Type Annotation**
+
+**Description**
+
+Tag union of possible errors when reading and writing a file or directory.
+
+> This is the same as [`File.Err`](File#Err).
+
+#### write!
+
+**Type Annotation**
+
+```roc
+
+    val, 
+    Path, 
+    fmt
+    => Result {} [FileWriteErr Path IOErr]
+    where val implements Encoding, fmt implements EncoderFormatting
+```
+
+**Description**
+
+Write data to a file.
+
+First encode a `val` using a given `fmt` which implements the ability [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
+
+For example, suppose you have a `Json.toCompactUtf8` which implements
+[Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
+You can use this to write [JSON](https://en.wikipedia.org/wiki/JSON)
+data to a file like this:
+
+```
+# Writes `{"some":"json stuff"}` to the file `output.json`:
+Path.write!
+    { some: "json stuff" }
+    (Path.from_str "output.json")
+    Json.toCompactUtf8
+```
+
+This opens the file first and closes it after writing to it.
+If writing to the file fails, for example because of a file permissions issue, the task fails with [WriteErr].
+
+> To write unformatted bytes to a file, you can use [Path.write_bytes!] instead.
+
+#### write_bytes!
+
+**Type Annotation**
+
+```roc
+List U8, Path => Result {} [FileWriteErr Path IOErr]
+```
+
+**Description**
+
+Writes bytes to a file.
+
+```
+# Writes the bytes 1, 2, 3 to the file `myfile.dat`.
+Path.write_bytes! [1, 2, 3] (Path.from_str "myfile.dat")
+```
+
+This opens the file first and closes it after writing to it.
+
+> To format data before writing it to a file, you can use [Path.write!] instead.
+
+#### write_utf8!
+
+**Type Annotation**
+
+```roc
+Str, Path => Result {} [FileWriteErr Path IOErr]
+```
+
+**Description**
+
+Writes a [Str] to a file, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
+
+```
+# Writes "Hello!" encoded as UTF-8 to the file `myfile.txt`.
+Path.write_utf8! "Hello!" (Path.from_str "myfile.txt")
+```
+
+This opens the file first and closes it after writing to it.
+
+> To write unformatted bytes to a file, you can use [Path.write_bytes!] instead.
+
+#### from_str
+
+**Type Annotation**
+
+```roc
+Str -> Path
+```
+
+**Description**
+
+Note that the path may not be valid depending on the filesystem where it is used.
+For example, paths containing `:` are valid on ext4 and NTFS filesystems, but not
+on FAT ones. So if you have multiple disks on the same machine, but they have
+different filesystems, then this path could be valid on one but invalid on another!
+
+It's safest to assume paths are invalid (even syntactically) until given to an operation
+which uses them to open a file. If that operation succeeds, then the path was valid
+(at the time). Otherwise, error handling can happen for that operation rather than validating
+up front for a false sense of security (given symlinks, parts of a path being renamed, etc.).
+
+#### from_bytes
+
+**Type Annotation**
+
+```roc
+List U8 -> Path
+```
+
+**Description**
+
+Not all filesystems use Unicode paths. This function can be used to create a path which
+is not valid Unicode (like a [Str] is), but which is valid for a particular filesystem.
+
+Note that if the list contains any `0` bytes, sending this path to any file operations
+(e.g. `Path.read_bytes` or `WriteStream.openPath`) will fail.
+
+#### display
+
+**Type Annotation**
+
+```roc
+Path -> Str
+```
+
+**Description**
+
+Unfortunately, operating system paths do not include information about which charset
+they were originally encoded with. It's most common (but not guaranteed) that they will
+have been encoded with the same charset as the operating system's curent locale (which
+typically does not change after it is set during installation of the OS), so
+this should convert a [Path] to a valid string as long as the path was created
+with the given `Charset`. (Use `Env.charset` to get the current system charset.)
+
+For a conversion to [Str] that is lossy but does not return a [Result], see
+[display].
+toInner : Path -> [Str Str, Bytes (List U8)]
+Assumes a path is encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8),
+and converts it to a string using `Str.display`.
+
+This conversion is lossy because the path may contain invalid UTF-8 bytes. If that happens,
+any invalid bytes will be replaced with the [Unicode replacement character](https://unicode.org/glossary/#replacement_character)
+instead of returning an error. As such, it's rarely a good idea to use the [Str] returned
+by this function for any purpose other than displaying it to a user.
+
+When you don't know for sure what a path's encoding is, UTF-8 is a popular guess because
+it's the default on UNIX and also is the encoding used in Roc strings. This platform also
+automatically runs applications under the [UTF-8 code page](https://docs.microsoft.com/en-us/windows/apps/design/globalizing/use-utf8-code-page)
+on Windows.
+
+Converting paths to strings can be an unreliable operation, because operating systems
+don't record the paths' encodings. This means it's possible for the path to have been
+encoded with a different character set than UTF-8 even if UTF-8 is the system default,
+which means when [display] converts them to a string, the string may include gibberish.
+[Here is an example.](https://unix.stackexchange.com/questions/667652/can-a-file-path-be-invalid-utf-8/667863#667863)
+
+If you happen to know the `Charset` that was used to encode the path, you can use
+`toStrUsingCharset` instead of [display].
+
+#### is_dir!
+
+**Type Annotation**
+
+```roc
+Path => Result Bool [PathErr IOErr]
+```
+
+**Description**
+
+Returns true if the path exists on disk and is pointing at a directory.
+Returns `Task.ok false` if the path exists and it is not a directory. If the path does not exist,
+this function will return `Task.err PathErr PathDoesNotExist`.
+
+This uses [rust's std::path::is_dir](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_dir).
+
+> [`File.is_dir`](File#is_dir!) does the same thing, except it takes a [Str] instead of a [Path].
+
+#### is_file!
+
+**Type Annotation**
+
+```roc
+Path => Result Bool [PathErr IOErr]
+```
+
+**Description**
+
+Returns true if the path exists on disk and is pointing at a regular file.
+Returns `Task.ok false` if the path exists and it is not a file. If the path does not exist,
+this function will return `Task.err PathErr PathDoesNotExist`.
+
+This uses [rust's std::path::is_file](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_file).
+
+> [`File.is_file`](File#is_file!) does the same thing, except it takes a [Str] instead of a [Path].
+
+#### is_sym_link!
+
+**Type Annotation**
+
+```roc
+Path => Result Bool [PathErr IOErr]
+```
+
+**Description**
+
+Returns true if the path exists on disk and is pointing at a symbolic link.
+Returns `Task.ok false` if the path exists and it is not a symbolic link. If the path does not exist,
+this function will return `Task.err PathErr PathDoesNotExist`.
+
+This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
+
+> [`File.is_sym_link`](File#is_sym_link!) does the same thing, except it takes a [Str] instead of a [Path].
+
+#### type!
+
+**Type Annotation**
+
+```roc
+
+    Path
+    => Result 
+        [
+            IsFile,
+            IsDir,
+            IsSymLink
+        ] [PathErr IOErr]
+```
+
+**Description**
+
+Return the type of the path if the path exists on disk.
+
+> [`File.type`](File#type!) does the same thing, except it takes a [Str] instead of a [Path].
+
+#### with_extension
+
+**Type Annotation**
+
+```roc
+Path, Str -> Path
+```
+
+**Description**
+
+If the last component of this path has no `.`, appends `.` followed by the given string.
+Otherwise, replaces everything after the last `.` with the given string.
+
+```
+# Each of these gives "foo/bar/baz.txt"
+Path.from_str "foo/bar/baz" |> Path.with_extension "txt"
+Path.from_str "foo/bar/baz." |> Path.with_extension "txt"
+Path.from_str "foo/bar/baz.xz" |> Path.with_extension "txt"
+```
+
+#### delete!
+
+**Type Annotation**
+
+```roc
+Path => Result {} [FileWriteErr Path IOErr]
+```
+
+**Description**
+
+Deletes a file from the filesystem.
+
+Performs a [`DeleteFile`](https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-deletefile)
+on Windows and [`unlink`](https://en.wikipedia.org/wiki/Unlink_(Unix)) on
+UNIX systems. On Windows, this will fail when attempting to delete a readonly
+file; the file's readonly permission must be disabled before it can be
+successfully deleted.
+
+```
+# Deletes the file named `myfile.dat`
+Path.delete (Path.from_str "myfile.dat") [1, 2, 3]
+```
+
+> This does not securely erase the file's contents from disk; instead, the operating
+system marks the space it was occupying as safe to write over in the future. Also, the operating
+system may not immediately mark the space as free; for example, on Windows it will wait until
+the last file handle to it is closed, and on UNIX, it will not remove it until the last
+[hard link](https://en.wikipedia.org/wiki/Hard_link) to it has been deleted.
+
+> [`File.delete`](File#delete!) does the same thing, except it takes a [Str] instead of a [Path].
+
+#### read_utf8!
+
+**Type Annotation**
+
+```roc
+
+    Path
+    => Result Str 
+        [
+            FileReadErr Path IOErr,
+            FileReadUtf8Err Path 
+        ]
+```
+
+**Description**
+
+Reads a [Str] from a file containing [UTF-8](https://en.wikipedia.org/wiki/UTF-8)-encoded text.
+
+```
+# Reads UTF-8 encoded text into a Str from the file "myfile.txt"
+Path.read_utf8 (Path.from_str "myfile.txt")
+```
+
+This opens the file first and closes it after writing to it.
+The task will fail with `FileReadUtf8Err` if the given file contains invalid UTF-8.
+
+> To read unformatted bytes from a file, you can use [Path.read_bytes!] instead.
+>
+> [`File.read_utf8`](File#read_utf8!) does the same thing, except it takes a [Str] instead of a [Path].
+
+#### read_bytes!
+
+**Type Annotation**
+
+```roc
+Path => Result (List U8) [FileReadErr Path IOErr]
+```
+
+**Description**
+
+Reads all the bytes in a file.
+
+```
+# Read all the bytes in `myfile.txt`.
+Path.read_bytes! (Path.from_str "myfile.txt")
+```
+
+This opens the file first and closes it after reading its contents.
+
+> To read and decode data from a file, you can use `Path.read` instead.
+>
+> [`File.read_bytes`](File#read_bytes!) does the same thing, except it takes a [Str] instead of a [Path].
+
+#### list_dir!
+
+**Type Annotation**
+
+```roc
+Path => Result (List Path) [DirErr IOErr]
+```
+
+**Description**
+
+Lists the files and directories inside the directory.
+
+> [`Dir.list`](Dir#list!) does the same thing, except it takes a [Str] instead of a [Path].
+
+#### delete_empty!
+
+**Type Annotation**
+
+```roc
+Path => Result {} [DirErr IOErr]
+```
+
+**Description**
+
+Deletes a directory if it's empty
+
+This may fail if:
+  - the path doesn't exist
+  - the path is not a directory
+  - the directory is not empty
+  - the user lacks permission to remove the directory.
+
+> [`Dir.delete_empty`](Dir#delete_empty!) does the same thing, except it takes a [Str] instead of a [Path].
+
+#### delete_all!
+
+**Type Annotation**
+
+```roc
+Path => Result {} [DirErr IOErr]
+```
+
+**Description**
+
+Recursively deletes a directory as well as all files and directories
+inside it.
+
+This may fail if:
+  - the path doesn't exist
+  - the path is not a directory
+  - the directory is not empty
+  - the user lacks permission to remove the directory.
+
+> [`Dir.delete_all`](Dir#delete_all!) does the same thing, except it takes a [Str] instead of a [Path].
+
+#### create_dir!
+
+**Type Annotation**
+
+```roc
+Path => Result {} [DirErr IOErr]
+```
+
+**Description**
+
+Creates a directory
+
+This may fail if:
+  - a parent directory does not exist
+  - the user lacks permission to create a directory there
+  - the path already exists.
+
+> [`Dir.create`](Dir#create!) does the same thing, except it takes a [Str] instead of a [Path].
+
+#### create_all!
+
+**Type Annotation**
+
+```roc
+Path => Result {} [DirErr IOErr]
+```
+
+**Description**
+
+Creates a directory recursively adding any missing parent directories.
+
+This may fail if:
+  - the user lacks permission to create a directory there
+  - the path already exists
+
+> [`Dir.create_all`](Dir#create_all!) does the same thing, except it takes a [Str] instead of a [Path].
+
+#### hard_link!
+
+**Type Annotation**
+
+```roc
+Path => Result {} [LinkErr IOErr]
+```
+
+**Description**
+
+Creates a new hard link on the filesystem.
+
+The link path will be a link pointing to the original path.
+Note that systems often require these two paths to both be located on the same filesystem.
+
+This uses [rust's std::fs::hard_link](https://doc.rust-lang.org/std/fs/fn.hard_link.html).
+
+> [File.hard_link!] does the same thing, except it takes a [Str] instead of a [Path].
+
+### Arg
+
+#### Arg
+
+**Type Annotation**
+
+**Description**
+
+An OS-aware representation of a command-line argument.
+
+Though we tend to think of args as Unicode strings, most operating systems
+represent command-line arguments as lists of bytes that aren't necessarily
+UTF-8 encoded. Windows doesn't even use bytes, but U16s.
+
+Most of the time, you will pass these to packages and they will handle the
+encoding for you, but for quick-and-dirty code you can use [display] to
+convert these to [Str] in a lossy way.
+
+#### to_os_raw
+
+**Type Annotation**
+
+```roc
+
+    Arg
+    -> 
+        [
+            Unix (List U8),
+            Windows (List U16)
+        ]
+```
+
+**Description**
+
+Unwrap an [Arg] into a raw, OS-aware numeric list.
+
+This is a good way to pass [Arg]s to Roc packages.
+
+#### from_os_raw
+
+**Type Annotation**
+
+```roc
+    
+    [
+        Unix (List U8),
+        Windows (List U16)
+    ]
+    -> Arg
+```
+
+**Description**
+
+Wrap a raw, OS-aware numeric list into an [Arg].
+
+#### display
+
+**Type Annotation**
+
+```roc
+Arg -> Str
+```
+
+**Description**
+
+Convert an Arg to a `Str` for display purposes.
+
+NB: this will currently crash if there is invalid utf8 bytes, in future this will be lossy and replace any invalid bytes with the [Unicode Replacement Character U+FFFD �](https://en.wikipedia.org/wiki/Specials_(Unicode_block))
+
+### Dir
+
+#### IOErr
+
+**Type Annotation**
+
+**Description**
+
+Tag union of possible errors when reading and writing a file or directory.
+
+> This is the same as [`File.IOErr`](File#IOErr).
+
+#### DirEntry
+
+**Type Annotation**
+
+```roc
+Path.DirEntry
+```
+
+**Description**
+
+Record which represents a directory
+
+> This is the same as [`Path.DirEntry`](Path#DirEntry).
+
+#### list!
+
+**Type Annotation**
+
+```roc
+Str => Result (List Path) [DirErr IOErr]
+```
+
+**Description**
+
+Lists the files and directories inside the directory.
+
+> [Path.list_dir!] does the same thing, except it takes a [Path] instead of a [Str].
+
+#### delete_empty!
+
+**Type Annotation**
+
+```roc
+Str => Result {} [DirErr IOErr]
+```
+
+**Description**
+
+Deletes a directory if it's empty
+
+This may fail if:
+  - the path doesn't exist
+  - the path is not a directory
+  - the directory is not empty
+  - the user lacks permission to remove the directory.
+
+> [Path.delete_empty!] does the same thing, except it takes a [Path] instead of a [Str].
+
+#### delete_all!
+
+**Type Annotation**
+
+```roc
+Str => Result {} [DirErr IOErr]
+```
+
+**Description**
+
+Recursively deletes the directory as well as all files and directories
+inside it.
+
+This may fail if:
+  - the path doesn't exist
+  - the path is not a directory
+  - the directory is not empty
+  - the user lacks permission to remove the directory.
+
+> [Path.delete_all!] does the same thing, except it takes a [Path] instead of a [Str].
+
+#### create!
+
+**Type Annotation**
+
+```roc
+Str => Result {} [DirErr IOErr]
+```
+
+**Description**
+
+Creates a directory
+
+This may fail if:
+  - a parent directory does not exist
+  - the user lacks permission to create a directory there
+  - the path already exists.
+
+> [Path.create_dir!] does the same thing, except it takes a [Path] instead of a [Str].
+
+#### create_all!
+
+**Type Annotation**
+
+```roc
+Str => Result {} [DirErr IOErr]
+```
+
+**Description**
+
+Creates a directory recursively adding any missing parent directories.
+
+This may fail if:
+  - the user lacks permission to create a directory there
+  - the path already exists
+
+> [Path.create_all!] does the same thing, except it takes a [Path] instead of a [Str].
+
+### Env
+
+#### cwd!
+
+**Type Annotation**
+
+```roc
+{} => Result Path [CwdUnavailable]
+```
+
+**Description**
+
+Reads the [current working directory](https://en.wikipedia.org/wiki/Working_directory)
+from the environment. File operations on relative [Path]s are relative to this directory.
+
+#### set_cwd!
+
+**Type Annotation**
+
+```roc
+Path => Result {} [InvalidCwd]
+```
+
+**Description**
+
+Sets the [current working directory](https://en.wikipedia.org/wiki/Working_directory)
+in the environment. After changing it, file operations on relative [Path]s will be relative
+to this directory.
+
+#### exe_path!
+
+**Type Annotation**
+
+```roc
+{} => Result Path [ExePathUnavailable]
+```
+
+**Description**
+
+Gets the path to the currently-running executable.
+
+#### var!
+
+**Type Annotation**
+
+```roc
+Str => Result Str [VarNotFound]
+```
+
+**Description**
+
+Reads the given environment variable.
+
+If the value is invalid Unicode, the invalid parts will be replaced with the
+[Unicode replacement character](https://unicode.org/glossary/#replacement_character) ('�').
+
+#### decode!
+
+**Type Annotation**
+
+```roc
+
+    Str
+    => Result val 
+        [
+            VarNotFound,
+            DecodeErr DecodeError
+        ]
+    where val implements Decoding
+```
+
+**Description**
+
+Reads the given environment variable and attempts to decode it.
+
+The type being decoded into will be determined by type inference. For example,
+if this ends up being used like a `Task U16 _` then the environment variable
+will be decoded as a string representation of a `U16`. Trying to decode into
+any other type will fail with a `DecodeErr`.
+
+Supported types include;
+- Strings,
+- Numbers, as long as they contain only numeric digits, up to one `.`, and an optional `-` at the front for negative numbers, and
+- Comma-separated lists (of either strings or numbers), as long as there are no spaces after the commas.
+
+For example, consider we want to decode the environment variable `NUM_THINGS`;
+
+```
+# Reads "NUM_THINGS" and decodes into a U16
+getU16Var : Str -> Task U16 [VarNotFound, DecodeErr DecodeError] [Read [Env]]
+getU16Var = \var -> Env.decode! var
+```
+
+If `NUM_THINGS=123` then `getU16Var` succeeds with the value of `123u16`.
+However if `NUM_THINGS=123456789`, then `getU16Var` will
+fail with [DecodeErr](https://www.roc-lang.org/builtins/Decode#DecodeError)
+because `123456789` is too large to fit in a [U16](https://www.roc-lang.org/builtins/Num#U16).
+
+
+#### dict!
+
+**Type Annotation**
+
+```roc
+{} => Dict Str Str
+```
+
+**Description**
+
+Reads all the process's environment variables into a [Dict].
+
+If any key or value contains invalid Unicode, the [Unicode replacement character](https://unicode.org/glossary/#replacement_character)
+will be used in place of any parts of keys or values that are invalid Unicode.
+
+#### platform!
+
+**Type Annotation**
+
+```roc
+
+    {}
+    => 
+        {
+            arch : ARCH,
+            os : OS
+        }
+```
+
+**Description**
+
+Returns the current Achitecture and Operating System.
+
+`ARCH : [X86, X64, ARM, AARCH64, OTHER Str]`
+`OS : [LINUX, MACOS, WINDOWS, OTHER Str]`
+
+Note these values are constants from when the platform is built.
+
+
+#### temp_dir!
+
+**Type Annotation**
+
+```roc
+{} => Path
+```
+
+**Description**
+
+This uses rust's [`std::env::temp_dir()`](https://doc.rust-lang.org/std/env/fn.temp_dir.html)
+
+!! From the Rust documentation:
+
+The temporary directory may be shared among users, or between processes with different privileges;
+thus, the creation of any files or directories in the temporary directory must use a secure method
+to create a uniquely named file. Creating a file or directory with a fixed or predictable name may
+result in “insecure temporary file” security vulnerabilities.
+
+
+### File
+
+#### IOErr
+
+**Type Annotation**
+
+**Description**
+
+Tag union of possible errors when reading and writing a file or directory.
+
+**NotFound** - An entity was not found, often a file.
+
+**PermissionDenied** - The operation lacked the necessary privileges to complete.
+
+**BrokenPipe** - The operation failed because a pipe was closed.
+
+**AlreadyExists** - An entity already exists, often a file.
+
+**Interrupted** - This operation was interrupted. Interrupted operations can typically be retried.
+
+**Unsupported** - This operation is unsupported on this platform. This means that the operation can never succeed.
+
+**OutOfMemory** - An operation could not be completed, because it failed to allocate enough memory.
+
+**Other** - A custom error that does not fall under any other I/O error kind.
+
+#### write!
+
+**Type Annotation**
+
+```roc
+
+    val, 
+    Str, 
+    fmt
+    => Result {} [FileWriteErr Path IOErr]
+    where val implements Encoding, fmt implements EncoderFormatting
+```
+
+**Description**
+
+Write data to a file.
+
+First encode a `val` using a given `fmt` which implements the ability [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
+
+For example, suppose you have a `Json.toCompactUtf8` which implements
+[Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
+You can use this to write [JSON](https://en.wikipedia.org/wiki/JSON)
+data to a file like this:
+
+```
+# Writes `{"some":"json stuff"}` to the file `output.json`:
+File.write!
+    { some: "json stuff" }
+    (Path.from_str "output.json")
+    Json.toCompactUtf8
+```
+
+This opens the file first and closes it after writing to it.
+If writing to the file fails, for example because of a file permissions issue, the task fails with [WriteErr].
+
+> To write unformatted bytes to a file, you can use [File.write_bytes!] instead.
+>
+> [Path.write!] does the same thing, except it takes a [Path] instead of a [Str].
+
+#### write_bytes!
+
+**Type Annotation**
+
+```roc
+List U8, Str => Result {} [FileWriteErr Path IOErr]
+```
+
+**Description**
+
+Writes bytes to a file.
+
+```
+# Writes the bytes 1, 2, 3 to the file `myfile.dat`.
+File.write_bytes! [1, 2, 3] (Path.from_str "myfile.dat")
+```
+
+This opens the file first and closes it after writing to it.
+
+> To format data before writing it to a file, you can use [File.write!] instead.
+>
+> [Path.write_bytes!] does the same thing, except it takes a [Path] instead of a [Str].
+
+#### write_utf8!
+
+**Type Annotation**
+
+```roc
+Str, Str => Result {} [FileWriteErr Path IOErr]
+```
+
+**Description**
+
+Writes a [Str] to a file, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
+
+```
+# Writes "Hello!" encoded as UTF-8 to the file `myfile.txt`.
+File.write_utf8! "Hello!" "myfile.txt"
+```
+
+This opens the file first and closes it after writing to it.
+
+> To write unformatted bytes to a file, you can use [File.write_bytes!] instead.
+>
+> [Path.write_utf8!] does the same thing, except it takes a [Path] instead of a [Str].
+
+#### delete!
+
+**Type Annotation**
+
+```roc
+Str => Result {} [FileWriteErr Path IOErr]
+```
+
+**Description**
+
+Deletes a file from the filesystem.
+
+Performs a [`DeleteFile`](https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-deletefile)
+on Windows and [`unlink`](https://en.wikipedia.org/wiki/Unlink_(Unix)) on
+UNIX systems. On Windows, this will fail when attempting to delete a readonly
+file; the file's readonly permission must be disabled before it can be
+successfully deleted.
+
+```
+# Deletes the file named `myfile.dat`
+File.delete! (Path.from_str "myfile.dat") [1, 2, 3]
+```
+
+> This does not securely erase the file's contents from disk; instead, the operating
+system marks the space it was occupying as safe to write over in the future. Also, the operating
+system may not immediately mark the space as free; for example, on Windows it will wait until
+the last file handle to it is closed, and on UNIX, it will not remove it until the last
+[hard link](https://en.wikipedia.org/wiki/Hard_link) to it has been deleted.
+>
+> [Path.delete!] does the same thing, except it takes a [Path] instead of a [Str].
+
+#### read_bytes!
+
+**Type Annotation**
+
+```roc
+Str => Result (List U8) [FileReadErr Path IOErr]
+```
+
+**Description**
+
+Reads all the bytes in a file.
+
+```
+# Read all the bytes in `myfile.txt`.
+File.read_bytes! "myfile.txt"
+```
+
+This opens the file first and closes it after reading its contents.
+
+> To read and decode data from a file, you can use `File.read` instead.
+>
+> [Path.read_bytes!] does the same thing, except it takes a [Path] instead of a [Str].
+
+#### read_utf8!
+
+**Type Annotation**
+
+```roc
+
+    Str
+    => Result Str 
+        [
+            FileReadErr Path IOErr,
+            FileReadUtf8Err Path 
+        ]
+```
+
+**Description**
+
+Reads a [Str] from a file containing [UTF-8](https://en.wikipedia.org/wiki/UTF-8)-encoded text.
+
+```
+# Reads UTF-8 encoded text into a Str from the file "myfile.txt"
+File.read_utf8! "myfile.txt"
+```
+
+This opens the file first and closes it after writing to it.
+The task will fail with `FileReadUtf8Err` if the given file contains invalid UTF-8.
+
+> To read unformatted bytes from a file, you can use [File.read_bytes!] instead.
+
+> [Path.read_utf8!] does the same thing, except it takes a [Path] instead of a [Str].
+
+#### hard_link!
+
+**Type Annotation**
+
+```roc
+Str => Result {} [LinkErr IOErr]
+```
+
+**Description**
+
+Creates a new hard link on the filesystem.
+
+The link path will be a link pointing to the original path.
+Note that systems often require these two paths to both be located on the same filesystem.
+
+This uses [rust's std::fs::hard_link](https://doc.rust-lang.org/std/fs/fn.hard_link.html).
+
+> [Path.hard_link!] does the same thing, except it takes a [Path] instead of a [Str].
+
+#### is_dir!
+
+**Type Annotation**
+
+```roc
+Str => Result Bool [PathErr IOErr]
+```
+
+**Description**
+
+Returns True if the path exists on disk and is pointing at a directory.
+Returns False if the path exists and it is not a directory. If the path does not exist,
+this function will return `Err (PathErr PathDoesNotExist)`.
+
+This uses [rust's std::path::is_dir](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_dir).
+
+> [Path.is_dir!] does the same thing, except it takes a [Path] instead of a [Str].
+
+#### is_file!
+
+**Type Annotation**
+
+```roc
+Str => Result Bool [PathErr IOErr]
+```
+
+**Description**
+
+Returns True if the path exists on disk and is pointing at a regular file.
+Returns False if the path exists and it is not a file. If the path does not exist,
+this function will return `Err (PathErr PathDoesNotExist)`.
+
+This uses [rust's std::path::is_file](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_file).
+
+> [Path.is_file!] does the same thing, except it takes a [Path] instead of a [Str].
+
+#### is_sym_link!
+
+**Type Annotation**
+
+```roc
+Str => Result Bool [PathErr IOErr]
+```
+
+**Description**
+
+Returns True if the path exists on disk and is pointing at a symbolic link.
+Returns False if the path exists and it is not a symbolic link. If the path does not exist,
+this function will return `Err (PathErr PathDoesNotExist)`.
+
+This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
+
+> [Path.is_sym_link!] does the same thing, except it takes a [Path] instead of a [Str].
+
+#### type!
+
+**Type Annotation**
+
+```roc
+
+    Str
+    => Result 
+        [
+            IsFile,
+            IsDir,
+            IsSymLink
+        ] [PathErr IOErr]
+```
+
+**Description**
+
+Return the type of the path if the path exists on disk.
+This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
+
+> [Path.type!] does the same thing, except it takes a [Path] instead of a [Str].
+
+#### Reader
+
+**Type Annotation**
+
+#### open_reader!
+
+**Type Annotation**
+
+```roc
+Str => Result Reader [GetFileReadErr Path IOErr]
+```
+
+**Description**
+
+Try to open a `File.Reader` for buffered (= part by part) reading given a path string.
+See [examples/file-read-buffered.roc](https://github.com/roc-lang/basic-cli/blob/main/examples/file-read-buffered.roc) for example usage.
+
+This uses [rust's std::io::BufReader](https://doc.rust-lang.org/std/io/struct.BufReader.html).
+
+Use [read_utf8!] if you want to get the entire file contents at once.
+
+#### open_reader_with_capacity!
+
+**Type Annotation**
+
+```roc
+Str, U64 => Result Reader [GetFileReadErr Path IOErr]
+```
+
+**Description**
+
+Try to open a `File.Reader` for buffered (= part by part) reading given a path string.
+The buffer will be created with the specified capacity.
+See [examples/file-read-buffered.roc](https://github.com/roc-lang/basic-cli/blob/main/examples/file-read-buffered.roc) for example usage.
+
+This uses [rust's std::io::BufReader](https://doc.rust-lang.org/std/io/struct.BufReader.html).
+
+Use [read_utf8!] if you want to get the entire file contents at once.
+
+#### read_line!
+
+**Type Annotation**
+
+```roc
+Reader => Result (List U8) [FileReadErr Path IOErr]
+```
+
+**Description**
+
+Try to read a line from a file given a Reader.
+The line will be provided as the list of bytes (`List U8`) until a newline (`0xA` byte).
+This list will be empty when we reached the end of the file.
+See [examples/file-read-buffered.roc](https://github.com/roc-lang/basic-cli/blob/main/examples/file-read-buffered.roc) for example usage.
+
+This uses [rust's `BufRead::read_line`](https://doc.rust-lang.org/std/io/trait.BufRead.html#method.read_line).
+
+Use [read_utf8!] if you want to get the entire file contents at once.
+
+### FileMetadata
+
+#### FileMetadata
+
+**Type Annotation**
+
+**Description**
+
+An opaque type that represents metadata about a file.
+
+#### bytes
+
+**Type Annotation**
+
+```roc
+FileMetadata -> U64
+```
+
+**Description**
+
+Returns the number of bytes in the associated file.
+
+#### is_readonly
+
+**Type Annotation**
+
+```roc
+FileMetadata -> Bool
+```
+
+**Description**
+
+Returns [Bool.true] if the associated file is read-only.
+
+#### type
+
+**Type Annotation**
+
+```roc
+
+    FileMetadata
+    -> 
+        [
+            File,
+            Dir,
+            Symlink
+        ]
+```
+
+**Description**
+
+Returns the type of the associated file.
+
+#### mode
+
+**Type Annotation**
+
+```roc
+
+    FileMetadata
+    -> 
+        [
+            Unix U32,
+            NonUnix
+        ]
+```
+
+**Description**
+
+Returns the mode of the associated file.
+
+### Http
+
+#### Method
+
+**Type Annotation**
+
+**Description**
+
+Represents an HTTP method.
+
+#### Header
+
+**Type Annotation**
+
+**Description**
+
+Represents an HTTP header e.g. `Content-Type: application/json`
+
+#### Request
+
+**Type Annotation**
+
+**Description**
+
+Represents an HTTP request.
+
+#### Response
+
+**Type Annotation**
+
+**Description**
+
+Represents an HTTP response.
+
+#### default_request
+
+**Type Annotation**
+
+```roc
+Request
+```
+
+**Description**
+
+A default [Request] value.
+
+```
+# GET "roc-lang.org"
+{ Http.default_request &
+    url: "https://www.roc-lang.org",
+}
+```
+
+
+#### header
+
+**Type Annotation**
+
+```roc
+    
+    (
+        Str,
+        Str
+    )
+    -> Header
+```
+
+**Description**
+
+An HTTP header for configuring requests.
+
+See common headers [here](https://en.wikipedia.org/wiki/List_of_HTTP_header_fields).
+
+
+#### send!
+
+**Type Annotation**
+
+```roc
+Request => Response
+```
+
+**Description**
+
+Send an HTTP request, succeeds with a value of [Str] or fails with an
+[Err].
+
+```
+# Prints out the HTML of the Roc-lang website.
+response =
+    { Http.default_request & url: "https://www.roc-lang.org" }
+    |> Http.send!
+
+response.body
+|> Str.fromUtf8
+|> Result.withDefault "Invalid UTF-8"
+|> Stdout.line
+```
+
+#### get!
+
+**Type Annotation**
+
+```roc
+Str, fmt => Result body [HttpDecodingFailed]
+    where body implements Decoding, fmt implements DecoderFormatting
+```
+
+**Description**
+
+Try to perform an HTTP get request and convert (decode) the received bytes into a Roc type.
+Very useful for working with Json.
+
+```
+import json.Json
+
+# On the server side we send `Encode.toBytes {foo: "Hello Json!"} Json.utf8`
+{ foo } = Http.get! "http://localhost:8000" Json.utf8
+```
+
+#### get_utf8!
+
+**Type Annotation**
+
+```roc
+Str => Result Str [BadBody Str]
+```
+
+### Stderr
+
+#### IOErr
+
+**Type Annotation**
+
+**Description**
+
+**NotFound** - An entity was not found, often a file.
+
+**PermissionDenied** - The operation lacked the necessary privileges to complete.
+
+**BrokenPipe** - The operation failed because a pipe was closed.
+
+**AlreadyExists** - An entity already exists, often a file.
+
+**Interrupted** - This operation was interrupted. Interrupted operations can typically be retried.
+
+**Unsupported** - This operation is unsupported on this platform. This means that the operation can never succeed.
+
+**OutOfMemory** - An operation could not be completed, because it failed to allocate enough memory.
+
+**Other** - A custom error that does not fall under any other I/O error kind.
+
+#### line!
+
+**Type Annotation**
+
+```roc
+Str => Result {} [StderrErr IOErr]
+```
+
+**Description**
+
+Write the given string to [standard error](https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)),
+followed by a newline.
+
+> To write to `stderr` without the newline, see [Stderr.write!].
+
+#### write!
+
+**Type Annotation**
+
+```roc
+Str => Result {} [StderrErr IOErr]
+```
+
+**Description**
+
+Write the given string to [standard error](https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)).
+
+Most terminals will not actually display strings that are written to them until they receive a newline,
+so this may appear to do nothing until you write a newline!
+
+> To write to `stderr` with a newline at the end, see [Stderr.line!].
+
+### Stdin
+
+#### IOErr
+
+**Type Annotation**
+
+**Description**
+
+**NotFound** - An entity was not found, often a file.
+
+**PermissionDenied** - The operation lacked the necessary privileges to complete.
+
+**BrokenPipe** - The operation failed because a pipe was closed.
+
+**AlreadyExists** - An entity already exists, often a file.
+
+**Interrupted** - This operation was interrupted. Interrupted operations can typically be retried.
+
+**Unsupported** - This operation is unsupported on this platform. This means that the operation can never succeed.
+
+**OutOfMemory** - An operation could not be completed, because it failed to allocate enough memory.
+
+**Other** - A custom error that does not fall under any other I/O error kind.
+
+#### line!
+
+**Type Annotation**
+
+```roc
+
+    {}
+    => Result Str 
+        [
+            EndOfFile,
+            StdinErr IOErr
+        ]
+```
+
+**Description**
+
+Read a line from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
+
+> This task will block the program from continuing until `stdin` receives a newline character
+(e.g. because the user pressed Enter in the terminal), so using it can result in the appearance of the
+programming having gotten stuck. It's often helpful to print a prompt first, so
+the user knows it's necessary to enter something before the program will continue.
+
+#### bytes!
+
+**Type Annotation**
+
+```roc
+
+    {}
+    => Result (List U8) 
+        [
+            EndOfFile,
+            StdinErr IOErr
+        ]
+```
+
+**Description**
+
+Read bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
+‼️ This function can read no more than 16,384 bytes at a time. Use [readToEnd!] if you need more.
+
+> This is typically used in combintation with [Tty.enable_raw_mode!],
+which disables defaults terminal bevahiour and allows reading input
+without buffering until Enter key is pressed.
+
+#### read_to_end!
+
+**Type Annotation**
+
+```roc
+{} => Result (List U8) [StdinErr IOErr]
+```
+
+**Description**
+
+Read all bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)) until EOF in this source.
+
+### Stdout
+
+#### IOErr
+
+**Type Annotation**
+
+**Description**
+
+**NotFound** - An entity was not found, often a file.
+
+**PermissionDenied** - The operation lacked the necessary privileges to complete.
+
+**BrokenPipe** - The operation failed because a pipe was closed.
+
+**AlreadyExists** - An entity already exists, often a file.
+
+**Interrupted** - This operation was interrupted. Interrupted operations can typically be retried.
+
+**Unsupported** - This operation is unsupported on this platform. This means that the operation can never succeed.
+
+**OutOfMemory** - An operation could not be completed, because it failed to allocate enough memory.
+
+**Other** - A custom error that does not fall under any other I/O error kind.
+
+#### line!
+
+**Type Annotation**
+
+```roc
+Str => Result {} [StdoutErr IOErr]
+```
+
+**Description**
+
+Write the given string to [standard output](https://en.wikipedia.org/wiki/Standard_streams#Standard_output_(stdout)),
+followed by a newline.
+
+> To write to `stdout` without the newline, see [Stdout.write!].
+
+
+#### write!
+
+**Type Annotation**
+
+```roc
+Str => Result {} [StdoutErr IOErr]
+```
+
+**Description**
+
+Write the given string to [standard output](https://en.wikipedia.org/wiki/Standard_streams#Standard_output_(stdout)).
+
+Note that many terminals will not actually display strings that are written to them until they receive a newline,
+so this may appear to do nothing until you write a newline!
+
+> To write to `stdout` with a newline at the end, see [Stdout.line!].
+
+### Tcp
+
+#### Stream
+
+**Type Annotation**
+
+**Description**
+
+Represents a TCP stream.
+
+#### ConnectErr
+
+**Type Annotation**
+
+**Description**
+
+Represents errors that can occur when connecting to a remote host.
+
+#### StreamErr
+
+**Type Annotation**
+
+**Description**
+
+Represents errors that can occur when performing a [Task] with a [Stream].
+
+#### connect!
+
+**Type Annotation**
+
+```roc
+Str, U16 => Result Stream ConnectErr
+```
+
+**Description**
+
+Opens a TCP connection to a remote host.
+
+```
+# Connect to localhost:8080
+stream = Tcp.connect! "localhost" 8080
+```
+
+The connection is automatically closed when the last reference to the stream is dropped.
+Examples of
+valid hostnames:
+ - `127.0.0.1`
+ - `::1`
+ - `localhost`
+ - `roc-lang.org`
+
+
+#### read_up_to!
+
+**Type Annotation**
+
+```roc
+Stream, U64 => Result (List U8) [TcpReadErr StreamErr]
+```
+
+**Description**
+
+Read up to a number of bytes from the TCP stream.
+
+```
+# Read up to 64 bytes from the stream and convert to a Str
+received = File.read_up_to! stream 64
+Str.fromUtf8 received
+```
+
+> To read an exact number of bytes or fail, you can use [Tcp.read_exactly!] instead.
+
+#### read_exactly!
+
+**Type Annotation**
+
+```roc
+
+    Stream, 
+    U64
+    => Result (List U8) 
+        [
+            TcpReadErr StreamErr,
+            TcpUnexpectedEOF
+        ]
+```
+
+**Description**
+
+Read an exact number of bytes or fail.
+
+```
+bytes = File.read_exactly!? stream 64
+```
+
+`TcpUnexpectedEOF` is returned if the stream ends before the specfied number of bytes is reached.
+
+
+#### read_until!
+
+**Type Annotation**
+
+```roc
+Stream, U8 => Result (List U8) [TcpReadErr StreamErr]
+```
+
+**Description**
+
+Read until a delimiter or EOF is reached.
+
+```
+# Read until null terminator
+File.read_until! stream 0
+```
+
+If found, the delimiter is included as the last byte.
+
+> To read until a newline is found, you can use [Tcp.read_line!] which
+conveniently decodes to a [Str].
+
+#### read_line!
+
+**Type Annotation**
+
+```roc
+
+    Stream
+    => Result Str 
+        [
+            TcpReadErr StreamErr,
+            TcpReadBadUtf8 
+        ]
+```
+
+**Description**
+
+Read until a newline or EOF is reached.
+
+```
+# Read a line and then print it to `stdout`
+lineStr = File.read_line! stream
+Stdout.line lineStr
+```
+
+If found, the newline is included as the last character in the [Str].
+
+
+#### write!
+
+**Type Annotation**
+
+```roc
+Stream, List U8 => Result {} [TcpWriteErr StreamErr]
+```
+
+**Description**
+
+Writes bytes to a TCP stream.
+
+```
+# Writes the bytes 1, 2, 3
+Tcp.write!? stream [1, 2, 3]
+```
+
+> To write a [Str], you can use [Tcp.write_utf8!] instead.
+
+#### write_utf8!
+
+**Type Annotation**
+
+```roc
+Stream, Str => Result {} [TcpWriteErr StreamErr]
+```
+
+**Description**
+
+Writes a [Str] to a TCP stream, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
+
+```
+# Write "Hi from Roc!" encoded as UTF-8
+Tcp.write_utf8! stream "Hi from Roc!"
+```
+
+> To write unformatted bytes, you can use [Tcp.write!] instead.
+
+#### connect_err_to_str
+
+**Type Annotation**
+
+```roc
+ConnectErr -> Str
+```
+
+**Description**
+
+Convert a [ConnectErr] to a [Str] you can print.
+
+```
+when err is
+    TcpPerfomErr (TcpConnectErr connectErr) ->
+        Stderr.line (Tcp.connect_err_to_str connectErr)
+```
+
+
+#### stream_err_to_str
+
+**Type Annotation**
+
+```roc
+StreamErr -> Str
+```
+
+**Description**
+
+Convert a [StreamErr] to a [Str] you can print.
+
+```
+when err is
+    TcpPerformErr (TcpReadErr err) ->
+        errStr = Tcp.stream_err_to_str err
+        Stderr.line "Error while reading: $(errStr)"
+
+    TcpPerformErr (TcpWriteErr err) ->
+        errStr = Tcp.stream_err_to_str err
+        Stderr.line "Error while writing: $(errStr)"
+```
+
+
+### Url
+
+#### Url
+
+**Type Annotation**
+
+**Description**
+
+A [Uniform Resource Locator](https://en.wikipedia.org/wiki/URL).
+
+It could be an absolute address, such as `https://roc-lang.org/authors` or
+a relative address, such as `/authors`. You can create one using [Url.from_str].
+
+#### reserve
+
+**Type Annotation**
+
+```roc
+Url, U64 -> Url
+```
+
+**Description**
+
+Reserve the given number of bytes as extra capacity. This can avoid reallocation
+when calling multiple functions that increase the length of the URL.
+
+The following example reserves 50 bytes, then builds the url `https://example.com/stuff?caf%C3%A9=du%20Monde&email=hi%40example.com`;
+```
+Url.from_str "https://example.com"
+|> Url.reserve 50
+|> Url.append "stuff"
+|> Url.append_param "café" "du Monde"
+|> Url.append_param "email" "hi@example.com"
+```
+The [Str.countUtf8Bytes](https://www.roc-lang.org/builtins/Str#countUtf8Bytes) function can be helpful in finding out how many bytes to reserve.
+
+There is no `Url.withCapacity` because it's better to reserve extra capacity
+on a [Str] first, and then pass that string to [Url.from_str]. This function will make use
+of the extra capacity.
+
+#### from_str
+
+**Type Annotation**
+
+```roc
+Str -> Url
+```
+
+**Description**
+
+Create a [Url] without validating or [percent-encoding](https://en.wikipedia.org/wiki/Percent-encoding)
+anything.
+
+```
+Url.from_str "https://example.com#stuff"
+```
+
+URLs can be absolute, like `https://example.com`, or they can be relative, like `/blah`.
+
+```
+Url.from_str "/this/is#relative"
+```
+
+Since nothing is validated, this can return invalid URLs.
+
+```
+Url.from_str "https://this is not a valid URL, not at all!"
+```
+
+Naturally, passing invalid URLs to functions that need valid ones will tend to result in errors.
+
+
+#### to_str
+
+**Type Annotation**
+
+```roc
+Url -> Str
+```
+
+**Description**
+
+Return a [Str] representation of this URL.
+```
+# Gives "https://example.com/two%20words"
+Url.from_str "https://example.com"
+|> Url.append "two words"
+|> Url.to_str
+```
+
+#### append
+
+**Type Annotation**
+
+```roc
+Url, Str -> Url
+```
+
+**Description**
+
+[Percent-encodes](https://en.wikipedia.org/wiki/Percent-encoding) a
+[path component](https://en.wikipedia.org/wiki/Uniform_Resource_Identifier#Syntax)
+and appends to the end of the URL's path.
+
+This will be appended before any queries and fragments. If the given path string begins with `/` and the URL already ends with `/`, one
+will be ignored. This avoids turning a single slash into a double slash. If either the given URL or the given string is empty, no `/` will be added.
+
+```
+# Gives https://example.com/some%20stuff
+Url.from_str "https://example.com"
+|> Url.append "some stuff"
+
+# Gives https://example.com/stuff?search=blah#fragment
+Url.from_str "https://example.com?search=blah#fragment"
+|> Url.append "stuff"
+
+# Gives https://example.com/things/stuff/more/etc/"
+Url.from_str "https://example.com/things/"
+|> Url.append "/stuff/"
+|> Url.append "/more/etc/"
+
+# Gives https://example.com/things
+Url.from_str "https://example.com/things"
+|> Url.append ""
+```
+
+#### append_param
+
+**Type Annotation**
+
+```roc
+
+    Url, 
+    Str, 
+    Str
+    -> Url
+```
+
+**Description**
+
+Adds a [Str] query parameter to the end of the [Url].
+
+The key and value both get [percent-encoded](https://en.wikipedia.org/wiki/Percent-encoding).
+
+```
+# Gives https://example.com?email=someone%40example.com
+Url.from_str "https://example.com"
+|> Url.append_param "email" "someone@example.com"
+```
+
+This can be called multiple times on the same URL.
+
+```
+# Gives https://example.com?caf%C3%A9=du%20Monde&email=hi%40example.com
+Url.from_str "https://example.com"
+|> Url.append_param "café" "du Monde"
+|> Url.append_param "email" "hi@example.com"
+```
+
+
+#### with_query
+
+**Type Annotation**
+
+```roc
+Url, Str -> Url
+```
+
+**Description**
+
+Replaces the URL's [query](https://en.wikipedia.org/wiki/URL#Syntax)—the part
+after the `?`, if it has one, but before any `#` it might have.
+
+Passing `""` removes the `?` (if there was one).
+
+```
+# Gives https://example.com?newQuery=thisRightHere#stuff
+Url.from_str "https://example.com?key1=val1&key2=val2#stuff"
+|> Url.with_query "newQuery=thisRightHere"
+
+# Gives https://example.com#stuff
+Url.from_str "https://example.com?key1=val1&key2=val2#stuff"
+|> Url.with_query ""
+```
+
+#### query
+
+**Type Annotation**
+
+```roc
+Url -> Str
+```
+
+**Description**
+
+Returns the URL's [query](https://en.wikipedia.org/wiki/URL#Syntax)—the part after
+the `?`, if it has one, but before any `#` it might have.
+
+Returns `""` if the URL has no query.
+
+```
+# Gives "key1=val1&key2=val2&key3=val3"
+Url.from_str "https://example.com?key1=val1&key2=val2&key3=val3#stuff"
+|> Url.query
+
+# Gives ""
+Url.from_str "https://example.com#stuff"
+|> Url.query
+```
+
+
+#### has_query
+
+**Type Annotation**
+
+```roc
+Url -> Bool
+```
+
+**Description**
+
+Returns [Bool.true] if the URL has a `?` in it.
+
+```
+# Gives Bool.true
+Url.from_str "https://example.com?key=value#stuff"
+|> Url.has_query
+
+# Gives Bool.false
+Url.from_str "https://example.com#stuff"
+|> Url.has_query
+```
+
+
+#### fragment
+
+**Type Annotation**
+
+```roc
+Url -> Str
+```
+
+**Description**
+
+Returns the URL's [fragment](https://en.wikipedia.org/wiki/URL#Syntax)—the part after
+the `#`, if it has one.
+
+Returns `""` if the URL has no fragment.
+
+```
+# Gives "stuff"
+Url.from_str "https://example.com#stuff"
+|> Url.fragment
+
+# Gives ""
+Url.from_str "https://example.com"
+|> Url.fragment
+```
+
+
+#### with_fragment
+
+**Type Annotation**
+
+```roc
+Url, Str -> Url
+```
+
+**Description**
+
+Replaces the URL's [fragment](https://en.wikipedia.org/wiki/URL#Syntax).
+
+If the URL didn't have a fragment, adds one. Passing `""` removes the fragment.
+
+```
+# Gives https://example.com#things
+Url.from_str "https://example.com#stuff"
+|> Url.with_fragment "things"
+
+# Gives https://example.com#things
+Url.from_str "https://example.com"
+|> Url.with_fragment "things"
+
+# Gives https://example.com
+Url.from_str "https://example.com#stuff"
+|> Url.with_fragment ""
+```
+
+
+#### has_fragment
+
+**Type Annotation**
+
+```roc
+Url -> Bool
+```
+
+**Description**
+
+Returns [Bool.true] if the URL has a `#` in it.
+
+```
+# Gives Bool.true
+Url.from_str "https://example.com?key=value#stuff"
+|> Url.has_fragment
+
+# Gives Bool.false
+Url.from_str "https://example.com?key=value"
+|> Url.has_fragment
+```
+
+
+#### query_params
+
+**Type Annotation**
+
+```roc
+Url -> Dict Str Str
+```
+
+### Utc
+
+#### Utc
+
+**Type Annotation**
+
+**Description**
+
+Stores a timestamp as nanoseconds since UNIX EPOCH
+
+#### now!
+
+**Type Annotation**
+
+```roc
+{} => Utc
+```
+
+**Description**
+
+Duration since UNIX EPOCH
+
+#### to_millis_since_epoch
+
+**Type Annotation**
+
+```roc
+Utc -> I128
+```
+
+**Description**
+
+Convert Utc timestamp to milliseconds
+
+#### from_millis_since_epoch
+
+**Type Annotation**
+
+```roc
+I128 -> Utc
+```
+
+**Description**
+
+Convert milliseconds to Utc timestamp
+
+#### to_nanos_since_epoch
+
+**Type Annotation**
+
+```roc
+Utc -> I128
+```
+
+**Description**
+
+Convert Utc timestamp to nanoseconds
+
+#### from_nanos_since_epoch
+
+**Type Annotation**
+
+```roc
+I128 -> Utc
+```
+
+**Description**
+
+Convert nanoseconds to Utc timestamp
+
+#### delta_as_millis
+
+**Type Annotation**
+
+```roc
+Utc, Utc -> U128
+```
+
+**Description**
+
+Calculate milliseconds between two Utc timestamps
+
+#### delta_as_nanos
+
+**Type Annotation**
+
+```roc
+Utc, Utc -> U128
+```
+
+**Description**
+
+Calculate nanoseconds between two Utc timestamps
+
+#### to_iso_8601
+
+**Type Annotation**
+
+```roc
+Utc -> Str
+```
+
+**Description**
+
+Convert Utc timestamp to ISO 8601 string
+Example: 2023-11-14T23:39:39Z
+
+### Sleep
+
+#### millis!
+
+**Type Annotation**
+
+```roc
+U64 => {}
+```
+
+**Description**
+
+Sleep for at least the given number of milliseconds.
+This uses [rust's std::thread::sleep](https://doc.rust-lang.org/std/thread/fn.sleep.html).
+
+
+### Cmd
+
+#### Cmd
+
+**Type Annotation**
+
+**Description**
+
+Represents a command to be executed in a child process.
+
+#### Output
+
+**Type Annotation**
+
+**Description**
+
+Represents the output of a command.
+
+#### new
+
+**Type Annotation**
+
+```roc
+Str -> Cmd
+```
+
+**Description**
+
+Create a new command to execute the given program in a child process.
+
+#### arg
+
+**Type Annotation**
+
+```roc
+Cmd, Str -> Cmd
+```
+
+**Description**
+
+Add a single argument to the command.
+! Shell features like variable subsitition (e.g. `$FOO`), glob patterns (e.g. `*.txt`), ... are not available.
+
+```
+# Represent the command "ls -l"
+Cmd.new "ls"
+|> Cmd.arg "-l"
+```
+
+
+#### args
+
+**Type Annotation**
+
+```roc
+Cmd, List Str -> Cmd
+```
+
+**Description**
+
+Add multiple arguments to the command.
+! Shell features like variable subsitition (e.g. `$FOO`), glob patterns (e.g. `*.txt`), ... are not available.
+
+```
+# Represent the command "ls -l -a"
+Cmd.new "ls"
+|> Cmd.args ["-l", "-a"]
+```
+
+
+#### env
+
+**Type Annotation**
+
+```roc
+
+    Cmd, 
+    Str, 
+    Str
+    -> Cmd
+```
+
+**Description**
+
+Add a single environment variable to the command.
+
+```
+# Run "env" and add the environment variable "FOO" with value "BAR"
+Cmd.new "env"
+|> Cmd.env "FOO" "BAR"
+```
+
+
+#### envs
+
+**Type Annotation**
+
+```roc
+
+    Cmd,     List 
+    (
+        Str,
+        Str
+    )
+    -> Cmd
+```
+
+**Description**
+
+Add multiple environment variables to the command.
+
+```
+# Run "env" and add the variables "FOO" and "BAZ"
+Cmd.new "env"
+|> Cmd.envs [("FOO", "BAR"), ("BAZ", "DUCK")]
+```
+
+
+#### clear_envs
+
+**Type Annotation**
+
+```roc
+Cmd -> Cmd
+```
+
+**Description**
+
+Clear all environment variables, and prevent inheriting from parent, only
+the environment variables provided to command are available to the child.
+
+```
+# Represents "env" with only "FOO" environment variable set
+Cmd.new "env"
+|> Cmd.clear_envs
+|> Cmd.env "FOO" "BAR"
+```
+
+
+#### output!
+
+**Type Annotation**
+
+```roc
+Cmd => Output
+```
+
+**Description**
+
+Execute command and capture stdout and stderr
+
+> Stdin is not inherited from the parent and any attempt by the child process
+> to read from the stdin stream will result in the stream immediately closing.
+
+
+#### status!
+
+**Type Annotation**
+
+```roc
+Cmd => Result I32 [CmdStatusErr InternalIOErr.IOErr]
+```
+
+**Description**
+
+Execute command and inherit stdin, stdout and stderr from parent
+
+
+#### exec!
+
+**Type Annotation**
+
+```roc
+Str, List Str => Result {} [CmdStatusErr InternalIOErr.IOErr]
+```
+
+**Description**
+
+Execute command and inherit stdin, stdout and stderr from parent
+
+```
+# Call echo to print "hello world"
+Cmd.exec! "echo" ["hello world"]
+```
+
+### Tty
+
+#### enable_raw_mode!
+
+**Type Annotation**
+
+```roc
+{} => {}
+```
+
+**Description**
+
+Enable terminal raw mode which disables some default terminal bevahiour.
+
+The following modes are disabled:
+- Input will not be echo to the terminal screen
+- Input will not be buffered until Enter key is pressed
+- Input will not be line buffered (input sent byte-by-byte to input buffer)
+- Special keys like Backspace and CTRL+C will not be processed by terminal driver
+
+Note: we plan on moving this function away from basic-cli in the future, see github.com/roc-lang/basic-cli/issues/73
+
+
+#### disable_raw_mode!
+
+**Type Annotation**
+
+```roc
+{} => {}
+```
+
+**Description**
+
+Revert terminal to default behaviour
+
+Note: we plan on moving this function away from basic-cli in the future, see github.com/roc-lang/basic-cli/issues/73
+
+
+### Locale
+
+#### get!
+
+**Type Annotation**
+
+```roc
+{} => Result Str [NotAvailable]
+```
+
+**Description**
+
+Returns the most preferred locale for the system or application, or `NotAvailable` if the locale could not be obtained.
+
+The returned [Str] is a BCP 47 language tag, like `en-US` or `fr-CA`.
+
+#### all!
+
+**Type Annotation**
+
+```roc
+{} => List Str
+```
+
+**Description**
+
+Returns the preferred locales for the system or application.
+
+The returned [Str] are BCP 47 language tags, like `en-US` or `fr-CA`.
+
