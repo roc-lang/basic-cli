@@ -1,0 +1,2 @@
+# Static site changes are changed files in a PR, but their diffs will be collapsed by default
+docs/**/* linguist-documentation=true
