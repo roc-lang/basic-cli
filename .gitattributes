@@ -1,4 +1,4 @@
 # Static site changes are changed files in a PR, but their diffs will be collapsed by default
-docs/**/*.html linguist-documentation=true
-docs/**/*.js linguist-documentation=true
-docs/**/*.txt linguist-documentation=true
+docs/**/*.html linguist-generated=true
+docs/**/*.js linguist-generated=true
+docs/**/*.txt linguist-generated=true
