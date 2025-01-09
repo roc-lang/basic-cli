@@ -33,7 +33,7 @@ Url := Str implements [Inspect]
 ## ```
 ## The [Str.count_utf8_bytes](https://www.roc-lang.org/builtins/Str#countUtf8Bytes) function can be helpful in finding out how many bytes to reserve.
 ##
-## There is no `Url.withCapacity` because it's better to reserve extra capacity
+## There is no `Url.with_capacity` because it's better to reserve extra capacity
 ## on a [Str] first, and then pass that string to [Url.from_str]. This function will make use
 ## of the extra capacity.
 reserve : Url, U64 -> Url
