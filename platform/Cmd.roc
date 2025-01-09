@@ -39,8 +39,8 @@ new = \program ->
 ##
 ## ```
 ## # Represent the command "ls -l"
-## Cmd.new "ls"
-## |> Cmd.arg "-l"
+## Cmd.new("ls")
+## |> Cmd.arg("-l")
 ## ```
 ##
 arg : Cmd, Str -> Cmd
@@ -52,8 +52,8 @@ arg = \@Cmd(cmd), value ->
 ##
 ## ```
 ## # Represent the command "ls -l -a"
-## Cmd.new "ls"
-## |> Cmd.args ["-l", "-a"]
+## Cmd.new("ls")
+## |> Cmd.args(["-l", "-a"])
 ## ```
 ##
 args : Cmd, List Str -> Cmd
@@ -64,8 +64,8 @@ args = \@Cmd(cmd), values ->
 ##
 ## ```
 ## # Run "env" and add the environment variable "FOO" with value "BAR"
-## Cmd.new "env"
-## |> Cmd.env "FOO" "BAR"
+## Cmd.new("env")
+## |> Cmd.env("FOO", "BAR")
 ## ```
 ##
 env : Cmd, Str, Str -> Cmd
@@ -76,8 +76,8 @@ env = \@Cmd(cmd), key, value ->
 ##
 ## ```
 ## # Run "env" and add the variables "FOO" and "BAZ"
-## Cmd.new "env"
-## |> Cmd.envs [("FOO", "BAR"), ("BAZ", "DUCK")]
+## Cmd.new("env")
+## |> Cmd.envs([("FOO", "BAR"), ("BAZ", "DUCK")])
 ## ```
 ##
 envs : Cmd, List (Str, Str) -> Cmd
@@ -90,9 +90,9 @@ envs = \@Cmd(cmd), key_values ->
 ##
 ## ```
 ## # Represents "env" with only "FOO" environment variable set
-## Cmd.new "env"
+## Cmd.new("env")
 ## |> Cmd.clear_envs
-## |> Cmd.env "FOO" "BAR"
+## |> Cmd.env("FOO", "BAR")
 ## ```
 ##
 clear_envs : Cmd -> Cmd
@@ -121,7 +121,7 @@ status! = \@Cmd(cmd) ->
 ##
 ## ```
 ## # Call echo to print "hello world"
-## Cmd.exec! "echo" ["hello world"]
+## Cmd.exec!("echo", ["hello world"])
 ## ```
 exec! : Str, List Str => Result {} [CmdStatusErr InternalIOErr.IOErr]
 exec! = \program, arguments ->

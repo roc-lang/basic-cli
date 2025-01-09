@@ -145,19 +145,19 @@ Stmt := Box {}
 ## preparing the query each time it is called. This is usually done in `init!` with the prepared `Stmt` stored in the model.
 ##
 ## ```
-## prepared_query = try Sqlite.prepare! {
+## prepared_query = Sqlite.prepare!({
 ##     path : "path/to/database.db",
 ##     query : "SELECT * FROM todos;",
-## }
+## })?
 ##
-## Sqlite.query_many_prepared! {
+## Sqlite.query_many_prepared!({
 ##     stmt: prepared_query,
 ##     bindings: [],
 ##     rows: { Sqlite.decode_record <-
 ##         id: Sqlite.i64 "id",
 ##         task: Sqlite.str "task",
 ##     },
-## }
+## })
 ## ```
 prepare! :
     {
@@ -203,14 +203,14 @@ reset! = \@Stmt(stmt) ->
 ##
 ## Example:
 ## ```
-## Sqlite.execute! {
+## Sqlite.execute!({
 ##     path: "path/to/database.db",
 ##     query: "INSERT INTO users (first, last) VALUES (:first, :last);",
 ##     bindings: [
 ##         { name: ":first", value: String "John" },
 ##         { name: ":last", value: String "Smith" },
 ##     ],
-## }
+## })?
 ## ```
 execute! :
     {
@@ -252,12 +252,12 @@ execute_prepared! = \{ stmt, bindings } ->
 ## Example:
 ## ```
 ## # count the number of rows in the `users` table
-## count = try Sqlite.query! {
+## count = Sqlite.query!({
 ##     path: db_path,
 ##     query: "SELECT COUNT(*) as \"count\" FROM users;",
 ##     bindings: [],
 ##     row: Sqlite.u64 "count",
-## }
+## })?
 ## ```
 query! :
     {
@@ -292,7 +292,7 @@ query_prepared! = \{ stmt, bindings, row: decode } ->
 ##
 ## Example:
 ## ```
-## Sqlite.query_many! {
+## rows = Sqlite.query_many!({
 ##     path: "path/to/database.db",
 ##     query: "SELECT * FROM todos;",
 ##     bindings: [],
@@ -300,7 +300,7 @@ query_prepared! = \{ stmt, bindings, row: decode } ->
 ##         id: Sqlite.i64 "id",
 ##         task: Sqlite.str "task",
 ##     },
-## }
+## })?
 ## ```
 query_many! :
     {
@@ -360,7 +360,7 @@ decode_record = \@SqlDecode(gen_first), @SqlDecode(gen_second), mapper ->
 ##
 ## Example:
 ## ```
-## Sqlite.i64 "id" |> Sqlite.map_value Num.to_str
+## Sqlite.i64("id") |> Sqlite.map_value(Num.to_str)
 ## ```
 map_value : SqlDecode a err, (a -> b) -> SqlDecode b err
 map_value = \@SqlDecode(gen_decode), mapper ->
@@ -436,7 +436,7 @@ decoder = \fn ->
 ##
 ## For example here we build a decoder that decodes the rows into a list of records with `id` and `mixed_data` fields:
 ## ```
-## Sqlite.query_many! {
+## rows = Sqlite.query_many!({
 ##     path: "path/to/database.db",
 ##     query: "SELECT id, mix_data FROM users;",
 ##     bindings: [],
@@ -444,7 +444,7 @@ decoder = \fn ->
 ##         id: Sqlite.i64 "id",
 ##         mix_data: Sqlite.tagged_value "mixed_data",
 ##     },
-## }
+## })?
 ## ```
 tagged_value : Str -> SqlDecode Value []
 tagged_value = decoder(
@@ -468,7 +468,7 @@ UnexpectedTypeErr : [UnexpectedType [Integer, Real, String, Bytes, Null]]
 ##
 ## For example here we build a decoder that decodes the rows into a list of records with `id` and `name` fields:
 ## ```
-## Sqlite.query_many! {
+## rows = Sqlite.query_many!({
 ##     path: "path/to/database.db",
 ##     query: "SELECT id, name FROM users;",
 ##     bindings: [],
@@ -476,7 +476,7 @@ UnexpectedTypeErr : [UnexpectedType [Integer, Real, String, Bytes, Null]]
 ##         id: Sqlite.i64 "id",
 ##         task: Sqlite.str "name",
 ##     },
-## }
+## })?
 ## ```
 str : Str -> SqlDecode Str UnexpectedTypeErr
 str = decoder(
@@ -519,7 +519,7 @@ real_decoder = \cast ->
 ##
 ## For example here we build a decoder that decodes the rows into a list of records with `id` and `name` fields:
 ## ```
-## Sqlite.query_many! {
+## rows = Sqlite.query_many!({
 ##     path: "path/to/database.db",
 ##     query: "SELECT id, name FROM users;",
 ##     bindings: [],
@@ -527,7 +527,7 @@ real_decoder = \cast ->
 ##         id: Sqlite.i64 "id",
 ##         task: Sqlite.str "name",
 ##     },
-## }
+## })?
 ## ```
 i64 : Str -> SqlDecode I64 [FailedToDecodeInteger []]UnexpectedTypeErr
 i64 = int_decoder(Ok)

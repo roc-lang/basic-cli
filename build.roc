@@ -44,14 +44,14 @@ main! = \_args ->
 
 roc_version! : Str => Result {} _
 roc_version! = \roc_cmd ->
-    info!( "Checking provided roc; executing `$(roc_cmd) version`:")?
+    info!("Checking provided roc; executing `$(roc_cmd) version`:")?
 
     Cmd.exec!(roc_cmd, ["version"])
     |> Result.map_err(RocVersionCheckFailed)
 
 get_os_and_arch! : {} => Result OSAndArch _
 get_os_and_arch! = \{} ->
-    info!( "Getting the native operating system and architecture ...")?
+    info!("Getting the native operating system and architecture ...")?
 
     convert_os_and_arch!(Env.platform!({}))
 
@@ -75,7 +75,7 @@ convert_os_and_arch! = \{ os, arch } ->
 
 build_stub_app_lib! : Str, Str => Result {} _
 build_stub_app_lib! = \roc_cmd, stub_lib_path ->
-    info!( "Building stubbed app shared library ...")?
+    info!("Building stubbed app shared library ...")?
 
     Cmd.exec!(roc_cmd, ["build", "--lib", "platform/libapp.roc", "--output", stub_lib_path, "--optimize"])
     |> Result.map_err(ErrBuildingAppStub)
@@ -110,7 +110,7 @@ get_rust_target_folder! = \debug_mode ->
                 Ok("target/$(target_env_var)/$(debug_or_release)/")
 
         Err(e) ->
-            info!( "Failed to get env var CARGO_BUILD_TARGET with error $(Inspect.to_str(e)). Assuming default CARGO_BUILD_TARGET (native)...")?
+            info!("Failed to get env var CARGO_BUILD_TARGET with error $(Inspect.to_str(e)). Assuming default CARGO_BUILD_TARGET (native)...")?
 
             Ok("target/$(debug_or_release)/")
 
@@ -122,6 +122,7 @@ cargo_build_host! = \debug_mode ->
             Debug ->
                 info!("Building rust host in debug mode...")?
                 Ok(["build"])
+
             Release ->
                 info!("Building rust host ...")?
                 Ok(["build", "--release"])
@@ -138,7 +139,7 @@ copy_host_lib! = \os_and_arch, rust_target_folder ->
 
     host_dest_path = "platform/$(prebuilt_static_lib_file(os_and_arch))"
 
-    info!( "Moving the prebuilt binary from $(host_build_path) to $(host_dest_path) ...")?
+    info!("Moving the prebuilt binary from $(host_build_path) to $(host_dest_path) ...")?
 
     Cmd.exec!("cp", [host_build_path, host_dest_path])
     |> Result.map_err(ErrMovingPrebuiltLegacyBinary)
@@ -146,7 +147,7 @@ copy_host_lib! = \os_and_arch, rust_target_folder ->
 preprocess_host! : Str, Str, Str => Result {} _
 preprocess_host! = \roc_cmd, stub_lib_path, rust_target_folder ->
 
-    info!( "Preprocessing surgical host ...")?
+    info!("Preprocessing surgical host ...")?
 
     surgical_build_path = "$(rust_target_folder)host"
 

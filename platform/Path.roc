@@ -57,10 +57,11 @@ IOErr : InternalIOErr.IOErr
 ##
 ## ```
 ## # Writes `{"some":"json stuff"}` to the file `output.json`:
-## Path.write!
-##     { some: "json stuff" }
-##     (Path.from_str "output.json")
-##     Json.toCompactUtf8
+## Path.write!(
+##     { some: "json stuff" },
+##     Path.from_str("output.json"),
+##     Json.toCompactUtf8,
+## )?
 ## ```
 ##
 ## This opens the file first and closes it after writing to it.
@@ -78,7 +79,7 @@ write! = \val, path, fmt ->
 ##
 ## ```
 ## # Writes the bytes 1, 2, 3 to the file `myfile.dat`.
-## Path.write_bytes! [1, 2, 3] (Path.from_str "myfile.dat")
+## Path.write_bytes!([1, 2, 3], Path.from_str("myfile.dat"))?
 ## ```
 ##
 ## This opens the file first and closes it after writing to it.
@@ -95,7 +96,7 @@ write_bytes! = \bytes, path ->
 ##
 ## ```
 ## # Writes "Hello!" encoded as UTF-8 to the file `myfile.txt`.
-## Path.write_utf8! "Hello!" (Path.from_str "myfile.txt")
+## Path.write_utf8!("Hello!", Path.from_str("myfile.txt"))?
 ## ```
 ##
 ## This opens the file first and closes it after writing to it.
@@ -231,9 +232,9 @@ type! = \path ->
 ##
 ## ```
 ## # Each of these gives "foo/bar/baz.txt"
-## Path.from_str "foo/bar/baz" |> Path.with_extension "txt"
-## Path.from_str "foo/bar/baz." |> Path.with_extension "txt"
-## Path.from_str "foo/bar/baz.xz" |> Path.with_extension "txt"
+## Path.from_str("foo/bar/baz") |> Path.with_extension("txt")
+## Path.from_str("foo/bar/baz.") |> Path.with_extension("txt")
+## Path.from_str("foo/bar/baz.xz") |> Path.with_extension("txt")
 ## ```
 with_extension : Path, Str -> Path
 with_extension = \path, extension ->
@@ -274,7 +275,7 @@ with_extension = \path, extension ->
 ##
 ## ```
 ## # Deletes the file named `myfile.dat`
-## Path.delete (Path.from_str "myfile.dat") [1, 2, 3]
+## Path.delete(Path.from_str("myfile.dat"), [1, 2, 3])?
 ## ```
 ##
 ## > This does not securely erase the file's contents from disk; instead, the operating
@@ -293,7 +294,7 @@ delete! = \path ->
 ##
 ## ```
 ## # Reads UTF-8 encoded text into a Str from the file "myfile.txt"
-## Path.read_utf8 (Path.from_str "myfile.txt")
+## contents_str = Path.read_utf8(Path.from_str("myfile.txt"))?
 ## ```
 ##
 ## This opens the file first and closes it after reading its contents.
@@ -315,7 +316,7 @@ read_utf8! = \path ->
 ##
 ## ```
 ## # Read all the bytes in `myfile.txt`.
-## Path.read_bytes! (Path.from_str "myfile.txt")
+## contents_bytes = Path.read_bytes!(Path.from_str("myfile.txt"))?
 ## ```
 ##
 ## This opens the file first and closes it after reading its contents.

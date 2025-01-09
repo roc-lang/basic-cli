@@ -56,12 +56,11 @@ header = \(name, value) -> { name, value }
 ## ```
 ## # Prints out the HTML of the Roc-lang website.
 ## response =
-##     { Http.default_request & url: "https://www.roc-lang.org" }
-##     |> Http.send!
+##     Http.send!({ Http.default_request & url: "https://www.roc-lang.org" })
 ##
 ## response.body
 ## |> Str.from_utf8
-## |> Result.with_default "Invalid UTF-8"
+## |> Result.with_default("Invalid UTF-8")
 ## |> Stdout.line
 ## ```
 send! : Request => Response
@@ -78,7 +77,7 @@ send! = \request ->
 ## import json.Json
 ##
 ## # On the server side we send `Encode.to_bytes {foo: "Hello Json!"} Json.utf8`
-## { foo } = Http.get! "http://localhost:8000" Json.utf8
+## { foo } = Http.get!("http://localhost:8000", Json.utf8)?
 ## ```
 get! : Str, fmt => Result body [HttpDecodingFailed] where body implements Decoding, fmt implements DecoderFormatting
 get! = \uri, fmt ->

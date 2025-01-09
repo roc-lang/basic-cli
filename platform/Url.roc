@@ -25,11 +25,11 @@ Url := Str implements [Inspect]
 ##
 ## The following example reserves 50 bytes, then builds the url `https://example.com/stuff?caf%C3%A9=du%20Monde&email=hi%40example.com`;
 ## ```
-## Url.from_str "https://example.com"
-## |> Url.reserve 50
-## |> Url.append "stuff"
-## |> Url.append_param "café" "du Monde"
-## |> Url.append_param "email" "hi@example.com"
+## Url.from_str("https://example.com")
+## |> Url.reserve(50)
+## |> Url.append("stuff")
+## |> Url.append_param("café", "du Monde")
+## |> Url.append_param("email", "hi@example.com")
 ## ```
 ## The [Str.count_utf8_bytes](https://www.roc-lang.org/builtins/Str#countUtf8Bytes) function can be helpful in finding out how many bytes to reserve.
 ##
@@ -44,19 +44,19 @@ reserve = \@Url(str), cap ->
 ## anything.
 ##
 ## ```
-## Url.from_str "https://example.com#stuff"
+## Url.from_str("https://example.com#stuff")
 ## ```
 ##
 ## URLs can be absolute, like `https://example.com`, or they can be relative, like `/blah`.
 ##
 ## ```
-## Url.from_str "/this/is#relative"
+## Url.from_str("/this/is#relative")
 ## ```
 ##
 ## Since nothing is validated, this can return invalid URLs.
 ##
 ## ```
-## Url.from_str "https://this is not a valid URL, not at all!"
+## Url.from_str("https://this is not a valid URL, not at all!")
 ## ```
 ##
 ## Naturally, passing invalid URLs to functions that need valid ones will tend to result in errors.
@@ -67,8 +67,8 @@ from_str = \str -> @Url(str)
 ## Return a [Str] representation of this URL.
 ## ```
 ## # Gives "https://example.com/two%20words"
-## Url.from_str "https://example.com"
-## |> Url.append "two words"
+## Url.from_str("https://example.com")
+## |> Url.append("two words")
 ## |> Url.to_str
 ## ```
 to_str : Url -> Str
@@ -83,21 +83,21 @@ to_str = \@Url(str) -> str
 ##
 ## ```
 ## # Gives https://example.com/some%20stuff
-## Url.from_str "https://example.com"
-## |> Url.append "some stuff"
+## Url.from_str("https://example.com")
+## |> Url.append("some stuff")
 ##
 ## # Gives https://example.com/stuff?search=blah#fragment
-## Url.from_str "https://example.com?search=blah#fragment"
-## |> Url.append "stuff"
+## Url.from_str("https://example.com?search=blah#fragment")
+## |> Url.append("stuff")
 ##
 ## # Gives https://example.com/things/stuff/more/etc/"
 ## Url.from_str "https://example.com/things/"
-## |> Url.append "/stuff/"
-## |> Url.append "/more/etc/"
+## |> Url.append("/stuff/")
+## |> Url.append("/more/etc/")
 ##
 ## # Gives https://example.com/things
-## Url.from_str "https://example.com/things"
-## |> Url.append ""
+## Url.from_str("https://example.com/things")
+## |> Url.append("")
 ## ```
 append : Url, Str -> Url
 append = \@Url(url_str), suffix_unencoded ->
@@ -180,8 +180,8 @@ append_help = \prefix, suffix ->
 ## you can always do:
 ##
 ## ```
-## Url.from_str ""
-## |> Url.append myStrToEncode
+## Url.from_str("")
+## |> Url.append(myStrToEncode)
 ## |> Url.to_str
 ## ```
 ##
@@ -236,17 +236,17 @@ percent_encode = \input ->
 ##
 ## ```
 ## # Gives https://example.com?email=someone%40example.com
-## Url.from_str "https://example.com"
-## |> Url.append_param "email" "someone@example.com"
+## Url.from_str("https://example.com")
+## |> Url.append_param("email", "someone@example.com")
 ## ```
 ##
 ## This can be called multiple times on the same URL.
 ##
 ## ```
 ## # Gives https://example.com?caf%C3%A9=du%20Monde&email=hi%40example.com
-## Url.from_str "https://example.com"
-## |> Url.append_param "café" "du Monde"
-## |> Url.append_param "email" "hi@example.com"
+## Url.from_str("https://example.com")
+## |> Url.append_param("café", "du Monde")
+## |> Url.append_param("email", "hi@example.com")
 ## ```
 ##
 append_param : Url, Str, Str -> Url
@@ -288,12 +288,12 @@ append_param = \@Url(url_str), key, value ->
 ##
 ## ```
 ## # Gives https://example.com?newQuery=thisRightHere#stuff
-## Url.from_str "https://example.com?key1=val1&key2=val2#stuff"
-## |> Url.with_query "newQuery=thisRightHere"
+## Url.from_str("https://example.com?key1=val1&key2=val2#stuff")
+## |> Url.with_query("newQuery=thisRightHere")
 ##
 ## # Gives https://example.com#stuff
-## Url.from_str "https://example.com?key1=val1&key2=val2#stuff"
-## |> Url.with_query ""
+## Url.from_str("https://example.com?key1=val1&key2=val2#stuff")
+## |> Url.with_query("")
 ## ```
 with_query : Url, Str -> Url
 with_query = \@Url(url_str), query_str ->
@@ -335,11 +335,11 @@ with_query = \@Url(url_str), query_str ->
 ##
 ## ```
 ## # Gives "key1=val1&key2=val2&key3=val3"
-## Url.from_str "https://example.com?key1=val1&key2=val2&key3=val3#stuff"
+## Url.from_str("https://example.com?key1=val1&key2=val2&key3=val3#stuff")
 ## |> Url.query
 ##
 ## # Gives ""
-## Url.from_str "https://example.com#stuff"
+## Url.from_str("https://example.com#stuff")
 ## |> Url.query
 ## ```
 ##
@@ -358,11 +358,11 @@ query = \@Url(url_str) ->
 ##
 ## ```
 ## # Gives Bool.true
-## Url.from_str "https://example.com?key=value#stuff"
+## Url.from_str("https://example.com?key=value#stuff")
 ## |> Url.has_query
 ##
 ## # Gives Bool.false
-## Url.from_str "https://example.com#stuff"
+## Url.from_str("https://example.com#stuff")
 ## |> Url.has_query
 ## ```
 ##
@@ -377,11 +377,11 @@ has_query = \@Url(url_str) ->
 ##
 ## ```
 ## # Gives "stuff"
-## Url.from_str "https://example.com#stuff"
+## Url.from_str("https://example.com#stuff")
 ## |> Url.fragment
 ##
 ## # Gives ""
-## Url.from_str "https://example.com"
+## Url.from_str("https://example.com")
 ## |> Url.fragment
 ## ```
 ##
@@ -397,15 +397,15 @@ fragment = \@Url(url_str) ->
 ##
 ## ```
 ## # Gives https://example.com#things
-## Url.from_str "https://example.com#stuff"
-## |> Url.with_fragment "things"
+## Url.from_str("https://example.com#stuff")
+## |> Url.with_fragment("things")
 ##
 ## # Gives https://example.com#things
-## Url.from_str "https://example.com"
-## |> Url.with_fragment "things"
+## Url.from_str("https://example.com")
+## |> Url.with_fragment("things")
 ##
 ## # Gives https://example.com
-## Url.from_str "https://example.com#stuff"
+## Url.from_str("https://example.com#stuff")
 ## |> Url.with_fragment ""
 ## ```
 ##
@@ -432,11 +432,11 @@ with_fragment = \@Url(url_str), fragment_str ->
 ##
 ## ```
 ## # Gives Bool.true
-## Url.from_str "https://example.com?key=value#stuff"
+## Url.from_str("https://example.com?key=value#stuff")
 ## |> Url.has_fragment
 ##
 ## # Gives Bool.false
-## Url.from_str "https://example.com?key=value"
+## Url.from_str("https://example.com?key=value")
 ## |> Url.has_fragment
 ## ```
 ##

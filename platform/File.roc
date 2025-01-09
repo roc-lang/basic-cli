@@ -51,10 +51,11 @@ IOErr : InternalIOErr.IOErr
 ##
 ## ```
 ## # Writes `{"some":"json stuff"}` to the file `output.json`:
-## File.write!
-##     { some: "json stuff" }
-##     (Path.from_str "output.json")
-##     Json.toCompactUtf8
+## File.write!(
+##     { some: "json stuff" },
+##     Path.from_str("output.json"),
+##     Json.toCompactUtf8,
+## )
 ## ```
 ##
 ## This opens the file first and closes it after writing to it.
@@ -71,7 +72,7 @@ write! = \val, path, fmt ->
 ##
 ## ```
 ## # Writes the bytes 1, 2, 3 to the file `myfile.dat`.
-## File.write_bytes! [1, 2, 3] (Path.from_str "myfile.dat")
+## File.write_bytes!([1, 2, 3], Path.from_str("myfile.dat"))?
 ## ```
 ##
 ## This opens the file first and closes it after writing to it.
@@ -87,7 +88,7 @@ write_bytes! = \bytes, path ->
 ##
 ## ```
 ## # Writes "Hello!" encoded as UTF-8 to the file `myfile.txt`.
-## File.write_utf8! "Hello!" "myfile.txt"
+## File.write_utf8!("Hello!", "myfile.txt")?
 ## ```
 ##
 ## This opens the file first and closes it after writing to it.
@@ -109,7 +110,7 @@ write_utf8! = \str, path ->
 ##
 ## ```
 ## # Deletes the file named `myfile.dat`
-## File.delete! (Path.from_str "myfile.dat") [1, 2, 3]
+## File.delete!(Path.from_str("myfile.dat"), [1, 2, 3])?
 ## ```
 ##
 ## > This does not securely erase the file's contents from disk; instead, the operating
@@ -127,7 +128,7 @@ delete! = \path ->
 ##
 ## ```
 ## # Read all the bytes in `myfile.txt`.
-## File.read_bytes! "myfile.txt"
+## bytes = File.read_bytes!("myfile.txt")?
 ## ```
 ##
 ## This opens the file first and closes it after reading its contents.
@@ -143,7 +144,7 @@ read_bytes! = \path ->
 ##
 ## ```
 ## # Reads UTF-8 encoded text into a Str from the file "myfile.txt"
-## File.read_utf8! "myfile.txt"
+## str = File.read_utf8!("myfile.txt")?
 ## ```
 ##
 ## This opens the file first and closes it after reading its contents.
