@@ -6,6 +6,10 @@ use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
 use std::net::TcpStream;
 use std::sync::OnceLock;
 
+pub const REQUEST_TIMEOUT_BODY: &[u8] = "RequestTimeout".as_bytes();
+pub const REQUEST_NETWORK_ERR: &[u8] = "Network Error".as_bytes();
+pub const REQUEST_BAD_BODY: &[u8] = "Bad Body".as_bytes();
+
 pub fn heap() -> &'static ThreadSafeRefcountedResourceHeap<BufReader<TcpStream>> {
     // TODO: Should this be a BufReader and BufWriter of the tcp stream?
     // like this: https://stackoverflow.com/questions/58467659/how-to-store-tcpstream-with-bufreader-and-bufwriter-in-a-data-structure/58491889#58491889

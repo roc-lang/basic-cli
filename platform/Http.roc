@@ -56,19 +56,32 @@ header = \(name, value) -> { name, value }
 ## ```
 ## # Prints out the HTML of the Roc-lang website.
 ## response =
-##     Http.send!({ Http.default_request & url: "https://www.roc-lang.org" })
+##     Http.send!({ Http.default_request & url: "https://www.roc-lang.org" })?
 ##
-## response.body
-## |> Str.from_utf8
+##
+## Str.from_utf8(response.body)
 ## |> Result.with_default("Invalid UTF-8")
 ## |> Stdout.line
 ## ```
-send! : Request => Response
+send! : Request => Result Response [HttpErr [Timeout, NetworkError, BadBody, Other (List U8)]]
 send! = \request ->
-    request
-    |> InternalHttp.to_host_request
-    |> Host.send_request!
-    |> InternalHttp.from_host_response
+
+    host_request = InternalHttp.to_host_request(request)
+
+    response = Host.send_request!(host_request) |> InternalHttp.from_host_response
+
+    other_error_prefix = Str.to_utf8("OTHER ERROR\n")
+
+    if response.status == 408 && response.body == Str.to_utf8("Request Timeout") then
+        Err(HttpErr Timeout)
+    else if response.status == 500 && response.body == Str.to_utf8("Network Error") then
+        Err(HttpErr NetworkError)
+    else if response.status == 500 && response.body == Str.to_utf8("Bad Body") then
+        Err(HttpErr BadBody)
+    else if response.status == 500 && List.starts_with(response.body, other_error_prefix) then
+        Err(HttpErr (Other List.drop_first(response.body, List.len(other_error_prefix))))
+    else
+        Ok(response)
 
 ## Try to perform an HTTP get request and convert (decode) the received bytes into a Roc type.
 ## Very useful for working with Json.
@@ -79,16 +92,16 @@ send! = \request ->
 ## # On the server side we send `Encode.to_bytes {foo: "Hello Json!"} Json.utf8`
 ## { foo } = Http.get!("http://localhost:8000", Json.utf8)?
 ## ```
-get! : Str, fmt => Result body [HttpDecodingFailed] where body implements Decoding, fmt implements DecoderFormatting
+get! : Str, fmt => Result body [HttpDecodingFailed, HttpErr _] where body implements Decoding, fmt implements DecoderFormatting
 get! = \uri, fmt ->
-    response = send!({ default_request & uri })
+    response = send!({ default_request & uri })?
 
     Decode.from_bytes(response.body, fmt)
     |> Result.map_err(\_ -> HttpDecodingFailed)
 
-get_utf8! : Str => Result Str [BadBody Str]
+get_utf8! : Str => Result Str [BadBody Str, HttpErr _]
 get_utf8! = \uri ->
-    response = send!({ default_request & uri })
+    response = send!({ default_request & uri })?
 
     response.body
     |> Str.from_utf8
