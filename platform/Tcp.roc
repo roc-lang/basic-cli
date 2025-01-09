@@ -183,8 +183,8 @@ write_utf8! = \stream, str ->
 ##
 ## ```
 ## when err is
-##     TcpPerfomErr (TcpConnectErr connectErr) ->
-##         Stderr.line (Tcp.connect_err_to_str connectErr)
+##     TcpPerfomErr(TcpConnectErr(connectErr)) ->
+##         Stderr.line!(Tcp.connect_err_to_str(connectErr))
 ## ```
 ##
 connect_err_to_str : ConnectErr -> Str
@@ -203,13 +203,13 @@ connect_err_to_str = \err ->
 ##
 ## ```
 ## when err is
-##     TcpPerformErr (TcpReadErr err) ->
+##     TcpPerformErr(TcpReadErr(err)) ->
 ##         errStr = Tcp.stream_err_to_str(err)
-##         Stderr.line("Error while reading: $(errStr)")
+##         Stderr.line!("Error while reading: $(errStr)")
 ##
-##     TcpPerformErr (TcpWriteErr err) ->
+##     TcpPerformErr(TcpWriteErr(err)) ->
 ##         errStr = Tcp.stream_err_to_str(err)
-##         Stderr.line("Error while writing: $(errStr)")
+##         Stderr.line!("Error while writing: $(errStr)")
 ## ```
 ##
 stream_err_to_str : StreamErr -> Str
