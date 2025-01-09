@@ -10,7 +10,7 @@ main! = \_args ->
 
     response = Http.send!(
         {
-            method: Get,
+            method: GET,
             headers: [],
             uri: "http://www.example.com",
             body: [],

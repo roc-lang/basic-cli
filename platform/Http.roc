@@ -36,7 +36,7 @@ Response : InternalHttp.Response
 ##
 default_request : Request
 default_request = {
-    method: Get,
+    method: GET,
     headers: [],
     uri: "",
     body: [],

@@ -19,7 +19,7 @@ module [
 # FOR ROC
 
 # https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods
-Method : [Options, Get, Post, Put, Delete, Head, Trace, Connect, Patch, Extension Str]
+Method : [OPTIONS, GET, POST, PUT, DELETE, HEAD, TRACE, CONNECT, PATCH, EXTENSION Str]
 
 # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers
 Header : { name : Str, value : Str }
@@ -75,21 +75,21 @@ to_host_request = \{ method, headers, uri, body, timeout_ms } -> {
 to_host_method : Method -> _
 to_host_method = \method ->
     when method is
-        Options -> 5
-        Get -> 3
-        Post -> 7
-        Put -> 8
-        Delete -> 1
-        Head -> 4
-        Trace -> 9
-        Connect -> 0
-        Patch -> 6
-        Extension(_) -> 2
+        OPTIONS -> 5
+        GET -> 3
+        POST -> 7
+        PUT -> 8
+        DELETE -> 1
+        HEAD -> 4
+        TRACE -> 9
+        CONNECT -> 0
+        PATCH -> 6
+        EXTENSION(_) -> 2
 
 to_host_method_ext : Method -> Str
 to_host_method_ext = \method ->
     when method is
-        Extension(ext) -> ext
+        EXTENSION(ext) -> ext
         _ -> ""
 
 to_host_timeout : _ -> U64
@@ -110,16 +110,16 @@ from_host_request = \{ method, method_ext, headers, uri, body, timeout_ms } -> {
 from_host_method : U64, Str -> Method
 from_host_method = \tag, ext ->
     when tag is
-        5 -> Options
-        3 -> Get
-        7 -> Post
-        8 -> Put
-        1 -> Delete
-        4 -> Head
-        9 -> Trace
-        0 -> Connect
-        6 -> Patch
-        2 -> Extension(ext)
+        5 -> OPTIONS
+        3 -> GET
+        7 -> POST
+        8 -> PUT
+        1 -> DELETE
+        4 -> HEAD
+        9 -> TRACE
+        0 -> CONNECT
+        6 -> PATCH
+        2 -> EXTENSION(ext)
         _ -> crash("invalid tag from host")
 
 from_host_timeout : U64 -> [TimeoutMilliseconds U64, NoTimeout]
