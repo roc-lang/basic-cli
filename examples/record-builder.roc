@@ -7,12 +7,10 @@ import pf.Stdout
 # To run this example: check the README.md in this folder
 
 main! = \_args ->
-    { apples, oranges } = try(
-        { Result.map2 <-
-            apples: get_fruit!(Apples) |> Result.map(join_strs),
-            oranges: get_fruit!(Oranges) |> Result.map(join_strs),
-        },
-    )
+    { apples, oranges } = { Result.map2 <-
+        apples: get_fruit!(Apples) |> Result.map(join_strs),
+        oranges: get_fruit!(Oranges) |> Result.map(join_strs),
+    }?
 
     Stdout.line!("Apples: $(apples)\nOranges: $(oranges)")
 
