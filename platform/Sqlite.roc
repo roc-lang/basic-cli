@@ -154,8 +154,8 @@ Stmt := Box {}
 ##     stmt: prepared_query,
 ##     bindings: [],
 ##     rows: { Sqlite.decode_record <-
-##         id: Sqlite.i64 "id",
-##         task: Sqlite.str "task",
+##         id: Sqlite.i64("id"),
+##         task: Sqlite.str("task"),
 ##     },
 ## })
 ## ```
@@ -207,8 +207,8 @@ reset! = \@Stmt(stmt) ->
 ##     path: "path/to/database.db",
 ##     query: "INSERT INTO users (first, last) VALUES (:first, :last);",
 ##     bindings: [
-##         { name: ":first", value: String "John" },
-##         { name: ":last", value: String "Smith" },
+##         { name: ":first", value: String("John") },
+##         { name: ":last", value: String("Smith") },
 ##     ],
 ## })?
 ## ```
@@ -256,7 +256,7 @@ execute_prepared! = \{ stmt, bindings } ->
 ##     path: db_path,
 ##     query: "SELECT COUNT(*) as \"count\" FROM users;",
 ##     bindings: [],
-##     row: Sqlite.u64 "count",
+##     row: Sqlite.u64("count"),
 ## })?
 ## ```
 query! :
@@ -297,8 +297,8 @@ query_prepared! = \{ stmt, bindings, row: decode } ->
 ##     query: "SELECT * FROM todos;",
 ##     bindings: [],
 ##     rows: { Sqlite.decode_record <-
-##         id: Sqlite.i64 "id",
-##         task: Sqlite.str "task",
+##         id: Sqlite.i64("id"),
+##         task: Sqlite.str("task"),
 ##     },
 ## })?
 ## ```
@@ -339,8 +339,8 @@ SqlDecode a err := List Str -> (Stmt => Result a (SqlDecodeErr err))
 ## Example:
 ## ```
 ## { Sqlite.decode_record <-
-##     id: Sqlite.i64 "id",
-##     task: Sqlite.str "task",
+##     id: Sqlite.i64("id"),
+##     task: Sqlite.str("task"),
 ## }
 ## ```
 decode_record : SqlDecode a err, SqlDecode b err, (a, b -> c) -> SqlDecode c err
@@ -441,8 +441,8 @@ decoder = \fn ->
 ##     query: "SELECT id, mix_data FROM users;",
 ##     bindings: [],
 ##     rows: { Sqlite.decode_record <-
-##         id: Sqlite.i64 "id",
-##         mix_data: Sqlite.tagged_value "mixed_data",
+##         id: Sqlite.i64("id"),
+##         mix_data: Sqlite.tagged_value("mixed_data"),
 ##     },
 ## })?
 ## ```
@@ -473,8 +473,8 @@ UnexpectedTypeErr : [UnexpectedType [Integer, Real, String, Bytes, Null]]
 ##     query: "SELECT id, name FROM users;",
 ##     bindings: [],
 ##     rows: { Sqlite.decode_record <-
-##         id: Sqlite.i64 "id",
-##         task: Sqlite.str "name",
+##         id: Sqlite.i64("id"),
+##         task: Sqlite.str("name"),
 ##     },
 ## })?
 ## ```
@@ -524,8 +524,8 @@ real_decoder = \cast ->
 ##     query: "SELECT id, name FROM users;",
 ##     bindings: [],
 ##     rows: { Sqlite.decode_record <-
-##         id: Sqlite.i64 "id",
-##         task: Sqlite.str "name",
+##         id: Sqlite.i64("id"),
+##         task: Sqlite.str("name"),
 ##     },
 ## })?
 ## ```
