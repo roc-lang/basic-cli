@@ -12,9 +12,9 @@ platform "glue-types"
     exposes []
     packages {}
     imports []
-    provides [mainForHost]
+    provides [main_for_host]
 
 import InternalArg
 
-mainForHost : InternalArg.ArgToAndFromHost
-mainForHost = main
+main_for_host : InternalArg.ArgToAndFromHost
+main_for_host = main

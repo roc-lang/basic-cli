@@ -26,7 +26,7 @@ DirEntry : Path.DirEntry
 ## > [Path.list_dir!] does the same thing, except it takes a [Path] instead of a [Str].
 list! : Str => Result (List Path) [DirErr IOErr]
 list! = \path ->
-    Path.list_dir! (Path.from_str path)
+    Path.list_dir!(Path.from_str(path))
 
 ## Deletes a directory if it's empty
 ##
@@ -39,7 +39,7 @@ list! = \path ->
 ## > [Path.delete_empty!] does the same thing, except it takes a [Path] instead of a [Str].
 delete_empty! : Str => Result {} [DirErr IOErr]
 delete_empty! = \path ->
-    Path.delete_empty! (Path.from_str path)
+    Path.delete_empty!(Path.from_str(path))
 
 ## Recursively deletes the directory as well as all files and directories
 ## inside it.
@@ -53,7 +53,7 @@ delete_empty! = \path ->
 ## > [Path.delete_all!] does the same thing, except it takes a [Path] instead of a [Str].
 delete_all! : Str => Result {} [DirErr IOErr]
 delete_all! = \path ->
-    Path.delete_all! (Path.from_str path)
+    Path.delete_all!(Path.from_str(path))
 
 ## Creates a directory
 ##
@@ -65,7 +65,7 @@ delete_all! = \path ->
 ## > [Path.create_dir!] does the same thing, except it takes a [Path] instead of a [Str].
 create! : Str => Result {} [DirErr IOErr]
 create! = \path ->
-    Path.create_dir! (Path.from_str path)
+    Path.create_dir!(Path.from_str(path))
 
 ## Creates a directory recursively adding any missing parent directories.
 ##
@@ -76,4 +76,4 @@ create! = \path ->
 ## > [Path.create_all!] does the same thing, except it takes a [Path] instead of a [Str].
 create_all! : Str => Result {} [DirErr IOErr]
 create_all! = \path ->
-    Path.create_all! (Path.from_str path)
+    Path.create_all!(Path.from_str(path))

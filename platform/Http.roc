@@ -82,15 +82,15 @@ send! = \request ->
 ## ```
 get! : Str, fmt => Result body [HttpDecodingFailed] where body implements Decoding, fmt implements DecoderFormatting
 get! = \uri, fmt ->
-    response = send! { default_request & uri }
+    response = send!({ default_request & uri })
 
-    Decode.from_bytes response.body fmt
-    |> Result.map_err \_ -> HttpDecodingFailed
+    Decode.from_bytes(response.body, fmt)
+    |> Result.map_err(\_ -> HttpDecodingFailed)
 
 get_utf8! : Str => Result Str [BadBody Str]
 get_utf8! = \uri ->
-    response = send! { default_request & uri }
+    response = send!({ default_request & uri })
 
     response.body
     |> Str.from_utf8
-    |> Result.map_err \_ -> BadBody "Invalid UTF-8"
+    |> Result.map_err(\_ -> BadBody("Invalid UTF-8"))

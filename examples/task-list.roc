@@ -6,12 +6,12 @@ import pf.Stdout
 
 main! = \_args ->
     # Prints out each of the authors
-    print! ["Foo", "Bar", "Baz"]
+    print!(["Foo", "Bar", "Baz"])
 
 print! : List Str => Result {} _
 print! = \authors ->
     when authors is
-        [] -> Ok {}
+        [] -> Ok({})
         [author, .. as rest] ->
-            try Stdout.line! author
-            print! rest
+            Stdout.line!(author)?
+            print!(rest)

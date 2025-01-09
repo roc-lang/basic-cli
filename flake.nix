@@ -3,8 +3,7 @@
 
   inputs = {
 
-    # TODO restore when https://github.com/roc-lang/roc/pull/7463 lands in main
-    roc.url = "github:smores56/roc?ref=auto-snake-case";
+    roc.url = "github:roc-lang/roc";
 
     nixpkgs.follows = "roc/nixpkgs";
 

@@ -18,27 +18,27 @@ import Host
 ## from the environment. File operations on relative [Path]s are relative to this directory.
 cwd! : {} => Result Path [CwdUnavailable]
 cwd! = \{} ->
-    bytes = Host.cwd! {} |> Result.with_default []
+    bytes = Host.cwd!({}) |> Result.with_default([])
 
-    if List.is_empty bytes then
-        Err CwdUnavailable
+    if List.is_empty(bytes) then
+        Err(CwdUnavailable)
     else
-        Ok (InternalPath.from_arbitrary_bytes bytes)
+        Ok(InternalPath.from_arbitrary_bytes(bytes))
 
 ## Sets the [current working directory](https://en.wikipedia.org/wiki/Working_directory)
 ## in the environment. After changing it, file operations on relative [Path]s will be relative
 ## to this directory.
 set_cwd! : Path => Result {} [InvalidCwd]
 set_cwd! = \path ->
-    Host.set_cwd! (InternalPath.to_bytes path)
-    |> Result.map_err \{} -> InvalidCwd
+    Host.set_cwd!(InternalPath.to_bytes(path))
+    |> Result.map_err(\{} -> InvalidCwd)
 
 ## Gets the path to the currently-running executable.
 exe_path! : {} => Result Path [ExePathUnavailable]
 exe_path! = \{} ->
-    when Host.exe_path! {} is
-        Ok bytes -> Ok (InternalPath.from_os_bytes bytes)
-        Err {} -> Err ExePathUnavailable
+    when Host.exe_path!({}) is
+        Ok(bytes) -> Ok(InternalPath.from_os_bytes(bytes))
+        Err({}) -> Err(ExePathUnavailable)
 
 ## Reads the given environment variable.
 ##
@@ -46,8 +46,8 @@ exe_path! = \{} ->
 ## [Unicode replacement character](https://unicode.org/glossary/#replacement_character) ('�').
 var! : Str => Result Str [VarNotFound]
 var! = \name ->
-    Host.env_var! name
-    |> Result.map_err \{} -> VarNotFound
+    Host.env_var!(name)
+    |> Result.map_err(\{} -> VarNotFound)
 
 ## Reads the given environment variable and attempts to decode it.
 ##
@@ -76,12 +76,12 @@ var! = \name ->
 ##
 decode! : Str => Result val [VarNotFound, DecodeErr DecodeError] where val implements Decoding
 decode! = \name ->
-    when Host.env_var! name is
-        Err {} -> Err VarNotFound
-        Ok var_str ->
-            Str.to_utf8 var_str
-            |> Decode.from_bytes (EnvDecoding.format {})
-            |> Result.map_err (\_ -> DecodeErr TooShort)
+    when Host.env_var!(name) is
+        Err({}) -> Err(VarNotFound)
+        Ok(var_str) ->
+            Str.to_utf8(var_str)
+            |> Decode.from_bytes(EnvDecoding.format({}))
+            |> Result.map_err(\_ -> DecodeErr(TooShort))
 
 ## Reads all the process's environment variables into a [Dict].
 ##
@@ -89,7 +89,7 @@ decode! = \name ->
 ## will be used in place of any parts of keys or values that are invalid Unicode.
 dict! : {} => Dict Str Str
 dict! = \{} ->
-    Host.env_dict! {}
+    Host.env_dict!({})
     |> Dict.from_list
 
 # ## Walks over the process's environment variables as key-value arguments to the walking function.
@@ -137,7 +137,7 @@ OS : [LINUX, MACOS, WINDOWS, OTHER Str]
 platform! : {} => { arch : ARCH, os : OS }
 platform! = \{} ->
 
-    from_rust = Host.current_arch_os! {}
+    from_rust = Host.current_arch_os!({})
 
     arch =
         when from_rust.arch is
@@ -145,14 +145,14 @@ platform! = \{} ->
             "x86_64" -> X64
             "arm" -> ARM
             "aarch64" -> AARCH64
-            _ -> OTHER from_rust.arch
+            _ -> OTHER(from_rust.arch)
 
     os =
         when from_rust.os is
             "linux" -> LINUX
             "macos" -> MACOS
             "windows" -> WINDOWS
-            _ -> OTHER from_rust.os
+            _ -> OTHER(from_rust.os)
 
     { arch, os }
 
@@ -167,5 +167,5 @@ platform! = \{} ->
 ##
 temp_dir! : {} => Path
 temp_dir! = \{} ->
-    Host.temp_dir! {}
+    Host.temp_dir!({})
     |> InternalPath.from_os_bytes

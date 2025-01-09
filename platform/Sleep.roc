@@ -9,4 +9,4 @@ import Host
 ##
 millis! : U64 => {}
 millis! = \n ->
-    Host.sleep_millis! n
+    Host.sleep_millis!(n)

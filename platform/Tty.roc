@@ -21,7 +21,7 @@ import Host
 ##
 enable_raw_mode! : {} => {}
 enable_raw_mode! = \{} ->
-    Host.tty_mode_raw! {}
+    Host.tty_mode_raw!({})
 
 ## Revert terminal to default behaviour
 ##
@@ -29,4 +29,4 @@ enable_raw_mode! = \{} ->
 ##
 disable_raw_mode! : {} => {}
 disable_raw_mode! = \{} ->
-    Host.tty_mode_canonical! {}
+    Host.tty_mode_canonical!({})

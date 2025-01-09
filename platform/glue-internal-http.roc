@@ -12,12 +12,12 @@ platform "glue-types"
     exposes []
     packages {}
     imports []
-    provides [mainForHost]
+    provides [main_for_host]
 
 import InternalHttp
 
-mainForHost : {
+main_for_host : {
     a : InternalHttp.RequestToAndFromHost,
     b : InternalHttp.ResponseToAndFromHost,
 }
-mainForHost = main
+main_for_host = main
