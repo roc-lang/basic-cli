@@ -55,4 +55,4 @@ handle_err = \{ tag, msg } ->
         Interrupted -> Interrupted
         Unsupported -> Unsupported
         OutOfMemory -> OutOfMemory
-        Other | EndOfFile -> Other msg
+        Other | EndOfFile -> Other(msg)

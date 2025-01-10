@@ -12,9 +12,9 @@ platform "glue-types"
     exposes []
     packages {}
     imports []
-    provides [mainForHost]
+    provides [main_for_host]
 
 import InternalCmd
 
-mainForHost : InternalCmd.OutputFromHost
-mainForHost = main
+main_for_host : InternalCmd.OutputFromHost
+main_for_host = main

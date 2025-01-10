@@ -22,7 +22,7 @@ Output : {
 
 from_host_output : OutputFromHost -> Output
 from_host_output = \{ status, stdout, stderr } -> {
-    status: Result.mapErr status InternalIOErr.handle_err,
+    status: Result.map_err(status, InternalIOErr.handle_err),
     stdout,
     stderr,
 }

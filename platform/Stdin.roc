@@ -37,15 +37,15 @@ IOErr : [
 handle_err : InternalIOErr.IOErrFromHost -> [EndOfFile, StdinErr IOErr]
 handle_err = \{ tag, msg } ->
     when tag is
-        NotFound -> StdinErr NotFound
-        PermissionDenied -> StdinErr PermissionDenied
-        BrokenPipe -> StdinErr BrokenPipe
-        AlreadyExists -> StdinErr AlreadyExists
-        Interrupted -> StdinErr Interrupted
-        Unsupported -> StdinErr Unsupported
-        OutOfMemory -> StdinErr OutOfMemory
+        NotFound -> StdinErr(NotFound)
+        PermissionDenied -> StdinErr(PermissionDenied)
+        BrokenPipe -> StdinErr(BrokenPipe)
+        AlreadyExists -> StdinErr(AlreadyExists)
+        Interrupted -> StdinErr(Interrupted)
+        Unsupported -> StdinErr(Unsupported)
+        OutOfMemory -> StdinErr(OutOfMemory)
         EndOfFile -> EndOfFile
-        Other -> StdinErr (Other msg)
+        Other -> StdinErr(Other(msg))
 
 ## Read a line from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
 ##
@@ -55,8 +55,8 @@ handle_err = \{ tag, msg } ->
 ## the user knows it's necessary to enter something before the program will continue.
 line! : {} => Result Str [EndOfFile, StdinErr IOErr]
 line! = \{} ->
-    Host.stdin_line! {}
-    |> Result.mapErr handle_err
+    Host.stdin_line!({})
+    |> Result.map_err(handle_err)
 
 ## Read bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
 ## ‼️ This function can read no more than 16,384 bytes at a time. Use [readToEnd!] if you need more.
@@ -66,21 +66,23 @@ line! = \{} ->
 ## without buffering until Enter key is pressed.
 bytes! : {} => Result (List U8) [EndOfFile, StdinErr IOErr]
 bytes! = \{} ->
-    Host.stdin_bytes! {}
-    |> Result.mapErr handle_err
+    Host.stdin_bytes!({})
+    |> Result.map_err(handle_err)
 
 ## Read all bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)) until EOF in this source.
 read_to_end! : {} => Result (List U8) [StdinErr IOErr]
 read_to_end! = \{} ->
-    Host.stdin_read_to_end! {}
-    |> Result.mapErr \{ tag, msg } ->
-        when tag is
-            NotFound -> StdinErr NotFound
-            PermissionDenied -> StdinErr PermissionDenied
-            BrokenPipe -> StdinErr BrokenPipe
-            AlreadyExists -> StdinErr AlreadyExists
-            Interrupted -> StdinErr Interrupted
-            Unsupported -> StdinErr Unsupported
-            OutOfMemory -> StdinErr OutOfMemory
-            EndOfFile -> crash "unreachable, reading to EOF"
-            Other -> StdinErr (Other msg)
+    Host.stdin_read_to_end!({})
+    |> Result.map_err(
+        \{ tag, msg } ->
+            when tag is
+                NotFound -> StdinErr(NotFound)
+                PermissionDenied -> StdinErr(PermissionDenied)
+                BrokenPipe -> StdinErr(BrokenPipe)
+                AlreadyExists -> StdinErr(AlreadyExists)
+                Interrupted -> StdinErr(Interrupted)
+                Unsupported -> StdinErr(Unsupported)
+                OutOfMemory -> StdinErr(OutOfMemory)
+                EndOfFile -> crash("unreachable, reading to EOF")
+                Other -> StdinErr(Other(msg)),
+    )

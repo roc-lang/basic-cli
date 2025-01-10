@@ -9,16 +9,16 @@ import pf.Env
 
 main! = \_args ->
 
-    editor = try Env.decode! "EDITOR"
+    editor = Env.decode!("EDITOR")?
 
-    try Stdout.line! "Your favorite editor is $(editor)!"
+    Stdout.line!("Your favorite editor is $(editor)!")?
 
     # Env.decode! does not return the same type everywhere.
     # The type is determined based on type inference.
-    # Here `Str.joinWith` forces the type that Env.decode! returns to be `List Str`
+    # Here `Str.join_with` forces the type that Env.decode! returns to be `List Str`
     joined_letters =
-        Env.decode! "LETTERS"
-        |> Result.map \letters -> Str.joinWith letters " "
+        Env.decode!("LETTERS")
+        |> Result.map(\letters -> Str.join_with(letters, " "))
         |> try
 
-    Stdout.line! "Your favorite letters are: $(joined_letters)"
+    Stdout.line!("Your favorite letters are: $(joined_letters)")

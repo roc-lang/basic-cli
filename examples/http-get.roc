@@ -8,14 +8,16 @@ import pf.Stdout
 
 main! = \_args ->
 
-    response = Http.send! {
-        method: Get,
-        headers: [],
-        uri: "http://www.example.com",
-        body: [],
-        timeout_ms: TimeoutMilliseconds 5000,
-    }
+    response = Http.send!(
+        {
+            method: GET,
+            headers: [],
+            uri: "http://www.example.com",
+            body: [],
+            timeout_ms: TimeoutMilliseconds(5000),
+        },
+    )
 
-    body = (Str.fromUtf8 response.body)?
+    body = (Str.from_utf8(response.body))?
 
-    Stdout.line! "Response body:\n\t$(body)."
+    Stdout.line!("Response body:\n\t$(body).")

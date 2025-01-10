@@ -10,8 +10,8 @@ import Host
 ## The returned [Str] is a BCP 47 language tag, like `en-US` or `fr-CA`.
 get! : {} => Result Str [NotAvailable]
 get! = \{} ->
-    Host.get_locale! {}
-    |> Result.mapErr \{} -> NotAvailable
+    Host.get_locale!({})
+    |> Result.map_err(\{} -> NotAvailable)
 
 ## Returns the preferred locales for the system or application.
 ##

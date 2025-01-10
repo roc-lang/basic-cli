@@ -7,10 +7,10 @@ import pf.Stdin
 
 # Try piping in some text like this: `echo -e "test\n123" | roc piping.roc`
 main! = \_args ->
-    lines = count! 0
-    Stdout.line! "I read $(Num.toStr lines) lines from stdin."
+    lines = count!(0)
+    Stdout.line!("I read $(Num.to_str(lines)) lines from stdin.")
 
 count! = \n ->
-    when Stdin.line! {} is
-        Ok _ -> count! (n + 1)
-        Err _ -> n
+    when Stdin.line!({}) is
+        Ok(_) -> count!((n + 1))
+        Err(_) -> n

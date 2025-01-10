@@ -3,7 +3,6 @@ use hyper::service::{make_service_fn, service_fn};
 use std::convert::Infallible;
 
 async fn handle_request(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
-    // Encode.toBytes {foo: "Hello Json!"} Json.utf8
     let json_bytes: Vec<u8> = vec![123, 34, 102, 111, 111, 34, 58, 34, 72, 101, 108, 108, 111, 32, 74, 115, 111, 110, 33, 34, 125];
 
     let response = Response::builder()
