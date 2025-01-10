@@ -16,7 +16,7 @@ main! = \_args ->
             body: [],
             timeout_ms: TimeoutMilliseconds(5000),
         },
-    )
+    )?
 
     body = (Str.from_utf8(response.body))?
 

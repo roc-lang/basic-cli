@@ -540,7 +540,7 @@ pub extern "C" fn roc_fx_send_request(
                 .unwrap_or_else(|_err| roc_http::ResponseToAndFromHost {
                     status: 408,
                     headers: RocList::empty(),
-                    body: "Request Timeout".as_bytes().into(),
+                    body: roc_http::REQUEST_TIMEOUT_BODY.into(),
                 }),
             None => rt.block_on(async_send_request(request)),
         }
@@ -570,7 +570,17 @@ async fn async_send_request(request: hyper::Request<String>) -> roc_http::Respon
 
             let status = status.as_u16();
 
-            let bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+            let bytes = match hyper::body::to_bytes(response.into_body()).await {
+                Ok(bytes) => bytes,
+                Err(_) => {
+                    return roc_http::ResponseToAndFromHost {
+                        status: 500,
+                        headers: RocList::empty(),
+                        body: roc_http::REQUEST_BAD_BODY.into(),
+                    };
+                }
+            };
+
             let body: RocList<u8> = RocList::from_iter(bytes);
 
             roc_http::ResponseToAndFromHost {
@@ -584,19 +594,19 @@ async fn async_send_request(request: hyper::Request<String>) -> roc_http::Respon
                 roc_http::ResponseToAndFromHost {
                     status: 408,
                     headers: RocList::empty(),
-                    body: "Request Timeout".as_bytes().into(),
+                    body: roc_http::REQUEST_TIMEOUT_BODY.into(),
                 }
             } else if err.is_connect() || err.is_closed() {
                 roc_http::ResponseToAndFromHost {
                     status: 500,
                     headers: RocList::empty(),
-                    body: "Network Error".as_bytes().into(),
+                    body: roc_http::REQUEST_NETWORK_ERR.into(),
                 }
             } else {
                 roc_http::ResponseToAndFromHost {
                     status: 500,
                     headers: RocList::empty(),
-                    body: err.to_string().as_bytes().into(),
+                    body: format!("OTHER ERROR\n{}", err).as_bytes().into(),
                 }
             }
         }
