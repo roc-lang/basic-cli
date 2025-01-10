@@ -12,6 +12,7 @@ module [
     with_query,
     with_fragment,
     query_params,
+    path,
 ]
 
 ## A [Uniform Resource Locator](https://en.wikipedia.org/wiki/URL).
@@ -33,7 +34,7 @@ Url := Str implements [Inspect]
 ## ```
 ## The [Str.count_utf8_bytes](https://www.roc-lang.org/builtins/Str#countUtf8Bytes) function can be helpful in finding out how many bytes to reserve.
 ##
-## There is no `Url.withCapacity` because it's better to reserve extra capacity
+## There is no `Url.with_capacity` because it's better to reserve extra capacity
 ## on a [Str] first, and then pass that string to [Url.from_str]. This function will make use
 ## of the extra capacity.
 reserve : Url, U64 -> Url
@@ -461,3 +462,41 @@ query_params = \url ->
                 Ok({ before, after }) -> Dict.insert(dict, before, after)
                 Err(NotFound) -> Dict.insert(dict, pair, ""),
     )
+
+## Returns the URL's [path](https://en.wikipedia.org/wiki/URL#Syntax)—the part after
+## the scheme and authority (e.g. `https://`) but before any `?` or `#` it might have.
+##
+## Returns `""` if the URL has no path.
+##
+## ```
+## # Gives "example.com/"
+## Url.fromStr("https://example.com/?key1=val1&key2=val2&key3=val3#stuff")
+## |> Url.path
+## ```
+##
+## ```
+## # Gives "/foo/"
+## Url.fromStr("/foo/?key1=val1&key2=val2&key3=val3#stuff")
+## |> Url.path
+## ```
+path : Url -> Str
+path = \@Url urlStr ->
+    withoutAuthority =
+        when Str.split_first urlStr ":" is
+            Ok { after } ->
+                when Str.split_first after "//" is
+                    # Only drop the `//` if it's right after the `://` like in `https://`
+                    # (so, `before` is empty) - otherwise, the `//` is part of the path!
+                    Ok { before, after: afterSlashes } if Str.is_empty before -> afterSlashes
+                    _ -> after
+
+            # There's no `//` and also no `:` so this must be a path-only URL, e.g. "/foo?bar=baz#blah"
+            Err NotFound -> urlStr
+
+    # Drop the query and/or fragment
+    when Str.split_last withoutAuthority "?" is
+        Ok { before } -> before
+        Err NotFound ->
+            when Str.split_last withoutAuthority "#" is
+                Ok { before } -> before
+                Err NotFound -> withoutAuthority

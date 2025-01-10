@@ -44,7 +44,7 @@ IOErr : InternalIOErr.IOErr
 ##
 ## First encode a `val` using a given `fmt` which implements the ability [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
 ##
-## For example, suppose you have a `Json.toCompactUtf8` which implements
+## For example, suppose you have a `Json.to_compact_utf8` which implements
 ## [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
 ## You can use this to write [JSON](https://en.wikipedia.org/wiki/JSON)
 ## data to a file like this:
@@ -54,7 +54,7 @@ IOErr : InternalIOErr.IOErr
 ## File.write!(
 ##     { some: "json stuff" },
 ##     Path.from_str("output.json"),
-##     Json.toCompactUtf8,
+##     Json.to_compact_utf8,
 ## )
 ## ```
 ##
