@@ -12,7 +12,7 @@ main! = \_args ->
         oranges: get_fruit!(Oranges) |> Result.map(join_strs),
     }?
 
-    Stdout.line!("Apples: $(apples)\nOranges: $(oranges)")
+    Stdout.line!("Apples: ${apples}\nOranges: ${oranges}")
 
 join_strs = \fruits -> Str.join_with(fruits, ", ")
 

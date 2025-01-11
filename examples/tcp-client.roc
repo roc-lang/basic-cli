@@ -19,7 +19,7 @@ handle_err! = \error ->
             err_str = Tcp.connect_err_to_str(err)
             Stderr.line!(
                 """
-                Failed to connect: $(err_str)
+                Failed to connect: ${err_str}
 
                 If you don't have anything listening on port 8085, run:
                 \$ nc -l 8085
@@ -34,13 +34,13 @@ handle_err! = \error ->
 
         TcpReadErr(err) ->
             err_str = Tcp.stream_err_to_str(err)
-            Stderr.line!("Error while reading: $(err_str)")
+            Stderr.line!("Error while reading: ${err_str}")
 
         TcpWriteErr(err) ->
             err_str = Tcp.stream_err_to_str(err)
-            Stderr.line!("Error while writing: $(err_str)")
+            Stderr.line!("Error while writing: ${err_str}")
 
-        other -> Stderr.line!("Got other error: $(Inspect.to_str(other))")
+        other -> Stderr.line!("Got other error: ${Inspect.to_str(other)}")
 
 run! : {} => Result {} _
 run! = \{} ->
@@ -60,11 +60,11 @@ tick! = \stream ->
 
     out_msg = Stdin.line!({})?
 
-    Tcp.write_utf8!(stream, "$(out_msg)\n")?
+    Tcp.write_utf8!(stream, "${out_msg}\n")?
 
     in_msg = Tcp.read_line!(stream)?
 
-    Stdout.line!("< $(in_msg)")
+    Stdout.line!("< ${in_msg}")
 
 loop! : state, (state => Result [Step state, Done done] err) => Result done err
 loop! = \state, fn! ->

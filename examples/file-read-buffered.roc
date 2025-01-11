@@ -23,7 +23,7 @@ main! = \_args ->
 
     read_summary = process_line!(reader, { lines_read: 0, bytes_read: 0 })?
 
-    Stdout.line!("Done reading file: $(Inspect.to_str(read_summary))")
+    Stdout.line!("Done reading file: ${Inspect.to_str(read_summary)}")
 
 ReadSummary : {
     lines_read : U64,

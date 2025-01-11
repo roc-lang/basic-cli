@@ -16,7 +16,7 @@ main! = \_args ->
     else
         when Str.from_utf8(number_bytes) is
             Ok(n_str) ->
-                Stdout.line!("Got number $(n_str)")
+                Stdout.line!("Got number ${n_str}")
 
             Err(_) ->
                 Stderr.line!("Error, bad utf8")

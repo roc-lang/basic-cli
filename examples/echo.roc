@@ -21,7 +21,7 @@ tick! = \{} ->
             Ok({})
 
         Err(StdinErr(err)) ->
-            Stdout.line!(echo("Unable to read input $(Inspect.to_str(err))"))?
+            Stdout.line!(echo("Unable to read input ${Inspect.to_str(err)}"))?
             Ok({})
 
 echo : Str -> Str

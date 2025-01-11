@@ -767,4 +767,4 @@ errcode_to_str = \code ->
         Warning -> "Warning: Warnings from sqlite3_log()"
         Row -> "Row: sqlite3_step() has another row ready"
         Done -> "Done: sqlite3_step() has finished executing"
-        Unknown(c) -> "Unknown: error code $(Num.to_str(c)) not known"
+        Unknown(c) -> "Unknown: error code ${Num.to_str(c)} not known"

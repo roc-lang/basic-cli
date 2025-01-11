@@ -257,7 +257,7 @@ append_param = \@Url(url_str), key, value ->
             Ok({ before, after }) ->
                 # The fragment is almost certainly going to be a small string,
                 # so this interpolation should happen on the stack.
-                { without_fragment: before, after_query: "#$(after)" }
+                { without_fragment: before, after_query: "#${after}" }
 
             Err(NotFound) ->
                 { without_fragment: url_str, after_query: "" }
@@ -303,7 +303,7 @@ with_query = \@Url(url_str), query_str ->
             Ok({ before, after }) ->
                 # The fragment is almost certainly going to be a small string,
                 # so this interpolation should happen on the stack.
-                { without_fragment: before, after_query: "#$(after)" }
+                { without_fragment: before, after_query: "#${after}" }
 
             Err(NotFound) ->
                 { without_fragment: url_str, after_query: "" }
@@ -419,7 +419,7 @@ with_fragment = \@Url(url_str), fragment_str ->
                 @Url(before)
             else
                 # Replace the URL's old fragment with this one, discarding `after`
-                @Url("$(before)#$(fragment_str)")
+                @Url("${before}#${fragment_str}")
 
         Err(NotFound) ->
             if Str.is_empty(fragment_str) then
@@ -427,7 +427,7 @@ with_fragment = \@Url(url_str), fragment_str ->
                 @Url(url_str)
             else
                 # The URL didn't have a fragment, so give it this one
-                @Url("$(url_str)#$(fragment_str)")
+                @Url("${url_str}#${fragment_str}")
 
 ## Returns [Bool.true] if the URL has a `#` in it.
 ##

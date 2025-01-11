@@ -15,4 +15,4 @@ main! = \_args ->
 
     last = Stdin.line!({})?
 
-    Stdout.line!("Hi, $(first) $(last)! 👋")
+    Stdout.line!("Hi, ${first} ${last}! 👋")

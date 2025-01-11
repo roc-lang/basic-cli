@@ -133,4 +133,4 @@ exec! = \program, arguments ->
     if exit_code == 0i32 then
         Ok({})
     else
-        Err(CmdStatusErr(Other("Non-zero exit code $(Num.to_str(exit_code))")))
+        Err(CmdStatusErr(Other("Non-zero exit code ${Num.to_str(exit_code)}")))

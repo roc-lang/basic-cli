@@ -15,13 +15,13 @@ task! = \{} ->
 
     cwd_str = Path.display(Env.cwd!({})?)
 
-    Stdout.line!("cwd: $(cwd_str)")?
+    Stdout.line!("cwd: ${cwd_str}")?
 
     dir_entries = try(Dir.list!, cwd_str)
 
     dir_entries_tr = Str.join_with(List.map(dir_entries, Path.display), "\n    ")
 
-    Stdout.line!("Directory contents:\n    $(dir_entries_tr)\n")?
+    Stdout.line!("Directory contents:\n    ${dir_entries_tr}\n")?
 
     Stdout.line!("Writing a string to out.txt")?
 
@@ -29,7 +29,7 @@ task! = \{} ->
 
     contents = File.read_utf8!(out_txt_path)?
 
-    Stdout.line!("I read the file back. Its contents: \"$(contents)\"")?
+    Stdout.line!("I read the file back. Its contents: \"${contents}\"")?
 
     Ok({})
 
@@ -47,4 +47,4 @@ main! = \_args ->
 
             Stderr.line!(msg)?
 
-            Err(Exit(1, "unable to write file: $(msg)")) # non-zero exit code to indicate failure
+            Err(Exit(1, "unable to write file: ${msg}")) # non-zero exit code to indicate failure

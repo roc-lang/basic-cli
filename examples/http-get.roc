@@ -20,4 +20,4 @@ main! = \_args ->
 
     body = (Str.from_utf8(response.body))?
 
-    Stdout.line!("Response body:\n\t$(body).")
+    Stdout.line!("Response body:\n\t${body}.")

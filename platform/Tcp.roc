@@ -197,7 +197,7 @@ connect_err_to_str = \err ->
         Interrupted -> "Interrupted"
         TimedOut -> "TimedOut"
         Unsupported -> "Unsupported"
-        Unrecognized(message) -> "Unrecognized Error: $(message)"
+        Unrecognized(message) -> "Unrecognized Error: ${message}"
 
 ## Convert a [StreamErr] to a [Str] you can print.
 ##
@@ -205,11 +205,11 @@ connect_err_to_str = \err ->
 ## when err is
 ##     TcpPerformErr(TcpReadErr(err)) ->
 ##         errStr = Tcp.stream_err_to_str(err)
-##         Stderr.line!("Error while reading: $(errStr)")
+##         Stderr.line!("Error while reading: ${errStr}")
 ##
 ##     TcpPerformErr(TcpWriteErr(err)) ->
 ##         errStr = Tcp.stream_err_to_str(err)
-##         Stderr.line!("Error while writing: $(errStr)")
+##         Stderr.line!("Error while writing: ${errStr}")
 ## ```
 ##
 stream_err_to_str : StreamErr -> Str
@@ -222,4 +222,4 @@ stream_err_to_str = \err ->
         Interrupted -> "Interrupted"
         OutOfMemory -> "OutOfMemory"
         BrokenPipe -> "BrokenPipe"
-        Unrecognized(message) -> "Unrecognized Error: $(message)"
+        Unrecognized(message) -> "Unrecognized Error: ${message}"

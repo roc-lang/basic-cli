@@ -49,7 +49,7 @@ main_for_host! = \raw_args ->
             help_msg =
                 """
                 Program exited with error:
-                    $(Inspect.to_str(msg))
+                    ${Inspect.to_str(msg)}
 
                 Tip: If you do not want to exit on this error, use `Result.map_err` to handle the error. Docs for `Result.map_err`: <https://www.roc-lang.org/builtins/Result#mapErr>
                 """
