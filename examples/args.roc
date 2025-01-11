@@ -18,4 +18,4 @@ main! = \raw_args ->
             Err(Exit(1, "Error ZeroArgsGiven:\n\tI expected one argument, but I got none.\n\tRun the app like this: `roc main.roc -- input.txt`"))
 
         Ok(first_arg) ->
-            Stdout.line!("received argument: $(first_arg)")
+            Stdout.line!("received argument: ${first_arg}")

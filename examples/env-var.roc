@@ -11,7 +11,7 @@ main! = \_args ->
 
     editor = Env.decode!("EDITOR")?
 
-    Stdout.line!("Your favorite editor is $(editor)!")?
+    Stdout.line!("Your favorite editor is ${editor}!")?
 
     # Env.decode! does not return the same type everywhere.
     # The type is determined based on type inference.
@@ -21,4 +21,4 @@ main! = \_args ->
         |> Result.map(\letters -> Str.join_with(letters, " "))
         |> try
 
-    Stdout.line!("Your favorite letters are: $(joined_letters)")
+    Stdout.line!("Your favorite letters are: ${joined_letters}")

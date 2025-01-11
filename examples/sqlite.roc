@@ -15,7 +15,7 @@ main! = \_args ->
     List.for_each_try!(
         todo,
         \{ id, task } ->
-            Stdout.line!("\tid: $(id), task: $(task)"),
+            Stdout.line!("\tid: ${id}, task: ${task}"),
     )?
 
     completed = query_todos_by_status!(db_path, "completed")?
@@ -25,7 +25,7 @@ main! = \_args ->
     List.for_each_try!(
         completed,
         \{ id, task } ->
-            Stdout.line!("\tid: $(id), task: $(task)"),
+            Stdout.line!("\tid: ${id}, task: ${task}"),
     )?
 
     Ok({})

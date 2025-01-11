@@ -95,7 +95,7 @@ dict! = \{} ->
 # ## Walks over the process's environment variables as key-value arguments to the walking function.
 # ##
 # ##     Env.walk "Vars:\n" \state, key, value ->
-# ##         "- $(key): $(value)\n"
+# ##         "- ${key}: ${value}\n"
 # ##     # This might produce a string such as:
 # ##     #
 # ##     #     """

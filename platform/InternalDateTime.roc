@@ -15,17 +15,17 @@ to_iso_8601 = \{ year, month, day, hours, minutes, seconds } ->
     minute_str = minutes_with_padded_zeros(minutes)
     seconds_str = seconds_with_padded_zeros(seconds)
 
-    "$(year_str)-$(month_str)-$(day_str)T$(hour_str):$(minute_str):$(seconds_str)Z"
+    "${year_str}-${month_str}-${day_str}T${hour_str}:${minute_str}:${seconds_str}Z"
 
 year_with_padded_zeros : I128 -> Str
 year_with_padded_zeros = \year ->
     year_str = Num.to_str(year)
     if year < 10 then
-        "000$(year_str)"
+        "000${year_str}"
     else if year < 100 then
-        "00$(year_str)"
+        "00${year_str}"
     else if year < 1000 then
-        "0$(year_str)"
+        "0${year_str}"
     else
         year_str
 
@@ -33,7 +33,7 @@ month_with_padded_zeros : I128 -> Str
 month_with_padded_zeros = \month ->
     month_str = Num.to_str(month)
     if month < 10 then
-        "0$(month_str)"
+        "0${month_str}"
     else
         month_str
 

@@ -17,11 +17,11 @@ main! = \_args ->
                     FileReadErr(_, _) -> "Error reading file"
                     _ -> "Uh oh, there was an error!"
 
-            Err(Exit(1, "unable to read file: $(msg)")) # non-zero exit code to indicate failure
+            Err(Exit(1, "unable to read file: ${msg}")) # non-zero exit code to indicate failure
 
 run! = \{} ->
     file_name = "LICENSE"
     contents = File.read_utf8!(file_name)?
     lines = Str.split_on(contents, "\n")
 
-    Stdout.line!(Str.concat("First line of $(file_name): ", (List.first(lines) |> Result.with_default("err"))))
+    Stdout.line!(Str.concat("First line of ${file_name}: ", (List.first(lines) |> Result.with_default("err"))))

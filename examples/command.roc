@@ -30,8 +30,8 @@ status_example! = \{} ->
 
     when result is
         Ok(exit_code) if exit_code == 0 -> Ok({})
-        Ok(exit_code) -> Stdout.line!("Child exited with non-zero code: $(Num.to_str(exit_code))")
-        Err(err) -> Stdout.line!("Error executing command: $(Inspect.to_str(err))")
+        Ok(exit_code) -> Stdout.line!("Child exited with non-zero code: ${Num.to_str(exit_code)}")
+        Err(err) -> Stdout.line!("Error executing command: ${Inspect.to_str(err)}")
 
 # Run "env" with verbose option, clear all environment variables, and pass in
 # only as an environment variable "FOO"
