@@ -217,7 +217,7 @@ type! : Path => Result [IsFile, IsDir, IsSymLink] [PathErr IOErr]
 type! = \path ->
     Host.path_type!(InternalPath.to_bytes(path))
     |> Result.map_err(\err -> PathErr(InternalIOErr.handle_err(err)))
-    |> Result.map(
+    |> Result.map_ok(
         \path_type ->
             if path_type.is_sym_link then
                 IsSymLink

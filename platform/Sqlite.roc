@@ -167,7 +167,7 @@ prepare! :
     => Result Stmt [SqliteErr ErrCode Str]
 prepare! = \{ path, query: q } ->
     Host.sqlite_prepare!(path, q)
-    |> Result.map(@Stmt)
+    |> Result.map_ok(@Stmt)
     |> Result.map_err(internal_to_external_error)
 
 # internal use only
@@ -603,7 +603,7 @@ nullable_int_decoder = \cast ->
     decoder(
         \val ->
             when val is
-                Integer(i) -> cast(i) |> Result.map(NotNull) |> Result.map_err(FailedToDecodeInteger)
+                Integer(i) -> cast(i) |> Result.map_ok(NotNull) |> Result.map_err(FailedToDecodeInteger)
                 Null -> Ok(Null)
                 _ -> to_unexpected_type_err(val),
     )
@@ -614,7 +614,7 @@ nullable_real_decoder = \cast ->
     decoder(
         \val ->
             when val is
-                Real(r) -> cast(r) |> Result.map(NotNull) |> Result.map_err(FailedToDecodeReal)
+                Real(r) -> cast(r) |> Result.map_ok(NotNull) |> Result.map_err(FailedToDecodeReal)
                 Null -> Ok(Null)
                 _ -> to_unexpected_type_err(val),
     )

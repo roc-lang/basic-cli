@@ -86,7 +86,7 @@ parse_stream_err = \err ->
 connect! : Str, U16 => Result Stream ConnectErr
 connect! = \host, port ->
     Host.tcp_connect!(host, port)
-    |> Result.map(@Stream)
+    |> Result.map_ok(@Stream)
     |> Result.map_err(parse_connect_err)
 
 ## Read up to a number of bytes from the TCP stream.

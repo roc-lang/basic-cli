@@ -18,7 +18,7 @@ main! = \_args ->
     # Here `Str.join_with` forces the type that Env.decode! returns to be `List Str`
     joined_letters =
         Env.decode!("LETTERS")
-        |> Result.map(\letters -> Str.join_with(letters, " "))
+        |> Result.map_ok(\letters -> Str.join_with(letters, " "))
         |> try
 
     Stdout.line!("Your favorite letters are: ${joined_letters}")
