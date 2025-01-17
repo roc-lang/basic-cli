@@ -158,7 +158,7 @@ read_utf8! = |path|
     Path.read_utf8!(Path.from_str(path))
 
 # read : Str, fmt => Result contents [FileReadErr Path ReadErr, FileReadDecodingFailed] where contents implements Decoding, fmt implements DecoderFormatting
-# read = \path, fmt ->
+# read = |path, fmt|
 #    Path.read! (Path.from_str path) fmt
 
 ## Creates a new hard link on the filesystem.

@@ -12,6 +12,7 @@ main! = |_args|
     todo = query_todos_by_status!(db_path, "todo")?
 
     Stdout.line!("Todo Tasks:")?
+
     List.for_each_try!(
         todo,
         |{ id, task }|

@@ -55,12 +55,11 @@ header = |(name, value)| { name, value }
 ##
 ## ```
 ## # Prints out the HTML of the Roc-lang website.
-## response =
+## response = ||
 ##     Http.send!({ Http.default_request & url: "https://www.roc-lang.org" })?
 ##
 ##
-## Str.from_utf8(response.body)
-## |> Result.with_default("Invalid UTF-8")
+## Str.from_utf8(response.body) ?? "Invalid UTF-8"
 ## |> Stdout.line
 ## ```
 send! : Request => Result Response [HttpErr [Timeout, NetworkError, BadBody, Other (List U8)]]

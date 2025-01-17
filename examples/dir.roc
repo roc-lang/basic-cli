@@ -24,7 +24,7 @@ main! = |_args|
         |> try
 
     # Check the contents of the directory
-    expect (Set.from_list(paths_as_str)) == (Set.from_list(["dirExampleA/b", "dirExampleA/child"]))
+    expect Set.from_list(paths_as_str) == Set.from_list(["dirExampleA/b", "dirExampleA/child"])
 
     # Try to create a directory without a parent (should fail, ignore error)
     when Dir.create!("dirExampleD/child") is

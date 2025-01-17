@@ -17,7 +17,7 @@ task! = |{}|
 
     Stdout.line!("cwd: ${cwd_str}")?
 
-    dir_entries = try(Dir.list!, cwd_str)
+    dir_entries = Dir.list!(cwd_str)?
 
     dir_entries_tr = Str.join_with(List.map(dir_entries, Path.display), "\n    ")
 

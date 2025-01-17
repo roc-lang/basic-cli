@@ -6,18 +6,20 @@ import pf.Stdout
 import pf.File
 
 main! = |_args|
-    when run!({}) is
-        Ok({}) -> Ok({})
-        Err(err) ->
-            msg =
-                when err is
-                    FileWriteErr(_, PermissionDenied) -> "PermissionDenied"
-                    FileWriteErr(_, Unsupported) -> "Unsupported"
-                    FileWriteErr(_, Unrecognized(_, other)) -> other
-                    FileReadErr(_, _) -> "Error reading file"
-                    _ -> "Uh oh, there was an error!"
 
-            Err(Exit(1, "unable to read file: ${msg}")) # non-zero exit code to indicate failure
+    run!({})
+    ? |err|
+        msg =
+            when err is
+                FileWriteErr(_, PermissionDenied) -> "PermissionDenied"
+                FileWriteErr(_, Unsupported) -> "Unsupported"
+                FileWriteErr(_, Unrecognized(_, other)) -> other
+                FileReadErr(_, _) -> "Error reading file"
+                _ -> "Uh oh, there was an error!"
+
+        Exit(1, "unable to read file: ${msg}") # non-zero exit code to indicate failure
+
+    Ok({})
 
 run! = |{}|
     file_name = "LICENSE"
