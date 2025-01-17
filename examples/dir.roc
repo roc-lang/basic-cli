@@ -20,7 +20,7 @@ main! = \_args ->
     # List the contents of a directory
     paths_as_str =
         Dir.list!("dirExampleA")
-        |> Result.map(\paths -> List.map(paths, Path.display))
+        |> Result.map_ok(\paths -> List.map(paths, Path.display))
         |> try
 
     # Check the contents of the directory

@@ -51,7 +51,7 @@ run! = \{} ->
 
     loop!(
         {},
-        \_ -> Result.map(tick!(stream), Step),
+        \_ -> Result.map_ok(tick!(stream), Step),
     )
 
 tick! : Tcp.Stream => Result {} _

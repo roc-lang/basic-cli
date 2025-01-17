@@ -229,7 +229,7 @@ open_reader! = \path_str ->
     # 0 means with default capacity
     Host.file_reader!(Str.to_utf8(path_str), 0)
     |> Result.map_err(\err -> GetFileReadErr(path, InternalIOErr.handle_err(err)))
-    |> Result.map(\reader -> @Reader({ reader, path }))
+    |> Result.map_ok(\reader -> @Reader({ reader, path }))
 
 ## Try to open a `File.Reader` for buffered (= part by part) reading given a path string.
 ## The buffer will be created with the specified capacity.
@@ -244,7 +244,7 @@ open_reader_with_capacity! = \path_str, capacity ->
 
     Host.file_reader!(Str.to_utf8(path_str), capacity)
     |> Result.map_err(\err -> GetFileReadErr(path, InternalIOErr.handle_err(err)))
-    |> Result.map(\reader -> @Reader({ reader, path }))
+    |> Result.map_ok(\reader -> @Reader({ reader, path }))
 
 ## Try to read a line from a file given a Reader.
 ## The line will be provided as the list of bytes (`List U8`) until a newline (`0xA` byte).
