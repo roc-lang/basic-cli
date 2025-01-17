@@ -57,22 +57,22 @@ wrap : UnwrappedPath -> InternalPath
 wrap = @InternalPath
 
 unwrap : InternalPath -> UnwrappedPath
-unwrap = \@InternalPath(raw) -> raw
+unwrap = |@InternalPath(raw)| raw
 
 ## TODO do this in the host, and iterate over the Str
 ## bytes when possible instead of always converting to
 ## a heap-allocated List.
 to_bytes : InternalPath -> List U8
-to_bytes = \@InternalPath(path) ->
+to_bytes = |@InternalPath(path)|
     when path is
         FromOperatingSystem(bytes) -> bytes
         ArbitraryBytes(bytes) -> bytes
         FromStr(str) -> Str.to_utf8(str)
 
 from_arbitrary_bytes : List U8 -> InternalPath
-from_arbitrary_bytes = \bytes ->
+from_arbitrary_bytes = |bytes|
     @InternalPath(ArbitraryBytes(bytes))
 
 from_os_bytes : List U8 -> InternalPath
-from_os_bytes = \bytes ->
+from_os_bytes = |bytes|
     @InternalPath(FromOperatingSystem(bytes))

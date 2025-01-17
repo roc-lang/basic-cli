@@ -5,7 +5,7 @@ app [main!] { pf: platform "../platform/main.roc" }
 import pf.Stdout
 import pf.File
 
-main! = \_args ->
+main! = |_args|
     when run!({}) is
         Ok({}) -> Ok({})
         Err(err) ->
@@ -19,7 +19,7 @@ main! = \_args ->
 
             Err(Exit(1, "unable to read file: ${msg}")) # non-zero exit code to indicate failure
 
-run! = \{} ->
+run! = |{}|
     file_name = "LICENSE"
     contents = File.read_utf8!(file_name)?
     lines = Str.split_on(contents, "\n")

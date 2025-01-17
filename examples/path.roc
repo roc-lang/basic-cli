@@ -5,7 +5,7 @@ import pf.Path
 
 # To run this example: check the README.md in this folder
 
-main! = \_args ->
+main! = |_args|
 
     path = Path.from_str("path.roc")
 

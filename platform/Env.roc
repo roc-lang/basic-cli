@@ -17,7 +17,7 @@ import Host
 ## Reads the [current working directory](https://en.wikipedia.org/wiki/Working_directory)
 ## from the environment. File operations on relative [Path]s are relative to this directory.
 cwd! : {} => Result Path [CwdUnavailable]
-cwd! = \{} ->
+cwd! = |{}|
     bytes = Host.cwd!({}) |> Result.with_default([])
 
     if List.is_empty(bytes) then
@@ -29,13 +29,13 @@ cwd! = \{} ->
 ## in the environment. After changing it, file operations on relative [Path]s will be relative
 ## to this directory.
 set_cwd! : Path => Result {} [InvalidCwd]
-set_cwd! = \path ->
+set_cwd! = |path|
     Host.set_cwd!(InternalPath.to_bytes(path))
-    |> Result.map_err(\{} -> InvalidCwd)
+    |> Result.map_err(|{}| InvalidCwd)
 
 ## Gets the path to the currently-running executable.
 exe_path! : {} => Result Path [ExePathUnavailable]
-exe_path! = \{} ->
+exe_path! = |{}|
     when Host.exe_path!({}) is
         Ok(bytes) -> Ok(InternalPath.from_os_bytes(bytes))
         Err({}) -> Err(ExePathUnavailable)
@@ -45,9 +45,9 @@ exe_path! = \{} ->
 ## If the value is invalid Unicode, the invalid parts will be replaced with the
 ## [Unicode replacement character](https://unicode.org/glossary/#replacement_character) ('�').
 var! : Str => Result Str [VarNotFound]
-var! = \name ->
+var! = |name|
     Host.env_var!(name)
-    |> Result.map_err(\{} -> VarNotFound)
+    |> Result.map_err(|{}| VarNotFound)
 
 ## Reads the given environment variable and attempts to decode it.
 ##
@@ -75,20 +75,20 @@ var! = \name ->
 ## because `123456789` is too large to fit in a [U16](https://www.roc-lang.org/builtins/Num#U16).
 ##
 decode! : Str => Result val [VarNotFound, DecodeErr DecodeError] where val implements Decoding
-decode! = \name ->
+decode! = |name|
     when Host.env_var!(name) is
         Err({}) -> Err(VarNotFound)
         Ok(var_str) ->
             Str.to_utf8(var_str)
             |> Decode.from_bytes(EnvDecoding.format({}))
-            |> Result.map_err(\_ -> DecodeErr(TooShort))
+            |> Result.map_err(|_| DecodeErr(TooShort))
 
 ## Reads all the process's environment variables into a [Dict].
 ##
 ## If any key or value contains invalid Unicode, the [Unicode replacement character](https://unicode.org/glossary/#replacement_character)
 ## will be used in place of any parts of keys or values that are invalid Unicode.
 dict! : {} => Dict Str Str
-dict! = \{} ->
+dict! = |{}|
     Host.env_dict!({})
     |> Dict.from_list
 
@@ -135,7 +135,7 @@ OS : [LINUX, MACOS, WINDOWS, OTHER Str]
 ## Note these values are constants from when the platform is built.
 ##
 platform! : {} => { arch : ARCH, os : OS }
-platform! = \{} ->
+platform! = |{}|
 
     from_rust = Host.current_arch_os!({})
 
@@ -166,6 +166,6 @@ platform! = \{} ->
 ## result in “insecure temporary file” security vulnerabilities.
 ##
 temp_dir! : {} => Path
-temp_dir! = \{} ->
+temp_dir! = |{}|
     Host.temp_dir!({})
     |> InternalPath.from_os_bytes

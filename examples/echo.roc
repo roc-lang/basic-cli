@@ -5,12 +5,12 @@ app [main!] { pf: platform "../platform/main.roc" }
 import pf.Stdin
 import pf.Stdout
 
-main! = \_args ->
+main! = |_args|
     Stdout.line!("Shout into this cave and hear the echo!")?
     tick!({})
 
 tick! : {} => Result {} [StdoutErr _]
-tick! = \{} ->
+tick! = |{}|
     when Stdin.line!({}) is
         Ok(str) ->
             Stdout.line!(echo(str))?
@@ -25,13 +25,13 @@ tick! = \{} ->
             Ok({})
 
 echo : Str -> Str
-echo = \shout ->
-    silence = \length -> List.repeat(' ', length)
+echo = |shout|
+    silence = |length| List.repeat(' ', length)
 
     shout
     |> Str.to_utf8
     |> List.map_with_index(
-        \_, i ->
+        |_, i|
             length = (List.len(Str.to_utf8(shout)) - i)
             phrase = (List.split_at(Str.to_utf8(shout), length)).before
 

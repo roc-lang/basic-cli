@@ -6,7 +6,7 @@ import pf.Sqlite
 
 # To run this example: check the README.md in this folder
 
-main! = \_args ->
+main! = |_args|
     db_path = Env.var!("DB_PATH")?
 
     todo = query_todos_by_status!(db_path, "todo")?
@@ -14,7 +14,7 @@ main! = \_args ->
     Stdout.line!("Todo Tasks:")?
     List.for_each_try!(
         todo,
-        \{ id, task } ->
+        |{ id, task }|
             Stdout.line!("\tid: ${id}, task: ${task}"),
     )?
 
@@ -24,13 +24,13 @@ main! = \_args ->
 
     List.for_each_try!(
         completed,
-        \{ id, task } ->
+        |{ id, task }|
             Stdout.line!("\tid: ${id}, task: ${task}"),
     )?
 
     Ok({})
 
-query_todos_by_status! = \db_path, status ->
+query_todos_by_status! = |db_path, status|
     Sqlite.query_many!(
         {
             path: db_path,

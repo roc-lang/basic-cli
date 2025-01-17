@@ -4,12 +4,12 @@ import pf.Stdout
 
 # To run this example: check the README.md in this folder
 
-main! = \_args ->
+main! = |_args|
     # Prints out each of the authors
     print!(["Foo", "Bar", "Baz"])
 
 print! : List Str => Result {} _
-print! = \authors ->
+print! = |authors|
     when authors is
         [] -> Ok({})
         [author, .. as rest] ->

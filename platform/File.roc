@@ -65,7 +65,7 @@ IOErr : InternalIOErr.IOErr
 ## >
 ## > [Path.write!] does the same thing, except it takes a [Path] instead of a [Str].
 write! : val, Str, fmt => Result {} [FileWriteErr Path IOErr] where val implements Encoding, fmt implements EncoderFormatting
-write! = \val, path, fmt ->
+write! = |val, path, fmt|
     Path.write!(val, Path.from_str(path), fmt)
 
 ## Writes bytes to a file.
@@ -81,7 +81,7 @@ write! = \val, path, fmt ->
 ## >
 ## > [Path.write_bytes!] does the same thing, except it takes a [Path] instead of a [Str].
 write_bytes! : List U8, Str => Result {} [FileWriteErr Path IOErr]
-write_bytes! = \bytes, path ->
+write_bytes! = |bytes, path|
     Path.write_bytes!(bytes, Path.from_str(path))
 
 ## Writes a [Str] to a file, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
@@ -97,7 +97,7 @@ write_bytes! = \bytes, path ->
 ## >
 ## > [Path.write_utf8!] does the same thing, except it takes a [Path] instead of a [Str].
 write_utf8! : Str, Str => Result {} [FileWriteErr Path IOErr]
-write_utf8! = \str, path ->
+write_utf8! = |str, path|
     Path.write_utf8!(str, Path.from_str(path))
 
 ## Deletes a file from the filesystem.
@@ -121,7 +121,7 @@ write_utf8! = \str, path ->
 ## >
 ## > [Path.delete!] does the same thing, except it takes a [Path] instead of a [Str].
 delete! : Str => Result {} [FileWriteErr Path IOErr]
-delete! = \path ->
+delete! = |path|
     Path.delete!(Path.from_str(path))
 
 ## Reads all the bytes in a file.
@@ -137,7 +137,7 @@ delete! = \path ->
 ## >
 ## > [Path.read_bytes!] does the same thing, except it takes a [Path] instead of a [Str].
 read_bytes! : Str => Result (List U8) [FileReadErr Path IOErr]
-read_bytes! = \path ->
+read_bytes! = |path|
     Path.read_bytes!(Path.from_str(path))
 
 ## Reads a [Str] from a file containing [UTF-8](https://en.wikipedia.org/wiki/UTF-8)-encoded text.
@@ -154,7 +154,7 @@ read_bytes! = \path ->
 ##
 ## > [Path.read_utf8!] does the same thing, except it takes a [Path] instead of a [Str].
 read_utf8! : Str => Result Str [FileReadErr Path IOErr, FileReadUtf8Err Path _]
-read_utf8! = \path ->
+read_utf8! = |path|
     Path.read_utf8!(Path.from_str(path))
 
 # read : Str, fmt => Result contents [FileReadErr Path ReadErr, FileReadDecodingFailed] where contents implements Decoding, fmt implements DecoderFormatting
@@ -170,7 +170,7 @@ read_utf8! = \path ->
 ##
 ## > [Path.hard_link!] does the same thing, except it takes a [Path] instead of a [Str].
 hard_link! : Str => Result {} [LinkErr IOErr]
-hard_link! = \path ->
+hard_link! = |path|
     Path.hard_link!(Path.from_str(path))
 
 ## Returns True if the path exists on disk and is pointing at a directory.
@@ -181,7 +181,7 @@ hard_link! = \path ->
 ##
 ## > [Path.is_dir!] does the same thing, except it takes a [Path] instead of a [Str].
 is_dir! : Str => Result Bool [PathErr IOErr]
-is_dir! = \path ->
+is_dir! = |path|
     Path.is_dir!(Path.from_str(path))
 
 ## Returns True if the path exists on disk and is pointing at a regular file.
@@ -192,7 +192,7 @@ is_dir! = \path ->
 ##
 ## > [Path.is_file!] does the same thing, except it takes a [Path] instead of a [Str].
 is_file! : Str => Result Bool [PathErr IOErr]
-is_file! = \path ->
+is_file! = |path|
     Path.is_file!(Path.from_str(path))
 
 ## Returns True if the path exists on disk and is pointing at a symbolic link.
@@ -203,7 +203,7 @@ is_file! = \path ->
 ##
 ## > [Path.is_sym_link!] does the same thing, except it takes a [Path] instead of a [Str].
 is_sym_link! : Str => Result Bool [PathErr IOErr]
-is_sym_link! = \path ->
+is_sym_link! = |path|
     Path.is_sym_link!(Path.from_str(path))
 
 ## Return the type of the path if the path exists on disk.
@@ -211,7 +211,7 @@ is_sym_link! = \path ->
 ##
 ## > [Path.type!] does the same thing, except it takes a [Path] instead of a [Str].
 type! : Str => Result [IsFile, IsDir, IsSymLink] [PathErr IOErr]
-type! = \path ->
+type! = |path|
     Path.type!(Path.from_str(path))
 
 Reader := { reader : Host.FileReader, path : Path }
@@ -223,13 +223,13 @@ Reader := { reader : Host.FileReader, path : Path }
 ##
 ## Use [read_utf8!] if you want to get the entire file contents at once.
 open_reader! : Str => Result Reader [GetFileReadErr Path IOErr]
-open_reader! = \path_str ->
+open_reader! = |path_str|
     path = Path.from_str(path_str)
 
     # 0 means with default capacity
     Host.file_reader!(Str.to_utf8(path_str), 0)
-    |> Result.map_err(\err -> GetFileReadErr(path, InternalIOErr.handle_err(err)))
-    |> Result.map_ok(\reader -> @Reader({ reader, path }))
+    |> Result.map_err(|err| GetFileReadErr(path, InternalIOErr.handle_err(err)))
+    |> Result.map_ok(|reader| @Reader({ reader, path }))
 
 ## Try to open a `File.Reader` for buffered (= part by part) reading given a path string.
 ## The buffer will be created with the specified capacity.
@@ -239,12 +239,12 @@ open_reader! = \path_str ->
 ##
 ## Use [read_utf8!] if you want to get the entire file contents at once.
 open_reader_with_capacity! : Str, U64 => Result Reader [GetFileReadErr Path IOErr]
-open_reader_with_capacity! = \path_str, capacity ->
+open_reader_with_capacity! = |path_str, capacity|
     path = Path.from_str(path_str)
 
     Host.file_reader!(Str.to_utf8(path_str), capacity)
-    |> Result.map_err(\err -> GetFileReadErr(path, InternalIOErr.handle_err(err)))
-    |> Result.map_ok(\reader -> @Reader({ reader, path }))
+    |> Result.map_err(|err| GetFileReadErr(path, InternalIOErr.handle_err(err)))
+    |> Result.map_ok(|reader| @Reader({ reader, path }))
 
 ## Try to read a line from a file given a Reader.
 ## The line will be provided as the list of bytes (`List U8`) until a newline (`0xA` byte).
@@ -255,6 +255,6 @@ open_reader_with_capacity! = \path_str, capacity ->
 ##
 ## Use [read_utf8!] if you want to get the entire file contents at once.
 read_line! : Reader => Result (List U8) [FileReadErr Path IOErr]
-read_line! = \@Reader({ reader, path }) ->
+read_line! = |@Reader({ reader, path })|
     Host.file_read_line!(reader)
-    |> Result.map_err(\err -> FileReadErr(path, InternalIOErr.handle_err(err)))
+    |> Result.map_err(|err| FileReadErr(path, InternalIOErr.handle_err(err)))

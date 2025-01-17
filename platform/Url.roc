@@ -38,7 +38,7 @@ Url := Str implements [Inspect]
 ## on a [Str] first, and then pass that string to [Url.from_str]. This function will make use
 ## of the extra capacity.
 reserve : Url, U64 -> Url
-reserve = \@Url(str), cap ->
+reserve = |@Url(str), cap|
     @Url(Str.reserve(str, Num.int_cast(cap)))
 
 ## Create a [Url] without validating or [percent-encoding](https://en.wikipedia.org/wiki/Percent-encoding)
@@ -63,7 +63,7 @@ reserve = \@Url(str), cap ->
 ## Naturally, passing invalid URLs to functions that need valid ones will tend to result in errors.
 ##
 from_str : Str -> Url
-from_str = \str -> @Url(str)
+from_str = |str| @Url(str)
 
 ## Return a [Str] representation of this URL.
 ## ```
@@ -73,7 +73,7 @@ from_str = \str -> @Url(str)
 ## |> Url.to_str
 ## ```
 to_str : Url -> Str
-to_str = \@Url(str) -> str
+to_str = |@Url(str)| str
 
 ## [Percent-encodes](https://en.wikipedia.org/wiki/Percent-encoding) a
 ## [path component](https://en.wikipedia.org/wiki/Uniform_Resource_Identifier#Syntax)
@@ -101,7 +101,7 @@ to_str = \@Url(str) -> str
 ## |> Url.append("")
 ## ```
 append : Url, Str -> Url
-append = \@Url(url_str), suffix_unencoded ->
+append = |@Url(url_str), suffix_unencoded|
     suffix = percent_encode(suffix_unencoded)
 
     when Str.split_first(url_str, "?") is
@@ -144,7 +144,7 @@ append = \@Url(url_str), suffix_unencoded ->
 
 ## Internal helper
 append_help : Str, Str -> Str
-append_help = \prefix, suffix ->
+append_help = |prefix, suffix|
     if Str.ends_with(prefix, "/") then
         if Str.starts_with(suffix, "/") then
             # Avoid a double-slash by appending only the part of the suffix after the "/"
@@ -191,7 +191,7 @@ append_help = \prefix, suffix ->
 ## use. See [this stackoverflow discussion](https://stackoverflow.com/questions/2678551/when-should-space-be-encoded-to-plus-or-20/47188851#47188851)
 ## for a detailed explanation.
 percent_encode : Str -> Str
-percent_encode = \input ->
+percent_encode = |input|
     # Optimistically assume we won't need any percent encoding, and can have
     # the same capacity as the input string. If we're wrong, it will get doubled.
     initial_output = List.with_capacity((Str.count_utf8_bytes(input) |> Num.int_cast))
@@ -200,7 +200,7 @@ percent_encode = \input ->
         List.walk(
             Str.to_utf8(input),
             initial_output,
-            \output, byte ->
+            |output, byte|
                 # Spec for percent-encoding: https://www.ietf.org/rfc/rfc3986.txt
                 if
                     (byte >= 97 && byte <= 122) # lowercase ASCII
@@ -251,7 +251,7 @@ percent_encode = \input ->
 ## ```
 ##
 append_param : Url, Str, Str -> Url
-append_param = \@Url(url_str), key, value ->
+append_param = |@Url(url_str), key, value|
     { without_fragment, after_query } =
         when Str.split_last(url_str, "#") is
             Ok({ before, after }) ->
@@ -297,7 +297,7 @@ append_param = \@Url(url_str), key, value ->
 ## |> Url.with_query("")
 ## ```
 with_query : Url, Str -> Url
-with_query = \@Url(url_str), query_str ->
+with_query = |@Url(url_str), query_str|
     { without_fragment, after_query } =
         when Str.split_last(url_str, "#") is
             Ok({ before, after }) ->
@@ -345,7 +345,7 @@ with_query = \@Url(url_str), query_str ->
 ## ```
 ##
 query : Url -> Str
-query = \@Url(url_str) ->
+query = |@Url(url_str)|
     without_fragment =
         when Str.split_last(url_str, "#") is
             Ok({ before }) -> before
@@ -368,7 +368,7 @@ query = \@Url(url_str) ->
 ## ```
 ##
 has_query : Url -> Bool
-has_query = \@Url(url_str) ->
+has_query = |@Url(url_str)|
     Str.contains(url_str, "?")
 
 ## Returns the URL's [fragment](https://en.wikipedia.org/wiki/URL#Syntax)—the part after
@@ -387,7 +387,7 @@ has_query = \@Url(url_str) ->
 ## ```
 ##
 fragment : Url -> Str
-fragment = \@Url(url_str) ->
+fragment = |@Url(url_str)|
     when Str.split_last(url_str, "#") is
         Ok({ after }) -> after
         Err(NotFound) -> ""
@@ -411,7 +411,7 @@ fragment = \@Url(url_str) ->
 ## ```
 ##
 with_fragment : Url, Str -> Url
-with_fragment = \@Url(url_str), fragment_str ->
+with_fragment = |@Url(url_str), fragment_str|
     when Str.split_last(url_str, "#") is
         Ok({ before }) ->
             if Str.is_empty(fragment_str) then
@@ -442,7 +442,7 @@ with_fragment = \@Url(url_str), fragment_str ->
 ## ```
 ##
 has_fragment : Url -> Bool
-has_fragment = \@Url(url_str) ->
+has_fragment = |@Url(url_str)|
     Str.contains(url_str, "#")
 
 # Adapted from the percent-encoding crate, © The rust-url developers, Apache2-licensed
@@ -452,12 +452,12 @@ percent_encoded : Str
 percent_encoded = "%00%01%02%03%04%05%06%07%08%09%0A%0B%0C%0D%0E%0F%10%11%12%13%14%15%16%17%18%19%1A%1B%1C%1D%1E%1F%20%21%22%23%24%25%26%27%28%29%2A%2B%2C%2D%2E%2F%30%31%32%33%34%35%36%37%38%39%3A%3B%3C%3D%3E%3F%40%41%42%43%44%45%46%47%48%49%4A%4B%4C%4D%4E%4F%50%51%52%53%54%55%56%57%58%59%5A%5B%5C%5D%5E%5F%60%61%62%63%64%65%66%67%68%69%6A%6B%6C%6D%6E%6F%70%71%72%73%74%75%76%77%78%79%7A%7B%7C%7D%7E%7F%80%81%82%83%84%85%86%87%88%89%8A%8B%8C%8D%8E%8F%90%91%92%93%94%95%96%97%98%99%9A%9B%9C%9D%9E%9F%A0%A1%A2%A3%A4%A5%A6%A7%A8%A9%AA%AB%AC%AD%AE%AF%B0%B1%B2%B3%B4%B5%B6%B7%B8%B9%BA%BB%BC%BD%BE%BF%C0%C1%C2%C3%C4%C5%C6%C7%C8%C9%CA%CB%CC%CD%CE%CF%D0%D1%D2%D3%D4%D5%D6%D7%D8%D9%DA%DB%DC%DD%DE%DF%E0%E1%E2%E3%E4%E5%E6%E7%E8%E9%EA%EB%EC%ED%EE%EF%F0%F1%F2%F3%F4%F5%F6%F7%F8%F9%FA%FB%FC%FD%FE%FF"
 
 query_params : Url -> Dict Str Str
-query_params = \url ->
+query_params = |url|
     query(url)
     |> Str.split_on("&")
     |> List.walk(
         Dict.empty({}),
-        \dict, pair ->
+        |dict, pair|
             when Str.split_first(pair, "=") is
                 Ok({ before, after }) -> Dict.insert(dict, before, after)
                 Err(NotFound) -> Dict.insert(dict, pair, ""),
@@ -480,23 +480,23 @@ query_params = \url ->
 ## |> Url.path
 ## ```
 path : Url -> Str
-path = \@Url urlStr ->
-    withoutAuthority =
-        when Str.split_first urlStr ":" is
-            Ok { after } ->
-                when Str.split_first after "//" is
+path = |@Url(url_str)|
+    without_authority =
+        when Str.split_first(url_str, ":") is
+            Ok({ after }) ->
+                when Str.split_first(after, "//") is
                     # Only drop the `//` if it's right after the `://` like in `https://`
                     # (so, `before` is empty) - otherwise, the `//` is part of the path!
-                    Ok { before, after: afterSlashes } if Str.is_empty before -> afterSlashes
+                    Ok({ before, after: after_slashes }) if Str.is_empty(before) -> after_slashes
                     _ -> after
 
             # There's no `//` and also no `:` so this must be a path-only URL, e.g. "/foo?bar=baz#blah"
-            Err NotFound -> urlStr
+            Err(NotFound) -> url_str
 
     # Drop the query and/or fragment
-    when Str.split_last withoutAuthority "?" is
-        Ok { before } -> before
-        Err NotFound ->
-            when Str.split_last withoutAuthority "#" is
-                Ok { before } -> before
-                Err NotFound -> withoutAuthority
+    when Str.split_last(without_authority, "?") is
+        Ok({ before }) -> before
+        Err(NotFound) ->
+            when Str.split_last(without_authority, "#") is
+                Ok({ before }) -> before
+                Err(NotFound) -> without_authority

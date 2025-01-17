@@ -34,7 +34,7 @@ IOErr : [
 ]
 
 handle_err : InternalIOErr.IOErrFromHost -> [StderrErr IOErr]
-handle_err = \{ tag, msg } ->
+handle_err = |{ tag, msg }|
     when tag is
         NotFound -> StderrErr(NotFound)
         PermissionDenied -> StderrErr(PermissionDenied)
@@ -50,7 +50,7 @@ handle_err = \{ tag, msg } ->
 ##
 ## > To write to `stderr` without the newline, see [Stderr.write!].
 line! : Str => Result {} [StderrErr IOErr]
-line! = \str ->
+line! = |str|
     Host.stderr_line!(str)
     |> Result.map_err(handle_err)
 
@@ -61,6 +61,6 @@ line! = \str ->
 ##
 ## > To write to `stderr` with a newline at the end, see [Stderr.line!].
 write! : Str => Result {} [StderrErr IOErr]
-write! = \str ->
+write! = |str|
     Host.stderr_write!(str)
     |> Result.map_err(handle_err)

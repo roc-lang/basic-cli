@@ -35,7 +35,7 @@ IOErr : [
 ]
 
 handle_err : InternalIOErr.IOErrFromHost -> [EndOfFile, StdinErr IOErr]
-handle_err = \{ tag, msg } ->
+handle_err = |{ tag, msg }|
     when tag is
         NotFound -> StdinErr(NotFound)
         PermissionDenied -> StdinErr(PermissionDenied)
@@ -54,7 +54,7 @@ handle_err = \{ tag, msg } ->
 ## programming having gotten stuck. It's often helpful to print a prompt first, so
 ## the user knows it's necessary to enter something before the program will continue.
 line! : {} => Result Str [EndOfFile, StdinErr IOErr]
-line! = \{} ->
+line! = |{}|
     Host.stdin_line!({})
     |> Result.map_err(handle_err)
 
@@ -65,16 +65,16 @@ line! = \{} ->
 ## which disables defaults terminal bevahiour and allows reading input
 ## without buffering until Enter key is pressed.
 bytes! : {} => Result (List U8) [EndOfFile, StdinErr IOErr]
-bytes! = \{} ->
+bytes! = |{}|
     Host.stdin_bytes!({})
     |> Result.map_err(handle_err)
 
 ## Read all bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)) until EOF in this source.
 read_to_end! : {} => Result (List U8) [StdinErr IOErr]
-read_to_end! = \{} ->
+read_to_end! = |{}|
     Host.stdin_read_to_end!({})
     |> Result.map_err(
-        \{ tag, msg } ->
+        |{ tag, msg }|
             when tag is
                 NotFound -> StdinErr(NotFound)
                 PermissionDenied -> StdinErr(PermissionDenied)

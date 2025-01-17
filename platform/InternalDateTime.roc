@@ -7,7 +7,7 @@ module [
 DateTime : { year : I128, month : I128, day : I128, hours : I128, minutes : I128, seconds : I128 }
 
 to_iso_8601 : DateTime -> Str
-to_iso_8601 = \{ year, month, day, hours, minutes, seconds } ->
+to_iso_8601 = |{ year, month, day, hours, minutes, seconds }|
     year_str = year_with_padded_zeros(year)
     month_str = month_with_padded_zeros(month)
     day_str = day_with_padded_zeros(day)
@@ -18,7 +18,7 @@ to_iso_8601 = \{ year, month, day, hours, minutes, seconds } ->
     "${year_str}-${month_str}-${day_str}T${hour_str}:${minute_str}:${seconds_str}Z"
 
 year_with_padded_zeros : I128 -> Str
-year_with_padded_zeros = \year ->
+year_with_padded_zeros = |year|
     year_str = Num.to_str(year)
     if year < 10 then
         "000${year_str}"
@@ -30,7 +30,7 @@ year_with_padded_zeros = \year ->
         year_str
 
 month_with_padded_zeros : I128 -> Str
-month_with_padded_zeros = \month ->
+month_with_padded_zeros = |month|
     month_str = Num.to_str(month)
     if month < 10 then
         "0${month_str}"
@@ -50,7 +50,7 @@ seconds_with_padded_zeros : I128 -> Str
 seconds_with_padded_zeros = month_with_padded_zeros
 
 is_leap_year : I128 -> Bool
-is_leap_year = \year ->
+is_leap_year = |year|
     (year % 4 == 0)
     && # divided evenly by 4 unless...
     (
@@ -67,7 +67,7 @@ expect List.map([2023, 1988, 1992, 1996], is_leap_year) == [Bool.false, Bool.tru
 expect List.map([1700, 1800, 1900, 2100, 2200, 2300, 2500, 2600], is_leap_year) == [Bool.false, Bool.false, Bool.false, Bool.false, Bool.false, Bool.false, Bool.false, Bool.false]
 
 days_in_month : I128, I128 -> I128
-days_in_month = \year, month ->
+days_in_month = |year, month|
     if List.contains([1, 3, 5, 7, 8, 10, 12], month) then
         31
     else if List.contains([4, 6, 9, 11], month) then
@@ -92,7 +92,7 @@ expect days_in_month(2023, 11) == 30 # November
 expect days_in_month(2023, 12) == 31 # December
 
 epoch_millis_to_datetime : I128 -> DateTime
-epoch_millis_to_datetime = \millis ->
+epoch_millis_to_datetime = |millis|
     seconds = millis // 1000
     minutes = seconds // 60
     hours = minutes // 60
@@ -112,7 +112,7 @@ epoch_millis_to_datetime = \millis ->
     )
 
 epoch_millis_to_datetimeHelp : DateTime -> DateTime
-epoch_millis_to_datetimeHelp = \current ->
+epoch_millis_to_datetimeHelp = |current|
     count_days_in_month = days_in_month(current.year, current.month)
     count_days_in_prev_month =
         if current.month == 1 then

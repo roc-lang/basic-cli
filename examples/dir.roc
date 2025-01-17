@@ -6,7 +6,7 @@ import pf.Stdout
 import pf.Dir
 import pf.Path
 
-main! = \_args ->
+main! = |_args|
 
     # Create a directory
     Dir.create!("dirExampleE")?
@@ -20,7 +20,7 @@ main! = \_args ->
     # List the contents of a directory
     paths_as_str =
         Dir.list!("dirExampleA")
-        |> Result.map_ok(\paths -> List.map(paths, Path.display))
+        |> Result.map_ok(|paths| List.map(paths, Path.display))
         |> try
 
     # Check the contents of the directory

@@ -46,7 +46,7 @@ IOErrFromHost : {
 }
 
 handle_err : IOErrFromHost -> IOErr
-handle_err = \{ tag, msg } ->
+handle_err = |{ tag, msg }|
     when tag is
         NotFound -> NotFound
         PermissionDenied -> PermissionDenied

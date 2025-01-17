@@ -5,7 +5,7 @@ app [main!] { pf: platform "../platform/main.roc" }
 import pf.Stdin
 import pf.Stdout
 
-main! = \_args ->
+main! = |_args|
 
     Stdout.line!("What's your first name?")?
 

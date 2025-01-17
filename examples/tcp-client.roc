@@ -7,13 +7,13 @@ import pf.Stderr
 
 # To run this example: check the README.md in this folder
 
-main! = \_args ->
+main! = |_args|
     when run!({}) is
         Ok({}) -> Ok({})
         Err(err) -> handle_err!(err)
 
 handle_err! : []_ => Result {} _
-handle_err! = \error ->
+handle_err! = |error|
     when error is
         TcpConnectErr(err) ->
             err_str = Tcp.connect_err_to_str(err)
@@ -43,7 +43,7 @@ handle_err! = \error ->
         other -> Stderr.line!("Got other error: ${Inspect.to_str(other)}")
 
 run! : {} => Result {} _
-run! = \{} ->
+run! = |{}|
 
     stream = Tcp.connect!("127.0.0.1", 8085)?
 
@@ -51,11 +51,11 @@ run! = \{} ->
 
     loop!(
         {},
-        \_ -> Result.map_ok(tick!(stream), Step),
+        |_| Result.map_ok(tick!(stream), Step),
     )
 
 tick! : Tcp.Stream => Result {} _
-tick! = \stream ->
+tick! = |stream|
     Stdout.write!("> ")?
 
     out_msg = Stdin.line!({})?
@@ -67,7 +67,7 @@ tick! = \stream ->
     Stdout.line!("< ${in_msg}")
 
 loop! : state, (state => Result [Step state, Done done] err) => Result done err
-loop! = \state, fn! ->
+loop! = |state, fn!|
     when fn!(state) is
         Err(err) -> Err(err)
         Ok(Done(done)) -> Ok(done)

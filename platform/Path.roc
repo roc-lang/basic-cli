@@ -69,7 +69,7 @@ IOErr : InternalIOErr.IOErr
 ##
 ## > To write unformatted bytes to a file, you can use [Path.write_bytes!] instead.
 write! : val, Path, fmt => Result {} [FileWriteErr Path IOErr] where val implements Encoding, fmt implements EncoderFormatting
-write! = \val, path, fmt ->
+write! = |val, path, fmt|
     bytes = Encode.to_bytes(val, fmt)
 
     # TODO handle encoding errors here, once they exist
@@ -86,11 +86,11 @@ write! = \val, path, fmt ->
 ##
 ## > To format data before writing it to a file, you can use [Path.write!] instead.
 write_bytes! : List U8, Path => Result {} [FileWriteErr Path IOErr]
-write_bytes! = \bytes, path ->
+write_bytes! = |bytes, path|
     path_bytes = InternalPath.to_bytes(path)
 
     Host.file_write_bytes!(path_bytes, bytes)
-    |> Result.map_err(\err -> FileWriteErr(path, InternalIOErr.handle_err(err)))
+    |> Result.map_err(|err| FileWriteErr(path, InternalIOErr.handle_err(err)))
 
 ## Writes a [Str] to a file, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##
@@ -103,11 +103,11 @@ write_bytes! = \bytes, path ->
 ##
 ## > To write unformatted bytes to a file, you can use [Path.write_bytes!] instead.
 write_utf8! : Str, Path => Result {} [FileWriteErr Path IOErr]
-write_utf8! = \str, path ->
+write_utf8! = |str, path|
     path_bytes = InternalPath.to_bytes(path)
 
     Host.file_write_utf8!(path_bytes, str)
-    |> Result.map_err(\err -> FileWriteErr(path, InternalIOErr.handle_err(err)))
+    |> Result.map_err(|err| FileWriteErr(path, InternalIOErr.handle_err(err)))
 
 ## Note that the path may not be valid depending on the filesystem where it is used.
 ## For example, paths containing `:` are valid on ext4 and NTFS filesystems, but not
@@ -119,7 +119,7 @@ write_utf8! = \str, path ->
 ## (at the time). Otherwise, error handling can happen for that operation rather than validating
 ## up front for a false sense of security (given symlinks, parts of a path being renamed, etc.).
 from_str : Str -> Path
-from_str = \str ->
+from_str = |str|
     FromStr(str)
     |> InternalPath.wrap
 
@@ -129,7 +129,7 @@ from_str = \str ->
 ## Note that if the list contains any `0` bytes, sending this path to any file operations
 ## (e.g. `Path.read_bytes` or `WriteStream.openPath`) will fail.
 from_bytes : List U8 -> Path
-from_bytes = \bytes ->
+from_bytes = |bytes|
     ArbitraryBytes(bytes)
     |> InternalPath.wrap
 
@@ -165,7 +165,7 @@ from_bytes = \bytes ->
 ## If you happen to know the `Charset` that was used to encode the path, you can use
 ## `toStrUsingCharset` instead of [display].
 display : Path -> Str
-display = \path ->
+display = |path|
     when InternalPath.unwrap(path) is
         FromStr(str) -> str
         FromOperatingSystem(bytes) | ArbitraryBytes(bytes) ->
@@ -182,7 +182,7 @@ display = \path ->
 ##
 ## > [`File.is_dir`](File#is_dir!) does the same thing, except it takes a [Str] instead of a [Path].
 is_dir! : Path => Result Bool [PathErr IOErr]
-is_dir! = \path ->
+is_dir! = |path|
     res = type!(path)?
     Ok((res == IsDir))
 
@@ -194,7 +194,7 @@ is_dir! = \path ->
 ##
 ## > [`File.is_file`](File#is_file!) does the same thing, except it takes a [Str] instead of a [Path].
 is_file! : Path => Result Bool [PathErr IOErr]
-is_file! = \path ->
+is_file! = |path|
     res = type!(path)?
     Ok((res == IsFile))
 
@@ -206,7 +206,7 @@ is_file! = \path ->
 ##
 ## > [`File.is_sym_link`](File#is_sym_link!) does the same thing, except it takes a [Str] instead of a [Path].
 is_sym_link! : Path => Result Bool [PathErr IOErr]
-is_sym_link! = \path ->
+is_sym_link! = |path|
     res = type!(path)?
     Ok((res == IsSymLink))
 
@@ -214,11 +214,11 @@ is_sym_link! = \path ->
 ##
 ## > [`File.type`](File#type!) does the same thing, except it takes a [Str] instead of a [Path].
 type! : Path => Result [IsFile, IsDir, IsSymLink] [PathErr IOErr]
-type! = \path ->
+type! = |path|
     Host.path_type!(InternalPath.to_bytes(path))
-    |> Result.map_err(\err -> PathErr(InternalIOErr.handle_err(err)))
+    |> Result.map_err(|err| PathErr(InternalIOErr.handle_err(err)))
     |> Result.map_ok(
-        \path_type ->
+        |path_type|
             if path_type.is_sym_link then
                 IsSymLink
             else if path_type.is_dir then
@@ -237,7 +237,7 @@ type! = \path ->
 ## Path.from_str("foo/bar/baz.xz") |> Path.with_extension("txt")
 ## ```
 with_extension : Path, Str -> Path
-with_extension = \path, extension ->
+with_extension = |path, extension|
     when InternalPath.unwrap(path) is
         FromOperatingSystem(bytes) | ArbitraryBytes(bytes) ->
             before_dot =
@@ -286,9 +286,9 @@ with_extension = \path, extension ->
 ##
 ## > [`File.delete`](File#delete!) does the same thing, except it takes a [Str] instead of a [Path].
 delete! : Path => Result {} [FileWriteErr Path IOErr]
-delete! = \path ->
+delete! = |path|
     Host.file_delete!(InternalPath.to_bytes(path))
-    |> Result.map_err(\err -> FileWriteErr(path, InternalIOErr.handle_err(err)))
+    |> Result.map_err(|err| FileWriteErr(path, InternalIOErr.handle_err(err)))
 
 ## Reads a [Str] from a file containing [UTF-8](https://en.wikipedia.org/wiki/UTF-8)-encoded text.
 ##
@@ -304,13 +304,13 @@ delete! = \path ->
 ## >
 ## > [`File.read_utf8`](File#read_utf8!) does the same thing, except it takes a [Str] instead of a [Path].
 read_utf8! : Path => Result Str [FileReadErr Path IOErr, FileReadUtf8Err Path _]
-read_utf8! = \path ->
+read_utf8! = |path|
     bytes =
         Host.file_read_bytes!(InternalPath.to_bytes(path))
-        |> Result.map_err?(\read_err -> FileReadErr(path, InternalIOErr.handle_err(read_err)))
+        |> Result.map_err?(|read_err| FileReadErr(path, InternalIOErr.handle_err(read_err)))
 
     Str.from_utf8(bytes)
-    |> Result.map_err(\err -> FileReadUtf8Err(path, err))
+    |> Result.map_err(|err| FileReadUtf8Err(path, err))
 
 ## Reads all the bytes in a file.
 ##
@@ -325,15 +325,15 @@ read_utf8! = \path ->
 ## >
 ## > [`File.read_bytes`](File#read_bytes!) does the same thing, except it takes a [Str] instead of a [Path].
 read_bytes! : Path => Result (List U8) [FileReadErr Path IOErr]
-read_bytes! = \path ->
+read_bytes! = |path|
     Host.file_read_bytes!(InternalPath.to_bytes(path))
-    |> Result.map_err(\err -> FileReadErr(path, InternalIOErr.handle_err(err)))
+    |> Result.map_err(|err| FileReadErr(path, InternalIOErr.handle_err(err)))
 
 ## Lists the files and directories inside the directory.
 ##
 ## > [`Dir.list`](Dir#list!) does the same thing, except it takes a [Str] instead of a [Path].
 list_dir! : Path => Result (List Path) [DirErr IOErr]
-list_dir! = \path ->
+list_dir! = |path|
     when Host.dir_list!(InternalPath.to_bytes(path)) is
         Ok(entries) -> Ok(List.map(entries, InternalPath.from_os_bytes))
         Err(err) -> Err(DirErr(InternalIOErr.handle_err(err)))
@@ -348,9 +348,9 @@ list_dir! = \path ->
 ##
 ## > [`Dir.delete_empty`](Dir#delete_empty!) does the same thing, except it takes a [Str] instead of a [Path].
 delete_empty! : Path => Result {} [DirErr IOErr]
-delete_empty! = \path ->
+delete_empty! = |path|
     Host.dir_delete_empty!(InternalPath.to_bytes(path))
-    |> Result.map_err(\err -> DirErr(InternalIOErr.handle_err(err)))
+    |> Result.map_err(|err| DirErr(InternalIOErr.handle_err(err)))
 
 ## Recursively deletes a directory as well as all files and directories
 ## inside it.
@@ -363,9 +363,9 @@ delete_empty! = \path ->
 ##
 ## > [`Dir.delete_all`](Dir#delete_all!) does the same thing, except it takes a [Str] instead of a [Path].
 delete_all! : Path => Result {} [DirErr IOErr]
-delete_all! = \path ->
+delete_all! = |path|
     Host.dir_delete_all!(InternalPath.to_bytes(path))
-    |> Result.map_err(\err -> DirErr(InternalIOErr.handle_err(err)))
+    |> Result.map_err(|err| DirErr(InternalIOErr.handle_err(err)))
 
 ## Creates a directory
 ##
@@ -376,9 +376,9 @@ delete_all! = \path ->
 ##
 ## > [`Dir.create`](Dir#create!) does the same thing, except it takes a [Str] instead of a [Path].
 create_dir! : Path => Result {} [DirErr IOErr]
-create_dir! = \path ->
+create_dir! = |path|
     Host.dir_create!(InternalPath.to_bytes(path))
-    |> Result.map_err(\err -> DirErr(InternalIOErr.handle_err(err)))
+    |> Result.map_err(|err| DirErr(InternalIOErr.handle_err(err)))
 
 ## Creates a directory recursively adding any missing parent directories.
 ##
@@ -388,9 +388,9 @@ create_dir! = \path ->
 ##
 ## > [`Dir.create_all`](Dir#create_all!) does the same thing, except it takes a [Str] instead of a [Path].
 create_all! : Path => Result {} [DirErr IOErr]
-create_all! = \path ->
+create_all! = |path|
     Host.dir_create_all!(InternalPath.to_bytes(path))
-    |> Result.map_err(\err -> DirErr(InternalIOErr.handle_err(err)))
+    |> Result.map_err(|err| DirErr(InternalIOErr.handle_err(err)))
 
 ## Creates a new hard link on the filesystem.
 ##
@@ -401,7 +401,7 @@ create_all! = \path ->
 ##
 ## > [File.hard_link!] does the same thing, except it takes a [Str] instead of a [Path].
 hard_link! : Path => Result {} [LinkErr IOErr]
-hard_link! = \path ->
+hard_link! = |path|
     Host.hard_link!(InternalPath.to_bytes(path))
     |> Result.map_err(InternalIOErr.handle_err)
     |> Result.map_err(LinkErr)
