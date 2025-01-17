@@ -6,7 +6,7 @@ import pf.Stdin
 
 # To run this example: check the README.md in this folder
 
-main! = \_args ->
+main! = |_args|
     Stdout.line!("Enter a series of number characters (0-9):")?
 
     number_bytes = take_number_bytes!({})?
@@ -22,14 +22,14 @@ main! = \_args ->
                 Stderr.line!("Error, bad utf8")
 
 take_number_bytes! : {} => Result (List U8) _
-take_number_bytes! = \{} ->
+take_number_bytes! = |{}|
     bytes_read = Stdin.bytes!({})?
 
     number_bytes =
         List.walk(
             bytes_read,
             [],
-            \bytes, b ->
+            |bytes, b|
                 if b >= '0' && b <= '9' then
                     List.append(bytes, b)
                 else

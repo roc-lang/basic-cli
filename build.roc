@@ -13,7 +13,7 @@ import cli.Env
 ## Check basic-cli-build-steps.png for a diagram that shows what the code does.
 ##
 main! : _ => Result {} _
-main! = \_args ->
+main! = |_args|
 
     roc_cmd = Env.var!("ROC") |> Result.with_default("roc")
 
@@ -43,14 +43,14 @@ main! = \_args ->
     Ok({})
 
 roc_version! : Str => Result {} _
-roc_version! = \roc_cmd ->
+roc_version! = |roc_cmd|
     info!("Checking provided roc; executing `${roc_cmd} version`:")?
 
     Cmd.exec!(roc_cmd, ["version"])
     |> Result.map_err(RocVersionCheckFailed)
 
 get_os_and_arch! : {} => Result OSAndArch _
-get_os_and_arch! = \{} ->
+get_os_and_arch! = |{}|
     info!("Getting the native operating system and architecture ...")?
 
     convert_os_and_arch!(Env.platform!({}))
@@ -65,7 +65,7 @@ OSAndArch : [
 ]
 
 convert_os_and_arch! : _ => Result OSAndArch _
-convert_os_and_arch! = \{ os, arch } ->
+convert_os_and_arch! = |{ os, arch }|
     when (os, arch) is
         (MACOS, AARCH64) -> Ok(MacosArm64)
         (MACOS, X64) -> Ok(MacosX64)
@@ -74,21 +74,21 @@ convert_os_and_arch! = \{ os, arch } ->
         _ -> Err(UnsupportedNative(os, arch))
 
 build_stub_app_lib! : Str, Str => Result {} _
-build_stub_app_lib! = \roc_cmd, stub_lib_path ->
+build_stub_app_lib! = |roc_cmd, stub_lib_path|
     info!("Building stubbed app shared library ...")?
 
     Cmd.exec!(roc_cmd, ["build", "--lib", "platform/libapp.roc", "--output", stub_lib_path, "--optimize"])
     |> Result.map_err(ErrBuildingAppStub)
 
 stub_file_extension : OSAndArch -> Str
-stub_file_extension = \os_and_arch ->
+stub_file_extension = |os_and_arch|
     when os_and_arch is
         MacosX64 | MacosArm64 -> "dylib"
         LinuxArm64 | LinuxX64 -> "so"
         WindowsX64 | WindowsArm64 -> "dll"
 
 prebuilt_static_lib_file : OSAndArch -> Str
-prebuilt_static_lib_file = \os_and_arch ->
+prebuilt_static_lib_file = |os_and_arch|
     when os_and_arch is
         MacosArm64 -> "macos-arm64.a"
         MacosX64 -> "macos-x64.a"
@@ -98,7 +98,7 @@ prebuilt_static_lib_file = \os_and_arch ->
         WindowsX64 -> "windows-x64.lib"
 
 get_rust_target_folder! : [Debug, Release] => Result Str _
-get_rust_target_folder! = \debug_mode ->
+get_rust_target_folder! = |debug_mode|
 
     debug_or_release = if debug_mode == Debug then "debug" else "release"
 
@@ -115,9 +115,9 @@ get_rust_target_folder! = \debug_mode ->
             Ok("target/${debug_or_release}/")
 
 cargo_build_host! : [Debug, Release] => Result {} _
-cargo_build_host! = \debug_mode ->
+cargo_build_host! = |debug_mode|
 
-    cargo_build_args! = \{} ->
+    cargo_build_args! = |{}|
         when debug_mode is
             Debug ->
                 info!("Building rust host in debug mode...")?
@@ -133,7 +133,7 @@ cargo_build_host! = \debug_mode ->
     |> Result.map_err(ErrBuildingHostBinaries)
 
 copy_host_lib! : OSAndArch, Str => Result {} _
-copy_host_lib! = \os_and_arch, rust_target_folder ->
+copy_host_lib! = |os_and_arch, rust_target_folder|
 
     host_build_path = "${rust_target_folder}libhost.a"
 
@@ -145,7 +145,7 @@ copy_host_lib! = \os_and_arch, rust_target_folder ->
     |> Result.map_err(ErrMovingPrebuiltLegacyBinary)
 
 preprocess_host! : Str, Str, Str => Result {} _
-preprocess_host! = \roc_cmd, stub_lib_path, rust_target_folder ->
+preprocess_host! = |roc_cmd, stub_lib_path, rust_target_folder|
 
     info!("Preprocessing surgical host ...")?
 
@@ -155,5 +155,5 @@ preprocess_host! = \roc_cmd, stub_lib_path, rust_target_folder ->
     |> Result.map_err(ErrPreprocessingSurgicalBinary)
 
 info! : Str => Result {} _
-info! = \msg ->
+info! = |msg|
     Stdout.line!("\u(001b)[34mINFO:\u(001b)[0m ${msg}")

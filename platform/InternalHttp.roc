@@ -56,14 +56,14 @@ ResponseToAndFromHost : {
 }
 
 to_host_response : Response -> ResponseToAndFromHost
-to_host_response = \{ status, headers, body } -> {
+to_host_response = |{ status, headers, body }| {
     status,
     headers,
     body,
 }
 
 to_host_request : Request -> RequestToAndFromHost
-to_host_request = \{ method, headers, uri, body, timeout_ms } -> {
+to_host_request = |{ method, headers, uri, body, timeout_ms }| {
     method: to_host_method(method),
     method_ext: to_host_method_ext(method),
     headers,
@@ -73,7 +73,7 @@ to_host_request = \{ method, headers, uri, body, timeout_ms } -> {
 }
 
 to_host_method : Method -> _
-to_host_method = \method ->
+to_host_method = |method|
     when method is
         OPTIONS -> 5
         GET -> 3
@@ -87,19 +87,19 @@ to_host_method = \method ->
         EXTENSION(_) -> 2
 
 to_host_method_ext : Method -> Str
-to_host_method_ext = \method ->
+to_host_method_ext = |method|
     when method is
         EXTENSION(ext) -> ext
         _ -> ""
 
 to_host_timeout : _ -> U64
-to_host_timeout = \timeout ->
+to_host_timeout = |timeout|
     when timeout is
         TimeoutMilliseconds(ms) -> ms
         NoTimeout -> 0
 
 from_host_request : RequestToAndFromHost -> Request
-from_host_request = \{ method, method_ext, headers, uri, body, timeout_ms } -> {
+from_host_request = |{ method, method_ext, headers, uri, body, timeout_ms }| {
     method: from_host_method(method, method_ext),
     headers,
     uri,
@@ -108,7 +108,7 @@ from_host_request = \{ method, method_ext, headers, uri, body, timeout_ms } -> {
 }
 
 from_host_method : U64, Str -> Method
-from_host_method = \tag, ext ->
+from_host_method = |tag, ext|
     when tag is
         5 -> OPTIONS
         3 -> GET
@@ -123,7 +123,7 @@ from_host_method = \tag, ext ->
         _ -> crash("invalid tag from host")
 
 from_host_timeout : U64 -> [TimeoutMilliseconds U64, NoTimeout]
-from_host_timeout = \timeout ->
+from_host_timeout = |timeout|
     when timeout is
         0 -> NoTimeout
         _ -> TimeoutMilliseconds(timeout)
@@ -132,7 +132,7 @@ expect from_host_timeout(0) == NoTimeout
 expect from_host_timeout(1) == TimeoutMilliseconds(1)
 
 from_host_response : ResponseToAndFromHost -> Response
-from_host_response = \{ status, headers, body } -> {
+from_host_response = |{ status, headers, body }| {
     status,
     headers,
     body,

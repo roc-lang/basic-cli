@@ -5,16 +5,16 @@ app [main!] { pf: platform "../platform/main.roc" }
 import pf.Stdin
 import pf.Stdout
 
-main! = \_args ->
+main! = |_args|
     Stdout.line!("\nLet's count down from 3 together - all you have to do is press <ENTER>.")?
     _ = Stdin.line!({})
     tick!(3)
 
-tick! = \n ->
+tick! = |n|
     if n == 0 then
         Stdout.line!("🎉 SURPRISE! Happy Birthday! 🎂")?
         Ok({})
     else
-        Stdout.line!((n |> Num.to_str |> \s -> "${s}..."))?
+        Stdout.line!("${Num.to_str n}...")?
         _ = Stdin.line!({})
-        tick!((n - 1))
+        tick!(n - 1)

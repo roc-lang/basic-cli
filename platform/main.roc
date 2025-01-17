@@ -29,7 +29,7 @@ import Stderr
 import InternalArg
 
 main_for_host! : List InternalArg.ArgToAndFromHost => I32
-main_for_host! = \raw_args ->
+main_for_host! = |raw_args|
 
     args =
         raw_args

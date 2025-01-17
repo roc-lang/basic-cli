@@ -5,7 +5,7 @@ app [main!] { pf: platform "../platform/main.roc" }
 import pf.Stdout
 import pf.Cmd
 
-main! = \_args ->
+main! = |_args|
     status_example!({})?
 
     output_example!({})?
@@ -15,12 +15,12 @@ main! = \_args ->
     Ok({})
 
 exec_example! : {} => Result {} _
-exec_example! = \{} -> Cmd.exec!("echo", ["EXEC"])
+exec_example! = |{}| Cmd.exec!("echo", ["EXEC"])
 
 # Run "env" with verbose option, clear all environment variables, and pass in
 # "FOO" and "BAZ".
 status_example! : {} => Result {} _
-status_example! = \{} ->
+status_example! = |{}|
     result =
         Cmd.new("env")
         |> Cmd.arg("-v")
@@ -36,7 +36,7 @@ status_example! = \{} ->
 # Run "env" with verbose option, clear all environment variables, and pass in
 # only as an environment variable "FOO"
 output_example! : {} => Result {} _
-output_example! = \{} ->
+output_example! = |{}|
 
     output =
         Cmd.new("env")

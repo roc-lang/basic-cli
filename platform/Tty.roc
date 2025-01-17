@@ -20,7 +20,7 @@ import Host
 ## Note: we plan on moving this function away from basic-cli in the future, see github.com/roc-lang/basic-cli/issues/73
 ##
 enable_raw_mode! : {} => {}
-enable_raw_mode! = \{} ->
+enable_raw_mode! = |{}|
     Host.tty_mode_raw!({})
 
 ## Revert terminal to default behaviour
@@ -28,5 +28,5 @@ enable_raw_mode! = \{} ->
 ## Note: we plan on moving this function away from basic-cli in the future, see github.com/roc-lang/basic-cli/issues/73
 ##
 disable_raw_mode! : {} => {}
-disable_raw_mode! = \{} ->
+disable_raw_mode! = |{}|
     Host.tty_mode_canonical!({})

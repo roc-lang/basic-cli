@@ -33,7 +33,7 @@ ConnectErr : [
 ]
 
 parse_connect_err : Str -> ConnectErr
-parse_connect_err = \err ->
+parse_connect_err = |err|
     when err is
         "ErrorKind::PermissionDenied" -> PermissionDenied
         "ErrorKind::AddrInUse" -> AddrInUse
@@ -57,7 +57,7 @@ StreamErr : [
 ]
 
 parse_stream_err : Str -> StreamErr
-parse_stream_err = \err ->
+parse_stream_err = |err|
     when err is
         "StreamNotFound" -> StreamNotFound
         "ErrorKind::PermissionDenied" -> PermissionDenied
@@ -84,7 +84,7 @@ parse_stream_err = \err ->
 ##  - `roc-lang.org`
 ##
 connect! : Str, U16 => Result Stream ConnectErr
-connect! = \host, port ->
+connect! = |host, port|
     Host.tcp_connect!(host, port)
     |> Result.map_ok(@Stream)
     |> Result.map_err(parse_connect_err)
@@ -98,9 +98,9 @@ connect! = \host, port ->
 ##
 ## > To read an exact number of bytes or fail, you can use [Tcp.read_exactly!] instead.
 read_up_to! : Stream, U64 => Result (List U8) [TcpReadErr StreamErr]
-read_up_to! = \@Stream(stream), bytes_to_read ->
+read_up_to! = |@Stream(stream), bytes_to_read|
     Host.tcp_read_up_to!(stream, bytes_to_read)
-    |> Result.map_err(\err -> TcpReadErr(parse_stream_err(err)))
+    |> Result.map_err(|err| TcpReadErr(parse_stream_err(err)))
 
 ## Read an exact number of bytes or fail.
 ##
@@ -111,10 +111,10 @@ read_up_to! = \@Stream(stream), bytes_to_read ->
 ## `TcpUnexpectedEOF` is returned if the stream ends before the specfied number of bytes is reached.
 ##
 read_exactly! : Stream, U64 => Result (List U8) [TcpReadErr StreamErr, TcpUnexpectedEOF]
-read_exactly! = \@Stream(stream), bytes_to_read ->
+read_exactly! = |@Stream(stream), bytes_to_read|
     Host.tcp_read_exactly!(stream, bytes_to_read)
     |> Result.map_err(
-        \err ->
+        |err|
             if err == unexpected_eof_error_message then
                 TcpUnexpectedEOF
             else
@@ -133,9 +133,9 @@ read_exactly! = \@Stream(stream), bytes_to_read ->
 ## > To read until a newline is found, you can use [Tcp.read_line!] which
 ## conveniently decodes to a [Str].
 read_until! : Stream, U8 => Result (List U8) [TcpReadErr StreamErr]
-read_until! = \@Stream(stream), byte ->
+read_until! = |@Stream(stream), byte|
     Host.tcp_read_until!(stream, byte)
-    |> Result.map_err(\err -> TcpReadErr(parse_stream_err(err)))
+    |> Result.map_err(|err| TcpReadErr(parse_stream_err(err)))
 
 ## Read until a newline or EOF is reached.
 ##
@@ -148,7 +148,7 @@ read_until! = \@Stream(stream), byte ->
 ## If found, the newline is included as the last character in the [Str].
 ##
 read_line! : Stream => Result Str [TcpReadErr StreamErr, TcpReadBadUtf8 _]
-read_line! = \stream ->
+read_line! = |stream|
     bytes = read_until!(stream, '\n')?
 
     Str.from_utf8(bytes)
@@ -163,9 +163,9 @@ read_line! = \stream ->
 ##
 ## > To write a [Str], you can use [Tcp.write_utf8!] instead.
 write! : Stream, List U8 => Result {} [TcpWriteErr StreamErr]
-write! = \@Stream(stream), bytes ->
+write! = |@Stream(stream), bytes|
     Host.tcp_write!(stream, bytes)
-    |> Result.map_err(\err -> TcpWriteErr(parse_stream_err(err)))
+    |> Result.map_err(|err| TcpWriteErr(parse_stream_err(err)))
 
 ## Writes a [Str] to a TCP stream, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##
@@ -176,7 +176,7 @@ write! = \@Stream(stream), bytes ->
 ##
 ## > To write unformatted bytes, you can use [Tcp.write!] instead.
 write_utf8! : Stream, Str => Result {} [TcpWriteErr StreamErr]
-write_utf8! = \stream, str ->
+write_utf8! = |stream, str|
     write!(stream, Str.to_utf8(str))
 
 ## Convert a [ConnectErr] to a [Str] you can print.
@@ -188,7 +188,7 @@ write_utf8! = \stream, str ->
 ## ```
 ##
 connect_err_to_str : ConnectErr -> Str
-connect_err_to_str = \err ->
+connect_err_to_str = |err|
     when err is
         PermissionDenied -> "PermissionDenied"
         AddrInUse -> "AddrInUse"
@@ -213,7 +213,7 @@ connect_err_to_str = \err ->
 ## ```
 ##
 stream_err_to_str : StreamErr -> Str
-stream_err_to_str = \err ->
+stream_err_to_str = |err|
     when err is
         StreamNotFound -> "StreamNotFound"
         PermissionDenied -> "PermissionDenied"

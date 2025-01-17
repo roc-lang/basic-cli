@@ -27,9 +27,9 @@ EnvFormat := {} implements [
     ]
 
 format : {} -> EnvFormat
-format = \{} -> @EnvFormat({})
+format = |{}| @EnvFormat({})
 
-decode_bytes_to_num = \bytes, transformer ->
+decode_bytes_to_num = |bytes, transformer|
     when Str.from_utf8(bytes) is
         Ok(s) ->
             when transformer(s) is
@@ -38,22 +38,22 @@ decode_bytes_to_num = \bytes, transformer ->
 
         Err(_) -> { result: Err(TooShort), rest: bytes }
 
-env_u8 = Decode.custom(\bytes, @EnvFormat({}) -> decode_bytes_to_num(bytes, Str.to_u8))
-env_u16 = Decode.custom(\bytes, @EnvFormat({}) -> decode_bytes_to_num(bytes, Str.to_u16))
-env_u32 = Decode.custom(\bytes, @EnvFormat({}) -> decode_bytes_to_num(bytes, Str.to_u32))
-env_u64 = Decode.custom(\bytes, @EnvFormat({}) -> decode_bytes_to_num(bytes, Str.to_u64))
-env_u128 = Decode.custom(\bytes, @EnvFormat({}) -> decode_bytes_to_num(bytes, Str.to_u128))
-env_i8 = Decode.custom(\bytes, @EnvFormat({}) -> decode_bytes_to_num(bytes, Str.to_i8))
-env_i16 = Decode.custom(\bytes, @EnvFormat({}) -> decode_bytes_to_num(bytes, Str.to_i16))
-env_i32 = Decode.custom(\bytes, @EnvFormat({}) -> decode_bytes_to_num(bytes, Str.to_i32))
-env_i64 = Decode.custom(\bytes, @EnvFormat({}) -> decode_bytes_to_num(bytes, Str.to_i64))
-env_i128 = Decode.custom(\bytes, @EnvFormat({}) -> decode_bytes_to_num(bytes, Str.to_i128))
-env_f32 = Decode.custom(\bytes, @EnvFormat({}) -> decode_bytes_to_num(bytes, Str.to_f32))
-env_f64 = Decode.custom(\bytes, @EnvFormat({}) -> decode_bytes_to_num(bytes, Str.to_f64))
-env_dec = Decode.custom(\bytes, @EnvFormat({}) -> decode_bytes_to_num(bytes, Str.to_dec))
+env_u8 = Decode.custom(|bytes, @EnvFormat({})| decode_bytes_to_num(bytes, Str.to_u8))
+env_u16 = Decode.custom(|bytes, @EnvFormat({})| decode_bytes_to_num(bytes, Str.to_u16))
+env_u32 = Decode.custom(|bytes, @EnvFormat({})| decode_bytes_to_num(bytes, Str.to_u32))
+env_u64 = Decode.custom(|bytes, @EnvFormat({})| decode_bytes_to_num(bytes, Str.to_u64))
+env_u128 = Decode.custom(|bytes, @EnvFormat({})| decode_bytes_to_num(bytes, Str.to_u128))
+env_i8 = Decode.custom(|bytes, @EnvFormat({})| decode_bytes_to_num(bytes, Str.to_i8))
+env_i16 = Decode.custom(|bytes, @EnvFormat({})| decode_bytes_to_num(bytes, Str.to_i16))
+env_i32 = Decode.custom(|bytes, @EnvFormat({})| decode_bytes_to_num(bytes, Str.to_i32))
+env_i64 = Decode.custom(|bytes, @EnvFormat({})| decode_bytes_to_num(bytes, Str.to_i64))
+env_i128 = Decode.custom(|bytes, @EnvFormat({})| decode_bytes_to_num(bytes, Str.to_i128))
+env_f32 = Decode.custom(|bytes, @EnvFormat({})| decode_bytes_to_num(bytes, Str.to_f32))
+env_f64 = Decode.custom(|bytes, @EnvFormat({})| decode_bytes_to_num(bytes, Str.to_f64))
+env_dec = Decode.custom(|bytes, @EnvFormat({})| decode_bytes_to_num(bytes, Str.to_dec))
 
 env_bool = Decode.custom(
-    \bytes, @EnvFormat({}) ->
+    |bytes, @EnvFormat({})|
         when Str.from_utf8(bytes) is
             Ok("true") -> { result: Ok(Bool.true), rest: [] }
             Ok("false") -> { result: Ok(Bool.false), rest: [] }
@@ -61,21 +61,21 @@ env_bool = Decode.custom(
 )
 
 env_string = Decode.custom(
-    \bytes, @EnvFormat({}) ->
+    |bytes, @EnvFormat({})|
         when Str.from_utf8(bytes) is
             Ok(s) -> { result: Ok(s), rest: [] }
             Err(_) -> { result: Err(TooShort), rest: bytes },
 )
 
-env_list = \decode_elem ->
+env_list = |decode_elem|
     Decode.custom(
-        \bytes, @EnvFormat({}) ->
+        |bytes, @EnvFormat({})|
             # Per our supported methods of decoding, this is either a list of strings or
             # a list of numbers; in either case, the list of bytes must be Utf-8
             # decodable. So just parse it as a list of strings and pass each chunk to
             # the element decoder. By construction, our element decoders expect to parse
             # a whole list of bytes anyway.
-            decode_elems = \all_bytes, accum ->
+            decode_elems = |all_bytes, accum|
                 { to_parse, remainder } =
                     when List.split_first(all_bytes, Num.to_u8(',')) is
                         Ok({ before, after }) ->
@@ -104,9 +104,9 @@ env_list = \decode_elem ->
 # exercised, and the solver can find an ambient lambda set for the
 # specialization.
 env_record : _, (_, _ -> [Keep (Decoder _ _), Skip]), (_, _ -> _) -> Decoder _ _
-env_record = \_initialState, _stepField, _finalizer ->
+env_record = |_initialState, _stepField, _finalizer|
     Decode.custom(
-        \bytes, @EnvFormat({}) ->
+        |bytes, @EnvFormat({})|
             { result: Err(TooShort), rest: bytes },
     )
 
@@ -114,8 +114,8 @@ env_record = \_initialState, _stepField, _finalizer ->
 # exercised, and the solver can find an ambient lambda set for the
 # specialization.
 env_tuple : _, (_, _ -> [Next (Decoder _ _), TooLong]), (_ -> _) -> Decoder _ _
-env_tuple = \_initialState, _stepElem, _finalizer ->
+env_tuple = |_initialState, _stepElem, _finalizer|
     Decode.custom(
-        \bytes, @EnvFormat({}) ->
+        |bytes, @EnvFormat({})|
             { result: Err(TooShort), rest: bytes },
     )

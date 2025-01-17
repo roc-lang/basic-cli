@@ -165,37 +165,37 @@ prepare! :
         query : Str,
     }
     => Result Stmt [SqliteErr ErrCode Str]
-prepare! = \{ path, query: q } ->
+prepare! = |{ path, query: q }|
     Host.sqlite_prepare!(path, q)
     |> Result.map_ok(@Stmt)
     |> Result.map_err(internal_to_external_error)
 
 # internal use only
 bind! : Stmt, List Binding => Result {} [SqliteErr ErrCode Str]
-bind! = \@Stmt(stmt), bindings ->
+bind! = |@Stmt(stmt), bindings|
     Host.sqlite_bind!(stmt, bindings)
     |> Result.map_err(internal_to_external_error)
 
 # internal use only
 columns! : Stmt => List Str
-columns! = \@Stmt(stmt) ->
+columns! = |@Stmt(stmt)|
     Host.sqlite_columns!(stmt)
 
 # internal use only
 column_value! : Stmt, U64 => Result Value [SqliteErr ErrCode Str]
-column_value! = \@Stmt(stmt), i ->
+column_value! = |@Stmt(stmt), i|
     Host.sqlite_column_value!(stmt, i)
     |> Result.map_err(internal_to_external_error)
 
 # internal use only
 step! : Stmt => Result [Row, Done] [SqliteErr ErrCode Str]
-step! = \@Stmt(stmt) ->
+step! = |@Stmt(stmt)|
     Host.sqlite_step!(stmt)
     |> Result.map_err(internal_to_external_error)
 
 # internal use only
 reset! : Stmt => Result {} [SqliteErr ErrCode Str]
-reset! = \@Stmt(stmt) ->
+reset! = |@Stmt(stmt)|
     Host.sqlite_reset!(stmt)
     |> Result.map_err(internal_to_external_error)
 
@@ -219,7 +219,7 @@ execute! :
         bindings : List Binding,
     }
     => Result {} [SqliteErr ErrCode Str, UnhandledRows]
-execute! = \{ path, query: q, bindings } ->
+execute! = |{ path, query: q, bindings }|
     stmt = try(prepare!, { path, query: q })
     execute_prepared!({ stmt, bindings })
 
@@ -233,7 +233,7 @@ execute_prepared! :
         bindings : List Binding,
     }
     => Result {} [SqliteErr ErrCode Str, UnhandledRows]
-execute_prepared! = \{ stmt, bindings } ->
+execute_prepared! = |{ stmt, bindings }|
     try(bind!, stmt, bindings)
     res = step!(stmt)
     try(reset!, stmt)
@@ -267,7 +267,7 @@ query! :
         row : SqlDecode a (RowCountErr err),
     }
     => Result a (SqlDecodeErr (RowCountErr err))
-query! = \{ path, query: q, bindings, row } ->
+query! = |{ path, query: q, bindings, row }|
     stmt = try(prepare!, { path, query: q })
     query_prepared!({ stmt, bindings, row })
 
@@ -282,7 +282,7 @@ query_prepared! :
         row : SqlDecode a (RowCountErr err),
     }
     => Result a (SqlDecodeErr (RowCountErr err))
-query_prepared! = \{ stmt, bindings, row: decode } ->
+query_prepared! = |{ stmt, bindings, row: decode }|
     try(bind!, stmt, bindings)
     res = decode_exactly_one_row!(stmt, decode)
     try(reset!, stmt)
@@ -310,7 +310,7 @@ query_many! :
         rows : SqlDecode a err,
     }
     => Result (List a) (SqlDecodeErr err)
-query_many! = \{ path, query: q, bindings, rows } ->
+query_many! = |{ path, query: q, bindings, rows }|
     stmt = try(prepare!, { path, query: q })
     query_many_prepared!({ stmt, bindings, rows })
 
@@ -325,7 +325,7 @@ query_many_prepared! :
         rows : SqlDecode a err,
     }
     => Result (List a) (SqlDecodeErr err)
-query_many_prepared! = \{ stmt, bindings, rows: decode } ->
+query_many_prepared! = |{ stmt, bindings, rows: decode }|
     try(bind!, stmt, bindings)
     res = decode_rows!(stmt, decode)
     try(reset!, stmt)
@@ -344,13 +344,13 @@ SqlDecode a err := List Str -> (Stmt => Result a (SqlDecodeErr err))
 ## }
 ## ```
 decode_record : SqlDecode a err, SqlDecode b err, (a, b -> c) -> SqlDecode c err
-decode_record = \@SqlDecode(gen_first), @SqlDecode(gen_second), mapper ->
+decode_record = |@SqlDecode(gen_first), @SqlDecode(gen_second), mapper|
     @SqlDecode(
-        \cols ->
+        |cols|
             decode_first! = gen_first(cols)
             decode_second! = gen_second(cols)
 
-            \stmt ->
+            |stmt|
                 first = try(decode_first!, stmt)
                 second = try(decode_second!, stmt)
                 Ok(mapper(first, second)),
@@ -363,12 +363,12 @@ decode_record = \@SqlDecode(gen_first), @SqlDecode(gen_second), mapper ->
 ## Sqlite.i64("id") |> Sqlite.map_value(Num.to_str)
 ## ```
 map_value : SqlDecode a err, (a -> b) -> SqlDecode b err
-map_value = \@SqlDecode(gen_decode), mapper ->
+map_value = |@SqlDecode(gen_decode), mapper|
     @SqlDecode(
-        \cols ->
+        |cols|
             decode! = gen_decode(cols)
 
-            \stmt ->
+            |stmt|
                 val = try(decode!, stmt)
                 Ok(mapper(val)),
     )
@@ -377,7 +377,7 @@ RowCountErr err : [NoRowsReturned, TooManyRowsReturned]err
 
 # internal use only
 decode_exactly_one_row! : Stmt, SqlDecode a (RowCountErr err) => Result a (SqlDecodeErr (RowCountErr err))
-decode_exactly_one_row! = \stmt, @SqlDecode(gen_decode) ->
+decode_exactly_one_row! = |stmt, @SqlDecode(gen_decode)|
     cols = columns!(stmt)
     decode_row! = gen_decode(cols)
 
@@ -396,11 +396,11 @@ decode_exactly_one_row! = \stmt, @SqlDecode(gen_decode) ->
 
 # internal use only
 decode_rows! : Stmt, SqlDecode a err => Result (List a) (SqlDecodeErr err)
-decode_rows! = \stmt, @SqlDecode(gen_decode) ->
+decode_rows! = |stmt, @SqlDecode(gen_decode)|
     cols = columns!(stmt)
     decode_row! = gen_decode(cols)
 
-    helper! = \out ->
+    helper! = |out|
         when try(step!, stmt) is
             Done ->
                 Ok(out)
@@ -415,20 +415,20 @@ decode_rows! = \stmt, @SqlDecode(gen_decode) ->
 
 # internal use only
 decoder : (Value -> Result a (SqlDecodeErr err)) -> (Str -> SqlDecode a err)
-decoder = \fn ->
-    \name ->
+decoder = |fn|
+    |name|
         @SqlDecode(
-            \cols ->
+            |cols|
 
-                found = List.find_first_index(cols, \x -> x == name)
+                found = List.find_first_index(cols, |x| x == name)
                 when found is
                     Ok(index) ->
-                        \stmt ->
+                        |stmt|
                             try(column_value!, stmt, index)
                             |> fn
 
                     Err(NotFound) ->
-                        \_ ->
+                        |_|
                             Err(FieldNotFound(name)),
         )
 
@@ -448,11 +448,11 @@ decoder = \fn ->
 ## ```
 tagged_value : Str -> SqlDecode Value []
 tagged_value = decoder(
-    \val ->
+    |val|
         Ok(val),
 )
 
-to_unexpected_type_err = \val ->
+to_unexpected_type_err = |val|
     type =
         when val is
             Integer(_) -> Integer
@@ -480,7 +480,7 @@ UnexpectedTypeErr : [UnexpectedType [Integer, Real, String, Bytes, Null]]
 ## ```
 str : Str -> SqlDecode Str UnexpectedTypeErr
 str = decoder(
-    \val ->
+    |val|
         when val is
             String(s) -> Ok(s)
             _ -> to_unexpected_type_err(val),
@@ -489,7 +489,7 @@ str = decoder(
 ## Decode a [Value] to a [List U8].
 bytes : Str -> SqlDecode (List U8) UnexpectedTypeErr
 bytes = decoder(
-    \val ->
+    |val|
         when val is
             Bytes(b) -> Ok(b)
             _ -> to_unexpected_type_err(val),
@@ -497,9 +497,9 @@ bytes = decoder(
 
 # internal use only
 int_decoder : (I64 -> Result a err) -> (Str -> SqlDecode a [FailedToDecodeInteger err]UnexpectedTypeErr)
-int_decoder = \cast ->
+int_decoder = |cast|
     decoder(
-        \val ->
+        |val|
             when val is
                 Integer(i) -> cast(i) |> Result.map_err(FailedToDecodeInteger)
                 _ -> to_unexpected_type_err(val),
@@ -507,9 +507,9 @@ int_decoder = \cast ->
 
 # internal use only
 real_decoder : (F64 -> Result a err) -> (Str -> SqlDecode a [FailedToDecodeReal err]UnexpectedTypeErr)
-real_decoder = \cast ->
+real_decoder = |cast|
     decoder(
-        \val ->
+        |val|
             when val is
                 Real(r) -> cast(r) |> Result.map_err(FailedToDecodeReal)
                 _ -> to_unexpected_type_err(val),
@@ -566,7 +566,7 @@ f64 = real_decoder(Ok)
 
 ## Decode a [Value] to a [F32].
 f32 : Str -> SqlDecode F32 [FailedToDecodeReal []]UnexpectedTypeErr
-f32 = real_decoder(\x -> Num.to_f32(x) |> Ok)
+f32 = real_decoder(|x| Num.to_f32(x) |> Ok)
 
 # TODO: Mising Num.toDec and Num.toDecChecked
 # dec = realSqlDecoder Ok
@@ -580,7 +580,7 @@ Nullable a : [NotNull a, Null]
 ## Decode a [Value] to a [Nullable Str].
 nullable_str : Str -> SqlDecode (Nullable Str) UnexpectedTypeErr
 nullable_str = decoder(
-    \val ->
+    |val|
         when val is
             String(s) -> Ok(NotNull(s))
             Null -> Ok(Null)
@@ -590,7 +590,7 @@ nullable_str = decoder(
 ## Decode a [Value] to a [Nullable (List U8)].
 nullable_bytes : Str -> SqlDecode (Nullable (List U8)) UnexpectedTypeErr
 nullable_bytes = decoder(
-    \val ->
+    |val|
         when val is
             Bytes(b) -> Ok(NotNull(b))
             Null -> Ok(Null)
@@ -599,9 +599,9 @@ nullable_bytes = decoder(
 
 # internal use only
 nullable_int_decoder : (I64 -> Result a err) -> (Str -> SqlDecode (Nullable a) [FailedToDecodeInteger err]UnexpectedTypeErr)
-nullable_int_decoder = \cast ->
+nullable_int_decoder = |cast|
     decoder(
-        \val ->
+        |val|
             when val is
                 Integer(i) -> cast(i) |> Result.map_ok(NotNull) |> Result.map_err(FailedToDecodeInteger)
                 Null -> Ok(Null)
@@ -610,9 +610,9 @@ nullable_int_decoder = \cast ->
 
 # internal use only
 nullable_real_decoder : (F64 -> Result a err) -> (Str -> SqlDecode (Nullable a) [FailedToDecodeReal err]UnexpectedTypeErr)
-nullable_real_decoder = \cast ->
+nullable_real_decoder = |cast|
     decoder(
-        \val ->
+        |val|
             when val is
                 Real(r) -> cast(r) |> Result.map_ok(NotNull) |> Result.map_err(FailedToDecodeReal)
                 Null -> Ok(Null)
@@ -657,19 +657,19 @@ nullable_f64 = nullable_real_decoder(Ok)
 
 ## Decode a [Value] to a [Nullable F32].
 nullable_f32 : Str -> SqlDecode (Nullable F32) [FailedToDecodeReal []]UnexpectedTypeErr
-nullable_f32 = nullable_real_decoder(\x -> Num.to_f32(x) |> Ok)
+nullable_f32 = nullable_real_decoder(|x| Num.to_f32(x) |> Ok)
 
 # TODO: Mising Num.toDec and Num.toDecChecked
 # nullable_dec = nullable_real_decoder Ok
 
 # internal use only
 internal_to_external_error : InternalSqlite.SqliteError -> [SqliteErr ErrCode Str]
-internal_to_external_error = \{ code, message } ->
+internal_to_external_error = |{ code, message }|
     SqliteErr(code_from_i64(code), message)
 
 # internal use only
 code_from_i64 : I64 -> ErrCode
-code_from_i64 = \code ->
+code_from_i64 = |code|
     if code == 1 || code == 0 then
         Error
     else if code == 2 then
@@ -735,7 +735,7 @@ code_from_i64 = \code ->
 
 ## Convert a [ErrCode] to a pretty string for display purposes.
 errcode_to_str : ErrCode -> Str
-errcode_to_str = \code ->
+errcode_to_str = |code|
     when code is
         Error -> "Error: Sql error or missing database"
         Internal -> "Internal: Internal logic error in Sqlite"

@@ -6,7 +6,7 @@ import pf.Sleep
 
 # To run this example: check the README.md in this folder
 
-main! = \_args ->
+main! = |_args|
     start = Utc.now!({})
 
     Sleep.millis!(1500)
