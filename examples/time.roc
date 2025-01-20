@@ -7,11 +7,11 @@ import pf.Sleep
 # To run this example: check the README.md in this folder
 
 main! = |_args|
-    start = Utc.now!({})
+    start = Utc.now!()
 
     Sleep.millis!(1500)
 
-    finish = Utc.now!({})
+    finish = Utc.now!()
 
     duration = Num.to_str(Utc.delta_as_nanos(start, finish))
 

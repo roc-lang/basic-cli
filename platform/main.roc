@@ -37,7 +37,7 @@ main_for_host! = |raw_args|
         |> List.map(Arg.from_os_raw)
 
     when main!(args) is
-        Ok({}) -> 0
+        Ok() -> 0
         Err(Exit(code, msg)) ->
             if Str.is_empty(msg) then
                 code

@@ -131,6 +131,6 @@ exec! = |program, arguments|
         |> status!?
 
     if exit_code == 0i32 then
-        Ok({})
+        Ok()
     else
         Err(CmdStatusErr(Other("Non-zero exit code ${Num.to_str(exit_code)}")))

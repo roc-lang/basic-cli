@@ -239,7 +239,7 @@ execute_prepared! = |{ stmt, bindings }|
     try(reset!, stmt)
     when res is
         Ok(Done) ->
-            Ok({})
+            Ok()
 
         Ok(Row) ->
             Err(UnhandledRows)
@@ -670,7 +670,7 @@ internal_to_external_error = |{ code, message }|
 # internal use only
 code_from_i64 : I64 -> ErrCode
 code_from_i64 = |code|
-    if code == 1 || code == 0 then
+    if code == 1 or code == 0 then
         Error
     else if code == 2 then
         Internal

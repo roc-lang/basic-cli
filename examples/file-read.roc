@@ -7,7 +7,7 @@ import pf.File
 
 main! = |_args|
 
-    run!({})
+    run!()
     ? |err|
         msg =
             when err is
@@ -19,11 +19,11 @@ main! = |_args|
 
         Exit(1, "unable to read file: ${msg}") # non-zero exit code to indicate failure
 
-    Ok({})
+    Ok()
 
-run! = |{}|
+run! = ||
     file_name = "LICENSE"
     contents = File.read_utf8!(file_name)?
     lines = Str.split_on(contents, "\n")
 
-    Stdout.line!(Str.concat("First line of ${file_name}: ", (List.first(lines) |> Result.with_default("err"))))
+    Stdout.line!(Str.concat("First line of ${file_name}: ", List.first(lines) ?? "err"))

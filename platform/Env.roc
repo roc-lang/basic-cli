@@ -16,9 +16,9 @@ import Host
 
 ## Reads the [current working directory](https://en.wikipedia.org/wiki/Working_directory)
 ## from the environment. File operations on relative [Path]s are relative to this directory.
-cwd! : {} => Result Path [CwdUnavailable]
-cwd! = |{}|
-    bytes = Host.cwd!({}) |> Result.with_default([])
+cwd! : () => Result Path [CwdUnavailable]
+cwd! = ||
+    bytes = Host.cwd!() ?? []
 
     if List.is_empty(bytes) then
         Err(CwdUnavailable)
@@ -31,14 +31,14 @@ cwd! = |{}|
 set_cwd! : Path => Result {} [InvalidCwd]
 set_cwd! = |path|
     Host.set_cwd!(InternalPath.to_bytes(path))
-    |> Result.map_err(|{}| InvalidCwd)
+    |> Result.map_err(|| InvalidCwd)
 
 ## Gets the path to the currently-running executable.
-exe_path! : {} => Result Path [ExePathUnavailable]
-exe_path! = |{}|
-    when Host.exe_path!({}) is
+exe_path! : () => Result Path [ExePathUnavailable]
+exe_path! = ||
+    when Host.exe_path!() is
         Ok(bytes) -> Ok(InternalPath.from_os_bytes(bytes))
-        Err({}) -> Err(ExePathUnavailable)
+        Err() -> Err(ExePathUnavailable)
 
 ## Reads the given environment variable.
 ##
@@ -47,7 +47,7 @@ exe_path! = |{}|
 var! : Str => Result Str [VarNotFound]
 var! = |name|
     Host.env_var!(name)
-    |> Result.map_err(|{}| VarNotFound)
+    |> Result.map_err(|| VarNotFound)
 
 ## Reads the given environment variable and attempts to decode it.
 ##
@@ -78,19 +78,19 @@ var! = |name|
 decode! : Str => Result val [VarNotFound, DecodeErr DecodeError] where val implements Decoding
 decode! = |name|
     when Host.env_var!(name) is
-        Err({}) -> Err(VarNotFound)
+        Err() -> Err(VarNotFound)
         Ok(var_str) ->
             Str.to_utf8(var_str)
-            |> Decode.from_bytes(EnvDecoding.format({}))
+            |> Decode.from_bytes(EnvDecoding.format())
             |> Result.map_err(|_| DecodeErr(TooShort))
 
 ## Reads all the process's environment variables into a [Dict].
 ##
 ## If any key or value contains invalid Unicode, the [Unicode replacement character](https://unicode.org/glossary/#replacement_character)
 ## will be used in place of any parts of keys or values that are invalid Unicode.
-dict! : {} => Dict Str Str
-dict! = |{}|
-    Host.env_dict!({})
+dict! : () => Dict Str Str
+dict! = ||
+    Host.env_dict!()
     |> Dict.from_list
 
 # ## Walks over the process's environment variables as key-value arguments to the walking function.
@@ -135,10 +135,10 @@ OS : [LINUX, MACOS, WINDOWS, OTHER Str]
 ##
 ## Note these values are constants from when the platform is built.
 ##
-platform! : {} => { arch : ARCH, os : OS }
-platform! = |{}|
+platform! : () => { arch : ARCH, os : OS }
+platform! = ||
 
-    from_rust = Host.current_arch_os!({})
+    from_rust = Host.current_arch_os!()
 
     arch =
         when from_rust.arch is
@@ -166,7 +166,7 @@ platform! = |{}|
 ## to create a uniquely named file. Creating a file or directory with a fixed or predictable name may
 ## result in “insecure temporary file” security vulnerabilities.
 ##
-temp_dir! : {} => Path
-temp_dir! = |{}|
-    Host.temp_dir!({})
+temp_dir! : () => Path
+temp_dir! = ||
+    Host.temp_dir!()
     |> InternalPath.from_os_bytes

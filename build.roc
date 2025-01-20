@@ -15,16 +15,16 @@ import cli.Env
 main! : _ => Result {} _
 main! = |_args|
 
-    roc_cmd = Env.var!("ROC") |> Result.with_default("roc")
+    roc_cmd = Env.var!("ROC") ?? "roc"
 
     debug_mode =
         when Env.var!("DEBUG") is
-            Ok(str) if !(Str.is_empty(str)) -> Debug
+            Ok(str) if !Str.is_empty(str) -> Debug
             _ -> Release
 
     roc_version!(roc_cmd)?
 
-    os_and_arch = get_os_and_arch!({})?
+    os_and_arch = get_os_and_arch!()?
 
     stub_lib_path = "platform/libapp.${stub_file_extension(os_and_arch)}"
 
@@ -40,7 +40,7 @@ main! = |_args|
 
     info!("Successfully built platform files!")?
 
-    Ok({})
+    Ok()
 
 roc_version! : Str => Result {} _
 roc_version! = |roc_cmd|
@@ -49,11 +49,11 @@ roc_version! = |roc_cmd|
     Cmd.exec!(roc_cmd, ["version"])
     |> Result.map_err(RocVersionCheckFailed)
 
-get_os_and_arch! : {} => Result OSAndArch _
-get_os_and_arch! = |{}|
+get_os_and_arch! : () => Result OSAndArch _
+get_os_and_arch! = ||
     info!("Getting the native operating system and architecture ...")?
 
-    convert_os_and_arch!(Env.platform!({}))
+    convert_os_and_arch!(Env.platform!())
 
 OSAndArch : [
     MacosArm64,
@@ -117,7 +117,7 @@ get_rust_target_folder! = |debug_mode|
 cargo_build_host! : [Debug, Release] => Result {} _
 cargo_build_host! = |debug_mode|
 
-    cargo_build_args! = |{}|
+    cargo_build_args! = ||
         when debug_mode is
             Debug ->
                 info!("Building rust host in debug mode...")?
@@ -127,7 +127,7 @@ cargo_build_host! = |debug_mode|
                 info!("Building rust host ...")?
                 Ok(["build", "--release"])
 
-    args = cargo_build_args!({})?
+    args = cargo_build_args!()?
 
     Cmd.exec!("cargo", args)
     |> Result.map_err(ErrBuildingHostBinaries)

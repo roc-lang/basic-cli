@@ -11,6 +11,6 @@ main! = |_args|
     Stdout.line!("I read ${Num.to_str(lines)} lines from stdin.")
 
 count! = |n|
-    when Stdin.line!({}) is
-        Ok(_) -> count!((n + 1))
+    when Stdin.line!() is
+        Ok(_) -> count!(n + 1)
         Err(_) -> n

@@ -29,7 +29,7 @@ main! = |_args|
             Stdout.line!("\tid: ${id}, task: ${task}"),
     )?
 
-    Ok({})
+    Ok()
 
 query_todos_by_status! = |db_path, status|
     Sqlite.query_many!(

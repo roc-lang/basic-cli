@@ -7,22 +7,22 @@ import pf.Stdout
 
 main! = |_args|
     Stdout.line!("Shout into this cave and hear the echo!")?
-    tick!({})
+    tick!()
 
-tick! : {} => Result {} [StdoutErr _]
-tick! = |{}|
-    when Stdin.line!({}) is
+tick! : () => Result {} [StdoutErr _]
+tick! = ||
+    when Stdin.line!() is
         Ok(str) ->
             Stdout.line!(echo(str))?
-            tick!({})
+            tick!()
 
         Err(EndOfFile) ->
             Stdout.line!(echo("Received end of input (EOF)."))?
-            Ok({})
+            Ok()
 
         Err(StdinErr(err)) ->
             Stdout.line!(echo("Unable to read input ${Inspect.to_str(err)}"))?
-            Ok({})
+            Ok()
 
 echo : Str -> Str
 echo = |shout|
@@ -32,10 +32,10 @@ echo = |shout|
     |> Str.to_utf8
     |> List.map_with_index(
         |_, i|
-            length = (List.len(Str.to_utf8(shout)) - i)
-            phrase = (List.split_at(Str.to_utf8(shout), length)).before
+            length = List.len(Str.to_utf8(shout)) - i
+            { before: phrase} = List.split_at(Str.to_utf8(shout), length)
 
-            List.concat(silence((if i == 0 then 2 * length else length)), phrase),
+            List.concat(silence(if i == 0 then 2 * length else length), phrase),
     )
     |> List.join
     |> Str.from_utf8
