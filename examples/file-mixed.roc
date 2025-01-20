@@ -31,11 +31,11 @@ task! = ||
 
     Stdout.line!("I read the file back. Its contents: \"${contents}\"")?
 
-    Ok()
+    Ok({})
 
 main! = |_args|
     when task!() is
-        Ok() -> Stdout.line!("Successfully wrote a string to out.txt")
+        Ok({}) -> Stdout.line!("Successfully wrote a string to out.txt")
         Err(err) ->
             msg =
                 when err is

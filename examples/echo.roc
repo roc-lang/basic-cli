@@ -18,11 +18,11 @@ tick! = ||
 
         Err(EndOfFile) ->
             Stdout.line!(echo("Received end of input (EOF)."))?
-            Ok()
+            Ok({})
 
         Err(StdinErr(err)) ->
             Stdout.line!(echo("Unable to read input ${Inspect.to_str(err)}"))?
-            Ok()
+            Ok({})
 
 echo : Str -> Str
 echo = |shout|

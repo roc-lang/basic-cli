@@ -9,7 +9,7 @@ import pf.Stderr
 
 main! = |_args|
     when run!() is
-        Ok() -> Ok()
+        Ok({}) -> Ok({})
         Err(err) -> handle_err!(err)
 
 handle_err! : []_ => Result {} _

@@ -239,7 +239,7 @@ execute_prepared! = |{ stmt, bindings }|
     try(reset!, stmt)
     when res is
         Ok(Done) ->
-            Ok()
+            Ok({})
 
         Ok(Row) ->
             Err(UnhandledRows)

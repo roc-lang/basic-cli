@@ -28,7 +28,7 @@ main! = |_args|
 
     # Try to create a directory without a parent (should fail, ignore error)
     when Dir.create!("dirExampleD/child") is
-        Ok() -> {}
+        Ok({}) -> {}
         Err(_) -> {}
 
     # Delete an empty directory
@@ -39,4 +39,4 @@ main! = |_args|
 
     Stdout.line!("Success!")?
 
-    Ok()
+    Ok({})

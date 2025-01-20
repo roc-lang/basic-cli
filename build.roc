@@ -40,7 +40,7 @@ main! = |_args|
 
     info!("Successfully built platform files!")?
 
-    Ok()
+    Ok({})
 
 roc_version! : Str => Result {} _
 roc_version! = |roc_cmd|

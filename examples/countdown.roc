@@ -13,7 +13,7 @@ main! = |_args|
 tick! = |n|
     if n == 0 then
         Stdout.line!("🎉 SURPRISE! Happy Birthday! 🎂")?
-        Ok()
+        Ok({})
     else
         Stdout.line!("${Num.to_str(n)}...")?
         _ = Stdin.line!()

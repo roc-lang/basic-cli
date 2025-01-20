@@ -4,4 +4,4 @@ app [main!] { pf: platform "main.roc" }
 # executable built correctly just by running it.
 main! : _ => Result {} [Exit I32 Str]_
 main! = |_args|
-    Err(JustAStub)
+    Err(Stub)

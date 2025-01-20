@@ -30,15 +30,14 @@ cwd! = ||
 ## to this directory.
 set_cwd! : Path => Result {} [InvalidCwd]
 set_cwd! = |path|
-    Host.set_cwd!(InternalPath.to_bytes(path))
-    |> Result.map_err(|| InvalidCwd)
+    Host.set_cwd!(InternalPath.to_bytes(path)) |> Result.map_err(|_| InvalidCwd)
 
 ## Gets the path to the currently-running executable.
 exe_path! : () => Result Path [ExePathUnavailable]
 exe_path! = ||
     when Host.exe_path!() is
         Ok(bytes) -> Ok(InternalPath.from_os_bytes(bytes))
-        Err() -> Err(ExePathUnavailable)
+        Err({}) -> Err(ExePathUnavailable)
 
 ## Reads the given environment variable.
 ##
@@ -46,8 +45,7 @@ exe_path! = ||
 ## [Unicode replacement character](https://unicode.org/glossary/#replacement_character) ('�').
 var! : Str => Result Str [VarNotFound]
 var! = |name|
-    Host.env_var!(name)
-    |> Result.map_err(|| VarNotFound)
+    Host.env_var!(name) |> Result.map_err(|_| VarNotFound)
 
 ## Reads the given environment variable and attempts to decode it.
 ##
@@ -78,7 +76,7 @@ var! = |name|
 decode! : Str => Result val [VarNotFound, DecodeErr DecodeError] where val implements Decoding
 decode! = |name|
     when Host.env_var!(name) is
-        Err() -> Err(VarNotFound)
+        Err({}) -> Err(VarNotFound)
         Ok(var_str) ->
             Str.to_utf8(var_str)
             |> Decode.from_bytes(EnvDecoding.format())
@@ -90,8 +88,7 @@ decode! = |name|
 ## will be used in place of any parts of keys or values that are invalid Unicode.
 dict! : () => Dict Str Str
 dict! = ||
-    Host.env_dict!()
-    |> Dict.from_list
+    Dict.from_list(Host.env_dict!())
 
 # ## Walks over the process's environment variables as key-value arguments to the walking function.
 # ##
@@ -168,5 +165,4 @@ platform! = ||
 ##
 temp_dir! : () => Path
 temp_dir! = ||
-    Host.temp_dir!()
-    |> InternalPath.from_os_bytes
+    InternalPath.from_os_bytes(Host.temp_dir!())

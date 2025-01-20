@@ -105,10 +105,10 @@ tcp_write! : TcpStream, List U8 => Result {} Str
 # SQLITE
 sqlite_prepare! : Str, Str => Result (Box {}) InternalSqlite.SqliteError
 sqlite_bind! : Box {}, List InternalSqlite.SqliteBindings => Result {} InternalSqlite.SqliteError
-sqlite_columns! : Box () => List Str
+sqlite_columns! : Box {} => List Str
 sqlite_column_value! : Box {}, U64 => Result InternalSqlite.SqliteValue InternalSqlite.SqliteError
-sqlite_step! : Box () => Result InternalSqlite.SqliteState InternalSqlite.SqliteError
-sqlite_reset! : Box () => Result {} InternalSqlite.SqliteError
+sqlite_step! : Box {} => Result InternalSqlite.SqliteState InternalSqlite.SqliteError
+sqlite_reset! : Box {} => Result {} InternalSqlite.SqliteError
 
 # OTHERS
 current_arch_os! : () => { arch : Str, os : Str }

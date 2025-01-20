@@ -11,7 +11,7 @@ main! = |_args|
 print! : List Str => Result {} _
 print! = |authors|
     when authors is
-        [] -> Ok()
+        [] -> Ok({})
         [author, .. as rest] ->
             Stdout.line!(author)?
             print!(rest)

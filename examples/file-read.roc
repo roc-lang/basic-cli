@@ -19,7 +19,7 @@ main! = |_args|
 
         Exit(1, "unable to read file: ${msg}") # non-zero exit code to indicate failure
 
-    Ok()
+    Ok({})
 
 run! = ||
     file_name = "LICENSE"

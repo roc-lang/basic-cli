@@ -12,7 +12,7 @@ main! = |_args|
 
     exec_example!()?
 
-    Ok()
+    Ok({})
 
 exec_example! : () => Result {} _
 exec_example! = ||
@@ -30,7 +30,7 @@ status_example! = ||
         |> Cmd.status!
 
     when result is
-        Ok(exit_code) if exit_code == 0 -> Ok()
+        Ok(exit_code) if exit_code == 0 -> Ok({})
         Ok(exit_code) -> Stdout.line!("Child exited with non-zero code: ${Num.to_str(exit_code)}")
         Err(err) -> Stdout.line!("Error executing command: ${Inspect.to_str(err)}")
 
