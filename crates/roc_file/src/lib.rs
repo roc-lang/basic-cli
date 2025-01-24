@@ -67,7 +67,7 @@ pub fn path_from_roc_path(bytes: &RocList<u8>) -> Cow<'_, Path> {
 }
 
 #[cfg(target_family = "windows")]
-fn path_from_roc_path(bytes: &RocList<u8>) -> Cow<'_, Path> {
+pub fn path_from_roc_path(bytes: &RocList<u8>) -> Cow<'_, Path> {
     use std::os::windows::ffi::OsStringExt;
 
     let bytes = bytes.as_slice();
