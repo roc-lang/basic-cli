@@ -8,7 +8,7 @@ import pf.Stderr
 # To run this example: check the README.md in this folder
 
 main! = |_args|
-    when run!({}) is
+    when run!() is
         Ok({}) -> Ok({})
         Err(err) -> handle_err!(err)
 
@@ -42,8 +42,8 @@ handle_err! = |error|
 
         other -> Stderr.line!("Got other error: ${Inspect.to_str(other)}")
 
-run! : {} => Result {} _
-run! = |{}|
+run! : () => Result {} _
+run! = ||
 
     stream = Tcp.connect!("127.0.0.1", 8085)?
 
@@ -58,7 +58,7 @@ tick! : Tcp.Stream => Result {} _
 tick! = |stream|
     Stdout.write!("> ")?
 
-    out_msg = Stdin.line!({})?
+    out_msg = Stdin.line!()?
 
     Tcp.write_utf8!(stream, "${out_msg}\n")?
 

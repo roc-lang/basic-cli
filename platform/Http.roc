@@ -55,7 +55,7 @@ header = |(name, value)| { name, value }
 ##
 ## ```
 ## # Prints out the HTML of the Roc-lang website.
-## response = ||
+## response = or
 ##     Http.send!({ Http.default_request & url: "https://www.roc-lang.org" })?
 ##
 ##

@@ -7,7 +7,7 @@ import pf.Stdout
 
 main! = |_args|
     Stdout.line!("\nLet's count down from 3 together - all you have to do is press <ENTER>.")?
-    _ = Stdin.line!({})
+    _ = Stdin.line!()
     tick!(3)
 
 tick! = |n|
@@ -15,6 +15,6 @@ tick! = |n|
         Stdout.line!("🎉 SURPRISE! Happy Birthday! 🎂")?
         Ok({})
     else
-        Stdout.line!("${Num.to_str n}...")?
-        _ = Stdin.line!({})
+        Stdout.line!("${Num.to_str(n)}...")?
+        _ = Stdin.line!()
         tick!(n - 1)

@@ -26,8 +26,8 @@ EnvFormat := {} implements [
         },
     ]
 
-format : {} -> EnvFormat
-format = |{}| @EnvFormat({})
+format : () -> EnvFormat
+format = || @EnvFormat({})
 
 decode_bytes_to_num = |bytes, transformer|
     when Str.from_utf8(bytes) is

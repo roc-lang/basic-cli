@@ -17,9 +17,9 @@ import InternalDateTime
 Utc := I128 implements [Inspect]
 
 ## Duration since UNIX EPOCH
-now! : {} => Utc
-now! = |{}|
-    @Utc(Num.to_i128(Host.posix_time!({})))
+now! : () => Utc
+now! = ||
+    @Utc(Num.to_i128(Host.posix_time!()))
 
 # Constant number of nanoseconds in a millisecond
 nanos_per_milli = 1_000_000
@@ -32,7 +32,7 @@ to_millis_since_epoch = |@Utc(nanos)|
 ## Convert milliseconds to Utc timestamp
 from_millis_since_epoch : I128 -> Utc
 from_millis_since_epoch = |millis|
-    @Utc((millis * nanos_per_milli))
+    @Utc(millis * nanos_per_milli)
 
 ## Convert Utc timestamp to nanoseconds
 to_nanos_since_epoch : Utc -> I128
@@ -46,7 +46,7 @@ from_nanos_since_epoch = @Utc
 ## Calculate milliseconds between two Utc timestamps
 delta_as_millis : Utc, Utc -> U128
 delta_as_millis = |utc_a, utc_b|
-    (delta_as_nanos(utc_a, utc_b)) // nanos_per_milli
+    delta_as_nanos(utc_a, utc_b) // nanos_per_milli
 
 ## Calculate nanoseconds between two Utc timestamps
 delta_as_nanos : Utc, Utc -> U128

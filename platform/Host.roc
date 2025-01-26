@@ -80,17 +80,17 @@ dir_delete_all! : List U8 => Result {} InternalIOErr.IOErrFromHost
 
 hard_link! : List U8 => Result {} InternalIOErr.IOErrFromHost
 path_type! : List U8 => Result InternalPath.InternalPathType InternalIOErr.IOErrFromHost
-cwd! : {} => Result (List U8) {}
-temp_dir! : {} => List U8
+cwd! : () => Result (List U8) {}
+temp_dir! : () => List U8
 
 # STDIO
 stdout_line! : Str => Result {} InternalIOErr.IOErrFromHost
 stdout_write! : Str => Result {} InternalIOErr.IOErrFromHost
 stderr_line! : Str => Result {} InternalIOErr.IOErrFromHost
 stderr_write! : Str => Result {} InternalIOErr.IOErrFromHost
-stdin_line! : {} => Result Str InternalIOErr.IOErrFromHost
-stdin_bytes! : {} => Result (List U8) InternalIOErr.IOErrFromHost
-stdin_read_to_end! : {} => Result (List U8) InternalIOErr.IOErrFromHost
+stdin_line! : () => Result Str InternalIOErr.IOErrFromHost
+stdin_bytes! : () => Result (List U8) InternalIOErr.IOErrFromHost
+stdin_read_to_end! : () => Result (List U8) InternalIOErr.IOErrFromHost
 
 # TCP
 send_request! : InternalHttp.RequestToAndFromHost => InternalHttp.ResponseToAndFromHost
@@ -111,19 +111,19 @@ sqlite_step! : Box {} => Result InternalSqlite.SqliteState InternalSqlite.Sqlite
 sqlite_reset! : Box {} => Result {} InternalSqlite.SqliteError
 
 # OTHERS
-current_arch_os! : {} => { arch : Str, os : Str }
+current_arch_os! : () => { arch : Str, os : Str }
 
-get_locale! : {} => Result Str {}
-get_locales! : {} => List Str
+get_locale! : () => Result Str {}
+get_locales! : () => List Str
 
-posix_time! : {} => U128 # TODO why is this a U128 but then getting converted to a I128 in Utc.roc?
+posix_time! : () => U128 # TODO why is this a U128 but then getting converted to a I128 in Utc.roc?
 
 sleep_millis! : U64 => {}
 
-tty_mode_canonical! : {} => {}
-tty_mode_raw! : {} => {}
+tty_mode_canonical! : () => {}
+tty_mode_raw! : () => {}
 
-env_dict! : {} => List (Str, Str)
+env_dict! : () => List (Str, Str)
 env_var! : Str => Result Str {}
-exe_path! : {} => Result (List U8) {}
+exe_path! : () => Result (List U8) {}
 set_cwd! : List U8 => Result {} {}

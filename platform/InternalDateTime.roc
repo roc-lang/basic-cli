@@ -55,14 +55,14 @@ is_leap_year = |year|
     && # divided evenly by 4 unless...
     (
         (year % 100 != 0)
-        || # divided by 100 not a leap year
+        or # divided by 100 not a leap year
         (year % 400 == 0) # expecpt when also divisible by 400
     )
 
 expect is_leap_year(2000)
 expect is_leap_year(2012)
-expect !(is_leap_year(1900))
-expect !(is_leap_year(2015))
+expect !is_leap_year(1900)
+expect !is_leap_year(2015)
 expect List.map([2023, 1988, 1992, 1996], is_leap_year) == [Bool.false, Bool.true, Bool.true, Bool.true]
 expect List.map([1700, 1800, 1900, 2100, 2200, 2300, 2500, 2600], is_leap_year) == [Bool.false, Bool.false, Bool.false, Bool.false, Bool.false, Bool.false, Bool.false, Bool.false]
 
@@ -116,9 +116,9 @@ epoch_millis_to_datetimeHelp = |current|
     count_days_in_month = days_in_month(current.year, current.month)
     count_days_in_prev_month =
         if current.month == 1 then
-            days_in_month((current.year - 1), 12)
+            days_in_month(current.year - 1, 12)
         else
-            days_in_month(current.year, (current.month - 1))
+            days_in_month(current.year, current.month - 1)
 
     if current.day < 1 then
         epoch_millis_to_datetimeHelp(

@@ -6,21 +6,22 @@ import pf.Stdout
 import pf.Cmd
 
 main! = |_args|
-    status_example!({})?
+    status_example!()?
 
-    output_example!({})?
+    output_example!()?
 
-    exec_example!({})?
+    exec_example!()?
 
     Ok({})
 
-exec_example! : {} => Result {} _
-exec_example! = |{}| Cmd.exec!("echo", ["EXEC"])
+exec_example! : () => Result {} _
+exec_example! = ||
+    Cmd.exec!("echo", ["EXEC"])
 
 # Run "env" with verbose option, clear all environment variables, and pass in
 # "FOO" and "BAZ".
-status_example! : {} => Result {} _
-status_example! = |{}|
+status_example! : () => Result {} _
+status_example! = ||
     result =
         Cmd.new("env")
         |> Cmd.arg("-v")
@@ -35,8 +36,8 @@ status_example! = |{}|
 
 # Run "env" with verbose option, clear all environment variables, and pass in
 # only as an environment variable "FOO"
-output_example! : {} => Result {} _
-output_example! = |{}|
+output_example! : () => Result {} _
+output_example! = ||
 
     output =
         Cmd.new("env")
@@ -45,6 +46,6 @@ output_example! = |{}|
         |> Cmd.args(["-v"])
         |> Cmd.output!
 
-    msg = Str.from_utf8(output.stdout) |> Result.with_default("Failed to decode stdout")
+    msg = Str.from_utf8(output.stdout) ?? "Failed to decode stdout"
 
     Stdout.write!(msg)

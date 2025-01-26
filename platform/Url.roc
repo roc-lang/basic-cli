@@ -194,7 +194,7 @@ percent_encode : Str -> Str
 percent_encode = |input|
     # Optimistically assume we won't need any percent encoding, and can have
     # the same capacity as the input string. If we're wrong, it will get doubled.
-    initial_output = List.with_capacity((Str.count_utf8_bytes(input) |> Num.int_cast))
+    initial_output = List.with_capacity(Str.count_utf8_bytes(input) |> Num.int_cast)
 
     answer =
         List.walk(
@@ -204,8 +204,8 @@ percent_encode = |input|
                 # Spec for percent-encoding: https://www.ietf.org/rfc/rfc3986.txt
                 if
                     (byte >= 97 && byte <= 122) # lowercase ASCII
-                    || (byte >= 65 && byte <= 90) # uppercase ASCII
-                    || (byte >= 48 && byte <= 57) # digit
+                    or (byte >= 65 && byte <= 90) # uppercase ASCII
+                    or (byte >= 48 && byte <= 57) # digit
                 then
                     # This is the most common case: an unreserved character,
                     # which needs no encoding in a path
@@ -228,8 +228,7 @@ percent_encode = |input|
                             List.concat(output, suffix),
         )
 
-    Str.from_utf8(answer)
-    |> Result.with_default("") # This should never fail
+    Str.from_utf8(answer) ?? "" # This should never fail
 
 ## Adds a [Str] query parameter to the end of the [Url].
 ##
@@ -275,7 +274,7 @@ append_param = |@Url(url_str), key, value|
 
     without_fragment
     |> Str.reserve(bytes)
-    |> Str.concat((if has_query(@Url(without_fragment)) then "&" else "?"))
+    |> Str.concat(if has_query(@Url(without_fragment)) then "&" else "?")
     |> Str.concat(encoded_key)
     |> Str.concat("=")
     |> Str.concat(encoded_value)
@@ -456,7 +455,7 @@ query_params = |url|
     query(url)
     |> Str.split_on("&")
     |> List.walk(
-        Dict.empty({}),
+        Dict.empty(),
         |dict, pair|
             when Str.split_first(pair, "=") is
                 Ok({ before, after }) -> Dict.insert(dict, before, after)

@@ -184,7 +184,7 @@ display = |path|
 is_dir! : Path => Result Bool [PathErr IOErr]
 is_dir! = |path|
     res = type!(path)?
-    Ok((res == IsDir))
+    Ok(res == IsDir)
 
 ## Returns true if the path exists on disk and is pointing at a regular file.
 ## Returns `Ok false` if the path exists and it is not a file. If the path does not exist,
@@ -196,7 +196,7 @@ is_dir! = |path|
 is_file! : Path => Result Bool [PathErr IOErr]
 is_file! = |path|
     res = type!(path)?
-    Ok((res == IsFile))
+    Ok(res == IsFile)
 
 ## Returns true if the path exists on disk and is pointing at a symbolic link.
 ## Returns `Ok false` if the path exists and it is not a symbolic link. If the path does not exist,
@@ -208,7 +208,7 @@ is_file! = |path|
 is_sym_link! : Path => Result Bool [PathErr IOErr]
 is_sym_link! = |path|
     res = type!(path)?
-    Ok((res == IsSymLink))
+    Ok(res == IsSymLink)
 
 ## Return the type of the path if the path exists on disk.
 ##
@@ -246,7 +246,7 @@ with_extension = |path, extension|
                     Err(NotFound) -> bytes
 
             before_dot
-            |> List.reserve((Str.count_utf8_bytes(extension) |> Num.int_cast |> Num.add_saturated(1)))
+            |> List.reserve(Str.count_utf8_bytes(extension) |> Num.int_cast |> Num.add_saturated(1))
             |> List.append(Num.to_u8('.'))
             |> List.concat(Str.to_utf8(extension))
             |> ArbitraryBytes
@@ -259,7 +259,7 @@ with_extension = |path, extension|
                     Err(NotFound) -> str
 
             before_dot
-            |> Str.reserve((Str.count_utf8_bytes(extension) |> Num.add_saturated(1)))
+            |> Str.reserve(Str.count_utf8_bytes(extension) |> Num.add_saturated(1))
             |> Str.concat(".")
             |> Str.concat(extension)
             |> FromStr

@@ -53,9 +53,9 @@ handle_err = |{ tag, msg }|
 ## (e.g. because the user pressed Enter in the terminal), so using it can result in the appearance of the
 ## programming having gotten stuck. It's often helpful to print a prompt first, so
 ## the user knows it's necessary to enter something before the program will continue.
-line! : {} => Result Str [EndOfFile, StdinErr IOErr]
-line! = |{}|
-    Host.stdin_line!({})
+line! : () => Result Str [EndOfFile, StdinErr IOErr]
+line! = ||
+    Host.stdin_line!()
     |> Result.map_err(handle_err)
 
 ## Read bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
@@ -64,15 +64,15 @@ line! = |{}|
 ## > This is typically used in combintation with [Tty.enable_raw_mode!],
 ## which disables defaults terminal bevahiour and allows reading input
 ## without buffering until Enter key is pressed.
-bytes! : {} => Result (List U8) [EndOfFile, StdinErr IOErr]
-bytes! = |{}|
-    Host.stdin_bytes!({})
+bytes! : () => Result (List U8) [EndOfFile, StdinErr IOErr]
+bytes! = ||
+    Host.stdin_bytes!()
     |> Result.map_err(handle_err)
 
 ## Read all bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)) until EOF in this source.
-read_to_end! : {} => Result (List U8) [StdinErr IOErr]
-read_to_end! = |{}|
-    Host.stdin_read_to_end!({})
+read_to_end! : () => Result (List U8) [StdinErr IOErr]
+read_to_end! = ||
+    Host.stdin_read_to_end!()
     |> Result.map_err(
         |{ tag, msg }|
             when tag is

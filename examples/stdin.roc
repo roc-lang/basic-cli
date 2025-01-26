@@ -9,7 +9,7 @@ import pf.Stdin
 main! = |_args|
     Stdout.line!("Enter a series of number characters (0-9):")?
 
-    number_bytes = take_number_bytes!({})?
+    number_bytes = take_number_bytes!()?
 
     if List.is_empty(number_bytes) then
         Stderr.line!("Expected a series of number characters (0-9)")
@@ -21,9 +21,9 @@ main! = |_args|
             Err(_) ->
                 Stderr.line!("Error, bad utf8")
 
-take_number_bytes! : {} => Result (List U8) _
-take_number_bytes! = |{}|
-    bytes_read = Stdin.bytes!({})?
+take_number_bytes! : () => Result (List U8) _
+take_number_bytes! = ||
+    bytes_read = Stdin.bytes!()?
 
     number_bytes =
         List.walk(

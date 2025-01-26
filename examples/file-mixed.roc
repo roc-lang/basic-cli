@@ -11,9 +11,9 @@ import pf.Dir
 
 out_txt_path = "out.txt"
 
-task! = |{}|
+task! = ||
 
-    cwd_str = Path.display(Env.cwd!({})?)
+    cwd_str = Path.display(Env.cwd!()?)
 
     Stdout.line!("cwd: ${cwd_str}")?
 
@@ -34,7 +34,7 @@ task! = |{}|
     Ok({})
 
 main! = |_args|
-    when task!({}) is
+    when task!() is
         Ok({}) -> Stdout.line!("Successfully wrote a string to out.txt")
         Err(err) ->
             msg =
