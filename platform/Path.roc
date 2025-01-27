@@ -307,7 +307,7 @@ read_utf8! : Path => Result Str [FileReadErr Path IOErr, FileReadUtf8Err Path _]
 read_utf8! = |path|
     bytes =
         Host.file_read_bytes!(InternalPath.to_bytes(path))
-        |> Result.map_err?(|read_err| FileReadErr(path, InternalIOErr.handle_err(read_err)))
+        |> Result.map_err(|read_err| FileReadErr(path, InternalIOErr.handle_err(read_err)))?
 
     Str.from_utf8(bytes)
     |> Result.map_err(|err| FileReadUtf8Err(path, err))
