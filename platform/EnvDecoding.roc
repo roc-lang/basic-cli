@@ -104,7 +104,7 @@ env_list = |decode_elem|
 # exercised, and the solver can find an ambient lambda set for the
 # specialization.
 env_record : _, (_, _ -> [Keep (Decoder _ _), Skip]), (_, _ -> _) -> Decoder _ _
-env_record = |_initialState, _stepField, _finalizer|
+env_record = |_initial_state, _step_field, _finalizer|
     Decode.custom(
         |bytes, @EnvFormat({})|
             { result: Err(TooShort), rest: bytes },
@@ -114,7 +114,7 @@ env_record = |_initialState, _stepField, _finalizer|
 # exercised, and the solver can find an ambient lambda set for the
 # specialization.
 env_tuple : _, (_, _ -> [Next (Decoder _ _), TooLong]), (_ -> _) -> Decoder _ _
-env_tuple = |_initialState, _stepElem, _finalizer|
+env_tuple = |_initial_state, _step_elem, _finalizer|
     Decode.custom(
         |bytes, @EnvFormat({})|
             { result: Err(TooShort), rest: bytes },
