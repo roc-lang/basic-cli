@@ -568,7 +568,7 @@ f64 = real_decoder(Ok)
 f32 : Str -> SqlDecode F32 [FailedToDecodeReal []]UnexpectedTypeErr
 f32 = real_decoder(|x| Num.to_f32(x) |> Ok)
 
-# TODO: Mising Num.toDec and Num.toDecChecked
+# TODO: Mising Num.to_dec and Num.to_dec_checked
 # dec = realSqlDecoder Ok
 
 # These are the same decoders as above but Nullable.
@@ -659,7 +659,7 @@ nullable_f64 = nullable_real_decoder(Ok)
 nullable_f32 : Str -> SqlDecode (Nullable F32) [FailedToDecodeReal []]UnexpectedTypeErr
 nullable_f32 = nullable_real_decoder(|x| Num.to_f32(x) |> Ok)
 
-# TODO: Mising Num.toDec and Num.toDecChecked
+# TODO: Mising Num.to_dec and Num.to_dec_checked
 # nullable_dec = nullable_real_decoder Ok
 
 # internal use only

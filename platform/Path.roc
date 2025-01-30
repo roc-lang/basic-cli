@@ -50,7 +50,7 @@ IOErr : InternalIOErr.IOErr
 ##
 ## First encode a `val` using a given `fmt` which implements the ability [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
 ##
-## For example, suppose you have a `Json.toCompactUtf8` which implements
+## For example, suppose you have a `Json.to_compact_utf8` which implements
 ## [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
 ## You can use this to write [JSON](https://en.wikipedia.org/wiki/JSON)
 ## data to a file like this:
@@ -60,7 +60,7 @@ IOErr : InternalIOErr.IOErr
 ## Path.write!(
 ##     { some: "json stuff" },
 ##     Path.from_str("output.json"),
-##     Json.toCompactUtf8,
+##     Json.to_compact_utf8,
 ## )?
 ## ```
 ##
@@ -127,7 +127,7 @@ from_str = |str|
 ## is not valid Unicode (like a [Str] is), but which is valid for a particular filesystem.
 ##
 ## Note that if the list contains any `0` bytes, sending this path to any file operations
-## (e.g. `Path.read_bytes` or `WriteStream.openPath`) will fail.
+## (e.g. `Path.read_bytes` or `WriteStream.open_path`) will fail.
 from_bytes : List U8 -> Path
 from_bytes = |bytes|
     ArbitraryBytes(bytes)

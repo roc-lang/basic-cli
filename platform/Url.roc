@@ -470,13 +470,13 @@ query_params = |url|
 ##
 ## ```
 ## # Gives "example.com/"
-## Url.fromStr("https://example.com/?key1=val1&key2=val2&key3=val3#stuff")
+## Url.from_str("https://example.com/?key1=val1&key2=val2&key3=val3#stuff")
 ## |> Url.path
 ## ```
 ##
 ## ```
 ## # Gives "/foo/"
-## Url.fromStr("/foo/?key1=val1&key2=val2&key3=val3#stuff")
+## Url.from_str("/foo/?key1=val1&key2=val2&key3=val3#stuff")
 ## |> Url.path
 ## ```
 path : Url -> Str

@@ -31,7 +31,7 @@ UnwrappedPath : [
     # aren't nul-terminated, while also being able to be passed directly to OS APIs.
     FromOperatingSystem (List U8),
 
-    # These come from userspace (e.g. Path.fromBytes), so they need to be checked for interior
+    # These come from userspace (e.g. Path.from_bytes), so they need to be checked for interior
     # nuls and then nul-terminated before the host can pass them to OS APIs.
     ArbitraryBytes (List U8),
 
