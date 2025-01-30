@@ -142,7 +142,7 @@ from_bytes = |bytes|
 ##
 ## For a conversion to [Str] that is lossy but does not return a [Result], see
 ## [display].
-## toInner : Path -> [Str Str, Bytes (List U8)]
+## to_inner : Path -> [Str Str, Bytes (List U8)]
 ## Assumes a path is encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8),
 ## and converts it to a string using `Str.display`.
 ##
