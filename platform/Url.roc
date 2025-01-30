@@ -32,7 +32,7 @@ Url := Str implements [Inspect]
 ## |> Url.append_param("café", "du Monde")
 ## |> Url.append_param("email", "hi@example.com")
 ## ```
-## The [Str.count_utf8_bytes](https://www.roc-lang.org/builtins/Str#countUtf8Bytes) function can be helpful in finding out how many bytes to reserve.
+## The [Str.count_utf8_bytes](https://www.roc-lang.org/builtins/Str#count_utf8_bytes) function can be helpful in finding out how many bytes to reserve.
 ##
 ## There is no `Url.with_capacity` because it's better to reserve extra capacity
 ## on a [Str] first, and then pass that string to [Url.from_str]. This function will make use

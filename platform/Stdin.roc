@@ -59,7 +59,7 @@ line! = |{}|
     |> Result.map_err(handle_err)
 
 ## Read bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
-## ‼️ This function can read no more than 16,384 bytes at a time. Use [readToEnd!] if you need more.
+## ‼️ This function can read no more than 16,384 bytes at a time. Use [read_to_end!] if you need more.
 ##
 ## > This is typically used in combintation with [Tty.enable_raw_mode!],
 ## which disables defaults terminal bevahiour and allows reading input
