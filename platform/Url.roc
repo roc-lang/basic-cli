@@ -182,7 +182,7 @@ append_help = |prefix, suffix|
 ##
 ## ```
 ## Url.from_str("")
-## |> Url.append(myStrToEncode)
+## |> Url.append(my_str_to_encode)
 ## |> Url.to_str
 ## ```
 ##
