@@ -155,7 +155,7 @@ append_help = |prefix, suffix|
 
                 Err(NotFound) ->
                     # This should never happen, because we already verified
-                    # that the suffix startsWith "/"
+                    # that the suffix starts_with "/"
                     # TODO `expect Bool.false` here with a comment
                     Str.concat(prefix, suffix)
         else

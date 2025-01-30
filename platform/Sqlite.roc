@@ -569,7 +569,7 @@ f32 : Str -> SqlDecode F32 [FailedToDecodeReal []]UnexpectedTypeErr
 f32 = real_decoder(|x| Num.to_f32(x) |> Ok)
 
 # TODO: Mising Num.to_dec and Num.to_dec_checked
-# dec = realSqlDecoder Ok
+# dec = real_sql_decoder Ok
 
 # These are the same decoders as above but Nullable.
 # If the sqlite field is `Null`, they will return `Null`.

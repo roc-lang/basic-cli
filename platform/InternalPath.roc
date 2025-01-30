@@ -36,7 +36,7 @@ UnwrappedPath : [
     ArbitraryBytes (List U8),
 
     # This was created as a RocStr, so it might have interior nul bytes but it's definitely UTF-8.
-    # That means we can `toStr` it trivially, but have to validate before sending it to OS
+    # That means we can `to_str` it trivially, but have to validate before sending it to OS
     # APIs that expect a nul-terminated `char*`.
     #
     # Note that both UNIX and Windows APIs will accept UTF-8, because on Windows the host calls

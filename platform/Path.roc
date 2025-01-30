@@ -163,7 +163,7 @@ from_bytes = |bytes|
 ## [Here is an example.](https://unix.stackexchange.com/questions/667652/can-a-file-path-be-invalid-utf-8/667863#667863)
 ##
 ## If you happen to know the `Charset` that was used to encode the path, you can use
-## `toStrUsingCharset` instead of [display].
+## `to_str_using_charset` instead of [display].
 display : Path -> Str
 display = |path|
     when InternalPath.unwrap(path) is
