@@ -71,13 +71,13 @@ send! = |request|
 
     other_error_prefix = Str.to_utf8("OTHER ERROR\n")
 
-    if response.status == 408 && response.body == Str.to_utf8("Request Timeout") then
+    if response.status == 408 and response.body == Str.to_utf8("Request Timeout") then
         Err(HttpErr(Timeout))
-    else if response.status == 500 && response.body == Str.to_utf8("Network Error") then
+    else if response.status == 500 and response.body == Str.to_utf8("Network Error") then
         Err(HttpErr(NetworkError))
-    else if response.status == 500 && response.body == Str.to_utf8("Bad Body") then
+    else if response.status == 500 and response.body == Str.to_utf8("Bad Body") then
         Err(HttpErr(BadBody))
-    else if response.status == 500 && List.starts_with(response.body, other_error_prefix) then
+    else if response.status == 500 and List.starts_with(response.body, other_error_prefix) then
         Err(HttpErr(Other(List.drop_first(response.body, List.len(other_error_prefix)))))
     else
         Ok(response)

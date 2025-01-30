@@ -203,9 +203,9 @@ percent_encode = |input|
             |output, byte|
                 # Spec for percent-encoding: https://www.ietf.org/rfc/rfc3986.txt
                 if
-                    (byte >= 97 && byte <= 122) # lowercase ASCII
-                    || (byte >= 65 && byte <= 90) # uppercase ASCII
-                    || (byte >= 48 && byte <= 57) # digit
+                    (byte >= 97 and byte <= 122) # lowercase ASCII
+                    or (byte >= 65 and byte <= 90) # uppercase ASCII
+                    or (byte >= 48 and byte <= 57) # digit
                 then
                     # This is the most common case: an unreserved character,
                     # which needs no encoding in a path
