@@ -52,10 +52,10 @@ seconds_with_padded_zeros = month_with_padded_zeros
 is_leap_year : I128 -> Bool
 is_leap_year = |year|
     (year % 4 == 0)
-    && # divided evenly by 4 unless...
+    and # divided evenly by 4 unless...
     (
         (year % 100 != 0)
-        || # divided by 100 not a leap year
+        or # divided by 100 not a leap year
         (year % 400 == 0) # expecpt when also divisible by 400
     )
 
