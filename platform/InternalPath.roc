@@ -31,12 +31,12 @@ UnwrappedPath : [
     # aren't nul-terminated, while also being able to be passed directly to OS APIs.
     FromOperatingSystem (List U8),
 
-    # These come from userspace (e.g. Path.fromBytes), so they need to be checked for interior
+    # These come from userspace (e.g. Path.from_bytes), so they need to be checked for interior
     # nuls and then nul-terminated before the host can pass them to OS APIs.
     ArbitraryBytes (List U8),
 
     # This was created as a RocStr, so it might have interior nul bytes but it's definitely UTF-8.
-    # That means we can `toStr` it trivially, but have to validate before sending it to OS
+    # That means we can `to_str` it trivially, but have to validate before sending it to OS
     # APIs that expect a nul-terminated `char*`.
     #
     # Note that both UNIX and Windows APIs will accept UTF-8, because on Windows the host calls
