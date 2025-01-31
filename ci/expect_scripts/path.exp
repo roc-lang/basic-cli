@@ -10,7 +10,7 @@ source ./ci/expect_scripts/shared-code.exp
 cd $env(EXAMPLES_DIR)
 spawn ./path
 
-expect "isFile: Bool.true isDir: Bool.false isSymLink: Bool.false type: IsFile\r\n" {
+expect "is_file: Bool.true is_dir: Bool.false is_sym_link: Bool.false type: IsFile\r\n" {
     expect eof {
         check_exit_and_segfault
     }

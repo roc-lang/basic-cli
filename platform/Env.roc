@@ -70,8 +70,8 @@ var! = |name|
 ##     Env.decode!(var)
 ## ```
 ##
-## If `NUM_THINGS=123` then `getU16Var` succeeds with the value of `123u16`.
-## However if `NUM_THINGS=123456789`, then `getU16Var` will
+## If `NUM_THINGS=123` then `get_u16_var` succeeds with the value of `123u16`.
+## However if `NUM_THINGS=123456789`, then `get_u16_var` will
 ## fail with [DecodeErr](https://www.roc-lang.org/builtins/Decode#DecodeError)
 ## because `123456789` is too large to fit in a [U16](https://www.roc-lang.org/builtins/Num#U16).
 ##
@@ -112,7 +112,7 @@ dict! = |{}|
 # walk! : state, (state, Str, Str -> state) => Result state [NonUnicodeEnv state] [Read [Env]]
 # walk! = |state, walker|
 #     Host.env_walk! state walker
-# TODO could potentially offer something like walkNonUnicode which takes (state, Result Str Str, Result Str Str) so it
+# TODO could potentially offer something like walk_non_unicode which takes (state, Result Str Str, Result Str Str) so it
 # tells you when there's invalid Unicode. This is both faster than (and would give you more accurate info than)
 # using regular `walk` and searching for the presence of the replacement character in the resulting
 # strings. However, it's unclear whether anyone would use it. What would the use case be? Reporting

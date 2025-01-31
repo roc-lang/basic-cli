@@ -35,8 +35,8 @@ mode : FileMetadata -> [Unix U32, NonUnix]
 mode = |@FileMetadata(info)| info.mode
 
 # TODO need to create a Time module and return something like Time.Utc here.
-# lastModified : FileMetadata -> Utc
+# last_modified : FileMetadata -> Utc
 # TODO need to create a Time module and return something like Time.Utc here.
-# lastAccessed : FileMetadata -> Utc
+# last_accessed : FileMetadata -> Utc
 # TODO need to create a Time module and return something like Time.Utc here.
 # created : FileMetadata -> Utc

@@ -30,7 +30,7 @@ take_number_bytes! = |{}|
             bytes_read,
             [],
             |bytes, b|
-                if b >= '0' && b <= '9' then
+                if b >= '0' and b <= '9' then
                     List.append(bytes, b)
                 else
                     bytes,

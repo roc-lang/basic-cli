@@ -50,7 +50,7 @@ IOErr : InternalIOErr.IOErr
 ##
 ## First encode a `val` using a given `fmt` which implements the ability [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
 ##
-## For example, suppose you have a `Json.toCompactUtf8` which implements
+## For example, suppose you have a `Json.to_compact_utf8` which implements
 ## [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
 ## You can use this to write [JSON](https://en.wikipedia.org/wiki/JSON)
 ## data to a file like this:
@@ -60,7 +60,7 @@ IOErr : InternalIOErr.IOErr
 ## Path.write!(
 ##     { some: "json stuff" },
 ##     Path.from_str("output.json"),
-##     Json.toCompactUtf8,
+##     Json.to_compact_utf8,
 ## )?
 ## ```
 ##
@@ -127,7 +127,7 @@ from_str = |str|
 ## is not valid Unicode (like a [Str] is), but which is valid for a particular filesystem.
 ##
 ## Note that if the list contains any `0` bytes, sending this path to any file operations
-## (e.g. `Path.read_bytes` or `WriteStream.openPath`) will fail.
+## (e.g. `Path.read_bytes` or `WriteStream.open_path`) will fail.
 from_bytes : List U8 -> Path
 from_bytes = |bytes|
     ArbitraryBytes(bytes)
@@ -142,7 +142,7 @@ from_bytes = |bytes|
 ##
 ## For a conversion to [Str] that is lossy but does not return a [Result], see
 ## [display].
-## toInner : Path -> [Str Str, Bytes (List U8)]
+## to_inner : Path -> [Str Str, Bytes (List U8)]
 ## Assumes a path is encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8),
 ## and converts it to a string using `Str.display`.
 ##
@@ -163,7 +163,7 @@ from_bytes = |bytes|
 ## [Here is an example.](https://unix.stackexchange.com/questions/667652/can-a-file-path-be-invalid-utf-8/667863#667863)
 ##
 ## If you happen to know the `Charset` that was used to encode the path, you can use
-## `toStrUsingCharset` instead of [display].
+## `to_str_using_charset` instead of [display].
 display : Path -> Str
 display = |path|
     when InternalPath.unwrap(path) is

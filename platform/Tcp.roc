@@ -142,7 +142,7 @@ read_until! = |@Stream(stream), byte|
 ## ```
 ## # Read a line and then print it to `stdout`
 ## line_str = File.read_line!(stream)?
-## Stdout.line(lineStr)?
+## Stdout.line(line_str)?
 ## ```
 ##
 ## If found, the newline is included as the last character in the [Str].
@@ -183,8 +183,8 @@ write_utf8! = |stream, str|
 ##
 ## ```
 ## when err is
-##     TcpPerfomErr(TcpConnectErr(connectErr)) ->
-##         Stderr.line!(Tcp.connect_err_to_str(connectErr))
+##     TcpPerfomErr(TcpConnectErr(connect_err)) ->
+##         Stderr.line!(Tcp.connect_err_to_str(connect_err))
 ## ```
 ##
 connect_err_to_str : ConnectErr -> Str
@@ -204,12 +204,12 @@ connect_err_to_str = |err|
 ## ```
 ## when err is
 ##     TcpPerformErr(TcpReadErr(err)) ->
-##         errStr = Tcp.stream_err_to_str(err)
-##         Stderr.line!("Error while reading: ${errStr}")
+##         err_str = Tcp.stream_err_to_str(err)
+##         Stderr.line!("Error while reading: ${err_str}")
 ##
 ##     TcpPerformErr(TcpWriteErr(err)) ->
-##         errStr = Tcp.stream_err_to_str(err)
-##         Stderr.line!("Error while writing: ${errStr}")
+##         err_str = Tcp.stream_err_to_str(err)
+##         Stderr.line!("Error while writing: ${err_str}")
 ## ```
 ##
 stream_err_to_str : StreamErr -> Str
