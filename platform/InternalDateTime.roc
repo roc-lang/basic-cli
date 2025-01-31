@@ -100,7 +100,7 @@ epoch_millis_to_datetime = |millis|
     month = 1
     year = 1970
 
-    epoch_millis_to_datetimeHelp(
+    epoch_millis_to_datetime_help(
         {
             year,
             month,
@@ -111,8 +111,8 @@ epoch_millis_to_datetime = |millis|
         },
     )
 
-epoch_millis_to_datetimeHelp : DateTime -> DateTime
-epoch_millis_to_datetimeHelp = |current|
+epoch_millis_to_datetime_help : DateTime -> DateTime
+epoch_millis_to_datetime_help = |current|
     count_days_in_month = days_in_month(current.year, current.month)
     count_days_in_prev_month =
         if current.month == 1 then
@@ -121,7 +121,7 @@ epoch_millis_to_datetimeHelp = |current|
             days_in_month(current.year, (current.month - 1))
 
     if current.day < 1 then
-        epoch_millis_to_datetimeHelp(
+        epoch_millis_to_datetime_help(
             { current &
                 year: if current.month == 1 then current.year - 1 else current.year,
                 month: if current.month == 1 then 12 else current.month - 1,
@@ -129,28 +129,28 @@ epoch_millis_to_datetimeHelp = |current|
             },
         )
     else if current.hours < 0 then
-        epoch_millis_to_datetimeHelp(
+        epoch_millis_to_datetime_help(
             { current &
                 day: current.day - 1,
                 hours: current.hours + 24,
             },
         )
     else if current.minutes < 0 then
-        epoch_millis_to_datetimeHelp(
+        epoch_millis_to_datetime_help(
             { current &
                 hours: current.hours - 1,
                 minutes: current.minutes + 60,
             },
         )
     else if current.seconds < 0 then
-        epoch_millis_to_datetimeHelp(
+        epoch_millis_to_datetime_help(
             { current &
                 minutes: current.minutes - 1,
                 seconds: current.seconds + 60,
             },
         )
     else if current.day > count_days_in_month then
-        epoch_millis_to_datetimeHelp(
+        epoch_millis_to_datetime_help(
             { current &
                 year: if current.month == 12 then current.year + 1 else current.year,
                 month: if current.month == 12 then 1 else current.month + 1,
