@@ -65,3 +65,8 @@ write! : Str => Result {} [StdoutErr IOErr]
 write! = |str|
     Host.stdout_write!(str)
     |> Result.map_err(handle_err)
+
+write_bytes! : List U8 => Result {} [StdoutErr IOErr]
+write_bytes! = |bytes|
+    Host.stdout_write_bytes!(bytes)
+    |> Result.map_err(handle_err)
