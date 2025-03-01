@@ -2,6 +2,7 @@ module [
     IOErr,
     line!,
     write!,
+    write_bytes!,
 ]
 
 import Host
