@@ -2,6 +2,7 @@ module [
     IOErr,
     line!,
     write!,
+    write_bytes!,
 ]
 
 import Host
@@ -63,4 +64,9 @@ line! = |str|
 write! : Str => Result {} [StderrErr IOErr]
 write! = |str|
     Host.stderr_write!(str)
+    |> Result.map_err(handle_err)
+
+write_bytes! : List U8 => Result {} [StderrErr IOErr]
+write_bytes! = |bytes|
+    Host.stderr_write_bytes!(bytes)
     |> Result.map_err(handle_err)

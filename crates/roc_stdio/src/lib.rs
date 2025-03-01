@@ -64,6 +64,17 @@ pub fn stdout_write(text: &RocStr) -> RocResult<(), roc_io_error::IOErr> {
         .into()
 }
 
+pub fn stdout_write_bytes(bytes: &RocList<u8>) -> RocResult<(), roc_io_error::IOErr> {
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+
+    handle
+        .write_all(bytes.as_slice())
+        .and_then(|()| handle.flush())
+        .map_err(|io_err| io_err.into())
+        .into()
+}
+
 /// stderrLine! : Str => Result {} IOErr
 pub fn stderr_line(line: &RocStr) -> RocResult<(), roc_io_error::IOErr> {
     let stderr = std::io::stderr();
@@ -84,6 +95,17 @@ pub fn stderr_write(text: &RocStr) -> RocResult<(), roc_io_error::IOErr> {
 
     handle
         .write_all(text.as_bytes())
+        .and_then(|()| handle.flush())
+        .map_err(|io_err| io_err.into())
+        .into()
+}
+
+pub fn stderr_write_bytes(bytes: &RocList<u8>) -> RocResult<(), roc_io_error::IOErr> {
+    let stderr = std::io::stderr();
+    let mut handle = stderr.lock();
+
+    handle
+        .write_all(bytes.as_slice())
         .and_then(|()| handle.flush())
         .map_err(|io_err| io_err.into())
         .into()
