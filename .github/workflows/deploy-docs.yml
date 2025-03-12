@@ -3,7 +3,7 @@ name: Deploy docs to Pages
 on:
   release:
     types:
-      - published
+      - created
 
   workflow_dispatch:
 
@@ -12,28 +12,79 @@ permissions:
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+# this cancels workflows currently in progress if you start a new one
 concurrency:
   group: "pages"
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        
+      - name: Create temp directory for docs
+        run: mkdir -p ./temp_docs
+        
+      - name: Get all releases
+        id: releases
+        run: |
+          echo "releases=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases" | jq -c '.')" >> $GITHUB_OUTPUT
+        
+      - name: Download and extract docs for each release
+        run: |
+          releases='${{ steps.releases.outputs.releases }}'
+          for release in $(echo "${releases}" | jq -c '.[]'); do
+            release_name=$(echo $release | jq -r '.tag_name')
+            assets_url=$(echo $release | jq -r '.assets_url')
+            
+            # Get assets for this release
+            assets=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "${assets_url}")
+            
+            # Look for docs.tar.gz asset
+            download_url=$(echo $assets | jq -r '.[] | select(.name=="docs.tar.gz") | .browser_download_url')
+            
+            if [ ! -z "$download_url" ]; then
+              echo "Processing release ${release_name}, downloading from ${download_url}"
+              
+              # Create directory for this release
+              mkdir -p "./temp_docs/${release_name}"
+              
+              # Download and extract
+              curl -sL "${download_url}" -o ./temp_docs/temp.tar.gz
+              tar -xzf ./temp_docs/temp.tar.gz -C "./temp_docs/${release_name}"
+              rm ./temp_docs/temp.tar.gz
+            else
+              echo "Error: docs.tar.gz not found for release ${release_name}"
+            fi
+          done
+          
+          # Get the latest release version
+          latest_release=$(echo "${releases}" | jq -r '.[0].tag_name')
+          
+          if [ -f "./docs/index.html" ]; then
+            # Copy the index.html and replace LATESTVERSION with actual latest release
+            cat ./docs/index.html | sed "s/LATESTVERSION/${latest_release}/g" > ./temp_docs/index.html
+            echo "Created index.html with latest version: ${latest_release}"
+          else
+            echo "Error: index.html not found in docs folder"
+            exit 1
+          fi
+        
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload docs/ folder
-          path: "./docs"
+          # Upload the processed docs folder
+          path: "./temp_docs"
+          
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
