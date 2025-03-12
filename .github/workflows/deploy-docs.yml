@@ -1,9 +1,6 @@
 name: Deploy docs to Pages
 
 on:
-  # TODO remove this trigger before merging
-  pull_request:
-
   release:
     types:
       - created
