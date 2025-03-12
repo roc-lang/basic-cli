@@ -67,18 +67,17 @@ jobs:
             fi
           done
           
-          # Check if index.html exists in the docs folder
-            # Get the latest release version
-            latest_release=$(echo "${releases}" | jq -r '.[0].tag_name')
-            
-            if [ -f "./docs/index.html" ]; then
-              # Copy the index.html and replace LATESTVERSION with actual latest release
-              cat ./docs/index.html | sed "s/LATESTVERSION/${latest_release}/g" > ./temp_docs/index.html
-              echo "Created index.html with latest version: ${latest_release}"
-            else
-              echo "Error: index.html not found in docs folder"
-              exit 1
-            fi
+          # Get the latest release version
+          latest_release=$(echo "${releases}" | jq -r '.[0].tag_name')
+          
+          if [ -f "./docs/index.html" ]; then
+            # Copy the index.html and replace LATESTVERSION with actual latest release
+            cat ./docs/index.html | sed "s/LATESTVERSION/${latest_release}/g" > ./temp_docs/index.html
+            echo "Created index.html with latest version: ${latest_release}"
+          else
+            echo "Error: index.html not found in docs folder"
+            exit 1
+          fi
         
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
