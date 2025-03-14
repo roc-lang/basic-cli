@@ -1,21 +1,23 @@
 //! This crate provides common functionality for Roc to interface with `std::net::tcp`
 use roc_std::{RocBox, RocList, RocRefcounted, RocResult, RocStr};
 use roc_std_heap::ThreadSafeRefcountedResourceHeap;
+use rustls::pki_types::ServerName;
+use rustls::{ClientConfig, ClientConnection, RootCertStore, StreamOwned};
 use std::env;
 use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
 use std::net::TcpStream;
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 pub const REQUEST_TIMEOUT_BODY: &[u8] = "RequestTimeout".as_bytes();
 pub const REQUEST_NETWORK_ERR: &[u8] = "Network Error".as_bytes();
 pub const REQUEST_BAD_BODY: &[u8] = "Bad Body".as_bytes();
+type TlsStream = BufReader<StreamOwned<rustls::ClientConnection, TcpStream>>;
 
-pub fn heap() -> &'static ThreadSafeRefcountedResourceHeap<BufReader<TcpStream>> {
+pub fn heap() -> &'static ThreadSafeRefcountedResourceHeap<TlsStream> {
     // TODO: Should this be a BufReader and BufWriter of the tcp stream?
     // like this: https://stackoverflow.com/questions/58467659/how-to-store-tcpstream-with-bufreader-and-bufwriter-in-a-data-structure/58491889#58491889
 
-    static TCP_HEAP: OnceLock<ThreadSafeRefcountedResourceHeap<BufReader<TcpStream>>> =
-        OnceLock::new();
+    static TCP_HEAP: OnceLock<ThreadSafeRefcountedResourceHeap<TlsStream>> = OnceLock::new();
     TCP_HEAP.get_or_init(|| {
         let default_max = 65536;
         let max_tcp_streams = env::var("ROC_BASIC_CLI_MAX_TCP_STREAMS")
@@ -248,9 +250,22 @@ impl roc_std::RocRefcounted for Header {
 }
 
 pub fn tcp_connect(host: &RocStr, port: u16) -> RocResult<RocBox<()>, RocStr> {
+    let root_store = RootCertStore {
+        roots: webpki_roots::TLS_SERVER_ROOTS.into(),
+    };
+    let config = ClientConfig::builder()
+        .with_root_certificates(root_store)
+        .with_no_client_auth();
+
     match TcpStream::connect((host.as_str(), port)) {
         Ok(stream) => {
-            let buf_reader = BufReader::new(stream);
+            let conn = ClientConnection::new(
+                Arc::new(config),
+                ServerName::try_from(host.as_str().to_owned()).unwrap(),
+            )
+            .unwrap();
+            let tls = rustls::StreamOwned::new(conn, stream);
+            let buf_reader = BufReader::new(tls);
 
             let heap = heap();
             let alloc_result = heap.alloc_for(buf_reader);
@@ -264,8 +279,7 @@ pub fn tcp_connect(host: &RocStr, port: u16) -> RocResult<RocBox<()>, RocStr> {
 }
 
 pub fn tcp_read_up_to(stream: RocBox<()>, bytes_to_read: u64) -> RocResult<RocList<u8>, RocStr> {
-    let stream: &mut BufReader<TcpStream> =
-        ThreadSafeRefcountedResourceHeap::box_to_resource(stream);
+    let stream: &mut TlsStream = ThreadSafeRefcountedResourceHeap::box_to_resource(stream);
 
     let mut chunk = stream.take(bytes_to_read);
 
@@ -282,8 +296,7 @@ pub fn tcp_read_up_to(stream: RocBox<()>, bytes_to_read: u64) -> RocResult<RocLi
 }
 
 pub fn tcp_read_exactly(stream: RocBox<()>, bytes_to_read: u64) -> RocResult<RocList<u8>, RocStr> {
-    let stream: &mut BufReader<TcpStream> =
-        ThreadSafeRefcountedResourceHeap::box_to_resource(stream);
+    let stream: &mut TlsStream = ThreadSafeRefcountedResourceHeap::box_to_resource(stream);
 
     let mut buffer = Vec::with_capacity(bytes_to_read as usize);
     let mut chunk = stream.take(bytes_to_read);
@@ -302,8 +315,7 @@ pub fn tcp_read_exactly(stream: RocBox<()>, bytes_to_read: u64) -> RocResult<Roc
 }
 
 pub fn tcp_read_until(stream: RocBox<()>, byte: u8) -> RocResult<RocList<u8>, RocStr> {
-    let stream: &mut BufReader<TcpStream> =
-        ThreadSafeRefcountedResourceHeap::box_to_resource(stream);
+    let stream: &mut TlsStream = ThreadSafeRefcountedResourceHeap::box_to_resource(stream);
 
     let mut buffer = RocList::empty();
     match roc_file::read_until(stream, byte, &mut buffer) {
@@ -313,8 +325,7 @@ pub fn tcp_read_until(stream: RocBox<()>, byte: u8) -> RocResult<RocList<u8>, Ro
 }
 
 pub fn tcp_write(stream: RocBox<()>, msg: &RocList<u8>) -> RocResult<(), RocStr> {
-    let stream: &mut BufReader<TcpStream> =
-        ThreadSafeRefcountedResourceHeap::box_to_resource(stream);
+    let stream: &mut TlsStream = ThreadSafeRefcountedResourceHeap::box_to_resource(stream);
 
     match stream.get_mut().write_all(msg.as_slice()) {
         Ok(()) => RocResult::ok(()),
