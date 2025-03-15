@@ -7,7 +7,7 @@ set timeout 7
 
 source ./ci/expect_scripts/shared-code.exp
 
-spawn $env(EXAMPLES_DIR)dir
+spawn $env(EXAMPLES_DIR)dup-bytes
 
 send example
 
