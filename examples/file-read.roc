@@ -19,6 +19,8 @@ main! = |_args|
 
         Exit(1, "unable to read file: ${msg}") # non-zero exit code to indicate failure
 
+    crash "test"
+    
     Ok({})
 
 run! = |{}|
