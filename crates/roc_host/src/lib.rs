@@ -301,8 +301,10 @@ pub fn init() {
         roc_fx_stdin_read_to_end as _,
         roc_fx_stdout_line as _,
         roc_fx_stdout_write as _,
+        roc_fx_stdout_write_bytes as _,
         roc_fx_stderr_line as _,
         roc_fx_stderr_write as _,
+        roc_fx_stderr_write_bytes as _,
         roc_fx_tty_mode_canonical as _,
         roc_fx_tty_mode_raw as _,
         roc_fx_file_write_utf8 as _,
@@ -427,6 +429,11 @@ pub extern "C" fn roc_fx_stdout_write(text: &RocStr) -> RocResult<(), roc_io_err
 }
 
 #[no_mangle]
+pub extern "C" fn roc_fx_stdout_write_bytes(bytes: &RocList<u8>) -> RocResult<(), roc_io_error::IOErr> {
+    roc_stdio::stdout_write_bytes(bytes)
+}
+
+#[no_mangle]
 pub extern "C" fn roc_fx_stderr_line(line: &RocStr) -> RocResult<(), roc_io_error::IOErr> {
     roc_stdio::stderr_line(line)
 }
@@ -434,6 +441,11 @@ pub extern "C" fn roc_fx_stderr_line(line: &RocStr) -> RocResult<(), roc_io_erro
 #[no_mangle]
 pub extern "C" fn roc_fx_stderr_write(text: &RocStr) -> RocResult<(), roc_io_error::IOErr> {
     roc_stdio::stderr_write(text)
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_stderr_write_bytes(bytes: &RocList<u8>) -> RocResult<(), roc_io_error::IOErr> {
+    roc_stdio::stderr_write_bytes(bytes)
 }
 
 #[no_mangle]

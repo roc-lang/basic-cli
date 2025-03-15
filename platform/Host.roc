@@ -35,11 +35,13 @@ hosted [
     sqlite_step!,
     stderr_line!,
     stderr_write!,
+    stderr_write_bytes!,
     stdin_bytes!,
     stdin_line!,
     stdin_read_to_end!,
     stdout_line!,
     stdout_write!,
+    stdout_write_bytes!,
     tcp_connect!,
     tcp_read_exactly!,
     tcp_read_until!,
@@ -84,8 +86,10 @@ temp_dir! : {} => List U8
 # STDIO
 stdout_line! : Str => Result {} InternalIOErr.IOErrFromHost
 stdout_write! : Str => Result {} InternalIOErr.IOErrFromHost
+stdout_write_bytes! : List U8 => Result {} InternalIOErr.IOErrFromHost
 stderr_line! : Str => Result {} InternalIOErr.IOErrFromHost
 stderr_write! : Str => Result {} InternalIOErr.IOErrFromHost
+stderr_write_bytes! : List U8 => Result {} InternalIOErr.IOErrFromHost
 stdin_line! : {} => Result Str InternalIOErr.IOErrFromHost
 stdin_bytes! : {} => Result (List U8) InternalIOErr.IOErrFromHost
 stdin_read_to_end! : {} => Result (List U8) InternalIOErr.IOErrFromHost
