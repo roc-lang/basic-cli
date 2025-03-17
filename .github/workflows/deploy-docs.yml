@@ -37,7 +37,7 @@ jobs:
         run: |
           # Get all releases 
           releases=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/roc-lang/basic-cli/releases" | jq -c '.')
-          for release in $(echo "${releases}" | jq -c '.[]'); do
+          echo "$releases" | jq -c '.[]' | while read -r release; do
             release_name=$(echo $release | jq -r '.tag_name')
             assets_url=$(echo $release | jq -r '.assets_url')
             
