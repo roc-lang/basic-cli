@@ -11,7 +11,7 @@ spawn $env(EXAMPLES_DIR)dup-bytes
 
 send -- "someinput\r"
 
-expect "someinput\r\n" {
+expect "someinput\r\nsomeinput\r\n" {
     expect eof {
         check_exit_and_segfault
     }
