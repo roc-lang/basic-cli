@@ -41,7 +41,7 @@ jobs:
         
       - name: Download and extract docs for each release
         run: |
-          releases='${{ steps.releases.outputs.releases }}'
+          releases=${{ steps.releases.outputs.releases }}
           for release in $(echo "${releases}" | jq -c '.[]'); do
             release_name=$(echo $release | jq -r '.tag_name')
             assets_url=$(echo $release | jq -r '.assets_url')
