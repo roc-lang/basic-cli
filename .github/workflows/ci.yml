@@ -52,10 +52,21 @@ jobs:
       - name: Install dependencies for musl build
         run: |
           sudo apt-get install -y musl-tools
-          rustup target add x86_64-unknown-linux-musl
+          if [[ "${{ matrix.operating-system }}" == *"-arm" ]]; then
+            rustup target add aarch64-unknown-linux-musl
+          else
+            rustup target add x86_64-unknown-linux-musl
+          fi
 
       - name: Test building with musl target
-        run: ROC=./roc_nightly/roc CARGO_BUILD_TARGET=x86_64-unknown-linux-musl ./roc_nightly/roc build.roc
+        env:
+          ROC: ./roc_nightly/roc
+        run: |
+          if [[ "${{ matrix.operating-system }}" == *"-arm" ]]; then
+            CARGO_BUILD_TARGET=aarch64-unknown-linux-musl $ROC build.roc
+          else
+            CARGO_BUILD_TARGET=x86_64-unknown-linux-musl $ROC build.roc
+          fi
 
       - name: Test using musl build
         run: |
