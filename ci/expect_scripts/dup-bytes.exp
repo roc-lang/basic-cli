@@ -9,9 +9,9 @@ source ./ci/expect_scripts/shared-code.exp
 
 spawn $env(EXAMPLES_DIR)dup-bytes
 
-send example
+send -- "someinput\r"
 
-expect "example\r\n" {
+expect "someinput\r\n" {
     expect eof {
         check_exit_and_segfault
     }
