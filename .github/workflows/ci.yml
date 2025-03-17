@@ -12,22 +12,20 @@ jobs:
     runs-on: ${{ matrix.operating-system }}
     strategy:
       matrix:
-        operating-system: [ubuntu-22.04, ubuntu-24.04]
+        operating-system: [ubuntu-22.04, ubuntu-24.04, ubuntu-24.04-arm]
     steps:
       - uses: actions/checkout@v3
 
       - name: Does init() in platform/src/lib.rs contain all roc_fx functions? (Imperfect check)
         run: cat platform/src/lib.rs | grep -oP 'roc_fx_[^(\s]*' | sort | uniq -u | grep -q . && exit 1 || exit 0
 
-      - id: try_fetching_testing_release
-        continue-on-error: true
+      - name: Downloading latest roc nightly
         run: |
-          curl -fOL https://github.com/roc-lang/roc/releases/download/nightly/roc_nightly-linux_x86_64-TESTING.tar.gz
-
-      - name: There are no TESTING releases, checking regular releases instead
-        if: steps.try_fetching_testing_release.outcome == 'failure'
-        run: |
-          curl -fOL https://github.com/roc-lang/roc/releases/download/nightly/roc_nightly-linux_x86_64-latest.tar.gz
+          if [[ "${{ runner.os }}-${{ runner.arch }}" == "Linux-ARM64" ]]; then
+            curl -fOL https://github.com/roc-lang/roc/releases/download/nightly/roc_nightly-linux_arm64-latest.tar.gz
+          else
+            curl -fOL https://github.com/roc-lang/roc/releases/download/nightly/roc_nightly-linux_x86_64-latest.tar.gz
+          fi
 
       - name: rename nightly tar
         run: mv $(ls | grep "roc_nightly.*tar\.gz") roc_nightly.tar.gz
