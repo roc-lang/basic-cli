@@ -65,8 +65,6 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         continue
     fi
 
-    valgrind ./examples/args foo
-    
     roc_file_only="$(basename "$roc_file")"
     no_ext_name=${roc_file_only%.*}
 
