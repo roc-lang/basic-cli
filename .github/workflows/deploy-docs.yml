@@ -63,7 +63,7 @@ jobs:
           done
 
           # fix URLs
-          find ./temp-docs -type f -exec sed -i 's/\/packages\/basic-cli\//\/basic-cli\//g' {} +
+          find ./temp_docs -type f -exec sed -i 's/\/packages\/basic-cli\//\/basic-cli\//g' {} +
           
           # Get the latest release version
           latest_release=$(echo "${releases}" | jq -r '.[0].tag_name')
