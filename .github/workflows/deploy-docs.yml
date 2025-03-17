@@ -33,15 +33,10 @@ jobs:
       - name: Create temp directory for docs
         run: mkdir -p ./temp_docs
         
-      - name: Get all releases
-        id: releases
-        run: |
-          echo "releases=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/releases" | jq -c '.')" >> $GITHUB_OUTPUT
-        
       - name: Download and extract docs for each release
         run: |
-          releases=${{ steps.releases.outputs.releases }}
+          # Get all releases 
+          releases=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/roc-lang/basic-cli/releases" | jq -c '.')
           for release in $(echo "${releases}" | jq -c '.[]'); do
             release_name=$(echo $release | jq -r '.tag_name')
             assets_url=$(echo $release | jq -r '.assets_url')
