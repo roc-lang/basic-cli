@@ -55,7 +55,7 @@ jobs:
               
               # Download and extract
               curl -sL "${download_url}" -o ./temp_docs/temp.tar.gz
-              tar -xzf ./temp_docs/temp.tar.gz -C "./temp_docs/${release_name}"
+              tar -xzf ./temp_docs/temp.tar.gz -C "./temp_docs/${release_name}" --strip-components=1
               rm ./temp_docs/temp.tar.gz
             else
               echo "Error: docs.tar.gz not found for release ${release_name}"
