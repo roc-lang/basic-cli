@@ -19,11 +19,11 @@ jobs:
       - uses: actions/checkout@v4
 
       # install nix
-      - uses: cachix/install-nix-action@02a151ada4993995686f9ed4f1be7cfbb229e56f
+      - uses: cachix/install-nix-action@02a151ada4993995686f9ed4f1be7cfbb229e56f # commit for v31
         with:
           nix_path: nixpkgs=channel:nixos-unstable
 
-      - uses: cachix/cachix-action@0fc020193b5a1fa3ac4575aa3a7d3aa6a35435ad
+      - uses: cachix/cachix-action@0fc020193b5a1fa3ac4575aa3a7d3aa6a35435ad # commit for v16
         with:
           name: enigmaticsunrise
           authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
