@@ -17,12 +17,19 @@ concurrency:
   group: "pages"
   cancel-in-progress: true
 
+# Do not add permissions here! Configure them at the job level!
+permissions:
+  contents: read
+
 jobs:
   deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
