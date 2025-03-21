@@ -7,11 +7,6 @@ on:
 
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
 # this cancels workflows currently in progress if you start a new one
 concurrency:
   group: "pages"
