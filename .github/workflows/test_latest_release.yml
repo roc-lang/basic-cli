@@ -7,8 +7,7 @@ concurrency:
   cancel-in-progress: true
 
 # Do not add permissions here! Configure them at the job level!
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   test-latest-release:
