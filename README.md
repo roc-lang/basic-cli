@@ -17,6 +17,7 @@ A Roc [platform](https://github.com/roc-lang/roc/wiki/Roc-concepts-explained#pla
   - [0.19.0](https://roc-lang.github.io/basic-cli/0.19.0/)
   - [0.18.0](https://roc-lang.github.io/basic-cli/0.18.0/)
   - [0.17.0](https://roc-lang.github.io/basic-cli/0.17.0/)
+  - [latest main branch](https://roc-lang.github.io/basic-cli/main/)
 
 ## Running locally
 
