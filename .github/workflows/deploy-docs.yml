@@ -2,8 +2,8 @@ name: Deploy docs to Pages
 
 on:
   push:
-    paths:
-      - '**.roc'
+    #paths:
+    #  - '**.roc'
   release:
     types:
       - created
