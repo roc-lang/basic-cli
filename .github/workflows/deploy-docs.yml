@@ -1,6 +1,9 @@
 name: Deploy docs to Pages
 
 on:
+  push:
+    paths:
+      - '**.roc'
   release:
     types:
       - created
@@ -31,6 +34,19 @@ jobs:
         
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
+      - name: Downloading latest roc nightly
+        run: |
+          curl -fOL https://github.com/roc-lang/roc/releases/download/nightly/roc_nightly-linux_x86_64-latest.tar.gz
+
+      - name: prep nightly tar for use
+        run: |
+          mv $(ls | grep "roc_nightly.*tar\.gz") roc_nightly.tar.gz
+          tar -xzf roc_nightly.tar.gz
+          rm roc_nightly.tar.gz
+          mv roc_nightly* roc_nightly
+
+      - run: ./roc_nightly/roc version
         
       - name: Create temp directory for docs
         run: mkdir -p ./temp_docs
@@ -78,7 +94,18 @@ jobs:
             echo "Error: index.html not found in docs folder"
             exit 1
           fi
-        
+
+      - name: Add docs for main branch
+        env:
+          ROC_DOCS_URL_ROOT: /basic-cli/main
+        run: |
+          ./roc_nightly/roc docs ./basic-cli/platform/main.roc
+
+          mkdir -p "./temp_docs/main"
+
+          mv ./generated-docs/* ./temp_docs/main
+          
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
