@@ -99,7 +99,7 @@ jobs:
         env:
           ROC_DOCS_URL_ROOT: /basic-cli/main
         run: |
-          ./roc_nightly/roc docs ./basic-cli/platform/main.roc
+          ./roc_nightly/roc docs ./platform/main.roc
 
           mkdir -p "./temp_docs/main"
 
