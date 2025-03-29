@@ -38,11 +38,6 @@ architecture=$(uname -m)
 for roc_file in $EXAMPLES_DIR*.roc; do
     base_file=$(basename "$roc_file")
 
-    # Skip env-var.roc when on aarch64
-    if [ "$architecture" == "aarch64" ] && [ "$base_file" == "env-var.roc" ]; then
-        continue
-    fi
-
     if [ "$base_file" == "temp-dir.roc" ]; then
         $ROC build $roc_file $ROC_BUILD_FLAGS --linker=legacy
     else

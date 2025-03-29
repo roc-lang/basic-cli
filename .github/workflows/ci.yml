@@ -43,7 +43,9 @@ jobs:
 
       - run: ./roc_nightly/roc version
 
-      - run: sudo apt install -y expect ncat valgrind
+      - run: |
+          sudo apt update
+          sudo apt install -y expect ncat valgrind
       # expect for testing
       # ncat for tcp-client example
 
