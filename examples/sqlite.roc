@@ -37,6 +37,7 @@ query_todos_by_status! = |db_path, status|
             path: db_path,
             query: "SELECT id, task FROM todos WHERE status = :status;",
             bindings: [{ name: ":status", value: String(status) }],
+            # This uses the record builder syntax: https://www.roc-lang.org/examples/RecordBuilder/README.html
             rows: { Sqlite.decode_record <-
                 id: Sqlite.i64("id") |> Sqlite.map_value(Num.to_str),
                 task: Sqlite.str("task"),

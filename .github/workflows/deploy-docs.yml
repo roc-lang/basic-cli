@@ -2,6 +2,8 @@ name: Deploy docs to Pages
 
 on:
   push:
+    branches:
+      - main
     paths:
       - '**.roc'
   release:
