@@ -763,6 +763,7 @@ pub extern "C" fn roc_fx_sqlite_step(
     roc_sqlite::step(stmt)
 }
 
+/// Resets a prepared statement back to its initial state, ready to be re-executed.
 #[no_mangle]
 pub extern "C" fn roc_fx_sqlite_reset(stmt: RocBox<()>) -> RocResult<(), roc_sqlite::SqliteError> {
     roc_sqlite::reset(stmt)

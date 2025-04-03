@@ -194,12 +194,16 @@ step! = |@Stmt(stmt)|
     |> Result.map_err(internal_to_external_error)
 
 # internal use only
+## Resets a prepared statement back to its initial state, ready to be re-executed.
 reset! : Stmt => Result {} [SqliteErr ErrCode Str]
 reset! = |@Stmt(stmt)|
     Host.sqlite_reset!(stmt)
     |> Result.map_err(internal_to_external_error)
 
-## Execute a SQL statement that doesn't return any rows (like INSERT, UPDATE, DELETE).
+## Execute a SQL statement that **doesn't return any rows** (like INSERT, UPDATE, DELETE).
+## Use a function starting with `query_` if you expect rows to be returned.
+##
+## Use execute_prepared! if you expect to run the same query multiple times.
 ##
 ## Example:
 ## ```
@@ -218,12 +222,13 @@ execute! :
         query : Str,
         bindings : List Binding,
     }
-    => Result {} [SqliteErr ErrCode Str, UnhandledRows]
+    => Result {} [SqliteErr ErrCode Str, RowsReturnedUseQueryInstead]
 execute! = |{ path, query: q, bindings }|
     stmt = try(prepare!, { path, query: q })
     execute_prepared!({ stmt, bindings })
 
-## Execute a prepared SQL statement that doesn't return any rows.
+## Execute a prepared SQL statement that **doesn't return any rows** (like INSERT, UPDATE, DELETE).
+## Use a function starting with `query_` if you expect rows to be returned.
 ##
 ## This is more efficient than [execute!] when running the same query multiple times
 ## as it reuses the prepared statement.
@@ -232,7 +237,7 @@ execute_prepared! :
         stmt : Stmt,
         bindings : List Binding,
     }
-    => Result {} [SqliteErr ErrCode Str, UnhandledRows]
+    => Result {} [SqliteErr ErrCode Str, RowsReturnedUseQueryInstead]
 execute_prepared! = |{ stmt, bindings }|
     try(bind!, stmt, bindings)
     res = step!(stmt)
@@ -242,7 +247,7 @@ execute_prepared! = |{ stmt, bindings }|
             Ok({})
 
         Ok(Row) ->
-            Err(UnhandledRows)
+            Err(RowsReturnedUseQueryInstead)
 
         Err(e) ->
             Err(e)
