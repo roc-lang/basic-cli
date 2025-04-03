@@ -292,6 +292,7 @@ pub fn step(stmt: RocBox<()>) -> RocResult<SqliteState, SqliteError> {
     roc_err_from_sqlite_errcode(stmt, err)
 }
 
+/// Resets a prepared statement back to its initial state, ready to be re-executed.
 pub fn reset(stmt: RocBox<()>) -> RocResult<(), SqliteError> {
     let stmt: &SqliteStatement = ThreadSafeRefcountedResourceHeap::box_to_resource(stmt);
 
