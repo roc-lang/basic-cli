@@ -132,7 +132,7 @@ impl RequestToAndFromHost {
         }
     }
 
-    pub fn to_hyper_request(&self) -> Result<hyper::Request<String>, hyper::http::Error> {
+    pub fn to_hyper_request(&self) -> Result<hyper::Request<hyper::Body>, hyper::http::Error> {
         let method: hyper::Method = self.as_hyper_method();
         let mut req_builder = hyper::Request::builder()
             .method(method)
@@ -153,7 +153,7 @@ impl RequestToAndFromHost {
             req_builder = req_builder.header("Content-Type", "text/plain");
         }
 
-        let bytes = String::from_utf8(self.body.as_slice().to_vec()).unwrap();
+        let bytes = hyper::Body::from(self.body.as_slice().to_vec());
 
         req_builder.body(bytes)
     }
