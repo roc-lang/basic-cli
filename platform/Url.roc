@@ -482,16 +482,19 @@ query_params = |url|
 path : Url -> Str
 path = |@Url(url_str)|
     without_authority =
-        when Str.split_first(url_str, ":") is
-            Ok({ after }) ->
-                when Str.split_first(after, "//") is
-                    # Only drop the `//` if it's right after the `://` like in `https://`
-                    # (so, `before` is empty) - otherwise, the `//` is part of the path!
-                    Ok({ before, after: after_slashes }) if Str.is_empty(before) -> after_slashes
-                    _ -> after
+        if Str.starts_with(url_str, "/") then
+            url_str
+        else
+            when Str.split_first(url_str, ":") is
+                Ok({ after }) ->
+                    when Str.split_first(after, "//") is
+                        # Only drop the `//` if it's right after the `://` like in `https://`
+                        # (so, `before` is empty) - otherwise, the `//` is part of the path!
+                        Ok({ before, after: after_slashes }) if Str.is_empty(before) -> after_slashes
+                        _ -> after
 
-            # There's no `//` and also no `:` so this must be a path-only URL, e.g. "/foo?bar=baz#blah"
-            Err(NotFound) -> url_str
+                # There's no `//` and also no `:` so this must be a path-only URL, e.g. "/foo?bar=baz#blah"
+                Err(NotFound) -> url_str
 
     # Drop the query and/or fragment
     when Str.split_last(without_authority, "?") is
@@ -500,3 +503,16 @@ path = |@Url(url_str)|
             when Str.split_last(without_authority, "#") is
                 Ok({ before }) -> before
                 Err(NotFound) -> without_authority
+
+# `Url.path` supports non-encoded URIs in query parameters (https://datatracker.ietf.org/doc/html/rfc3986#section-3.4)
+expect
+    input = Url.from_str("https://example.com/foo/bar?key1=https://www.baz.com/some-path#stuff")
+    expected = "example.com/foo/bar"
+    path(input) == expected
+
+# `Url.path` supports non-encoded URIs in query parameters (https://datatracker.ietf.org/doc/html/rfc3986#section-3.4)
+expect
+    input = Url.from_str("/foo/bar?key1=https://www.baz.com/some-path#stuff")
+    output = Url.path(input)
+    expected = "/foo/bar"
+    output == expected
