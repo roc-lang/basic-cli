@@ -43,6 +43,7 @@
           ]);
 
         sharedInputs = (with pkgs; [
+          sqlite
           jq
           rust
           llvmPkgs.clang
