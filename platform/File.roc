@@ -15,11 +15,13 @@ module [
     open_reader_with_capacity!,
     read_line!,
     hard_link!,
+    size_in_bytes!,
 ]
 
 import Path exposing [Path]
 import InternalIOErr
 import Host
+import InternalPath
 
 ## Tag union of possible errors when reading and writing a file or directory.
 ##
@@ -258,3 +260,11 @@ read_line! : Reader => Result (List U8) [FileReadErr Path IOErr]
 read_line! = |@Reader({ reader, path })|
     Host.file_read_line!(reader)
     |> Result.map_err(|err| FileReadErr(path, InternalIOErr.handle_err(err)))
+
+## Returns the size of a file in bytes.
+## 
+## This uses [rust's std::fs::Metadata::len](https://doc.rust-lang.org/std/fs/struct.Metadata.html#method.len).
+size_in_bytes! : Str => Result U64 [PathErr IOErr]
+size_in_bytes! = |path_str|
+    Host.file_size_in_bytes!(InternalPath.to_bytes(Path.from_str(path_str)))
+    |> Result.map_err(|err| PathErr(InternalIOErr.handle_err(err)))

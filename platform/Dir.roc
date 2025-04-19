@@ -1,5 +1,4 @@
 module [
-    DirEntry,
     IOErr,
     list!,
     create!,
@@ -15,11 +14,6 @@ import InternalIOErr
 ##
 ## > This is the same as [`File.IOErr`](File#IOErr).
 IOErr : InternalIOErr.IOErr
-
-## Record which represents a directory
-##
-## > This is the same as [`Path.DirEntry`](Path#DirEntry).
-DirEntry : Path.DirEntry
 
 ## Lists the files and directories inside the directory.
 ##

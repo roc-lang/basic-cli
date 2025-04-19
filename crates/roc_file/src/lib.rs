@@ -166,6 +166,21 @@ pub fn file_delete(roc_path: &RocList<u8>) -> RocResult<(), IOErr> {
     }
 }
 
+/// Note: If the path is a directory or symlink, you probably don't want to call this function.
+pub fn file_size_in_bytes(roc_path: &RocList<u8>) -> RocResult<u64, IOErr> {
+    let rust_path = path_from_roc_path(roc_path);
+    let metadata_res = std::fs::metadata(rust_path);
+
+    match metadata_res {
+        Ok(metadata) => {
+            RocResult::ok(metadata.len())
+        }
+        Err(err) => {
+            RocResult::err(err.into())
+        }
+    }
+}
+
 pub fn dir_list(roc_path: &RocList<u8>) -> RocResult<RocList<RocList<u8>>, IOErr> {
     let path = path_from_roc_path(roc_path);
 

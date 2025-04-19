@@ -6,7 +6,6 @@ platform "cli"
         Dir,
         Env,
         File,
-        FileMetadata,
         Http,
         Stderr,
         Stdin,
