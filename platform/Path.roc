@@ -1,7 +1,6 @@
 module [
     Path,
     IOErr,
-    DirEntry,
     display,
     from_str,
     from_bytes,
@@ -26,20 +25,10 @@ module [
 
 import InternalPath
 import InternalIOErr
-import FileMetadata exposing [FileMetadata]
 import Host
 
 ## Represents a path to a file or directory on the filesystem.
 Path : InternalPath.InternalPath
-
-## Record which represents a directory
-##
-## > This is the same as [`Dir.DirEntry`](Dir#DirEntry).
-DirEntry : {
-    path : Path,
-    type : [File, Dir, Symlink],
-    metadata : FileMetadata,
-}
 
 ## Tag union of possible errors when reading and writing a file or directory.
 ##

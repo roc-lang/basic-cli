@@ -314,6 +314,7 @@ pub fn init() {
         roc_fx_file_reader as _,
         roc_fx_file_read_line as _,
         roc_fx_file_delete as _,
+        roc_fx_file_size_in_bytes as _,
         roc_fx_cwd as _,
         roc_fx_posix_time as _,
         roc_fx_sleep_millis as _,
@@ -506,6 +507,13 @@ pub extern "C" fn roc_fx_file_read_line(
 #[no_mangle]
 pub extern "C" fn roc_fx_file_delete(roc_path: &RocList<u8>) -> RocResult<(), roc_io_error::IOErr> {
     roc_file::file_delete(roc_path)
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_file_size_in_bytes(
+    roc_path: &RocList<u8>,
+) -> RocResult<u64, roc_io_error::IOErr> {
+    roc_file::file_size_in_bytes(roc_path)
 }
 
 #[no_mangle]

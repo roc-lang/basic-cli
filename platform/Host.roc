@@ -17,6 +17,7 @@ hosted [
     file_read_bytes!,
     file_reader!,
     file_read_line!,
+    file_size_in_bytes!,
     file_write_bytes!,
     file_write_utf8!,
     get_locale!,
@@ -67,6 +68,7 @@ file_write_bytes! : List U8, List U8 => Result {} InternalIOErr.IOErrFromHost
 file_write_utf8! : List U8, Str => Result {} InternalIOErr.IOErrFromHost
 file_delete! : List U8 => Result {} InternalIOErr.IOErrFromHost
 file_read_bytes! : List U8 => Result (List U8) InternalIOErr.IOErrFromHost
+file_size_in_bytes! : List U8 => Result U64 InternalIOErr.IOErrFromHost
 
 FileReader := Box {}
 file_reader! : List U8, U64 => Result FileReader InternalIOErr.IOErrFromHost
