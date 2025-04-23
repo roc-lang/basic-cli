@@ -10,6 +10,9 @@ use std::path::Path;
 use std::sync::OnceLock;
 use std::{env, io};
 
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt; // used for is_executable, is_readable, is_writable
+
 pub fn heap() -> &'static ThreadSafeRefcountedResourceHeap<BufReader<File>> {
     static FILE_HEAP: OnceLock<ThreadSafeRefcountedResourceHeap<BufReader<File>>> = OnceLock::new();
     FILE_HEAP.get_or_init(|| {
@@ -178,6 +181,87 @@ pub fn file_size_in_bytes(roc_path: &RocList<u8>) -> RocResult<u64, IOErr> {
         Err(err) => {
             RocResult::err(err.into())
         }
+    }
+}
+
+pub fn file_is_executable(roc_path: &RocList<u8>) -> RocResult<bool, IOErr> {
+    let rust_path = path_from_roc_path(roc_path);
+
+    #[cfg(unix)]
+    {
+        let metadata_res = std::fs::metadata(rust_path);
+
+        match metadata_res {
+            Ok(metadata) => {
+                let permissions = metadata.permissions();
+                RocResult::ok(permissions.mode() & 0o111 != 0)
+            }
+            Err(err) => {
+                RocResult::err(err.into())
+            }
+        }
+    }
+
+    #[cfg(windows)]
+    {
+        RocResult::err(IOErr{
+            msg: "Not yet implemented on windows.".into(),
+            tag: IOErrTag::Unsupported,
+        })
+    }
+}
+
+pub fn file_is_readable(roc_path: &RocList<u8>) -> RocResult<bool, IOErr> {
+    let rust_path = path_from_roc_path(roc_path);
+
+    #[cfg(unix)]
+    {
+        let metadata_res = std::fs::metadata(rust_path);
+
+        match metadata_res {
+            Ok(metadata) => {
+                let permissions = metadata.permissions();
+                RocResult::ok(permissions.mode() & 0o400 != 0)
+            }
+            Err(err) => {
+                RocResult::err(err.into())
+            }
+        }
+    }
+
+    #[cfg(windows)]
+    {
+        RocResult::err(IOErr{
+            msg: "Not yet implemented on windows.".into(),
+            tag: IOErrTag::Unsupported,
+        })
+    }
+}
+
+pub fn file_is_writable(roc_path: &RocList<u8>) -> RocResult<bool, IOErr> {
+    let rust_path = path_from_roc_path(roc_path);
+
+    #[cfg(unix)]
+    {
+        let metadata_res = std::fs::metadata(rust_path);
+
+        match metadata_res {
+            Ok(metadata) => {
+                let permissions = metadata.permissions();
+                RocResult::ok(permissions.mode() & 0o200 != 0)
+            }
+            Err(err) => {
+                RocResult::err(err.into())
+            }
+        }
+    }
+
+    #[cfg(windows)]
+    {
+        RocResult::err(IOErr{
+            msg: "Not yet implemented on windows.".into(),
+            tag: IOErrTag::Unsupported,
+        })
     }
 }
 

@@ -20,6 +20,9 @@ hosted [
     file_size_in_bytes!,
     file_write_bytes!,
     file_write_utf8!,
+    file_is_executable!,
+    file_is_readable!,
+    file_is_writable!,
     get_locale!,
     get_locales!,
     hard_link!,
@@ -69,6 +72,9 @@ file_write_utf8! : List U8, Str => Result {} InternalIOErr.IOErrFromHost
 file_delete! : List U8 => Result {} InternalIOErr.IOErrFromHost
 file_read_bytes! : List U8 => Result (List U8) InternalIOErr.IOErrFromHost
 file_size_in_bytes! : List U8 => Result U64 InternalIOErr.IOErrFromHost
+file_is_executable! : List U8 => Result Bool InternalIOErr.IOErrFromHost
+file_is_readable! : List U8 => Result Bool InternalIOErr.IOErrFromHost
+file_is_writable! : List U8 => Result Bool InternalIOErr.IOErrFromHost
 
 FileReader := Box {}
 file_reader! : List U8, U64 => Result FileReader InternalIOErr.IOErrFromHost
