@@ -57,8 +57,8 @@ delta_as_nanos = |@Utc(nanos_a), @Utc(nanos_b)|
 
     Num.abs_diff(nanos_a_shifted, nanos_b_shifted)
 
-## Convert Utc timestamp to ISO 8601 string
-## Example: 2023-11-14T23:39:39Z
+## Convert Utc timestamp to ISO 8601 string.
+## For example: 2023-11-14T23:39:39Z
 to_iso_8601 : Utc -> Str
 to_iso_8601 = |@Utc(nanos)|
     nanos
