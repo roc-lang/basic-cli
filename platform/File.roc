@@ -10,6 +10,9 @@ module [
     is_dir!,
     is_file!,
     is_sym_link!,
+    is_executable!,
+    is_readable!,
+    is_writable!,
     type!,
     open_reader!,
     open_reader_with_capacity!,
@@ -67,8 +70,8 @@ IOErr : InternalIOErr.IOErr
 ## >
 ## > [Path.write!] does the same thing, except it takes a [Path] instead of a [Str].
 write! : val, Str, fmt => Result {} [FileWriteErr Path IOErr] where val implements Encoding, fmt implements EncoderFormatting
-write! = |val, path, fmt|
-    Path.write!(val, Path.from_str(path), fmt)
+write! = |val, path_str, fmt|
+    Path.write!(val, Path.from_str(path_str), fmt)
 
 ## Writes bytes to a file.
 ##
@@ -83,8 +86,8 @@ write! = |val, path, fmt|
 ## >
 ## > [Path.write_bytes!] does the same thing, except it takes a [Path] instead of a [Str].
 write_bytes! : List U8, Str => Result {} [FileWriteErr Path IOErr]
-write_bytes! = |bytes, path|
-    Path.write_bytes!(bytes, Path.from_str(path))
+write_bytes! = |bytes, path_str|
+    Path.write_bytes!(bytes, Path.from_str(path_str))
 
 ## Writes a [Str] to a file, encoded as [UTF-8](https://en.wikipedia.org/wiki/UTF-8).
 ##
@@ -99,8 +102,8 @@ write_bytes! = |bytes, path|
 ## >
 ## > [Path.write_utf8!] does the same thing, except it takes a [Path] instead of a [Str].
 write_utf8! : Str, Str => Result {} [FileWriteErr Path IOErr]
-write_utf8! = |str, path|
-    Path.write_utf8!(str, Path.from_str(path))
+write_utf8! = |str, path_str|
+    Path.write_utf8!(str, Path.from_str(path_str))
 
 ## Deletes a file from the filesystem.
 ##
@@ -123,8 +126,8 @@ write_utf8! = |str, path|
 ## >
 ## > [Path.delete!] does the same thing, except it takes a [Path] instead of a [Str].
 delete! : Str => Result {} [FileWriteErr Path IOErr]
-delete! = |path|
-    Path.delete!(Path.from_str(path))
+delete! = |path_str|
+    Path.delete!(Path.from_str(path_str))
 
 ## Reads all the bytes in a file.
 ##
@@ -139,8 +142,8 @@ delete! = |path|
 ## >
 ## > [Path.read_bytes!] does the same thing, except it takes a [Path] instead of a [Str].
 read_bytes! : Str => Result (List U8) [FileReadErr Path IOErr]
-read_bytes! = |path|
-    Path.read_bytes!(Path.from_str(path))
+read_bytes! = |path_str|
+    Path.read_bytes!(Path.from_str(path_str))
 
 ## Reads a [Str] from a file containing [UTF-8](https://en.wikipedia.org/wiki/UTF-8)-encoded text.
 ##
@@ -156,8 +159,8 @@ read_bytes! = |path|
 ##
 ## > [Path.read_utf8!] does the same thing, except it takes a [Path] instead of a [Str].
 read_utf8! : Str => Result Str [FileReadErr Path IOErr, FileReadUtf8Err Path _]
-read_utf8! = |path|
-    Path.read_utf8!(Path.from_str(path))
+read_utf8! = |path_str|
+    Path.read_utf8!(Path.from_str(path_str))
 
 # read : Str, fmt => Result contents [FileReadErr Path ReadErr, FileReadDecodingFailed] where contents implements Decoding, fmt implements DecoderFormatting
 # read = |path, fmt|
@@ -172,8 +175,8 @@ read_utf8! = |path|
 ##
 ## > [Path.hard_link!] does the same thing, except it takes a [Path] instead of a [Str].
 hard_link! : Str => Result {} [LinkErr IOErr]
-hard_link! = |path|
-    Path.hard_link!(Path.from_str(path))
+hard_link! = |path_str|
+    Path.hard_link!(Path.from_str(path_str))
 
 ## Returns True if the path exists on disk and is pointing at a directory.
 ## Returns False if the path exists and it is not a directory. If the path does not exist,
@@ -183,8 +186,8 @@ hard_link! = |path|
 ##
 ## > [Path.is_dir!] does the same thing, except it takes a [Path] instead of a [Str].
 is_dir! : Str => Result Bool [PathErr IOErr]
-is_dir! = |path|
-    Path.is_dir!(Path.from_str(path))
+is_dir! = |path_str|
+    Path.is_dir!(Path.from_str(path_str))
 
 ## Returns True if the path exists on disk and is pointing at a regular file.
 ## Returns False if the path exists and it is not a file. If the path does not exist,
@@ -194,8 +197,8 @@ is_dir! = |path|
 ##
 ## > [Path.is_file!] does the same thing, except it takes a [Path] instead of a [Str].
 is_file! : Str => Result Bool [PathErr IOErr]
-is_file! = |path|
-    Path.is_file!(Path.from_str(path))
+is_file! = |path_str|
+    Path.is_file!(Path.from_str(path_str))
 
 ## Returns True if the path exists on disk and is pointing at a symbolic link.
 ## Returns False if the path exists and it is not a symbolic link. If the path does not exist,
@@ -205,16 +208,40 @@ is_file! = |path|
 ##
 ## > [Path.is_sym_link!] does the same thing, except it takes a [Path] instead of a [Str].
 is_sym_link! : Str => Result Bool [PathErr IOErr]
-is_sym_link! = |path|
-    Path.is_sym_link!(Path.from_str(path))
+is_sym_link! = |path_str|
+    Path.is_sym_link!(Path.from_str(path_str))
+
+## Checks if the file has the execute permission for the current process.
+##
+## This uses rust [std::fs::Metadata](https://doc.rust-lang.org/std/fs/struct.Metadata.html)
+is_executable! : Str => Result Bool [PathErr IOErr]
+is_executable! = |path_str|
+    Host.file_is_executable!(InternalPath.to_bytes(Path.from_str(path_str)))
+    |> Result.map_err(|err| PathErr(InternalIOErr.handle_err(err)))
+
+## Checks if the file has the readable permission for the current process.
+##
+## This uses rust [std::fs::Metadata](https://doc.rust-lang.org/std/fs/struct.Metadata.html)
+is_readable! : Str => Result Bool [PathErr IOErr]
+is_readable! = |path_str|
+    Host.file_is_readable!(InternalPath.to_bytes(Path.from_str(path_str)))
+    |> Result.map_err(|err| PathErr(InternalIOErr.handle_err(err)))
+
+## Checks if the file has the writeable permission for the current process.
+##
+## This uses rust [std::fs::Metadata](https://doc.rust-lang.org/std/fs/struct.Metadata.html)
+is_writable! : Str => Result Bool [PathErr IOErr]
+is_writable! = |path_str|
+    Host.file_is_writable!(InternalPath.to_bytes(Path.from_str(path_str)))
+    |> Result.map_err(|err| PathErr(InternalIOErr.handle_err(err)))
 
 ## Return the type of the path if the path exists on disk.
 ## This uses [rust's std::path::is_symlink](https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink).
 ##
 ## > [Path.type!] does the same thing, except it takes a [Path] instead of a [Str].
 type! : Str => Result [IsFile, IsDir, IsSymLink] [PathErr IOErr]
-type! = |path|
-    Path.type!(Path.from_str(path))
+type! = |path_str|
+    Path.type!(Path.from_str(path_str))
 
 Reader := { reader : Host.FileReader, path : Path }
 

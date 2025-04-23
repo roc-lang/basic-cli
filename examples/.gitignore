@@ -11,6 +11,7 @@ file-read
 file-read-buffered
 file-read-memory-map
 file-size
+file-permissions
 form
 hello-world
 http-get
