@@ -243,6 +243,9 @@ is_writable! = |path_str|
 ##
 ## This uses [rust's std::fs::Metadata::accessed](https://doc.rust-lang.org/std/fs/struct.Metadata.html#method.accessed).
 ## Note that this is [not guaranteed to be correct in all cases](https://doc.rust-lang.org/std/fs/struct.Metadata.html#method.accessed).
+##
+## NOTE: these functions will not work if basic-cli was built with musl, which is the case for the normal tar.br URL release.
+## See https://github.com/roc-lang/basic-cli?tab=readme-ov-file#running-locally to build basic-cli without musl.
 time_accessed! : Str => Result Utc [PathErr IOErr]
 time_accessed! = |path_str|
     Host.file_time_accessed!(InternalPath.to_bytes(Path.from_str(path_str)))
@@ -252,6 +255,9 @@ time_accessed! = |path_str|
 ## Returns the time when the file was last modified.
 ##
 ## This uses [rust's std::fs::Metadata::modified](https://doc.rust-lang.org/std/fs/struct.Metadata.html#method.modified).
+##
+## NOTE: these functions will not work if basic-cli was built with musl, which is the case for the normal tar.br URL release.
+## See https://github.com/roc-lang/basic-cli?tab=readme-ov-file#running-locally to build basic-cli without musl.
 time_modified! : Str => Result Utc [PathErr IOErr]
 time_modified! = |path_str|
     Host.file_time_modified!(InternalPath.to_bytes(Path.from_str(path_str)))
@@ -261,6 +267,9 @@ time_modified! = |path_str|
 ## Returns the time when the file was created.
 ##
 ## This uses [rust's std::fs::Metadata::created](https://doc.rust-lang.org/std/fs/struct.Metadata.html#method.created).
+##
+## NOTE: these functions will not work if basic-cli was built with musl, which is the case for the normal tar.br URL release.
+## See https://github.com/roc-lang/basic-cli?tab=readme-ov-file#running-locally to build basic-cli without musl.
 time_created! : Str => Result Utc [PathErr IOErr]
 time_created! = |path_str|
     Host.file_time_created!(InternalPath.to_bytes(Path.from_str(path_str)))
