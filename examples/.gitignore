@@ -12,6 +12,7 @@ file-read-buffered
 file-read-memory-map
 file-size
 file-permissions
+file-accessed-modified-created-time
 form
 hello-world
 http-get
