@@ -23,6 +23,9 @@ hosted [
     file_is_executable!,
     file_is_readable!,
     file_is_writable!,
+    file_time_accessed!,
+    file_time_modified!,
+    file_time_created!,
     get_locale!,
     get_locales!,
     hard_link!,
@@ -61,7 +64,6 @@ import InternalCmd
 import InternalPath
 import InternalIOErr
 import InternalSqlite
-
 # COMMAND
 command_status! : InternalCmd.Command => Result I32 InternalIOErr.IOErrFromHost
 command_output! : InternalCmd.Command => InternalCmd.OutputFromHost
@@ -75,6 +77,9 @@ file_size_in_bytes! : List U8 => Result U64 InternalIOErr.IOErrFromHost
 file_is_executable! : List U8 => Result Bool InternalIOErr.IOErrFromHost
 file_is_readable! : List U8 => Result Bool InternalIOErr.IOErrFromHost
 file_is_writable! : List U8 => Result Bool InternalIOErr.IOErrFromHost
+file_time_accessed! : List U8 => Result U128 InternalIOErr.IOErrFromHost
+file_time_modified! : List U8 => Result U128 InternalIOErr.IOErrFromHost
+file_time_created! : List U8 => Result U128 InternalIOErr.IOErrFromHost
 
 FileReader := Box {}
 file_reader! : List U8, U64 => Result FileReader InternalIOErr.IOErrFromHost

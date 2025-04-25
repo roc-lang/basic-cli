@@ -265,6 +265,84 @@ pub fn file_is_writable(roc_path: &RocList<u8>) -> RocResult<bool, IOErr> {
     }
 }
 
+pub fn file_time_accessed(roc_path: &RocList<u8>) -> RocResult<roc_std::U128, IOErr> {
+    let rust_path = path_from_roc_path(roc_path);
+    let metadata_res = std::fs::metadata(rust_path);
+
+    match metadata_res {
+        Ok(metadata) => {
+            let accessed = metadata.accessed();
+            match accessed {
+                Ok(time) => {
+                    RocResult::ok(
+                        roc_std::U128::from(
+                            time.duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
+                        )
+                    )
+                }
+                Err(err) => {
+                    RocResult::err(err.into())
+                }
+            }
+        }
+        Err(err) => {
+            RocResult::err(err.into())
+        }
+    }
+}
+
+pub fn file_time_modified(roc_path: &RocList<u8>) -> RocResult<roc_std::U128, IOErr> {
+    let rust_path = path_from_roc_path(roc_path);
+    let metadata_res = std::fs::metadata(rust_path);
+
+    match metadata_res {
+        Ok(metadata) => {
+            let modified = metadata.modified();
+            match modified {
+                Ok(time) => {
+                    RocResult::ok(
+                        roc_std::U128::from(
+                            time.duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
+                        )
+                    )
+                }
+                Err(err) => {
+                    RocResult::err(err.into())
+                }
+            }
+        }
+        Err(err) => {
+            RocResult::err(err.into())
+        }
+    }
+}
+
+pub fn file_time_created(roc_path: &RocList<u8>) -> RocResult<roc_std::U128, IOErr> {
+    let rust_path = path_from_roc_path(roc_path);
+    let metadata_res = std::fs::metadata(rust_path);
+
+    match metadata_res {
+        Ok(metadata) => {
+            let created = metadata.created();
+            match created {
+                Ok(time) => {
+                    RocResult::ok(
+                        roc_std::U128::from(
+                            time.duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
+                        )
+                    )
+                }
+                Err(err) => {
+                    RocResult::err(err.into())
+                }
+            }
+        }
+        Err(err) => {
+            RocResult::err(err.into())
+        }
+    }
+}
+
 pub fn dir_list(roc_path: &RocList<u8>) -> RocResult<RocList<RocList<u8>>, IOErr> {
     let path = path_from_roc_path(roc_path);
 

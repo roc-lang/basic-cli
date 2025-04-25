@@ -13,6 +13,9 @@ module [
     is_executable!,
     is_readable!,
     is_writable!,
+    time_accessed!,
+    time_modified!,
+    time_created!,
     type!,
     open_reader!,
     open_reader_with_capacity!,
@@ -25,6 +28,7 @@ import Path exposing [Path]
 import InternalIOErr
 import Host
 import InternalPath
+import Utc exposing [Utc]
 
 ## Tag union of possible errors when reading and writing a file or directory.
 ##
@@ -213,7 +217,7 @@ is_sym_link! = |path_str|
 
 ## Checks if the file has the execute permission for the current process.
 ##
-## This uses rust [std::fs::Metadata](https://doc.rust-lang.org/std/fs/struct.Metadata.html)
+## This uses rust [std::fs::Metadata](https://doc.rust-lang.org/std/fs/struct.Metadata.html).
 is_executable! : Str => Result Bool [PathErr IOErr]
 is_executable! = |path_str|
     Host.file_is_executable!(InternalPath.to_bytes(Path.from_str(path_str)))
@@ -221,7 +225,7 @@ is_executable! = |path_str|
 
 ## Checks if the file has the readable permission for the current process.
 ##
-## This uses rust [std::fs::Metadata](https://doc.rust-lang.org/std/fs/struct.Metadata.html)
+## This uses rust [std::fs::Metadata](https://doc.rust-lang.org/std/fs/struct.Metadata.html).
 is_readable! : Str => Result Bool [PathErr IOErr]
 is_readable! = |path_str|
     Host.file_is_readable!(InternalPath.to_bytes(Path.from_str(path_str)))
@@ -229,10 +233,47 @@ is_readable! = |path_str|
 
 ## Checks if the file has the writeable permission for the current process.
 ##
-## This uses rust [std::fs::Metadata](https://doc.rust-lang.org/std/fs/struct.Metadata.html)
+## This uses rust [std::fs::Metadata](https://doc.rust-lang.org/std/fs/struct.Metadata.html).
 is_writable! : Str => Result Bool [PathErr IOErr]
 is_writable! = |path_str|
     Host.file_is_writable!(InternalPath.to_bytes(Path.from_str(path_str)))
+    |> Result.map_err(|err| PathErr(InternalIOErr.handle_err(err)))
+
+## Returns the time when the file was last accessed.
+##
+## This uses [rust's std::fs::Metadata::accessed](https://doc.rust-lang.org/std/fs/struct.Metadata.html#method.accessed).
+## Note that this is [not guaranteed to be correct in all cases](https://doc.rust-lang.org/std/fs/struct.Metadata.html#method.accessed).
+##
+## NOTE: these functions will not work if basic-cli was built with musl, which is the case for the normal tar.br URL release.
+## See https://github.com/roc-lang/basic-cli?tab=readme-ov-file#running-locally to build basic-cli without musl.
+time_accessed! : Str => Result Utc [PathErr IOErr]
+time_accessed! = |path_str|
+    Host.file_time_accessed!(InternalPath.to_bytes(Path.from_str(path_str)))
+    |> Result.map_ok(|time_u128| Num.to_i128(time_u128) |> Utc.from_nanos_since_epoch)
+    |> Result.map_err(|err| PathErr(InternalIOErr.handle_err(err)))
+
+## Returns the time when the file was last modified.
+##
+## This uses [rust's std::fs::Metadata::modified](https://doc.rust-lang.org/std/fs/struct.Metadata.html#method.modified).
+##
+## NOTE: these functions will not work if basic-cli was built with musl, which is the case for the normal tar.br URL release.
+## See https://github.com/roc-lang/basic-cli?tab=readme-ov-file#running-locally to build basic-cli without musl.
+time_modified! : Str => Result Utc [PathErr IOErr]
+time_modified! = |path_str|
+    Host.file_time_modified!(InternalPath.to_bytes(Path.from_str(path_str)))
+    |> Result.map_ok(|time_u128| Num.to_i128(time_u128) |> Utc.from_nanos_since_epoch)
+    |> Result.map_err(|err| PathErr(InternalIOErr.handle_err(err)))
+
+## Returns the time when the file was created.
+##
+## This uses [rust's std::fs::Metadata::created](https://doc.rust-lang.org/std/fs/struct.Metadata.html#method.created).
+##
+## NOTE: these functions will not work if basic-cli was built with musl, which is the case for the normal tar.br URL release.
+## See https://github.com/roc-lang/basic-cli?tab=readme-ov-file#running-locally to build basic-cli without musl.
+time_created! : Str => Result Utc [PathErr IOErr]
+time_created! = |path_str|
+    Host.file_time_created!(InternalPath.to_bytes(Path.from_str(path_str)))
+    |> Result.map_ok(|time_u128| Num.to_i128(time_u128) |> Utc.from_nanos_since_epoch)
     |> Result.map_err(|err| PathErr(InternalIOErr.handle_err(err)))
 
 ## Return the type of the path if the path exists on disk.

@@ -318,6 +318,9 @@ pub fn init() {
         roc_fx_file_is_executable as _,
         roc_fx_file_is_readable as _,
         roc_fx_file_is_writable as _,
+        roc_fx_file_time_accessed as _,
+        roc_fx_file_time_modified as _,
+        roc_fx_file_time_created as _,
         roc_fx_cwd as _,
         roc_fx_posix_time as _,
         roc_fx_sleep_millis as _,
@@ -538,6 +541,27 @@ pub extern "C" fn roc_fx_file_is_writable(
     roc_path: &RocList<u8>,
 ) -> RocResult<bool, roc_io_error::IOErr> {
     roc_file::file_is_writable(roc_path)
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_file_time_accessed(
+    roc_path: &RocList<u8>,
+) -> RocResult<roc_std::U128, roc_io_error::IOErr> {
+    roc_file::file_time_accessed(roc_path)
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_file_time_modified(
+    roc_path: &RocList<u8>,
+) -> RocResult<roc_std::U128, roc_io_error::IOErr> {
+    roc_file::file_time_modified(roc_path)
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_file_time_created(
+    roc_path: &RocList<u8>,
+) -> RocResult<roc_std::U128, roc_io_error::IOErr> {
+    roc_file::file_time_created(roc_path)
 }
 
 

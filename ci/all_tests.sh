@@ -60,6 +60,11 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         continue
     fi
 
+    ## Skip file-accessed-modified-created-time.roc when IS_MUSL=1
+    if [ "$IS_MUSL" == "1" ] && [ "$base_file" == "file-accessed-modified-created-time.roc" ]; then
+        continue
+    fi
+
     roc_file_only="$(basename "$roc_file")"
     no_ext_name=${roc_file_only%.*}
 
@@ -100,6 +105,8 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         DB_PATH=${EXAMPLES_DIR}todos.db $ROC dev $roc_file $ROC_BUILD_FLAGS
     elif [ "$base_file" == "temp-dir.roc" ]; then
         $ROC dev $roc_file $ROC_BUILD_FLAGS --linker=legacy
+    elif [ "$base_file" == "file-accessed-modified-created-time.roc" ] && [ "$IS_MUSL" == "1" ]; then
+        continue
     else
 
         $ROC dev $roc_file $ROC_BUILD_FLAGS
