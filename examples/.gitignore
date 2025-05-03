@@ -15,7 +15,8 @@ file-permissions
 file-accessed-modified-created-time
 form
 hello-world
-http-get
+http
+dup-bytes
 out.txt
 path
 piping
