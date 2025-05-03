@@ -13,20 +13,50 @@ module [
 import InternalHttp
 import Host
 
-## Represents an HTTP method.
+## Represents an HTTP method: `[OPTIONS, GET, POST, PUT, DELETE, HEAD, TRACE, CONNECT, PATCH, EXTENSION Str]`
 Method : InternalHttp.Method
 
-## Represents an HTTP header e.g. `Content-Type: application/json`
+## Represents an HTTP header e.g. `Content-Type: application/json`.
+## Header is a `{ name : Str, value : Str }`.
 Header : InternalHttp.Header
 
 ## Represents an HTTP request.
+## Request is a record:
+## ```
+## {
+##    method : Method,
+##    headers : List Header,
+##    uri : Str,
+##    body : List U8,
+##    timeout_ms : [TimeoutMilliseconds U64, NoTimeout],
+## }
+## ```
 Request : InternalHttp.Request
 
 ## Represents an HTTP response.
+##
+## Response is a record with the following fields:
+## ```
+## {
+##     status : U16,
+##     headers : List Header,
+##     body : List U8
+## }
+## ```
 Response : InternalHttp.Response
 
-## A default [Request] value.
+## A default [Request] value with the following values:
+## ```
+## {
+##     method: GET
+##     headers: []
+##     uri: ""
+##     body: []
+##     timeout_ms: NoTimeout
+## }
+## ```
 ##
+## Example:
 ## ```
 ## # GET "roc-lang.org"
 ## { Http.default_request &
@@ -47,20 +77,20 @@ default_request = {
 ##
 ## See common headers [here](https://en.wikipedia.org/wiki/List_of_HTTP_header_fields).
 ##
+## Example: `header(("Content-Type", "application/json"))`
+##
 header : (Str, Str) -> Header
 header = |(name, value)| { name, value }
 
-## Send an HTTP request, succeeds with a value of [Str] or fails with an
-## [Err].
+## Send an HTTP request, succeeds with a [Response] or fails with a [HttpErr _].
 ##
 ## ```
 ## # Prints out the HTML of the Roc-lang website.
-## response = ||
+## response : Response
+## response =
 ##     Http.send!({ Http.default_request & url: "https://www.roc-lang.org" })?
 ##
-##
-## Str.from_utf8(response.body) ?? "Invalid UTF-8"
-## |> Stdout.line
+## Stdout.line(Str.from_utf8(response.body))
 ## ```
 send! : Request => Result Response [HttpErr [Timeout, NetworkError, BadBody, Other (List U8)]]
 send! = |request|
@@ -88,7 +118,7 @@ send! = |request|
 ## ```
 ## import json.Json
 ##
-## # On the server side we send `Encode.to_bytes {foo: "Hello Json!"} Json.utf8`
+## # On the server side we send `Encode.to_bytes({foo: "Hello Json!"}, Json.utf8)`
 ## { foo } = Http.get!("http://localhost:8000", Json.utf8)?
 ## ```
 get! : Str, fmt => Result body [HttpDecodingFailed, HttpErr _] where body implements Decoding, fmt implements DecoderFormatting
@@ -98,10 +128,19 @@ get! = |uri, fmt|
     Decode.from_bytes(response.body, fmt)
     |> Result.map_err(|_| HttpDecodingFailed)
 
+# Conttributor note: Trying to use BadUtf8 { problem : Str.Utf8Problem, index : U64 } in the error here results in a "Alias `6.IdentId(11)` not registered in delayed aliases!".
+## Try to perform an HTTP get request and convert the received bytes (in the body) into a UTF-8 string.
+##
+## ```
+## # On the server side we send `Str.to_utf8("Hello utf8")`
+##
+## hello_str : Str
+## hello_str = Http.get_utf8!("http://localhost:8000")?
+## ```
 get_utf8! : Str => Result Str [BadBody Str, HttpErr _]
 get_utf8! = |uri|
     response = send!({ default_request & uri })?
 
     response.body
     |> Str.from_utf8
-    |> Result.map_err(|_| BadBody("Invalid UTF-8"))
+    |> Result.map_err(|err| BadBody("Error in get_utf8!: failed to convert received body bytes into utf8:\n\t${Inspect.to_str(err)}"))

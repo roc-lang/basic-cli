@@ -1,0 +1,35 @@
+#!/usr/bin/expect
+
+# uncomment line below for debugging
+# exp_internal 1
+
+set timeout 7
+
+source ./ci/expect_scripts/shared-code.exp
+
+# Start server to test with in the background and capture its process ID
+set server_pid [exec ./ci/rust_http_server/target/release/rust_http_server &]
+sleep 3
+
+spawn $env(EXAMPLES_DIR)http
+
+expect "I received 'Hello utf8' from the server.\r\n" {
+    expect "The json I received was: { foo: \"Hello Json!\" }\r\n" {
+        
+        # we can kill our rust server now
+        exec kill $server_pid
+
+        expect "</html>\r\n" {
+            expect "</html>\r\n" {
+                expect eof {
+                    check_exit_and_segfault
+                }
+            }
+        }
+    }
+}
+
+exec kill $server_pid
+
+puts stderr "\nError: output was different from expected value."
+exit 1

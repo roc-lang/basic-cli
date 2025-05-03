@@ -6,9 +6,9 @@ import pf.File
 import pf.Cmd
 
 # This script performs the following tasks:
-# 1. Reads the file basic-cli/platform/main.roc and extracts the exposes list.
-# 2. For each module in the exposes list, it reads the corresponding file (e.g., basic-cli/platform/Path.roc) and extracts all functions in the module list.
-# 3. Checks if each module.function is used in the basic-cli/examples folder using ripgrep
+# 1. Reads the file platform/main.roc and extracts the exposes list.
+# 2. For each module in the exposes list, it reads the corresponding file (e.g., platform/Path.roc) and extracts all functions in the module list.
+# 3. Checks if each module.function is used in the examples folder using ripgrep
 # 4. Prints the functions that are not used anywhere in the examples.
 
 ## For convenient string errors
@@ -16,7 +16,7 @@ err_s = |err_msg| Err(StrErr(err_msg))
 
 main! : List Arg => Result {} _
 main! = |_args|
-    path_to_platform_main = "basic-cli/platform/main.roc"
+    path_to_platform_main = "platform/main.roc"
 
     main_content =
         File.read_utf8!(path_to_platform_main)?
@@ -72,7 +72,7 @@ main! = |_args|
 is_function_unused! : Str, Str => Result Bool _
 is_function_unused! = |module_name, function_name|
     function_pattern = "${module_name}.${function_name}"
-    search_dir = "basic-cli/examples"
+    search_dir = "examples"
 
     # Use ripgrep to search for the function pattern
     cmd =
@@ -90,7 +90,7 @@ is_function_unused! = |module_name, function_name|
 
 process_module! : Str => Result { module_name : Str, exposed_functions : List Str } _
 process_module! = |module_name|
-    module_path = "basic-cli/platform/${module_name}.roc"
+    module_path = "platform/${module_name}.roc"
 
     module_source_code =
         File.read_utf8!(module_path)?
