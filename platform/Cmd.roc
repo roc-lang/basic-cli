@@ -20,6 +20,16 @@ import Host
 Cmd := InternalCmd.Command
 
 ## Represents the output of a command.
+##
+## Output is a record:
+## ```
+## {
+##    status : Result I32 InternalIOErr.IOErr,
+##    stdout : List U8,
+##    stderr : List U8,
+## }
+## ```
+##
 Output : InternalCmd.Output
 
 ## Create a new command to execute the given program in a child process.
@@ -99,16 +109,7 @@ clear_envs : Cmd -> Cmd
 clear_envs = |@Cmd(cmd)|
     @Cmd({ cmd & clear_envs: Bool.true })
 
-## Execute command and capture stdout and stderr
-##
-## Output is a record:
-## ```
-## {
-##    status : Result I32 InternalIOErr.IOErr,
-##    stdout : List U8,
-##    stderr : List U8,
-## }
-## ```
+## Execute command and capture stdout, stderr and the exit code in [Output].
 ##
 ## > Stdin is not inherited from the parent and any attempt by the child process
 ## > to read from the stdin stream will result in the stream immediately closing.
