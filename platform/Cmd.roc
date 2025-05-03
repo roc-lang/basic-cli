@@ -101,6 +101,15 @@ clear_envs = |@Cmd(cmd)|
 
 ## Execute command and capture stdout and stderr
 ##
+## Output is a record:
+## ```
+## {
+##    status : Result I32 InternalIOErr.IOErr,
+##    stdout : List U8,
+##    stderr : List U8,
+## }
+## ```
+##
 ## > Stdin is not inherited from the parent and any attempt by the child process
 ## > to read from the stdin stream will result in the stream immediately closing.
 ##
