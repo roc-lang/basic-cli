@@ -7,13 +7,13 @@ import pf.Http
 import pf.Stdout
 import json.Json
 
-# Demo of all basic-cli HTTP functions
+# Demo of all basic-cli Http functions
 
 # To run this example: check the README.md in this folder
 
 main! = |_args|
 
-    # # Getting a String
+    # # HTTP GET a String
     #   ----------------
 
     hello_str : Str

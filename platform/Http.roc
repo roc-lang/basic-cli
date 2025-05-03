@@ -90,7 +90,7 @@ header = |(name, value)| { name, value }
 ## response =
 ##     Http.send!({ Http.default_request & url: "https://www.roc-lang.org" })?
 ##
-## Stdout.line(Str.from_utf8(response.body))
+## Stdout.line(Str.from_utf8(response.body))?
 ## ```
 send! : Request => Result Response [HttpErr [Timeout, NetworkError, BadBody, Other (List U8)]]
 send! = |request|
@@ -128,11 +128,11 @@ get! = |uri, fmt|
     Decode.from_bytes(response.body, fmt)
     |> Result.map_err(|_| HttpDecodingFailed)
 
-# Conttributor note: Trying to use BadUtf8 { problem : Str.Utf8Problem, index : U64 } in the error here results in a "Alias `6.IdentId(11)` not registered in delayed aliases!".
+# Contributor note: Trying to use BadUtf8 { problem : Str.Utf8Problem, index : U64 } in the error here results in a "Alias `6.IdentId(11)` not registered in delayed aliases!".
 ## Try to perform an HTTP get request and convert the received bytes (in the body) into a UTF-8 string.
 ##
 ## ```
-## # On the server side we send `Str.to_utf8("Hello utf8")`
+## # On the server side we, send `Str.to_utf8("Hello utf8")`
 ##
 ## hello_str : Str
 ## hello_str = Http.get_utf8!("http://localhost:8000")?
