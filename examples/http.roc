@@ -6,11 +6,13 @@ app [main!] {
 import pf.Http
 import pf.Stdout
 import json.Json
+import pf.Arg exposing [Arg]
 
 # Demo of all basic-cli Http functions
 
 # To run this example: check the README.md in this folder
 
+main! : List Arg => Result {} _
 main! = |_args|
 
     # # HTTP GET a String
@@ -52,7 +54,6 @@ main! = |_args|
 
     # # Using default_request and providing a header
     #   --------------------------------------------
-    #  
     
     response_2 =
         Http.default_request

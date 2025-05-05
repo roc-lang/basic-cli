@@ -9,12 +9,12 @@ source ./ci/expect_scripts/shared-code.exp
 
 set env(DB_PATH) $env(EXAMPLES_DIR)todos.db
 
-spawn $env(EXAMPLES_DIR)sqlite
+spawn $env(EXAMPLES_DIR)sqlite-basic
 
 
-expect "Todo Tasks:" {
+expect "All Todos:" {
     expect "\tid: 3, task: Share my ❤️  for Roc" {
-        expect "Completed Tasks:" {
+        expect "Completed Todos:" {
             expect "\tid: 1, task: Prepare for AoC" {
                 expect eof {
                     check_exit_and_segfault
@@ -24,5 +24,5 @@ expect "Todo Tasks:" {
     }
 }
 
-puts stderr "\nError: output was different from expected value."
+puts stderr "\nExpect failed: output was different from expected value."
 exit 1

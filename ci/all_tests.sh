@@ -86,7 +86,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     base_file=$(basename "$roc_file")
 
     # countdown, echo, form, piping... all require user input or special setup
-    ignore_list=("countdown.roc" "echo.roc" "form.roc" "piping.roc" "stdin.roc" "args.roc" "http.roc" "env-var.roc" "dup-bytes.roc")
+    ignore_list=("stdin-basic.roc" "piping.roc" "command-line-args.roc" "http.roc" "env-var.roc" "bytes-stdin-stdout.roc" "error-handling.roc" "tcp-client.roc")
 
     # check if base_file matches something from ignore_list
     for file in "${ignore_list[@]}"; do
@@ -101,7 +101,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         cd $EXAMPLES_DIR
         $absolute_roc dev $base_file $ROC_BUILD_FLAGS
         cd ..
-    elif [ "$base_file" == "sqlite.roc" ]; then
+    elif [ "$base_file" == "sqlite-basic.roc" ]; then
         DB_PATH=${EXAMPLES_DIR}todos.db $ROC dev $roc_file $ROC_BUILD_FLAGS
     elif [ "$base_file" == "temp-dir.roc" ]; then
         $ROC dev $roc_file $ROC_BUILD_FLAGS --linker=legacy

@@ -1,11 +1,12 @@
 app [main!] { pf: platform "../platform/main.roc" }
 
-# To run this example: check the README.md in this folder
-
 import pf.Stdout
 import pf.File
+import pf.Arg exposing [Arg]
 
-# Buffered File Reading
+# To run this example: check the README.md in this folder
+
+# # Buffered File Reading
 #
 # Instead of reading an entire file and storing all of it in memory,
 # like with File.read_utf8, you may want to read it in parts.
@@ -16,8 +17,9 @@ import pf.File
 # requiring the user to wait until the complete file is processed when they
 # only wanted to look at the first page.
 #
-# See examples/file-read.roc if you want to read the full contents at once.
+# See examples/file-read-write.roc if you want to read the full contents at once.
 
+main! : List Arg => Result {} _
 main! = |_args|
     reader = File.open_reader!("LICENSE")?
 

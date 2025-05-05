@@ -2,10 +2,12 @@ app [main!] {
     pf: platform "../platform/main.roc",
 }
 
-# To run this example: check the README.md in this folder
-
 import pf.Stdout
 import pf.Arg exposing [Arg]
+
+# How to handle command line arguments in Roc.
+
+# To run this example: check the README.md in this folder
 
 main! : List Arg => Result {} _
 main! = |raw_args|

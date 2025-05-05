@@ -1,10 +1,12 @@
 app [main!] { pf: platform "../platform/main.roc" }
 
-# To run this example: check the README.md in this folder
-
 import pf.Stdout
 import pf.File
+import pf.Arg exposing [Arg]
 
+# To run this example: check the README.md in this folder
+
+main! : List Arg => Result {} _
 main! = |_args|
     file = "LICENSE"
 

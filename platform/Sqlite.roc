@@ -3,6 +3,7 @@ module [
     ErrCode,
     Binding,
     Stmt,
+    SqlDecodeErr,
     query!,
     query_many!,
     execute!,

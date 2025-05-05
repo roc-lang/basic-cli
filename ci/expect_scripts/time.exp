@@ -9,11 +9,11 @@ source ./ci/expect_scripts/shared-code.exp
 
 spawn $env(EXAMPLES_DIR)time
 
-expect -re "Completed in \[0-9]+ns\r\n" {
+expect -re "Completed in \[0-9]+ ns\r\n" {
     expect eof {
         check_exit_and_segfault
     }
 }
 
-puts stderr "\nError: output was different from expected value."
+puts stderr "\nExpect failed: output was different from expected value."
 exit 1

@@ -21,7 +21,7 @@ unexpected_eof_error_message = "UnexpectedEof"
 Stream := Host.TcpStream
 
 ## Represents errors that can occur when connecting to a remote host.
-ConnectErr : [
+ConnectErr a : [
     PermissionDenied,
     AddrInUse,
     AddrNotAvailable,
@@ -30,9 +30,9 @@ ConnectErr : [
     TimedOut,
     Unsupported,
     Unrecognized Str,
-]
+]a
 
-parse_connect_err : Str -> ConnectErr
+parse_connect_err : Str -> ConnectErr _
 parse_connect_err = |err|
     when err is
         "ErrorKind::PermissionDenied" -> PermissionDenied
@@ -83,7 +83,7 @@ parse_stream_err = |err|
 ##  - `localhost`
 ##  - `roc-lang.org`
 ##
-connect! : Str, U16 => Result Stream ConnectErr
+connect! : Str, U16 => Result Stream (ConnectErr _)
 connect! = |host, port|
     Host.tcp_connect!(host, port)
     |> Result.map_ok(@Stream)
@@ -187,7 +187,7 @@ write_utf8! = |stream, str|
 ##         Stderr.line!(Tcp.connect_err_to_str(connect_err))
 ## ```
 ##
-connect_err_to_str : ConnectErr -> Str
+connect_err_to_str : (ConnectErr []) -> Str
 connect_err_to_str = |err|
     when err is
         PermissionDenied -> "PermissionDenied"

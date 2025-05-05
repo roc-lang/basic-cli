@@ -16,5 +16,5 @@ expect -re "The temp dir path is /\[^\r\n\]+\r\n" {
     }
 }
 
-puts stderr "\nError: output was different from expected value."
+puts stderr "\nExpect failed: output was different from expected value."
 exit 1

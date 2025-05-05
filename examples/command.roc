@@ -1,16 +1,24 @@
 app [main!] { pf: platform "../platform/main.roc" }
 
-# To run this example: check the README.md in this folder
-
 import pf.Stdout
 import pf.Cmd
+import pf.Arg exposing [Arg]
 
+# Different ways to run commands like you do in a terminal. 
+
+# To run this example: check the README.md in this folder
+
+main! : List Arg => Result {} _
 main! = |_args|
-    status_example!({})?
 
+    # Simplest way to execute a command
+    exec_example!({})?
+
+    # To execute and capture the output (includes stderr)
     output_example!({})?
 
-    exec_example!({})?
+    # To execute and get the exit code
+    status_example!({})?
 
     Ok({})
 

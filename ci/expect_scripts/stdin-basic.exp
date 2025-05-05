@@ -7,7 +7,7 @@ set timeout 7
 
 source ./ci/expect_scripts/shared-code.exp
 
-spawn $env(EXAMPLES_DIR)form
+spawn $env(EXAMPLES_DIR)stdin-basic
 
 
 expect "What's your first name?\r\n"
@@ -24,5 +24,5 @@ expect "Hi, John Doe! 👋\r\n" {
     }
 }
 
-puts stderr "\nError: output was different from expected value."
+puts stderr "\nExpect failed: output was different from expected value."
 exit 1
