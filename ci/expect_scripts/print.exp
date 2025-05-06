@@ -7,9 +7,9 @@ set timeout 7
 
 source ./ci/expect_scripts/shared-code.exp
 
-spawn $env(EXAMPLES_DIR)hello-world
+spawn $env(EXAMPLES_DIR)print
 
-expect "Hello, World!\r\n" {
+expect "Hello, world!\r\nNo newline after me.Hello, error!\r\nErr with no newline after.Foo\r\nBar\r\nBaz\r\n" {
     expect eof {
         check_exit_and_segfault
     }

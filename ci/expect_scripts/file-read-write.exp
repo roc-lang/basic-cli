@@ -1,0 +1,11 @@
+#!/usr/bin/expect
+
+# uncomment line below for debugging
+# exp_internal 1
+
+set timeout 7
+
+spawn $env(EXAMPLES_DIR)file-read-write
+
+expect "Writing a string to out.txt"
+expect "I read the file back. Its contents: \"a string!\""
