@@ -187,7 +187,7 @@ write_utf8! = |stream, str|
 ##         Stderr.line!(Tcp.connect_err_to_str(connect_err))
 ## ```
 ##
-connect_err_to_str : (ConnectErr []) -> Str
+connect_err_to_str : (ConnectErr _) -> Str
 connect_err_to_str = |err|
     when err is
         PermissionDenied -> "PermissionDenied"
