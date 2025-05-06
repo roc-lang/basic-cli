@@ -20,13 +20,13 @@ main! : List Arg => Result {} _
 main! = |_args|
     db_path = Env.var!("DB_PATH")?
 
-    todo = query_todos_by_status!(db_path, "todo")?
+    todos = query_todos_by_status!(db_path, "todo")?
 
     Stdout.line!("All Todos:")?
 
     # print todos
     List.for_each_try!(
-        todo,
+        todos,
         |{ id, task, status }|
             Stdout.line!("\tid: ${id}, task: ${task}, status: ${Inspect.to_str(status)}"),
     )?
@@ -54,15 +54,15 @@ query_todos_by_status! = |db_path, status|
             rows: { Sqlite.decode_record <-
                 id: Sqlite.i64("id") |> Sqlite.map_value(Num.to_str),
                 task: Sqlite.str("task"),
-                status: Sqlite.str("status") |> Sqlite.map_value_result(decode_db_status),
+                status: Sqlite.str("status") |> Sqlite.map_value_result(decode_todo_status),
             },
         },
     )
 
 TodoStatus : [Todo, Completed, InProgress]
 
-decode_db_status : Str -> Result TodoStatus _
-decode_db_status = |status_str|
+decode_todo_status : Str -> Result TodoStatus _
+decode_todo_status = |status_str|
     when status_str is
         "todo" -> Ok(Todo)
         "completed" -> Ok(Completed)
