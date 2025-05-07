@@ -9,7 +9,7 @@ import pf.Arg exposing [Arg]
 
 # Demo of basic Sqlite usage
 
-# Sql to create the table:
+# Sql that was used to create the table:
 # CREATE TABLE todos (
 #     id INTEGER PRIMARY KEY AUTOINCREMENT,
 #     task TEXT NOT NULL,
@@ -28,6 +28,7 @@ main! = |_args|
         path: db_path,
         query: "SELECT * FROM todos;",
         bindings: [],
+        # This uses the record builder syntax: https://www.roc-lang.org/examples/RecordBuilder/README.html
         rows: { Sqlite.decode_record <-
             id: Sqlite.i64("id"),
             task: Sqlite.str("task"),
@@ -50,7 +51,6 @@ main! = |_args|
             path: db_path,
             query: "SELECT id, task, status FROM todos WHERE status = :status;",
             bindings: [{ name: ":status", value: encode_status(InProgress) }],
-            # This uses the record builder syntax: https://www.roc-lang.org/examples/RecordBuilder/README.html
             rows: Sqlite.str("task")
         },
     )?
@@ -152,7 +152,8 @@ main! = |_args|
 
     expect count == 3
 
-    # Example: prepared statements (better performance)
+    # Example: prepared statements
+    # Note: This leads to better performance if you are executing the same prepared statement multiple times.
 
     prepared_query = Sqlite.prepare!({
         path : db_path,
