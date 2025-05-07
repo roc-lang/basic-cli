@@ -5,7 +5,7 @@ import pf.Stdout
 import pf.Sqlite
 import pf.Arg exposing [Arg]
 
-# To run this example: check the README.md in this folder and set `export DB_PATH=./examples/todos.db`
+# To run this example: check the README.md in this folder and set `export DB_PATH=./examples/todos2.db`
 
 # Demo of basic Sqlite usage
 
@@ -13,14 +13,16 @@ import pf.Arg exposing [Arg]
 # CREATE TABLE todos (
 #     id INTEGER PRIMARY KEY AUTOINCREMENT,
 #     task TEXT NOT NULL,
-#     status TEXT NOT NULL
+#     status TEXT NOT NULL,
+#     edited BOOLEAN,
 # );
+# Note 1: the edited column is nullable, this is for demonstration purposes only.
+# We recommend using `NOT NULL` when possible.
+# Note 2: boolean is "fake" in sqlite https://www.sqlite.org/datatype3.html
 
 main! : List Arg => Result {} _
 main! = |_args|
     db_path = Env.var!("DB_PATH")?
-
-    # TODO demo create table, demo nullable field 
 
     # Example: print all rows
 
@@ -33,6 +35,8 @@ main! = |_args|
             id: Sqlite.i64("id"),
             task: Sqlite.str("task"),
             status: Sqlite.str("status") |> Sqlite.map_value_result(decode_status),
+            # bools in sqlite are actually integers
+            edited: Sqlite.nullable_i64("edited") |> Sqlite.map_value(decode_edited),
         },
     })?
 
@@ -40,8 +44,8 @@ main! = |_args|
 
     List.for_each_try!(
         all_todos,
-        |{ id, task, status }|
-            Stdout.line!("\tid: ${Num.to_str(id)}, task: ${task}, status: ${Inspect.to_str(status)}"),
+        |{ id, task, status, edited }|
+            Stdout.line!("\tid: ${Num.to_str(id)}, task: ${task}, status: ${Inspect.to_str(status)}, edited: ${Inspect.to_str(edited)}"),
     )?
 
     # Example: filter rows by status
@@ -67,20 +71,21 @@ main! = |_args|
 
     Sqlite.execute!({
         path: db_path,
-        query: "INSERT INTO todos (task, status) VALUES (:task, :status);",
+        query: "INSERT INTO todos (task, status, edited) VALUES (:task, :status, :edited);",
         bindings: [
             { name: ":task", value: String("Make sql example.") },
             { name: ":status", value: encode_status(InProgress) },
+            { name: ":edited", value: encode_edited(NotEdited) },
         ],
     })?
 
     # Example: insert multiple rows from a Roc list
 
-    todos_list : List ({task : Str, status : TodoStatus})
+    todos_list : List ({task : Str, status : TodoStatus, edited : EditedValue})
     todos_list = [
-        { task: "Insert Roc list 1", status: Todo },
-        { task: "Insert Roc list 2", status: Todo },
-        { task: "Insert Roc list 3", status: Todo },
+        { task: "Insert Roc list 1", status: Todo, edited: NotEdited },
+        { task: "Insert Roc list 2", status: Todo, edited: NotEdited },
+        { task: "Insert Roc list 3", status: Todo, edited: NotEdited },
     ]
 
     values_str =
@@ -88,25 +93,26 @@ main! = |_args|
         |> List.map_with_index(
             |_, indx|
                 indx_str = Num.to_str(indx)
-                "(:task${indx_str}, :status${indx_str})",
+                "(:task${indx_str}, :status${indx_str}, :edited${indx_str})",
         )
         |> Str.join_with(", ")
 
     all_bindings =
         todos_list
         |> List.map_with_index(
-            |{ task, status }, indx|
+            |{ task, status, edited }, indx|
                 indx_str = Num.to_str(indx)
                 [
                     { name: ":task${indx_str}", value: String(task) },
                     { name: ":status${indx_str}", value: encode_status(status) },
+                    { name: ":edited${indx_str}", value: encode_edited(edited) },
                 ],
         )
         |> List.join
 
     Sqlite.execute!({
         path: db_path,
-        query: "INSERT INTO todos (task, status) VALUES ${values_str};",
+        query: "INSERT INTO todos (task, status, edited) VALUES ${values_str};",
         bindings: all_bindings,
     })?
 
@@ -200,3 +206,19 @@ status_to_str = |status|
 encode_status : TodoStatus -> [String Str]
 encode_status = |status|
     String(status_to_str(status))
+
+EditedValue : [Edited, NotEdited, Null]
+
+decode_edited : [NotNull I64, Null] -> EditedValue
+decode_edited = |edited_val|
+    when edited_val is
+        NotNull 1 -> Edited
+        NotNull 0 -> NotEdited
+        _ -> Null
+
+encode_edited : EditedValue -> [Integer I64, Null]
+encode_edited = |edited|
+    when edited is
+        Edited -> Integer(1)
+        NotEdited -> Integer(0)
+        Null -> Null

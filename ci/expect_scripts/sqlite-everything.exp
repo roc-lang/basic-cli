@@ -7,14 +7,14 @@ set timeout 7
 
 source ./ci/expect_scripts/shared-code.exp
 
-set env(DB_PATH) $env(EXAMPLES_DIR)todos.db
+set env(DB_PATH) $env(EXAMPLES_DIR)todos2.db
 
 spawn $env(EXAMPLES_DIR)sqlite-everything
 
 expect "All Todos:" {
-    expect "\tid: 1, task: Prepare for AoC, status: Completed" {
-        expect "\tid: 2, task: Win all the Stars!, status: InProgress" {
-            expect "\tid: 3, task: Share my ❤️  for Roc, status: Todo" {
+    expect "\tid: 1, task: Prepare for AoC, status: Completed, edited: Null" {
+        expect "\tid: 2, task: Win all the Stars!, status: InProgress, edited: NotEdited" {
+            expect "\tid: 3, task: Share my ❤️  for Roc, status: Todo, edited: NotEdited" {
                 expect "In-progress Todos:" {
                     expect "\tIn-progress tasks: Win all the Stars!" {
                         expect "Todos sorted by length of task description:" {
