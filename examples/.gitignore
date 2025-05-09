@@ -27,6 +27,7 @@ stdin
 stdin-basic
 sqlite-basic
 sqlite-everything
+sqlite-test
 task-list
 tcp-client
 time
