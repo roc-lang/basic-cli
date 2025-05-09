@@ -1,0 +1,32 @@
+#!/usr/bin/expect
+
+# uncomment line below for debugging
+# exp_internal 1
+
+set timeout 7
+
+source ./ci/expect_scripts/shared-code.exp
+
+set env(DB_PATH) $env(EXAMPLES_DIR)test.db
+
+spawn $env(EXAMPLES_DIR)sqlite-test
+
+expect -exact "Rows: {col_bytes: \[72, 101, 108, 108, 111\], col_f32: 78.9, col_f64: 123.456, col_i16: 1234, col_i32: 123456, col_i8: 123, col_nullable_bytes: (NotNull \[119, 111, 114, 108, 100\]), col_nullable_f32: (NotNull 12.34), col_nullable_f64: (NotNull 456.789), col_nullable_i16: (NotNull 5678), col_nullable_i32: (NotNull 456789), col_nullable_i64: (NotNull 987654321), col_nullable_i8: (NotNull 56), col_nullable_str: (NotNull \"nullable text\"), col_nullable_u16: (NotNull 8765), col_nullable_u32: (NotNull 987654), col_nullable_u64: (NotNull 123456789), col_nullable_u8: (NotNull 78), col_text: \"example text\", col_u16: 4321, col_u32: 654321, col_u8: 234}\r\n{col_bytes: \[119, 111, 114, 108, 100\], col_f32: 23.45, col_f64: 456.789, col_i16: 5678, col_i32: 789012, col_i8: 45, col_nullable_bytes: Null, col_nullable_f32: (NotNull 67.89), col_nullable_f64: Null, col_nullable_i16: Null, col_nullable_i32: (NotNull 123456), col_nullable_i64: Null, col_nullable_i8: Null, col_nullable_str: Null, col_nullable_u16: Null, col_nullable_u32: (NotNull 654321), col_nullable_u64: Null, col_nullable_u8: Null, col_text: \"sample text\", col_u16: 9876, col_u32: 1234567, col_u8: 123}\r\n" {
+        expect "Row count: 2\r\n" {
+            expect -exact "Updated rows: \[\"Updated text 1\", \"Updated text 2\"\]\r\n" {
+                expect -exact "Tagged value test: \[(String \"example text\"), (String \"sample text\")\]\r\n" {
+                    expect "Error: Mismatch: Data type mismatch\r\n" {
+                        expect "Success!\r\n" {
+                            expect eof {
+                                check_exit_and_segfault
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+#}
+
+puts stderr "\nExpect failed: output was different from expected value."
+exit 1
