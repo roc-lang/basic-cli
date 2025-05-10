@@ -16,5 +16,5 @@ expect -exact "EXEC\r\nFOO=BAR\r\nBAZ=DUCK\r\nFOO=BAR\r\n" {
     }
 }
 
-puts stderr "\nExpect failed: output was different from expected value."
+puts stderr "\nExpect script failed: output was different from expected value."
 exit 1

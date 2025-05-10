@@ -16,10 +16,10 @@ expect {
         }
     }
     timeout {
-        puts stderr "\nExpect failed: timed out waiting for expected output."
+        puts stderr "\nExpect script failed: timed out waiting for expected output."
         exit 1
     }
 }
 
-puts stderr "\nExpect failed: output was different from expected value."
+puts stderr "\nExpect script failed: output was different from expected value."
 exit 1

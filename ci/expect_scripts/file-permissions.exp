@@ -15,5 +15,5 @@ expect "LICENSE file permissions:\r\n    Executable: Bool.false\r\n    Readable:
     }
 }
 
-puts stderr "\nExpect failed: output was different from expected value."
+puts stderr "\nExpect script failed: output was different from expected value."
 exit 1

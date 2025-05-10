@@ -15,5 +15,5 @@ expect "Success!\r\n" {
     }
 }
 
-puts stderr "\nExpect failed: output was different from expected value."
+puts stderr "\nExpect script failed: output was different from expected value."
 exit 1

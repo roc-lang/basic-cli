@@ -9,8 +9,6 @@ main! : List Arg => Result {} _
 main! = |_args|
     # Get current time
     now = Utc.now!({})
-    
-    Stdout.line!("Current time demonstration:")?
 
     # Convert to milliseconds since epoch
     millisSinceEpoch = Utc.to_millis_since_epoch(now)
@@ -79,7 +77,7 @@ main! = |_args|
     err_on_false(difference < 1)?
     Stdout.line!("Verified: deltaMillis and deltaNanos/1_000_000 match within tolerance")?
 
-    Stdout.line!("\nExample completed successfully!")
+    Stdout.line!("\nTest completed successfully!")
 
 err_on_false = |bool|
     if bool then

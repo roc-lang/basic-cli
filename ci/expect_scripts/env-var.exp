@@ -21,5 +21,5 @@ expect "Your favorite editor is nano!\r\n" {
         }
 }
 
-puts stderr "\nExpect failed: output was different from expected value."
+puts stderr "\nExpect script failed: output was different from expected value."
 exit 1
