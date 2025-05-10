@@ -130,6 +130,15 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         $ROC dev $roc_file $ROC_BUILD_FLAGS
     fi
 done
+for roc_file in $TESTS_DIR*.roc; do
+    base_file=$(basename "$roc_file")
+
+    if [ "$base_file" == "sqlite.roc" ]; then
+        DB_PATH=${TESTS_DIR}test.db $ROC dev $roc_file $ROC_BUILD_FLAGS
+    else
+        $ROC dev $roc_file $ROC_BUILD_FLAGS
+    fi
+done
 
 # remove Dir example directorys if they exist
 rm -rf dirExampleE

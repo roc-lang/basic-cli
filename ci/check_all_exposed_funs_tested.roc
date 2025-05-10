@@ -8,8 +8,8 @@ import pf.Cmd
 # This script performs the following tasks:
 # 1. Reads the file platform/main.roc and extracts the exposes list.
 # 2. For each module in the exposes list, it reads the corresponding file (e.g., platform/Path.roc) and extracts all functions in the module list.
-# 3. Checks if each module.function is used in the examples folder using ripgrep
-# 4. Prints the functions that are not used anywhere in the examples.
+# 3. Checks if each module.function is used in the examples or tests folder using ripgrep
+# 4. Prints the functions that are not used anywhere in the examples or tests.
 
 ## For convenient string errors
 err_s = |err_msg| Err(StrErr(err_msg))
@@ -61,7 +61,7 @@ main! = |_args|
     if List.is_empty(not_found_functions) then
         Ok({})
     else
-        Stdout.line!("Functions not used in basic-cli/examples:")?
+        Stdout.line!("Functions not used in basic-cli/examples or basic-cli/tests:")?
         List.for_each_try!(
             not_found_functions,
             |function_name|
@@ -72,21 +72,29 @@ main! = |_args|
 is_function_unused! : Str, Str => Result Bool _
 is_function_unused! = |module_name, function_name|
     function_pattern = "${module_name}.${function_name}"
-    search_dir = "examples"
+    search_dirs = ["examples", "tests"]
 
-    # Use ripgrep to search for the function pattern
-    cmd =
-        Cmd.new("rg")
-        |> Cmd.arg("-q") # Quiet mode - we only care about exit code
-        |> Cmd.arg(function_pattern)
-        |> Cmd.arg(search_dir)
+    unused_in_dir =
+        search_dirs
+        |> List.map_try!( |search_dir|
+            # Use ripgrep to search for the function pattern
+            cmd =
+                Cmd.new("rg")
+                |> Cmd.arg("-q") # Quiet mode - we only care about exit code
+                |> Cmd.arg(function_pattern)
+                |> Cmd.arg(search_dir)
 
-    status_res = Cmd.status!(cmd)
+            status_res = Cmd.status!(cmd)
 
-    # ripgrep returns status 0 if matches were found, 1 if no matches
-    when status_res is
-        Ok(0) -> Ok(Bool.false) # Function is used (not unused)
-        _ -> Ok(Bool.true)
+            # ripgrep returns status 0 if matches were found, 1 if no matches
+            when status_res is
+                Ok(0) -> Ok(Bool.false) # Function is used (not unused)
+                _ -> Ok(Bool.true)
+        )?
+
+    unused_in_dir
+    |> List.walk!(Bool.true, |state, is_unused_res| state && is_unused_res)
+    |> Ok
 
 process_module! : Str => Result { module_name : Str, exposed_functions : List Str } _
 process_module! = |module_name|
