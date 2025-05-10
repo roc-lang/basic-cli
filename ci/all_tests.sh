@@ -19,6 +19,9 @@ if [ -z "${ROC}" ]; then
   exit 1
 fi
 
+TESTS_DIR="${EXAMPLES_DIR/\/examples\//\/tests\/}"
+export TESTS_DIR
+
 if [ "$NO_BUILD" != "1" ]; then
   # May be needed for breaking roc changes. Also replace platform in build.roc with `cli: platform "platform/main.roc",`
   ./jump-start.sh
@@ -29,6 +32,9 @@ fi
 
 # roc check
 for roc_file in $EXAMPLES_DIR*.roc; do
+    $ROC check $roc_file
+done
+for roc_file in $TESTS_DIR*.roc; do
     $ROC check $roc_file
 done
 
@@ -44,6 +50,9 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         $ROC build $roc_file $ROC_BUILD_FLAGS
     fi
 
+done
+for roc_file in $TESTS_DIR*.roc; do
+    $ROC build $roc_file $ROC_BUILD_FLAGS
 done
 
 # prep for next step
@@ -72,6 +81,13 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     # if [ "$no_ext_name" == "args" ] && command -v valgrind &> /dev/null; then
     #     valgrind $EXAMPLES_DIR/args argument
     # fi
+
+    expect ci/expect_scripts/$no_ext_name.exp
+done
+for roc_file in $TESTS_DIR*.roc; do
+
+    roc_file_only="$(basename "$roc_file")"
+    no_ext_name=${roc_file_only%.*}
 
     expect ci/expect_scripts/$no_ext_name.exp
 done
@@ -105,8 +121,6 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         DB_PATH=${EXAMPLES_DIR}todos.db $ROC dev $roc_file $ROC_BUILD_FLAGS
     elif [ "$base_file" == "sqlite-everything.roc" ]; then
         DB_PATH=${EXAMPLES_DIR}todos2.db $ROC dev $roc_file $ROC_BUILD_FLAGS
-    elif [ "$base_file" == "sqlite-test.roc" ]; then
-        DB_PATH=${EXAMPLES_DIR}test.db $ROC dev $roc_file $ROC_BUILD_FLAGS
     elif [ "$base_file" == "temp-dir.roc" ]; then
         $ROC dev $roc_file $ROC_BUILD_FLAGS --linker=legacy
     elif [ "$base_file" == "file-accessed-modified-created-time.roc" ] && [ "$IS_MUSL" == "1" ]; then
