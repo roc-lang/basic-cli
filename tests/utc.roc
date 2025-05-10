@@ -1,14 +1,11 @@
 app [main!] { pf: platform "../platform/main.roc" }
 
 import pf.Stdout
-
 import pf.Utc
-
 import pf.Sleep
-
 import pf.Arg exposing [Arg]
 
-main!: List(Arg) => Result {} _
+main! : List Arg => Result {} _
 main! = |_args|
     # Get current time
     now = Utc.now!({})
@@ -73,7 +70,6 @@ main! = |_args|
     Stdout.line!("Verified: deltaMillis and deltaNanos/1_000_000 match within tolerance")?
 
     Stdout.line!("\nTest completed successfully!")
-
 
 err_on_false = |bool|
     if bool then
