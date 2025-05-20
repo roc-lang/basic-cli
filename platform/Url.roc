@@ -92,7 +92,7 @@ to_str = |@Url(str)| str
 ## |> Url.append("stuff")
 ##
 ## # Gives https://example.com/things/stuff/more/etc/"
-## Url.from_str "https://example.com/things/"
+## Url.from_str("https://example.com/things/")
 ## |> Url.append("/stuff/")
 ## |> Url.append("/more/etc/")
 ##
@@ -102,7 +102,12 @@ to_str = |@Url(str)| str
 ## ```
 append : Url, Str -> Url
 append = |@Url(url_str), suffix_unencoded|
-    suffix = percent_encode(suffix_unencoded)
+    # percent-encode the suffix but not the slashes
+    suffix =
+        suffix_unencoded
+        |> Str.split_on("/")
+        |> List.map(percent_encode)
+        |> Str.join_with("/")
 
     when Str.split_first(url_str, "?") is
         Ok({ before, after }) ->
