@@ -1,0 +1,89 @@
+#!/usr/bin/expect
+
+# uncomment line below for debugging
+# exp_internal 1
+
+set timeout 7
+
+source ./ci/expect_scripts/shared-code.exp
+
+spawn $env(TESTS_DIR)url
+
+expect "Testing Url module functions..." {
+    expect "Created URL: https://example.com" {
+        expect "Testing Url.append:" {
+            expect "URL with append: https://example.com/some%20stuff" {
+                expect "URL with query and fragment, then appended path: https://example.com/stuff?search=blah#fragment" {
+                    expect "URL with multiple appended paths: https://example.com/things/stuff/more/etc/" {
+                        expect "Testing Url.append_param:" {
+                            expect "URL with appended param: https://example.com?email=someone%40example.com" {
+                                expect "URL with multiple appended params: https://example.com?caf%C3%A9=du%20Monde&email=hi%40example.com" {
+                                    expect "Testing Url.has_query:" {
+                                        expect "URL with query has_query: Bool.true" {
+                                            expect "URL without query has_query: Bool.false" {
+                                                expect "Testing Url.has_fragment:" {
+                                                    expect "URL with fragment has_fragment: Bool.true" {
+                                                        expect "URL without fragment has_fragment: Bool.false" {
+                                                            expect "Testing Url.query:" {
+                                                                expect "Query from URL: key1=val1&key2=val2&key3=val3" {
+                                                                    expect "Query from URL without query: " {
+                                                                        expect "Testing Url.fragment:" {
+                                                                            expect "Fragment from URL: stuff" {
+                                                                                expect "Fragment from URL without fragment: " {
+                                                                                    expect "Testing Url.reserve:" {
+                                                                                        expect "URL with reserved capacity and params: https://example.com/stuff?caf%C3%A9=du%20Monde&email=hi%40example.com" {
+                                                                                            expect "Testing Url.with_query:" {
+                                                                                                expect "URL with replaced query: https://example.com?newQuery=thisRightHere#stuff" {
+                                                                                                    expect "URL with removed query: https://example.com#stuff" {
+                                                                                                        expect "Testing Url.with_fragment:" {
+                                                                                                            expect "URL with replaced fragment: https://example.com#things" {
+                                                                                                                expect "URL with added fragment: https://example.com#things" {
+                                                                                                                    expect "URL with removed fragment: https://example.com" {
+                                                                                                                        expect "Testing Url.query_params:" {
+                                                                                                                            expect "params_dict: {\"key1\": \"val1\", \"key2\": \"val2\", \"key3\": \"val3\"}" {
+                                                                                                                                expect "Testing Url.path:" {
+                                                                                                                                    expect "Path from URL: example.com/foo/bar" {
+                                                                                                                                        expect "Path from relative URL: /foo/bar" {
+                                                                                                                                            expect "All tests executed!" {
+                                                                                                                                                expect eof {
+                                                                                                                                                    check_exit_and_segfault
+                                                                                                                                                }
+                                                                                                                                            }
+                                                                                                                                        }
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                            }
+                                                                                                                        }
+                                                                                                                    }
+                                                                                                                }
+                                                                                                            }
+                                                                                                        }
+                                                                                                    }
+                                                                                                }
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+puts stderr "\nExpect script failed: output was different from expected value."
+exit 1
