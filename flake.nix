@@ -3,7 +3,8 @@
 
   inputs = {
 
-    roc.url = "github:roc-lang/roc";
+    # TODO change this back once that commit is merged
+    roc.url = "github:roc-lang/roc/2e3a32d218f5404f4451cfe9997eaa95e75486cb";
 
     nixpkgs.follows = "roc/nixpkgs";
 
