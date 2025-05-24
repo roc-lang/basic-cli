@@ -1,14 +1,19 @@
 //! This crate provides common functionality for Roc to interface with `std::net::tcp`
 use roc_std::{RocBox, RocList, RocRefcounted, RocResult, RocStr};
 use roc_std_heap::ThreadSafeRefcountedResourceHeap;
+use std::convert::Infallible;
 use std::env;
 use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
 use std::net::TcpStream;
 use std::sync::OnceLock;
+use bytes::Bytes;
+use http_body_util::BodyExt;
 
 pub const REQUEST_TIMEOUT_BODY: &[u8] = "RequestTimeout".as_bytes();
 pub const REQUEST_NETWORK_ERR: &[u8] = "Network Error".as_bytes();
 pub const REQUEST_BAD_BODY: &[u8] = "Bad Body".as_bytes();
+
+type BoxBody = http_body_util::combinators::BoxBody<Bytes, Infallible>;
 
 pub fn heap() -> &'static ThreadSafeRefcountedResourceHeap<BufReader<TcpStream>> {
     // TODO: Should this be a BufReader and BufWriter of the tcp stream?
@@ -132,7 +137,7 @@ impl RequestToAndFromHost {
         }
     }
 
-    pub fn to_hyper_request(&self) -> Result<hyper::Request<hyper::Body>, hyper::http::Error> {
+    pub fn to_hyper_request(&self) -> Result<hyper::Request<http_body_util::Full<Bytes>>, hyper::http::Error> {
         let method: hyper::Method = self.as_hyper_method();
         let mut req_builder = hyper::Request::builder()
             .method(method)
@@ -153,7 +158,7 @@ impl RequestToAndFromHost {
             req_builder = req_builder.header("Content-Type", "text/plain");
         }
 
-        let bytes = hyper::Body::from(self.body.as_slice().to_vec());
+        let bytes: http_body_util::Full<Bytes> = http_body_util::Full::new(self.body.as_slice().to_vec().into());
 
         req_builder.body(bytes)
     }
@@ -191,7 +196,7 @@ impl From<hyper::http::Error> for ResponseToAndFromHost {
     }
 }
 
-impl From<ResponseToAndFromHost> for hyper::Response<hyper::Body> {
+impl From<ResponseToAndFromHost> for hyper::Response<BoxBody> {
     fn from(roc_response: ResponseToAndFromHost) -> Self {
         let mut builder = hyper::Response::builder();
 
@@ -206,7 +211,7 @@ impl From<ResponseToAndFromHost> for hyper::Response<hyper::Body> {
         }
 
         builder
-            .body(Vec::from(roc_response.body.as_slice()).into()) // TODO try not to use Vec here
+            .body(http_body_util::Full::new(Vec::from(roc_response.body.as_slice()).into()).boxed()) // TODO try not to use Vec here
             .unwrap() // TODO don't unwrap this
     }
 }
