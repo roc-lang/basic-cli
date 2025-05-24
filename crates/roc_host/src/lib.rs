@@ -677,6 +677,10 @@ async fn async_send_request(request: hyper::Request<http_body_util::Full<Bytes>>
             }
         }
         Err(err) => {
+            // TODO match on the error type to provide more specific responses with appropriate status codes
+            /*use std::error::Error;
+            let err_source_opt = err.source();*/
+
             roc_http::ResponseToAndFromHost {
                 status: 500,
                 headers: RocList::empty(),
