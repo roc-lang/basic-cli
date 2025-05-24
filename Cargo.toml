@@ -49,7 +49,7 @@ hyper-rustls = { version = "=0.27.6", default-features = false, features = [
     "tls12",
     "native-tokio",
     "rustls-native-certs", # required for with_native_roots
-    "aws-lc-rs", # required for with_native_roots
+    "ring", # required for with_native_roots
 ] }
 http-body-util = "=0.1.3"
 tokio = { version = "=1.45.0", default-features = false }
