@@ -4,6 +4,9 @@
 //! writing to stdio or making HTTP requests.
 
 use core::ffi::c_void;
+use bytes::Bytes;
+use http_body_util::BodyExt;
+use hyper_util::rt::TokioExecutor;
 use roc_env::arg::ArgToAndFromHost;
 use roc_io_error::IOErr;
 use roc_std::{RocBox, RocList, RocResult, RocStr};
@@ -616,20 +619,32 @@ pub extern "C" fn roc_fx_send_request(
     })
 }
 
-async fn async_send_request(request: hyper::Request<hyper::Body>) -> roc_http::ResponseToAndFromHost {
-    use hyper::Client;
+async fn async_send_request(request: hyper::Request<http_body_util::Full<Bytes>>) -> roc_http::ResponseToAndFromHost {
+    use hyper_util::client::legacy::Client;
     use hyper_rustls::HttpsConnectorBuilder;
 
-    let https = HttpsConnectorBuilder::new()
+    let https = match HttpsConnectorBuilder::new()
         .with_native_roots()
-        .https_or_http()
-        .enable_http1()
-        .build();
+    {
+        Ok(builder) => builder
+            .https_or_http()
+            .enable_http1()
+            .build(),
+        Err(_) => {
+            return roc_http::ResponseToAndFromHost {
+                status: 500,
+                headers: RocList::empty(),
+                body: "Failed to initialize HTTPS connector with native roots".as_bytes().into(),
+            };
+        }
+    };
 
-    let client: Client<_, hyper::Body> = Client::builder().build(https);
-    let res = client.request(request).await;
+    let client: Client<_, http_body_util::Full<Bytes>> =
+        Client::builder(TokioExecutor::new()).build(https);
+        
+    let response_res = client.request(request).await;
 
-    match res {
+    match response_res {
         Ok(response) => {
             let status = response.status();
 
@@ -639,44 +654,33 @@ async fn async_send_request(request: hyper::Request<hyper::Body>) -> roc_http::R
 
             let status = status.as_u16();
 
-            let bytes = match hyper::body::to_bytes(response.into_body()).await {
-                Ok(bytes) => bytes,
+            let bytes_res =
+                response.into_body().collect().await.map(|collected| collected.to_bytes());
+
+            match bytes_res {
+                Ok(bytes) => {
+                    let body: RocList<u8> = RocList::from_iter(bytes);
+
+                    roc_http::ResponseToAndFromHost {
+                        body,
+                        status,
+                        headers,
+                    }
+                },
                 Err(_) => {
-                    return roc_http::ResponseToAndFromHost {
+                    roc_http::ResponseToAndFromHost {
                         status: 500,
                         headers: RocList::empty(),
                         body: roc_http::REQUEST_BAD_BODY.into(),
-                    };
+                    }
                 }
-            };
-
-            let body: RocList<u8> = RocList::from_iter(bytes);
-
-            roc_http::ResponseToAndFromHost {
-                body,
-                status,
-                headers,
             }
         }
         Err(err) => {
-            if err.is_timeout() {
-                roc_http::ResponseToAndFromHost {
-                    status: 408,
-                    headers: RocList::empty(),
-                    body: roc_http::REQUEST_TIMEOUT_BODY.into(),
-                }
-            } else if err.is_connect() || err.is_closed() {
-                roc_http::ResponseToAndFromHost {
-                    status: 500,
-                    headers: RocList::empty(),
-                    body: roc_http::REQUEST_NETWORK_ERR.into(),
-                }
-            } else {
-                roc_http::ResponseToAndFromHost {
-                    status: 500,
-                    headers: RocList::empty(),
-                    body: format!("OTHER ERROR\n{}", err).as_bytes().into(),
-                }
+            roc_http::ResponseToAndFromHost {
+                status: 500,
+                headers: RocList::empty(),
+                body: format!("ERROR:\n{}", err).as_bytes().into(),
             }
         }
     }

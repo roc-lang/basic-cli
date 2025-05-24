@@ -31,3 +31,6 @@ roc_sqlite.workspace = true
 hyper.workspace = true
 hyper-rustls.workspace = true
 tokio.workspace = true
+bytes.workspace = true
+http-body-util.workspace = true
+hyper-util.workspace = true
