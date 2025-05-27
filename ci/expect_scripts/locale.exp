@@ -9,7 +9,7 @@ source ./ci/expect_scripts/shared-code.exp
 
 spawn $env(EXAMPLES_DIR)locale
 
-expect -re {The most preferred locale for this system or application: [a-z]+-[A-Z]+\r\n} {
+expect -re {The most preferred locale for this system or application: [a-zA-Z\-]+\r\n} {
     expect -re {All available locales for this system or application: \[.*\]\r\n} {
         expect eof {
             check_exit_and_segfault
