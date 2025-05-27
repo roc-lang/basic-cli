@@ -7,11 +7,11 @@ set timeout 7
 
 source ./ci/expect_scripts/shared-code.exp
 
-# Spawn the command to pipe in the data to the script B
-spawn bash -c "echo -e \"test\n123\" | $env(EXAMPLES_DIR)/piping"
+# -n to make sure Stdin.read_to_end! works without newline in input
 
-# Expect the output
-expect -exact "I read 2 lines from stdin.\r\n" {
+spawn bash -c "echo -n \"hey\" | $env(EXAMPLES_DIR)/stdin-pipe"
+
+expect "This is what you piped in: \"hey\"\r\n" {
     expect eof {
         check_exit_and_segfault
     }

@@ -5,10 +5,10 @@ module [
     from_os_raw,
 ]
 
-## An OS-aware representation of a command-line argument.
+## An OS-aware (see below) representation of a command-line argument.
 ##
-## Though we tend to think of args as Unicode strings, most operating systems
-## represent command-line arguments as lists of bytes that aren't necessarily
+## Though we tend to think of args as Unicode strings, **most operating systems
+## represent command-line arguments as lists of bytes** that aren't necessarily
 ## UTF-8 encoded. Windows doesn't even use bytes, but U16s.
 ##
 ## Most of the time, you will pass these to packages and they will handle the

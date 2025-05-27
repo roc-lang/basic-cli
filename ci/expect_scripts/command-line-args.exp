@@ -11,8 +11,12 @@ source ./ci/expect_scripts/shared-code.exp
 
 
 expect "received argument: foo\r\n" {
-    expect eof {
-        check_exit_and_segfault
+    expect "Linux argument, bytes: \\\[102, 111, 111\\\]\r\n" {
+        expect "back to Arg: \"foo\"\r\n" {
+            expect eof {
+                check_exit_and_segfault
+            }
+        }
     }
 }
 

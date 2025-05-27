@@ -69,7 +69,8 @@ bytes! = |{}|
     Host.stdin_bytes!({})
     |> Result.map_err(handle_err)
 
-## Read all bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)) until EOF in this source.
+## Read all bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin))
+## until [EOF](https://en.wikipedia.org/wiki/End-of-file) in this source.
 read_to_end! : {} => Result (List U8) [StdinErr IOErr]
 read_to_end! = |{}|
     Host.stdin_read_to_end!({})

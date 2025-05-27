@@ -1,0 +1,21 @@
+#!/usr/bin/expect
+
+# uncomment line below for debugging
+# exp_internal 1
+
+set timeout 7
+
+source ./ci/expect_scripts/shared-code.exp
+
+spawn $env(EXAMPLES_DIR)locale
+
+expect -re {The most preferred locale for this system or application: [a-z]+-[A-Z]+\r\n} {
+    expect -re {All available locales for this system or application: \[.*\]\r\n} {
+        expect eof {
+            check_exit_and_segfault
+        }
+    }
+}
+
+puts stderr "\nExpect script failed: output was different from expected value."
+exit 1
