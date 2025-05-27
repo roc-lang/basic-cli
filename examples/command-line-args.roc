@@ -28,7 +28,7 @@ main! = |raw_args|
             # Roc packages like to be platform agnostic so that everyone can use them, that's why they avoid platform-specific types like `pf.Arg`.
             when Arg.to_os_raw(first_arg) is
                 Unix(bytes) ->
-                    Stdout.line!("Linux argument, bytes: ${Inspect.to_str(bytes)}")?
+                    Stdout.line!("Unix argument, bytes: ${Inspect.to_str(bytes)}")?
 
                 Windows(u16s) ->
                     Stdout.line!("Windows argument, u16s: ${Inspect.to_str(u16s)}")?
