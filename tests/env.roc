@@ -11,11 +11,11 @@ main! = |_args|
 
     Stdout.line!("\nTesting Env.cwd!:")?
     cwd = Env.cwd!({})?
-    Stdout.line!("cwd: ${Inspect.to_str(cwd)}")?
+    Stdout.line!("cwd: ${Path.display(cwd)}")?
 
     Stdout.line!("\nTesting Env.exe_path!:")?
     exe_path = Env.exe_path!({})?
-    Stdout.line!("exe_path: ${Inspect.to_str(exe_path)}")?
+    Stdout.line!("exe_path: ${Path.display(exe_path)}")?
 
     # Test Env.platform!
     Stdout.line!("\nTesting Env.platform!:")?
@@ -47,7 +47,7 @@ main! = |_args|
 
     Env.set_cwd!(first_dir)?
     new_cwd = Env.cwd!({})?
-    Stdout.line!("Changed current directory to: ${Inspect.to_str(new_cwd)}")?
+    Stdout.line!("Changed current directory to: ${Path.display(new_cwd)}")?
 
     Stdout.line!("\nAll tests executed!")?
 
