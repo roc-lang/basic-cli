@@ -6,7 +6,8 @@ import pf.Arg exposing [Arg]
 
 # To run this example: check the README.md in this folder
 
-# Reading text from stdin
+# Reading text from stdin.
+# If you want to read Stdin from a pipe, check out examples/stdin-pipe.roc
 
 main! : List Arg => Result {} _
 main! = |_args|
