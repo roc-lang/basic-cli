@@ -11,13 +11,15 @@ spawn $env(EXAMPLES_DIR)terminal-app-snake
 
 expect "Score: 0\r\n" {
 
-    # Press 's' key 10 times
-    for {set i 1} {$i <= 10} {incr i} {
+    # Press 's' key 9 times
+    for {set i 1} {$i <= 9} {incr i} {
         send "s"
         
-        # small delay between key presses
-        after 100
+        expect -re {Score:.*}
     }
+
+    # This press should collide with the bottom wall and lead to game over
+    send "s"
 
     expect -re {.*Game Over.*} {
         expect eof {
