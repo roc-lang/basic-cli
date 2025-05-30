@@ -97,12 +97,13 @@ rm -rf dirExampleE
 rm -rf dirExampleA
 rm -rf dirExampleD
 
+# countdown, echo, form... all require user input or special setup
+ignore_list=("stdin-basic.roc" "stdin-pipe.roc" "command-line-args.roc" "http.roc" "env-var.roc" "bytes-stdin-stdout.roc" "error-handling.roc" "tcp-client.roc" "tcp.roc" "terminal-app-snake.roc")
+
 # roc dev (some expects only run with `roc dev`)
 for roc_file in $EXAMPLES_DIR*.roc; do
     base_file=$(basename "$roc_file")
 
-    # countdown, echo, form... all require user input or special setup
-    ignore_list=("stdin-basic.roc" "stdin-pipe.roc" "command-line-args.roc" "http.roc" "env-var.roc" "bytes-stdin-stdout.roc" "error-handling.roc" "tcp-client.roc" "terminal-app-snake.roc")
 
     # check if base_file matches something from ignore_list
     for file in "${ignore_list[@]}"; do
@@ -130,8 +131,16 @@ for roc_file in $EXAMPLES_DIR*.roc; do
         $ROC dev $roc_file $ROC_BUILD_FLAGS
     fi
 done
+
 for roc_file in $TESTS_DIR*.roc; do
     base_file=$(basename "$roc_file")
+
+    # check if base_file matches something from ignore_list
+    for file in "${ignore_list[@]}"; do
+        if [ "$base_file" == "$file" ]; then
+            continue 2 # continue the outer loop if a match is found
+        fi
+    done
 
     if [ "$base_file" == "sqlite.roc" ]; then
         DB_PATH=${TESTS_DIR}test.db $ROC dev $roc_file $ROC_BUILD_FLAGS
