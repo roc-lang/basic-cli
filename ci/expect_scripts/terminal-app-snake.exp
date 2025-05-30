@@ -18,7 +18,7 @@ expect "Score: 0\r\n" {
         expect -re {Score:.*}
     }
 
-    # This press should collide with the bottom wall and lead to game over
+    # This press should make the snake collide with the bottom wall and lead to game over
     send "s"
 
     expect -re {.*Game Over.*} {

@@ -20,7 +20,7 @@ GameState : {
 }
 
 # The snake list should never be empty, so we use a non-empty list.
-# Typically we'd use head and tail, but this would be confusing with the snake head and tail later on :)
+# Typically we'd use head and tail, but this would be confusing with the snake's head and tail later on :)
 NonEmptyList : { first : Position, rest : List Position }
 
 initial_state = {
