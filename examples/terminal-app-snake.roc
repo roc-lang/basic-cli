@@ -10,7 +10,7 @@ import pf.Arg exposing [Arg]
 # If you want to make a full screen terminal app, you probably want to switch the terminal to [raw mode](https://en.wikipedia.org/wiki/Terminal_mode).
 # Here we demonstrate `Tty.enable_raw_mode!` and `Tty.disable_raw_mode!` with a simple snake game.
 
-Position : { x : U64, y : U64 }
+Position : { x : I64, y : I64 }
 
 GameState : {
     snake_lst : NonEmptyList,
