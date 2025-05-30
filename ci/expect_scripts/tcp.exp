@@ -1,0 +1,40 @@
+#!/usr/bin/expect
+
+# uncomment line below for debugging
+# exp_internal 1
+
+set timeout 7
+
+source ./ci/expect_scripts/shared-code.exp
+
+# get path to cat command
+set cat_path [exec which cat]
+# Start echo server
+spawn ncat -e $cat_path -l 8085
+sleep 5
+
+spawn $env(TESTS_DIR)tcp
+
+
+expect "Testing Tcp module functions" {
+    expect "Successfully connected to localhost" {
+        expect "Echo server reply: Hello" {
+            expect "Echo server reply: Test message from Roc!" {
+                expect "Tcp.read_up_to yielded: 'do not read past me'" {
+                    expect "Tcp.read_exactly yielded: 'ABC'" {
+                        expect "Tcp.read_until yielded: 'Line1\r\n'" {
+                            expect "✓ All tests executed! ✓\r\n" {
+                                expect eof {
+                                    check_exit_and_segfault
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+puts stderr "\nExpect script failed: output was different from expected value."
+exit 1
