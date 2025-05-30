@@ -1,36 +1,6 @@
-args
-command
-command-line-args
-dir
-error-handling
-env
-example-stdin
-file-mixed
-file-mixedBROKEN
-file-read-write
-file-read-buffered
-file-read-memory-map
-file-size
-file-permissions
-file-accessed-modified-created-time
-form
-hello-world
-http
-dup-bytes
-out.txt
-path
-print
-stdin-pipe
-record-builder
-result
-stdin
-stdin-basic
-sqlite-basic
-sqlite-everything
-sqlite-test
-task-list
-tcp-client
-time
-bytes-stdin-stdout
-locale
-piping
+# Ignore all files including binary files that have no extension
+*
+# Unignore all files with extensions
+!*.*
+# Unignore all directories
+!*/

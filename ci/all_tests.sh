@@ -102,7 +102,7 @@ for roc_file in $EXAMPLES_DIR*.roc; do
     base_file=$(basename "$roc_file")
 
     # countdown, echo, form... all require user input or special setup
-    ignore_list=("stdin-basic.roc" "stdin-pipe.roc" "command-line-args.roc" "http.roc" "env-var.roc" "bytes-stdin-stdout.roc" "error-handling.roc" "tcp-client.roc")
+    ignore_list=("stdin-basic.roc" "stdin-pipe.roc" "command-line-args.roc" "http.roc" "env-var.roc" "bytes-stdin-stdout.roc" "error-handling.roc" "tcp-client.roc" "terminal-app-snake.roc")
 
     # check if base_file matches something from ignore_list
     for file in "${ignore_list[@]}"; do

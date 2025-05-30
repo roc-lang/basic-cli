@@ -1,0 +1,33 @@
+#!/usr/bin/expect
+
+# uncomment line below for debugging
+# exp_internal 1
+
+set timeout 7
+
+source ./ci/expect_scripts/shared-code.exp
+
+spawn $env(EXAMPLES_DIR)terminal-app-snake
+
+expect "Score: 0\r\n" {
+
+    # Press 's' key 9 times
+    for {set i 1} {$i <= 9} {incr i} {
+        send "s"
+        
+        expect -re {Score:.*}
+    }
+
+    # This press should make the snake collide with the bottom wall and lead to game over
+    send "s"
+
+    expect -re {.*Game Over.*} {
+        expect eof {
+            check_exit_and_segfault
+        }
+    }
+    
+}
+
+puts stderr "\nExpect script failed: output was different from expected value."
+exit 1

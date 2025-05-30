@@ -1,4 +1,5 @@
-## Provides functionality to work with the terminal
+## Provides functionality to change the behaviour of the terminal.
+## This is useful for running an app like vim or a game in the terminal.
 ##
 ## Note: we plan on moving this file away from basic-cli in the future, see github.com/roc-lang/basic-cli/issues/73
 ##
@@ -9,13 +10,12 @@ module [
 
 import Host
 
-## Enable terminal raw mode which disables some default terminal bevahiour.
+## Enable terminal [raw mode](https://en.wikipedia.org/wiki/Terminal_mode) to disable some default terminal bevahiour.
 ##
-## The following modes are disabled:
-## - Input will not be echo to the terminal screen
-## - Input will not be buffered until Enter key is pressed
-## - Input will not be line buffered (input sent byte-by-byte to input buffer)
-## - Special keys like Backspace and CTRL+C will not be processed by terminal driver
+## This leads to the following changes:
+## - Input will not be echoed to the terminal screen.
+## - Input will be sent straight to the program instead of being buffered (= collected) until the Enter key is pressed.
+## - Special keys like Backspace and CTRL+C will not be processed by the terminal driver but will be passed to the program.
 ##
 ## Note: we plan on moving this function away from basic-cli in the future, see github.com/roc-lang/basic-cli/issues/73
 ##
