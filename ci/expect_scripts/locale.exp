@@ -17,5 +17,5 @@ expect -re {The most preferred locale for this system or application: [a-zA-Z\-]
     }
 }
 
-puts stderr "\nExpect script failed: output was different from expected value."
+puts stderr "\nExpect script failed: output was different from expected value. uncomment `exp_internal 1` to debug."
 exit 1

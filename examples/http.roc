@@ -1,6 +1,6 @@
 app [main!] {
     pf: platform "../platform/main.roc",
-    json: "https://github.com/lukewilliamboswell/roc-json/releases/download/0.12.0/1trwx8sltQ-e9Y2rOB4LWUWLS_sFVyETK8Twl0i9qpw.tar.gz",
+    json: "https://github.com/lukewilliamboswell/roc-json/releases/download/0.13.0/RqendgZw5e1RsQa3kFhgtnMP8efWoqGRsAvubx4-zus.tar.br",
 }
 
 import pf.Http
@@ -10,7 +10,13 @@ import pf.Arg exposing [Arg]
 
 # Demo of all basic-cli Http functions
 
-# To run this example: check the README.md in this folder
+# To run this example: 
+# ```
+# nix develop
+# cd basic-cli/ci/rust_http_server
+# cargo run
+# ```
+# Then in another terminal: follow the steps in the README.md file of this folder.
 
 main! : List Arg => Result {} _
 main! = |_args|

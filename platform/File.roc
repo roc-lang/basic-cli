@@ -170,7 +170,7 @@ read_utf8! = |path_str|
 # read = |path, fmt|
 #    Path.read! (Path.from_str path) fmt
 
-## Creates a new hard link on the filesystem.
+## Creates a new [hard link](https://en.wikipedia.org/wiki/Hard_link) on the filesystem.
 ##
 ## The link path will be a link pointing to the original path.
 ## Note that systems often require these two paths to both be located on the same filesystem.
@@ -178,9 +178,9 @@ read_utf8! = |path_str|
 ## This uses [rust's std::fs::hard_link](https://doc.rust-lang.org/std/fs/fn.hard_link.html).
 ##
 ## > [Path.hard_link!] does the same thing, except it takes a [Path] instead of a [Str].
-hard_link! : Str => Result {} [LinkErr IOErr]
-hard_link! = |path_str|
-    Path.hard_link!(Path.from_str(path_str))
+hard_link! : Str, Str => Result {} [LinkErr IOErr]
+hard_link! = |path_str_original, path_str_link|
+    Path.hard_link!(Path.from_str(path_str_original), Path.from_str(path_str_link))
 
 ## Returns True if the path exists on disk and is pointing at a directory.
 ## Returns False if the path exists and it is not a directory. If the path does not exist,

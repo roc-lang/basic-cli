@@ -381,7 +381,7 @@ create_all! = |path|
     Host.dir_create_all!(InternalPath.to_bytes(path))
     |> Result.map_err(|err| DirErr(InternalIOErr.handle_err(err)))
 
-## Creates a new hard link on the filesystem.
+## Creates a new [hard link](https://en.wikipedia.org/wiki/Hard_link) on the filesystem.
 ##
 ## The link path will be a link pointing to the original path.
 ## Note that systems often require these two paths to both be located on the same filesystem.
@@ -389,8 +389,8 @@ create_all! = |path|
 ## This uses [rust's std::fs::hard_link](https://doc.rust-lang.org/std/fs/fn.hard_link.html).
 ##
 ## > [File.hard_link!] does the same thing, except it takes a [Str] instead of a [Path].
-hard_link! : Path => Result {} [LinkErr IOErr]
-hard_link! = |path|
-    Host.hard_link!(InternalPath.to_bytes(path))
+hard_link! : Path, Path => Result {} [LinkErr IOErr]
+hard_link! = |path_original, path_link|
+    Host.hard_link!(InternalPath.to_bytes(path_original), InternalPath.to_bytes(path_link))
     |> Result.map_err(InternalIOErr.handle_err)
     |> Result.map_err(LinkErr)

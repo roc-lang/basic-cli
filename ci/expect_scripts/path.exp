@@ -16,5 +16,5 @@ expect "is_file: Bool.true\r\nis_dir: Bool.false\r\nis_sym_link: Bool.false\r\nt
     }
 }
 
-puts stderr "\nExpect script failed: output was different from expected value."
+puts stderr "\nExpect script failed: output was different from expected value. uncomment `exp_internal 1` to debug."
 exit 1

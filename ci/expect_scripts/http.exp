@@ -31,5 +31,5 @@ expect "I received 'Hello utf8' from the server.\r\n" {
 
 exec kill $server_pid
 
-puts stderr "\nExpect script failed: output was different from expected value."
+puts stderr "\nExpect script failed: output was different from expected value. uncomment `exp_internal 1` to debug."
 exit 1
