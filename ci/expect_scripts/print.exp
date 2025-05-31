@@ -15,5 +15,5 @@ expect "Hello, world!\r\nNo newline after me.Hello, error!\r\nErr with no newlin
     }
 }
 
-puts stderr "\nExpect script failed: output was different from expected value."
+puts stderr "\nExpect script failed: output was different from expected value. uncomment `exp_internal 1` to debug."
 exit 1

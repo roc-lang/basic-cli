@@ -91,7 +91,7 @@ dir_create_all! : List U8 => Result {} InternalIOErr.IOErrFromHost
 dir_delete_empty! : List U8 => Result {} InternalIOErr.IOErrFromHost
 dir_delete_all! : List U8 => Result {} InternalIOErr.IOErrFromHost
 
-hard_link! : List U8 => Result {} InternalIOErr.IOErrFromHost
+hard_link! : List U8, List U8 => Result {} InternalIOErr.IOErrFromHost
 path_type! : List U8 => Result InternalPath.InternalPathType InternalIOErr.IOErrFromHost
 cwd! : {} => Result (List U8) {}
 temp_dir! : {} => List U8

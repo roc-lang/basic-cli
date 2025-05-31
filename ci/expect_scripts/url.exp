@@ -85,5 +85,5 @@ expect "Testing Url module functions..." {
     }
 }
 
-puts stderr "\nExpect script failed: output was different from expected value."
+puts stderr "\nExpect script failed: output was different from expected value. uncomment `exp_internal 1` to debug."
 exit 1

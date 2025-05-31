@@ -324,6 +324,7 @@ pub fn init() {
         roc_fx_file_time_accessed as _,
         roc_fx_file_time_modified as _,
         roc_fx_file_time_created as _,
+        roc_fx_hard_link as _,
         roc_fx_cwd as _,
         roc_fx_posix_time as _,
         roc_fx_sleep_millis as _,
@@ -765,11 +766,11 @@ pub extern "C" fn roc_fx_dir_delete_all(
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_hardLink(
-    path_from: &RocList<u8>,
-    path_to: &RocList<u8>,
+pub extern "C" fn roc_fx_hard_link(
+    path_original: &RocList<u8>,
+    path_link: &RocList<u8>,
 ) -> RocResult<(), roc_io_error::IOErr> {
-    roc_file::hard_link(path_from, path_to)
+    roc_file::hard_link(path_original, path_link)
 }
 
 #[no_mangle]

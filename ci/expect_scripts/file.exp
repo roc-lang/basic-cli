@@ -1,0 +1,97 @@
+#!/usr/bin/expect
+
+# uncomment line below for debugging
+# exp_internal 1
+
+set timeout 7
+
+source ./ci/expect_scripts/shared-code.exp
+
+spawn $env(TESTS_DIR)file
+
+expect "Testing some File functions..." {
+    expect "This will create and manipulate test files in the current directory." {
+        
+        # Test File.write_bytes! and File.read_bytes!
+        expect "Testing File.write_bytes! and File.read_bytes!:" {
+            expect "Bytes in test_bytes.txt: \\\[72, 101, 108, 108, 111, 44, 32, 87, 111, 114, 108, 100, 33\\\]" {
+                
+                # Test File.write!
+                expect "Testing File.write!:" {
+                    expect "Content of test_write.json: {\"some\":\"json stuff\"}" {
+                        
+                        # Test File.is_file!
+                        expect "Testing File.is_file!:" {
+                            expect "✓ test_bytes.txt is confirmed to be a file" {
+                                
+                                # Test File.is_sym_link!
+                                expect "Testing File.is_sym_link!:" {
+                                    expect "✓ test_bytes.txt is not a symbolic link" {
+                                        expect "✓ test_symlink.txt is a symbolic link" {
+                                            
+                                            # Test File.type!
+                                            expect "Testing File.type!:" {
+                                                expect "test_bytes.txt file type: IsFile" {
+                                                    expect ". file type: IsDir" {
+                                                        expect "test_symlink.txt file type: IsSymLink" {
+                                                            
+                                                            # Test File.open_reader_with_capacity!
+                                                            expect "Testing File.open_reader_with_capacity!:" {
+                                                                expect "✓ Successfully opened reader with 3 byte capacity" {
+                                                                    
+                                                                    # Test reading lines from file
+                                                                    expect "Reading lines from file:" {
+                                                                        expect "Line 1: First line" {
+                                                                            expect "" {
+                                                                                expect "Line 2: Second line" {
+                                                                                    expect "" {
+                                                                                        
+                                                                                        # Test File.hard_link!
+                                                                                        expect "Testing File.hard_link!:" {
+                                                                                            expect "✓ Successfully created hard link: test_link_to_original.txt" {
+                                                                                                expect "Hard link inodes should be equal:" {
+                                                                                                    expect "Bool.true" {
+                                                                                                        expect "✓ Hard link contains same content as original" {
+                                                                                                            
+                                                                                                            # Cleanup phase
+                                                                                                            expect "Cleaning up test files..." {
+                                                                                                                expect "✓ Deleted all files." {
+                                                                                                                    
+                                                                                                                    # Final completion message
+                                                                                                                    expect "✓ All File function tests completed! ✓" {
+                                                                                                                        expect eof {
+                                                                                                                            check_exit_and_segfault
+                                                                                                                        }
+                                                                                                                    }
+                                                                                                                }
+                                                                                                            }
+                                                                                                        }
+                                                                                                    }
+                                                                                                }
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+puts stderr "\nExpect script failed: output was different from expected value. uncomment `exp_internal 1` to debug."
+exit 1
