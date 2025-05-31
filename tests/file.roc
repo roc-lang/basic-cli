@@ -63,7 +63,7 @@ test_file_type_checking! = |{}|
     Stdout.line!("\nTesting File.is_sym_link!:")?
     is_symlink_one = File.is_sym_link!("test_bytes.txt")?
     if is_symlink_one then
-        Stderr.line!("○ test_bytes.txt is a symbolic link")?
+        Stderr.line!("✗ test_bytes.txt is a symbolic link")?
     else
         Stdout.line!("✓ test_bytes.txt is not a symbolic link")?
 
