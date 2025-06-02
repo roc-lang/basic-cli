@@ -39,7 +39,7 @@ IOErr : InternalIOErr.IOErr
 ##
 ## First encode a `val` using a given `fmt` which implements the ability [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
 ##
-## For example, suppose you have a `Json.to_compact_utf8` which implements
+## For example, suppose you have a `Json.utf8` which implements
 ## [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
 ## You can use this to write [JSON](https://en.wikipedia.org/wiki/JSON)
 ## data to a file like this:
@@ -49,7 +49,7 @@ IOErr : InternalIOErr.IOErr
 ## Path.write!(
 ##     { some: "json stuff" },
 ##     Path.from_str("output.json"),
-##     Json.to_compact_utf8,
+##     Json.utf8,
 ## )?
 ## ```
 ##
@@ -264,7 +264,7 @@ with_extension = |path, extension|
 ##
 ## ```
 ## # Deletes the file named `myfile.dat`
-## Path.delete(Path.from_str("myfile.dat"), [1, 2, 3])?
+## Path.delete!(Path.from_str("myfile.dat"))?
 ## ```
 ##
 ## > This does not securely erase the file's contents from disk; instead, the operating
@@ -273,7 +273,7 @@ with_extension = |path, extension|
 ## the last file handle to it is closed, and on UNIX, it will not remove it until the last
 ## [hard link](https://en.wikipedia.org/wiki/Hard_link) to it has been deleted.
 ##
-## > [`File.delete`](File#delete!) does the same thing, except it takes a [Str] instead of a [Path].
+## > [`File.delete!`](File#delete!) does the same thing, except it takes a [Str] instead of a [Path].
 delete! : Path => Result {} [FileWriteErr Path IOErr]
 delete! = |path|
     Host.file_delete!(InternalPath.to_bytes(path))
@@ -283,7 +283,7 @@ delete! = |path|
 ##
 ## ```
 ## # Reads UTF-8 encoded text into a Str from the file "myfile.txt"
-## contents_str = Path.read_utf8(Path.from_str("myfile.txt"))?
+## contents_str = Path.read_utf8!(Path.from_str("myfile.txt"))?
 ## ```
 ##
 ## This opens the file first and closes it after reading its contents.
@@ -291,7 +291,7 @@ delete! = |path|
 ##
 ## > To read unformatted bytes from a file, you can use [Path.read_bytes!] instead.
 ## >
-## > [`File.read_utf8`](File#read_utf8!) does the same thing, except it takes a [Str] instead of a [Path].
+## > [`File.read_utf8!`](File#read_utf8!) does the same thing, except it takes a [Str] instead of a [Path].
 read_utf8! : Path => Result Str [FileReadErr Path IOErr, FileReadUtf8Err Path _]
 read_utf8! = |path|
     bytes =

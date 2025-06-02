@@ -159,7 +159,7 @@ Stmt := Box {}
 ##         id: Sqlite.i64("id"),
 ##         task: Sqlite.str("task"),
 ##     },
-## })
+## })?
 ## ```
 prepare! :
     {
