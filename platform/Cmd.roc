@@ -131,7 +131,7 @@ status! = |@Cmd(cmd)|
 ##
 ## ```
 ## # Call echo to print "hello world"
-## Cmd.exec!("echo", ["hello world"])
+## Cmd.exec!("echo", ["hello world"]) ? |err| CmdEchoFailed(err)
 ## ```
 exec! : Str, List Str => Result {} [CmdStatusErr InternalIOErr.IOErr]
 exec! = |program, arguments|

@@ -53,7 +53,7 @@ IOErr : InternalIOErr.IOErr
 ##
 ## First encode a `val` using a given `fmt` which implements the ability [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
 ##
-## For example, suppose you have a `Json.to_compact_utf8` which implements
+## For example, suppose you have a `Json.utf8` which implements
 ## [Encode.EncoderFormatting](https://www.roc-lang.org/builtins/Encode#EncoderFormatting).
 ## You can use this to write [JSON](https://en.wikipedia.org/wiki/JSON)
 ## data to a file like this:
@@ -62,9 +62,9 @@ IOErr : InternalIOErr.IOErr
 ## # Writes `{"some":"json stuff"}` to the file `output.json`:
 ## File.write!(
 ##     { some: "json stuff" },
-##     Path.from_str("output.json"),
-##     Json.to_compact_utf8,
-## )
+##     "output.json",
+##     Json.utf8,
+## )?
 ## ```
 ##
 ## This opens the file first and closes it after writing to it.
@@ -81,7 +81,7 @@ write! = |val, path_str, fmt|
 ##
 ## ```
 ## # Writes the bytes 1, 2, 3 to the file `myfile.dat`.
-## File.write_bytes!([1, 2, 3], Path.from_str("myfile.dat"))?
+## File.write_bytes!([1, 2, 3], "myfile.dat")?
 ## ```
 ##
 ## This opens the file first and closes it after writing to it.
@@ -119,7 +119,7 @@ write_utf8! = |str, path_str|
 ##
 ## ```
 ## # Deletes the file named `myfile.dat`
-## File.delete!(Path.from_str("myfile.dat"), [1, 2, 3])?
+## File.delete!("myfile.dat")?
 ## ```
 ##
 ## > This does not securely erase the file's contents from disk; instead, the operating
@@ -166,9 +166,6 @@ read_utf8! : Str => Result Str [FileReadErr Path IOErr, FileReadUtf8Err Path _]
 read_utf8! = |path_str|
     Path.read_utf8!(Path.from_str(path_str))
 
-# read : Str, fmt => Result contents [FileReadErr Path ReadErr, FileReadDecodingFailed] where contents implements Decoding, fmt implements DecoderFormatting
-# read = |path, fmt|
-#    Path.read! (Path.from_str path) fmt
 
 ## Creates a new [hard link](https://en.wikipedia.org/wiki/Hard_link) on the filesystem.
 ##

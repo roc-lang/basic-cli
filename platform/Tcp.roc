@@ -93,7 +93,7 @@ connect! = |host, port|
 ##
 ## ```
 ## # Read up to 64 bytes from the stream
-## received_bytes = File.read_up_to!(stream, 64)?
+## received_bytes = Tcp.read_up_to!(stream, 64)?
 ## ```
 ##
 ## > To read an exact number of bytes or fail, you can use [Tcp.read_exactly!] instead.
@@ -105,7 +105,7 @@ read_up_to! = |@Stream(stream), bytes_to_read|
 ## Read an exact number of bytes or fail.
 ##
 ## ```
-## bytes = File.read_exactly!(stream, 64)?
+## bytes = Tcp.read_exactly!(stream, 64)?
 ## ```
 ##
 ## `TcpUnexpectedEOF` is returned if the stream ends before the specfied number of bytes is reached.
@@ -125,7 +125,7 @@ read_exactly! = |@Stream(stream), bytes_to_read|
 ##
 ## ```
 ## # Read until null terminator
-## bytes = File.read_until!(stream, 0)?
+## bytes = Tcp.read_until!(stream, 0)?
 ## ```
 ##
 ## If found, the delimiter is included as the last byte.
@@ -141,7 +141,7 @@ read_until! = |@Stream(stream), byte|
 ##
 ## ```
 ## # Read a line and then print it to `stdout`
-## line_str = File.read_line!(stream)?
+## line_str = Tcp.read_line!(stream)?
 ## Stdout.line(line_str)?
 ## ```
 ##
