@@ -18,6 +18,9 @@ err_s = |err_msg| Err(StrErr(err_msg))
 
 main! : List Arg => Result {} _
 main! = |_args|
+    cwd = Env.cwd!({}) ? |err| FailedToGetCwd(err)
+    Stdout.line!("Current working directory: ${Path.display(cwd)}")?
+
     path_to_platform_main = "platform/main.roc"
 
     main_content =
@@ -69,7 +72,7 @@ main! = |_args|
             |function_name|
                 Stdout.line!(function_name),
         )?
-        Err(Exit(1, "I found untested functions, see above."))
+        Err(Exit(1, "I found untested functions, see above."))?
 
 is_function_unused! : Str, Str => Result Bool _
 is_function_unused! = |module_name, function_name|
@@ -77,7 +80,7 @@ is_function_unused! = |module_name, function_name|
     search_dirs = ["examples", "tests"]
 
     # Check current working directory
-    cwd = Env.cwd!({})?
+    cwd = Env.cwd!({}) ? |err| FailedToGetCwd2(err)
 
     # Check if directories exist
     List.for_each_try!(
