@@ -6,6 +6,7 @@ import pf.File
 import pf.Cmd
 import pf.Env
 import pf.Path
+import pf.Sleep
 
 # This script performs the following tasks:
 # 1. Reads the file platform/main.roc and extracts the exposes list.
@@ -72,7 +73,10 @@ main! = |_args|
             |function_name|
                 Stdout.line!(function_name),
         )?
-        Err(Exit(1, "I found untested functions, see above."))?
+
+        # Sleep to fix print order
+        Sleep.millis!(1000)
+        Err(Exit(1, "I found untested functions, see above."))
 
 is_function_unused! : Str, Str => Result Bool _
 is_function_unused! = |module_name, function_name|
@@ -101,32 +105,42 @@ is_function_unused! = |module_name, function_name|
                     err_s("Error checking directory '${search_dir}': ${Inspect.to_str(err)}")
     )?
 
-    unused_in_dir =
-        search_dirs
-        |> List.map_try!( |search_dir|
-            # Skip searching if directory doesn't exist
-            dir_exists = File.is_dir!(search_dir)?
-            if !dir_exists then
-                Ok(Bool.true) # Consider unused if we can't search
-            else
-                # Use ripgrep to search for the function pattern
-                cmd =
-                    Cmd.new("rg")
-                    |> Cmd.arg("-q") # Quiet mode - we only care about exit code
-                    |> Cmd.arg(function_pattern)
-                    |> Cmd.arg(search_dir)
+    # Check if ripgrep is installed
+    rg_check_cmd = Cmd.new("rg") |> Cmd.arg("--version")
+    rg_check_output = Cmd.output!(rg_check_cmd)
 
-                status_res = Cmd.status!(cmd)
+    when rg_check_output.status is
+        Ok(0) ->
+                unused_in_dir =
+                    search_dirs
+                    |> List.map_try!( |search_dir|
+                        # Skip searching if directory doesn't exist
+                        dir_exists = File.is_dir!(search_dir)?
+                        if !dir_exists then
+                            Ok(Bool.true) # Consider unused if we can't search
+                        else
+                            # Use ripgrep to search for the function pattern
+                            cmd =
+                                Cmd.new("rg")
+                                |> Cmd.arg("-q") # Quiet mode - we only care about exit code
+                                |> Cmd.arg(function_pattern)
+                                |> Cmd.arg(search_dir)
 
-                # ripgrep returns status 0 if matches were found, 1 if no matches
-                when status_res is
-                    Ok(0) -> Ok(Bool.false) # Function is used (not unused)
-                    _ -> Ok(Bool.true)
-        )?
+                            status_res = Cmd.status!(cmd)
 
-    unused_in_dir
-    |> List.walk!(Bool.true, |state, is_unused_res| state && is_unused_res)
-    |> Ok
+                            # ripgrep returns status 0 if matches were found, 1 if no matches
+                            when status_res is
+                                Ok(0) -> Ok(Bool.false) # Function is used (not unused)
+                                _ -> Ok(Bool.true)
+                    )?
+
+                unused_in_dir
+                |> List.walk!(Bool.true, |state, is_unused_res| state && is_unused_res)
+                |> Ok
+        _ ->
+            err_s("Error: ripgrep (rg) is not installed or not available in PATH. Please install ripgrep to use this script. Full output: ${Inspect.to_str(rg_check_output)}")
+
+
 
 process_module! : Str => Result { module_name : Str, exposed_functions : List Str } _
 process_module! = |module_name|
