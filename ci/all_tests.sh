@@ -38,6 +38,8 @@ for roc_file in $TESTS_DIR*.roc; do
     $ROC check $roc_file
 done
 
+$ROC ci/check_all_exposed_funs_tested.roc
+
 # roc build
 architecture=$(uname -m)
 
@@ -59,6 +61,15 @@ done
 cd ci/rust_http_server
 cargo build --release
 cd ../..
+
+# Check for duplicate .roc file names between EXAMPLES_DIR and TESTS_DIR (this messes with checks)
+for example_file in $EXAMPLES_DIR*.roc; do
+    example_basename=$(basename "$example_file")
+    if [ -f "$TESTS_DIR$example_basename" ]; then
+        echo "ERROR: Duplicate file name found: $example_basename exists in both $EXAMPLES_DIR and $TESTS_DIR. Change the name of one of them." >&2
+        exit 1
+    fi
+done
 
 # check output with linux expect
 for roc_file in $EXAMPLES_DIR*.roc; do

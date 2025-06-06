@@ -24,11 +24,11 @@ main! = |_args|
     
     # Test file reader with capacity
     test_file_reader_with_capacity!({})?
-    
+
     # Test hard link creation
     test_hard_link!({})?
 
-    Stdout.line!("\n✓ All File function tests completed! ✓")
+    Stdout.line!("\nI ran all file function tests.")
 
 test_basic_file_operations! : {} => Result {} _
 test_basic_file_operations! = |{}|

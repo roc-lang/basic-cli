@@ -32,7 +32,10 @@ main! = |_args|
     # Test hard link creation
     test_hard_link!({})?
 
-    Stdout.line!("\n✓ All Path function tests completed! ✓")
+    # Clean up test files
+    cleanup_test_files!({})?
+
+    Stdout.line!("\nI ran all Path function tests.")
 
 test_path_creation! : {} => Result {} _
 test_path_creation! = |{}|
@@ -80,13 +83,13 @@ test_file_operations! = |{}|
     
     # Verify file exists using ls
     ls_output = Cmd.new("ls") |> Cmd.args(["-la", "test_path_bytes.txt"]) |> Cmd.output!()
-    ls_stdout = Str.from_utf8(ls_output.stdout) ? |_| LsInvalidUtf8
+    ls_exit_code = ls_output.status ? |err| LsFailedToGetExitCode(err)
     
     read_bytes = Path.read_bytes!(bytes_path)?
     
     Stdout.line!(
         """
-        File created: ${ls_stdout}
+        test_path_bytes.txt exists: ${Inspect.to_str(ls_exit_code == 0)}
         Bytes written: ${Inspect.to_str(test_bytes)}
         Bytes read: ${Inspect.to_str(read_bytes)}
         Bytes match: ${Inspect.to_str(test_bytes == read_bytes)}
@@ -139,22 +142,15 @@ test_file_operations! = |{}|
     # Verify file exists before deletion
     ls_before = Cmd.new("ls") |> Cmd.args(["test_to_delete.txt"]) |> Cmd.output!() 
 
-    Stdout.line!("hey")?
-    
     Path.delete!(delete_path) ? |err| DeleteFailed(err)
-
-    Stdout.line!("yo")?
     
     # Verify file is gone after deletion
     ls_after = Cmd.new("ls") |> Cmd.args(["test_to_delete.txt"]) |> Cmd.output!()
-
-    Stdout.line!("after")?
     
     Stdout.line!(
         """
         File exists before delete: ${Inspect.to_str(ls_before.status? == 0)}
         File exists after delete: ${Inspect.to_str(ls_after.status? == 0)}
-        ✓ Successfully deleted test file
         """
     )?
 
@@ -175,8 +171,8 @@ test_directory_operations! = |{}|
     
     Stdout.line!(
         """
-        Created directory: ${ls_dir_stdout}
-        Is directory (starts with 'd'): ${Inspect.to_str(is_dir)}
+        Created directory: ${Str.trim_end(ls_dir_stdout)}
+        Is a directory: ${Inspect.to_str(is_dir)}\n
         """
     )?
 
@@ -184,7 +180,7 @@ test_directory_operations! = |{}|
     nested_dir = Path.from_str("test_parent/test_child/test_grandchild")
     Path.create_all!(nested_dir)?
     
-    # Verify nested structure with tree or find
+    # Verify nested structure with find
     find_output = Cmd.new("find") |> Cmd.args(["test_parent", "-type", "d"]) |> Cmd.output!()
     find_stdout = Str.from_utf8(find_output.stdout) ? |_| FindInvalidUtf8
     
@@ -248,11 +244,10 @@ test_directory_operations! = |{}|
         """
         Size before delete_all: ${du_stdout}
         Parent dir exists after delete_all: ${Inspect.to_str(ls_parent_after.status? == 0)}
-        ✓ Recursively deleted directory tree
         """
     )?
 
-    # Clean up remaining test directory
+    # Clean up other test directory
     Path.delete_all!(single_dir)?
 
     Ok({})
@@ -283,7 +278,6 @@ test_hard_link! = |{}|
             
             Stdout.line!(
                 """
-                ✓ Successfully created hard link
                 Hard link count before: ${Str.trim(links_before)}
                 Hard link count after: ${Str.trim(links_after)}
                 Original content: ${original_content}
@@ -318,13 +312,10 @@ test_hard_link! = |{}|
                 Second file inode: ${Inspect.to_str(second_inode)}
                 Inodes are equal: ${Inspect.to_str(first_inode == second_inode)}
                 """
-            )?
+            )
         
         Err(err) ->
-            Stderr.line!("✗ Hard link creation failed: ${Inspect.to_str(err)}")?
-
-    # Clean up test files
-    cleanup_test_files!({})
+            Stderr.line!("✗ Hard link creation failed: ${Inspect.to_str(err)}")
 
 cleanup_test_files! : {} => Result {} _
 cleanup_test_files! = |{}|
@@ -361,7 +352,6 @@ cleanup_test_files! = |{}|
         Stdout.line!(
             """
             Files remaining after cleanup: ${Inspect.to_str(ls_after_cleanup.status? == 0)}
-            ✓ Deleted all test files.
             """
         )
     else
