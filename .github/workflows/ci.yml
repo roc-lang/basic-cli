@@ -45,9 +45,10 @@ jobs:
 
       - run: |
           sudo apt update
-          sudo apt install -y expect ncat valgrind
+          sudo apt install -y expect ncat valgrind ripgrep
       # expect for testing
       # ncat for tcp-client example
+      # ripgrep for ci/check_all_exposed_funs_tested.roc
 
       - run: expect -v
 

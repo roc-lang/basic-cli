@@ -92,21 +92,10 @@ pub fn command_status(roc_cmd: &Command) -> RocResult<i32, roc_io_error::IOErr> 
 
 // Status of the child process, successful/exit code/killed by signal
 fn from_exit_status(status: std::process::ExitStatus) -> RocResult<i32, roc_io_error::IOErr> {
-    if status.success() {
-        RocResult::ok(0)
-    } else {
-        match status.code() {
-            Some(code) => non_zero_exit(code),
-            None => killed_by_signal(),
-        }
+    match status.code() {
+        Some(code) => RocResult::ok(code),
+        None => killed_by_signal(),
     }
-}
-
-fn non_zero_exit(code: i32) -> RocResult<i32, roc_io_error::IOErr> {
-    RocResult::err(roc_io_error::IOErr {
-        tag: roc_io_error::IOErrTag::Other,
-        msg: format!("Non-zero exit code: {}", code).as_str().into(),
-    })
 }
 
 // If no exit code is returned, the process was terminated by a signal.

@@ -55,6 +55,7 @@
           nmap
           simple-http-server
           rocPkgs.cli
+          ripgrep # for ci/check_all_exposed_funs_tested.roc
         ]);
       in {
 

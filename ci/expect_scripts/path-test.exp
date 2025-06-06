@@ -1,0 +1,177 @@
+#!/usr/bin/expect
+
+# uncomment line below for debugging
+# exp_internal 1
+
+set timeout 7
+
+source ./ci/expect_scripts/shared-code.exp
+
+spawn $env(TESTS_DIR)path-test
+
+expect "Testing Path functions..." {
+    expect "This will create and manipulate test files and directories in the current directory." {
+        
+        # Test Path.from_bytes and Path.with_extension
+        expect "Testing Path.from_bytes and Path.with_extension:" {
+            expect "Created path from bytes: test_path" {
+                expect "Path.from_bytes result matches expected: Bool.true" {
+                    expect "Path with extension: test_file.txt" {
+                        expect "Extension added correctly: Bool.true" {
+                            expect "Path with dot and extension: test_file.json" {
+                                expect "Extension after dot: Bool.true" {
+                                    expect "Path with replaced extension: test_file.new" {
+                                        expect "Extension replaced: Bool.true" {
+                                            
+                                            # Test Path file operations
+                                            expect "Testing Path file operations:" {
+                                                expect "test_path_bytes.txt exists: Bool.true" {
+                                                    expect "Bytes written: \\\[72, 101, 108, 108, 111, 44, 32, 80, 97, 116, 104, 33\\\]" {
+                                                        expect "Bytes read: \\\[72, 101, 108, 108, 111, 44, 32, 80, 97, 116, 104, 33\\\]" {
+                                                            expect "Bytes match: Bool.true" {
+                                                                expect "File content via cat: Hello from Path module! 🚀" {
+                                                                    expect "UTF-8 written: Hello from Path module! 🚀" {
+                                                                        expect "UTF-8 read: Hello from Path module! 🚀" {
+                                                                            expect "UTF-8 content matches: Bool.true" {
+                                                                                expect "JSON content: {\"message\":\"Path test\",\"numbers\":\\\[1,2,3\\\]}" {
+                                                                                    expect "JSON contains 'message' field: Bool.true" {
+                                                                                        expect "JSON contains 'numbers' field: Bool.true" {
+                                                                                            expect "File exists before delete: Bool.true" {
+                                                                                                expect "File exists after delete: Bool.false" {
+                                                                                                    
+                                                                                                    # Test Path directory operations
+                                                                                                    expect "Testing Path directory operations:" {
+                                                                                                        expect -re "Created directory: drwxr-xr-x \\d+ \\w+ (\\w+ )? *\\d+ \\w+ +\\d+ \\d+:\\d+ test_single_dir" {
+                                                                                                            expect "Is a directory: Bool.true" {
+                                                                                                                expect "" {
+                                                                                                                    expect "Nested directory structure:" {
+                                                                                                                        expect "test_parent" {
+                                                                                                                            expect "test_parent/test_child" {
+                                                                                                                                expect "test_parent/test_child/test_grandchild" {
+                                                                                                                                    expect "" {
+                                                                                                                                        expect "Number of directories created: 3" {
+                                                                                                                                            expect "Directory contents:" {
+                                                                                                                                                expect -re "total \\d+" {
+                                                                                                                                                    expect -re "dr\[-rwx\]+ +\\d+ \\w+ (\\w+ )? *\\d+ \\w+ +\\d+ \\d+:\\d+ \\." {
+                                                                                                                                                        expect -re "dr\[-rwx\]+ +\\d+ \\w+ (\\w+ )? *\\d+ \\w+ +\\d+ \\d+:\\d+ \\.\\." {
+                                                                                                                                                            expect -re "-\[-rwx\]+ +\\d+ \\w+ (\\w+ )? *\\d+ \\w+ +\\d+ \\d+:\\d+ file1\\.txt" {
+                                                                                                                                                                expect -re "-\[-rwx\]+ +\\d+ \\w+ (\\w+ )? *\\d+ \\w+ +\\d+ \\d+:\\d+ file2\\.txt" {
+                                                                                                                                                                    expect -re "dr\[-rwx\]+ +\\d+ \\w+ (\\w+ )? *\\d+ \\w+ +\\d+ \\d+:\\d+ subdir" {
+                                                                                                                                                                        expect "" {
+                                                                                                                                                                            expect "Empty dir exists before delete: Bool.true" {
+                                                                                                                                                                                expect "Empty dir exists after delete: Bool.false" {
+                                                                                                                                                                                    expect -re "Size before delete_all: \\d+\\w*\\s*test_parent" {
+                                                                                                                                                                                        expect "" {
+                                                                                                                                                                                            expect "Parent dir exists after delete_all: Bool.false" {
+                                                                                                                                                                                                expect "" {
+                                                                                                                                                                                                    
+                                                                                                                                                                                                    # Test Path.hard_link!
+                                                                                                                                                                                                    expect "Testing Path.hard_link!:" {
+                                                                                                                                                                                                        expect "Hard link count before: 1" {
+                                                                                                                                                                                                            expect "Hard link count after: 2" {
+                                                                                                                                                                                                                expect "Original content: Original content for Path hard link test" {
+                                                                                                                                                                                                                    expect "Link content: Original content for Path hard link test" {
+                                                                                                                                                                                                                        expect "Content matches: Bool.true" {
+                                                                                                                                                                                                                            expect "Inode information:" {
+                                                                                                                                                                                                                                expect -re "\\d+ -rw-r--r-- \\d+ \\w+ (\\w+ )? *\\d+ \\w+ +\\d+ \\d+:\\d+ test_path_hardlink\\.txt" {
+                                                                                                                                                                                                                                    expect -re "\\d+ -rw-r--r-- \\d+ \\w+ (\\w+ )? *\\d+ \\w+ +\\d+ \\d+:\\d+ test_path_original\\.txt" {
+                                                                                                                                                                                                                                        expect "" {
+                                                                                                                                                                                                                                            expect -re "First file inode: \\\[\"\\d+\"\\\]" {
+                                                                                                                                                                                                                                                expect -re "Second file inode: \\\[\"\\d+\"\\\]" {
+                                                                                                                                                                                                                                                    expect "Inodes are equal: Bool.true" {
+                                                                                                                                                                                                                                                        expect "" {
+                                                                                                                                                                                                                                                            
+                                                                                                                                                                                                                                                            # Cleanup phase
+                                                                                                                                                                                                                                                            expect "Cleaning up test files..." {
+                                                                                                                                                                                                                                                                expect "Files to clean up:" {
+                                                                                                                                                                                                                                                                    expect -re "-rw-r--r-- \\d+ \\w+ \\w+ \\d+ \\w+ +\\d+ \\d+:\\d+ test_path_bytes\\.txt" {
+                                                                                                                                                                                                                                                                        expect -re "-rw-r--r-- \\d+ \\w+ \\w+ \\d+ \\w+ +\\d+ \\d+:\\d+ test_path_hardlink\\.txt" {
+                                                                                                                                                                                                                                                                            expect -re "-rw-r--r-- \\d+ \\w+ \\w+ \\d+ \\w+ +\\d+ \\d+:\\d+ test_path_json\\.json" {
+                                                                                                                                                                                                                                                                                expect -re "-rw-r--r-- \\d+ \\w+ \\w+ \\d+ \\w+ +\\d+ \\d+:\\d+ test_path_original\\.txt" {
+                                                                                                                                                                                                                                                                                    expect -re "-rw-r--r-- \\d+ \\w+ \\w+ \\d+ \\w+ +\\d+ \\d+:\\d+ test_path_utf8\\.txt" {
+                                                                                                                                                                                                                                                                                        expect "" {
+                                                                                                                                                                                                                                                                                            expect "Files remaining after cleanup: Bool.false" {
+                                                                                                                                                                                                                                                                                                expect "" {
+                                                                                                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                                                                                    # Final completion message
+                                                                                                                                                                                                                                                                                                    expect "I ran all Path function tests." {
+                                                                                                                                                                                                                                                                                                        expect eof {
+                                                                                                                                                                                                                                                                                                            check_exit_and_segfault
+                                                                                                                                                                                                                                                                                                        }
+                                                                                                                                                                                                                                                                                                    }
+                                                                                                                                                                                                                                                                                                }
+                                                                                                                                                                                                                                                                                            }
+                                                                                                                                                                                                                                                                                        }
+                                                                                                                                                                                                                                                                                    }
+                                                                                                                                                                                                                                                                                }
+                                                                                                                                                                                                                                                                            }
+                                                                                                                                                                                                                                                                        }
+                                                                                                                                                                                                                                                                    }
+                                                                                                                                                                                                                                                                }
+                                                                                                                                                                                                                                                            }
+                                                                                                                                                                                                                                                        }
+                                                                                                                                                                                                                                                    }
+                                                                                                                                                                                                                                                }
+                                                                                                                                                                                                                                            }
+                                                                                                                                                                                                                                        }
+                                                                                                                                                                                                                                    }
+                                                                                                                                                                                                                                }
+                                                                                                                                                                                                                            }
+                                                                                                                                                                                                                        }
+                                                                                                                                                                                                                    }
+                                                                                                                                                                                                                }
+                                                                                                                                                                                                            }
+                                                                                                                                                                                                        }
+                                                                                                                                                                                                    }
+                                                                                                                                                                                                }
+                                                                                                                                                                                            }
+                                                                                                                                                                                        }
+                                                                                                                                                                                    }
+                                                                                                                                                                                }
+                                                                                                                                                                            }
+                                                                                                                                                                        }
+                                                                                                                                                                    }
+                                                                                                                                                                }
+                                                                                                                                                            }
+                                                                                                                                                        }
+                                                                                                                                                    }
+                                                                                                                                                }
+                                                                                                                                            }
+                                                                                                                                        }
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                            }
+                                                                                                                        }
+                                                                                                                    }
+                                                                                                                }
+                                                                                                            }
+                                                                                                        }
+                                                                                                    }
+                                                                                                }
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+puts stderr "\nExpected script failed: output was different from expected value. uncomment `exp_internal 1` to debug."
+exit 1

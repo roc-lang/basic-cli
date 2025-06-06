@@ -58,7 +58,7 @@ expect "Testing some File functions..." {
                                                                                                                 expect "✓ Deleted all files." {
                                                                                                                     
                                                                                                                     # Final completion message
-                                                                                                                    expect "✓ All File function tests completed! ✓" {
+                                                                                                                    expect "I ran all file function tests." {
                                                                                                                         expect eof {
                                                                                                                             check_exit_and_segfault
                                                                                                                         }
