@@ -39,6 +39,7 @@ for roc_file in $TESTS_DIR*.roc; do
 done
 
 $ROC ci/check_all_exposed_funs_tested.roc
+$ROC ci/check_cargo_versions_match.roc
 
 # roc build
 architecture=$(uname -m)

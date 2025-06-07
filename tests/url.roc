@@ -12,7 +12,7 @@ main! = |_args|
     test_part_1!({})?
     test_part_2!({})?
 
-    Stdout.line!("\nAll tests executed!")?
+    Stdout.line!("\nAll tests executed.")?
 
     Ok({})
 

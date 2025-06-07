@@ -7,6 +7,16 @@ import pf.Arg exposing [Arg]
 
 main! : List Arg => Result {} _
 main! = |_args|
+    # Test basic time operations
+    test_time_conversion!({})?
+    
+    # Test time delta operations
+    test_time_delta!({})?
+
+    Stdout.line!("\nAll tests executed.")
+
+test_time_conversion! : {} => Result {} _
+test_time_conversion! = |{}|
     # Get current time
     now = Utc.now!({})
 
@@ -35,6 +45,10 @@ main! = |_args|
     # Verify exact round-trip
     err_on_false(Utc.to_iso_8601(time_from_nanos) == Utc.to_iso_8601(now))?
 
+    Ok({})
+
+test_time_delta! : {} => Result {} _
+test_time_delta! = |{}|
     Stdout.line!("\nTime delta demonstration:")?
 
     start = Utc.now!({})
@@ -67,13 +81,13 @@ main! = |_args|
     # Check that deltaNanos / 1_000_000 is approximately equal to deltaMillis
     difference = Num.abs(calculated_millis - Num.to_frac(delta_millis))
     err_on_false(difference < 1)?
+
     Stdout.line!("Verified: deltaMillis and deltaNanos/1_000_000 match within tolerance")?
 
-    Stdout.line!("\nTest completed successfully!")
+    Ok({})
 
 err_on_false = |bool|
     if bool then
         Ok({})
     else
         Err(StrErr("A Test failed."))
-
