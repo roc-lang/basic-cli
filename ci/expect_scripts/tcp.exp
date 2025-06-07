@@ -11,7 +11,7 @@ source ./ci/expect_scripts/shared-code.exp
 set cat_path [exec which cat]
 # Start echo server
 spawn ncat -e $cat_path -l 8085
-sleep 5
+sleep 1
 
 spawn $env(TESTS_DIR)tcp
 
@@ -23,7 +23,7 @@ expect "Testing Tcp module functions" {
                 expect "Tcp.read_up_to yielded: 'do not read past me'" {
                     expect "Tcp.read_exactly yielded: 'ABC'" {
                         expect "Tcp.read_until yielded: 'Line1\r\n'" {
-                            expect "✓ All tests executed! ✓\r\n" {
+                            expect "All tests executed.\r\n" {
                                 expect eof {
                                     check_exit_and_segfault
                                 }

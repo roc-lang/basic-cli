@@ -44,7 +44,7 @@ expect "Testing Url module functions..." {
                                                                                                                                 expect "Testing Url.path:" {
                                                                                                                                     expect "Path from URL: example.com/foo/bar" {
                                                                                                                                         expect "Path from relative URL: /foo/bar" {
-                                                                                                                                            expect "All tests executed!" {
+                                                                                                                                            expect "All tests executed." {
                                                                                                                                                 expect eof {
                                                                                                                                                     check_exit_and_segfault
                                                                                                                                                 }

@@ -1,8 +1,27 @@
-use hyper::{Body, Method, Request, Response, Server, StatusCode};
-use hyper::service::{make_service_fn, service_fn};
-use std::convert::Infallible;
+/// Adapted from hyper examples examples/hello.rs and examples/web_api.rs
+/// Licensed under the MIT License.
+/// Thank you, hyper contributors!
 
-async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+use bytes::Bytes;
+use hyper::body::Incoming;
+use std::net::SocketAddr;
+use hyper::{Method, Request, Response, StatusCode};
+use hyper::service::{service_fn};
+use hyper::server::conn::http1;
+use hyper_util::rt::TokioTimer;
+use tokio::net::TcpListener;
+use http_body_util::{BodyExt, Full};
+
+type GenericError = Box<dyn std::error::Error + Send + Sync>;
+type BoxBody = http_body_util::combinators::BoxBody<Bytes, hyper::Error>;
+
+fn full<T: Into<Bytes>>(chunk: T) -> BoxBody {
+    Full::new(chunk.into())
+        .map_err(|never| match never {})
+        .boxed()
+}
+
+async fn handle_request(req: Request<Incoming>) -> Result<Response<BoxBody>, GenericError> {
     let response = match (req.method(), req.uri().path()) {
         (&Method::GET, "/utf8test") => {
             // UTF-8 encoded "Hello utf8"
@@ -11,8 +30,7 @@ async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible
             Response::builder()
                 .status(StatusCode::OK)
                 .header("Content-Type", "text/plain; charset=utf-8")
-                .body(Body::from(utf8_bytes))
-                .unwrap()
+                .body(full(Bytes::from(utf8_bytes)))?
         },
         _ => {
             // Default response (original functionality)
@@ -22,8 +40,7 @@ async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible
             Response::builder()
                 .status(StatusCode::OK)
                 .header("Content-Type", "application/json")
-                .body(Body::from(json_bytes))
-                .unwrap()
+                .body(full(Bytes::from(json_bytes)))?
         }
     };
 
@@ -31,26 +48,40 @@ async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Address to bind the server to
-    let addr = ([127, 0, 0, 1], 8000).into();
+    let addr: SocketAddr = ([127, 0, 0, 1], 8000).into();
 
-    // A service is what handles the actual processing of requests
-    let service = make_service_fn(|_conn| async {
-        Ok::<_, Infallible>(service_fn(handle_request))
-    });
-
-    let server = Server::bind(&addr)
-        .serve(service)
-        .with_graceful_shutdown(shutdown_signal());
-
+    // Bind to the port and listen for incoming TCP connections
+    let listener = TcpListener::bind(addr).await?;
     println!("Listening on http://{}", addr);
+    loop {
+        // When an incoming TCP connection is received grab a TCP stream for
+        // client<->server communication.
+        //
+        // Note, this is a .await point, this loop will loop forever but is not a busy loop. The
+        // .await point allows the Tokio runtime to pull the task off of the thread until the task
+        // has work to do. In this case, a connection arrives on the port we are listening on and
+        // the task is woken up, at which point the task is then put back on a thread, and is
+        // driven forward by the runtime, eventually yielding a TCP stream.
+        let (tcp, _) = listener.accept().await?;
+        // Use an adapter to access something implementing `tokio::io` traits as if they implement
+        // `hyper::rt` IO traits.
+        let io = hyper_util::rt::TokioIo::new(tcp);
 
-    if let Err(e) = server.await {
-        eprintln!("server error: {}", e);
+        // Spin up a new task in Tokio so we can continue to listen for new TCP connection on the
+        // current task without waiting for the processing of the HTTP1 connection we just received
+        // to finish
+        tokio::task::spawn(async move {
+            // Handle the connection from the client using HTTP1 and pass any
+            // HTTP requests received on that connection to the `hello` function
+            if let Err(err) = http1::Builder::new()
+                .timer(TokioTimer::new())
+                .serve_connection(io, service_fn(handle_request))
+                .await
+            {
+                println!("Error serving connection: {:?}", err);
+            }
+        });
     }
-}
-
-async fn shutdown_signal() {
-    tokio::signal::ctrl_c().await.expect("Failed to install CTRL+C signal handler.");
 }
