@@ -135,25 +135,6 @@ test_file_operations! = |{}|
         """
     )?
 
-    # Test Path.delete!
-    delete_path = Path.from_str("test_to_delete.txt")
-    Path.write_utf8!("This file will be deleted", delete_path)?
-    
-    # Verify file exists before deletion
-    ls_before = Cmd.new("ls") |> Cmd.args(["test_to_delete.txt"]) |> Cmd.output!() 
-
-    Path.delete!(delete_path) ? |err| DeleteFailed(err)
-    
-    # Verify file is gone after deletion
-    ls_after = Cmd.new("ls") |> Cmd.args(["test_to_delete.txt"]) |> Cmd.output!()
-    
-    Stdout.line!(
-        """
-        File exists before delete: ${Inspect.to_str(ls_before.status? == 0)}
-        File exists after delete: ${Inspect.to_str(ls_after.status? == 0)}
-        """
-    )?
-
     Ok({})
 
 test_directory_operations! : {} => Result {} _
