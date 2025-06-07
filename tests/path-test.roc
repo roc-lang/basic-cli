@@ -322,10 +322,6 @@ cleanup_test_files! = |{}|
             ${cleanup_stdout}
             """
         )?
-
-        List.for_each_try!(test_files, |filename| 
-            Path.delete!(Path.from_str(filename))
-        )?
         
         # Verify cleanup
         ls_after_cleanup = Cmd.new("ls") |> Cmd.args(test_files) |> Cmd.output!()
