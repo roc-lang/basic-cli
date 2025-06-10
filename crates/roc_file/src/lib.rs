@@ -343,6 +343,16 @@ pub fn file_time_created(roc_path: &RocList<u8>) -> RocResult<roc_std::U128, IOE
     }
 }
 
+pub fn file_rename(from_path: &RocList<u8>, to_path: &RocList<u8>) -> RocResult<(), IOErr> {
+    let rust_from_path = path_from_roc_path(from_path);
+    let rust_to_path = path_from_roc_path(to_path);
+
+    match std::fs::rename(rust_from_path, rust_to_path) {
+        Ok(()) => RocResult::ok(()),
+        Err(err) => RocResult::err(err.into()),
+    }
+}
+
 pub fn dir_list(roc_path: &RocList<u8>) -> RocResult<RocList<RocList<u8>>, IOErr> {
     let path = path_from_roc_path(roc_path);
 

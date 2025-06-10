@@ -28,6 +28,12 @@ main! = |_args|
     # Test hard link creation
     test_hard_link!({})?
 
+    # Test file rename
+    test_file_rename!({})?
+
+    # Clean up test files
+    cleanup_test_files!({})?
+
     Stdout.line!("\nI ran all file function tests.")
 
 test_basic_file_operations! : {} => Result {} _
@@ -150,15 +156,55 @@ test_hard_link! = |{}|
             link_content = File.read_utf8!("test_link_to_original.txt")?
             
             if original_content == link_content then
-                Stdout.line!("✓ Hard link contains same content as original")?
+                Stdout.line!("✓ Hard link contains same content as original")
             else
-                Stderr.line!("✗ Hard link content differs from original")?
+                Stderr.line!("✗ Hard link content differs from original")
         
         Err(err) ->
-            Stderr.line!("✗ Hard link creation failed: ${Inspect.to_str(err)}")?
+            Stderr.line!("✗ Hard link creation failed: ${Inspect.to_str(err)}")
 
-    # Clean up test files
-    cleanup_test_files!({})
+test_file_rename! : {} => Result {} _
+test_file_rename! = |{}|
+    Stdout.line!("\nTesting File.rename!:")?
+    
+    # Create original file
+    original_name = "test_rename_original.txt"
+    new_name = "test_rename_new.txt"
+    File.write_utf8!("Content for rename test", original_name)?
+    
+    # Rename the file
+    when File.rename!(original_name, new_name) is
+        Ok({}) ->
+            Stdout.line!("✓ Successfully renamed ${original_name} to ${new_name}")?
+            
+            # Verify original file no longer exists
+            original_exists_after = 
+                when File.is_file!(original_name) is
+                    Ok(exists) -> exists
+                    Err(_) -> Bool.false
+            
+            if original_exists_after then
+                Stderr.line!("✗ Original file ${original_name} still exists after rename")?
+            else
+                Stdout.line!("✓ Original file ${original_name} no longer exists")?
+            
+            # Verify new file exists and has correct content
+            new_exists = File.is_file!(new_name)?
+            if new_exists then
+                Stdout.line!("✓ Renamed file ${new_name} exists")?
+                
+                content = File.read_utf8!(new_name)?
+                if content == "Content for rename test" then
+                    Stdout.line!("✓ Renamed file has correct content")?
+                else
+                    Stderr.line!("✗ Renamed file has incorrect content")?
+            else
+                Stderr.line!("✗ Renamed file ${new_name} does not exist")?
+        
+        Err(err) ->
+            Stderr.line!("✗ File rename failed: ${Inspect.to_str(err)}")?
+    
+    Ok({})
 
 cleanup_test_files! : {} => Result {} _
 cleanup_test_files! = |{}|
@@ -170,8 +216,9 @@ cleanup_test_files! = |{}|
         "test_write.json", 
         "test_multiline.txt",
         "test_original_file.txt",
-        "test_link_to_original.txt"
+        "test_link_to_original.txt",
+        "test_rename_new.txt"
     ]
 
-    List.for_each_try!(test_files, |filename| File.delete!(filename))?
+    List.for_each_try!(test_files, |filename| File.delete!(filename)) ? |err| FileDeletionFailed(err) 
     Stdout.line!("✓ Deleted all files.")
