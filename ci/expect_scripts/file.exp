@@ -49,18 +49,28 @@ expect "Testing some File functions..." {
                                                                                         # Test File.hard_link!
                                                                                         expect "Testing File.hard_link!:" {
                                                                                             expect "✓ Successfully created hard link: test_link_to_original.txt" {
-                                                                                                expect "Hard link inodes should be equal:" {
-                                                                                                    expect "Bool.true" {
-                                                                                                        expect "✓ Hard link contains same content as original" {
-                                                                                                            
-                                                                                                            # Cleanup phase
-                                                                                                            expect "Cleaning up test files..." {
-                                                                                                                expect "✓ Deleted all files." {
-                                                                                                                    
-                                                                                                                    # Final completion message
-                                                                                                                    expect "I ran all file function tests." {
-                                                                                                                        expect eof {
-                                                                                                                            check_exit_and_segfault
+                                                                                                expect "Hard link inodes should be equal: Bool.true" {
+                                                                                                    expect "✓ Hard link contains same content as original" {
+                                                                                                        
+                                                                                                        # Test File.rename!
+                                                                                                        expect "Testing File.rename!:" {
+                                                                                                            expect "✓ Successfully renamed test_rename_original.txt to test_rename_new.txt" {
+                                                                                                                expect "✓ Original file test_rename_original.txt no longer exists" {
+                                                                                                                    expect "✓ Renamed file test_rename_new.txt exists" {
+                                                                                                                        expect "✓ Renamed file has correct content" {
+                                                                                                                            
+                                                                                                                            # Cleanup phase
+                                                                                                                            expect "Cleaning up test files..." {
+                                                                                                                                expect "✓ Deleted all files." {
+                                                                                                                                    
+                                                                                                                                    # Final completion message
+                                                                                                                                    expect "I ran all file function tests." {
+                                                                                                                                        expect eof {
+                                                                                                                                            check_exit_and_segfault
+                                                                                                                                        }
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                            }
                                                                                                                         }
                                                                                                                     }
                                                                                                                 }

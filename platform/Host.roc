@@ -26,6 +26,7 @@ hosted [
     file_time_accessed!,
     file_time_modified!,
     file_time_created!,
+    file_rename!,
     get_locale!,
     get_locales!,
     hard_link!,
@@ -80,6 +81,7 @@ file_is_writable! : List U8 => Result Bool InternalIOErr.IOErrFromHost
 file_time_accessed! : List U8 => Result U128 InternalIOErr.IOErrFromHost
 file_time_modified! : List U8 => Result U128 InternalIOErr.IOErrFromHost
 file_time_created! : List U8 => Result U128 InternalIOErr.IOErrFromHost
+file_rename! : List U8, List U8 => Result {} InternalIOErr.IOErrFromHost
 
 FileReader := Box {}
 file_reader! : List U8, U64 => Result FileReader InternalIOErr.IOErrFromHost

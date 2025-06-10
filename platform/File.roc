@@ -16,6 +16,7 @@ module [
     time_accessed!,
     time_modified!,
     time_created!,
+    rename!,
     type!,
     open_reader!,
     open_reader_with_capacity!,
@@ -271,6 +272,16 @@ time_created! : Str => Result Utc [PathErr IOErr]
 time_created! = |path_str|
     Host.file_time_created!(InternalPath.to_bytes(Path.from_str(path_str)))
     |> Result.map_ok(|time_u128| Num.to_i128(time_u128) |> Utc.from_nanos_since_epoch)
+    |> Result.map_err(|err| PathErr(InternalIOErr.handle_err(err)))
+
+## Renames a file or directory.
+##
+## This uses [rust's std::fs::rename](https://doc.rust-lang.org/std/fs/fn.rename.html).
+rename! : Str, Str => Result {} [PathErr IOErr]
+rename! = |from_str, to_str|
+    from_bytes = InternalPath.to_bytes(Path.from_str(from_str))
+    to_bytes = InternalPath.to_bytes(Path.from_str(to_str))
+    Host.file_rename!(from_bytes, to_bytes)
     |> Result.map_err(|err| PathErr(InternalIOErr.handle_err(err)))
 
 ## Return the type of the path if the path exists on disk.
