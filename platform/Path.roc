@@ -21,6 +21,7 @@ module [
     delete_empty!,
     delete_all!,
     hard_link!,
+    rename!,
 ]
 
 import InternalPath
@@ -394,3 +395,13 @@ hard_link! = |path_original, path_link|
     Host.hard_link!(InternalPath.to_bytes(path_original), InternalPath.to_bytes(path_link))
     |> Result.map_err(InternalIOErr.handle_err)
     |> Result.map_err(LinkErr)
+
+## Renames a file or directory.
+##
+## This uses [rust's std::fs::rename](https://doc.rust-lang.org/std/fs/fn.rename.html).
+rename! : Path, Path => Result {} [PathErr IOErr]
+rename! = |from, to|
+    from_path_bytes = InternalPath.to_bytes(from)
+    to_path_bytes = InternalPath.to_bytes(to)
+    Host.file_rename!(from_path_bytes, to_path_bytes)
+    |> Result.map_err(|err| PathErr(InternalIOErr.handle_err(err)))
