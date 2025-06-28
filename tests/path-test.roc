@@ -32,6 +32,9 @@ main! = |_args|
     # Test hard link creation
     test_hard_link!({})?
 
+    # Test file rename
+    test_path_rename!({})?
+
     # Clean up test files
     cleanup_test_files!({})?
 
@@ -317,6 +320,48 @@ test_hard_link! = |{}|
         Err(err) ->
             Stderr.line!("✗ Hard link creation failed: ${Inspect.to_str(err)}")
 
+test_path_rename! : {} => Result {} _
+test_path_rename! = |{}|
+    Stdout.line!("\nTesting Path.rename!:")?
+    
+    # Create original file
+    original_path = Path.from_str("test_path_rename_original.txt")
+    new_path = Path.from_str("test_path_rename_new.txt")
+    test_file_content = "Content for rename test."
+
+    Path.write_utf8!(test_file_content, original_path) ? |err| WriteOriginalFailed(err)
+    
+    # Rename the file
+    when Path.rename!(original_path, new_path) is
+        Ok({}) ->
+            original_file_exists_after =                                                                      
+                  when Path.is_file!(original_path) is                                                     
+                      Ok(exists) -> exists                                                                 
+                      Err(_) -> Bool.false
+            
+            if original_file_exists_after then
+                Stderr.line!("✗ Original file still exists after rename")?
+            else
+                Stdout.line!("✓ Original file no longer exists")?
+            
+            new_file_exists = Path.is_file!(new_path) ? |err| NewIsFileFailed(err)
+
+            if new_file_exists then
+                Stdout.line!("✓ Renamed file exists")?
+                
+                content = Path.read_utf8!(new_path) ? |err| NewFileReadFailed(err)
+
+                if content == test_file_content then
+                    Stdout.line!("✓ Renamed file has correct content")
+                else
+                    Stderr.line!("✗ Renamed file has incorrect content")
+            else
+                Stderr.line!("✗ Renamed file does not exist")
+        
+        Err(err) ->
+            Stderr.line!("✗ File rename failed: ${Inspect.to_str(err)}")
+
+
 cleanup_test_files! : {} => Result {} _
 cleanup_test_files! = |{}|
     Stdout.line!("\nCleaning up test files...")?
@@ -326,7 +371,8 @@ cleanup_test_files! = |{}|
         "test_path_utf8.txt",
         "test_path_json.json",
         "test_path_original.txt",
-        "test_path_hardlink.txt"
+        "test_path_hardlink.txt",
+        "test_path_rename_new.txt"
     ]
 
     # Show files before cleanup
