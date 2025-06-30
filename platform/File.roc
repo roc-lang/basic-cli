@@ -216,7 +216,7 @@ is_sym_link! = |path_str|
 
 ## Returns true if the path exists on disk.
 ##
-## This uses [rust's std::path::exists](https://doc.rust-lang.org/std/path/struct.Path.html#method.exists).
+## This uses [rust's std::path::try_exists](https://doc.rust-lang.org/std/path/struct.Path.html#method.try_exists).
 exists! : Str => Result Bool [PathErr IOErr]
 exists! = |path_str|
     Host.file_exists!(InternalPath.to_bytes(Path.from_str(path_str)))
