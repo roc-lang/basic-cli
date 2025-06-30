@@ -10,6 +10,7 @@ module [
     is_dir!,
     is_file!,
     is_sym_link!,
+    exists!,
     is_executable!,
     is_readable!,
     is_writable!,
@@ -212,6 +213,14 @@ is_file! = |path_str|
 is_sym_link! : Str => Result Bool [PathErr IOErr]
 is_sym_link! = |path_str|
     Path.is_sym_link!(Path.from_str(path_str))
+
+## Returns true if the path exists on disk.
+##
+## This uses [rust's std::path::exists](https://doc.rust-lang.org/std/path/struct.Path.html#method.exists).
+exists! : Str => Result Bool [PathErr IOErr]
+exists! = |path_str|
+    Host.file_exists!(InternalPath.to_bytes(Path.from_str(path_str)))
+    |> Result.map_err(|err| PathErr(InternalIOErr.handle_err(err)))
 
 ## Checks if the file has the execute permission for the current process.
 ##

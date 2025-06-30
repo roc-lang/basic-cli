@@ -14,6 +14,7 @@ hosted [
     env_var!,
     exe_path!,
     file_delete!,
+    file_exists!,
     file_read_bytes!,
     file_reader!,
     file_read_line!,
@@ -75,6 +76,7 @@ file_write_utf8! : List U8, Str => Result {} InternalIOErr.IOErrFromHost
 file_delete! : List U8 => Result {} InternalIOErr.IOErrFromHost
 file_read_bytes! : List U8 => Result (List U8) InternalIOErr.IOErrFromHost
 file_size_in_bytes! : List U8 => Result U64 InternalIOErr.IOErrFromHost
+file_exists! : List U8 => Result Bool InternalIOErr.IOErrFromHost
 file_is_executable! : List U8 => Result Bool InternalIOErr.IOErrFromHost
 file_is_readable! : List U8 => Result Bool InternalIOErr.IOErrFromHost
 file_is_writable! : List U8 => Result Bool InternalIOErr.IOErrFromHost

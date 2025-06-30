@@ -343,6 +343,14 @@ pub fn file_time_created(roc_path: &RocList<u8>) -> RocResult<roc_std::U128, IOE
     }
 }
 
+pub fn file_exists(roc_path: &RocList<u8>) -> RocResult<bool, IOErr> {
+    let path = path_from_roc_path(roc_path);
+    match path.try_exists() {
+        Ok(exists) => RocResult::ok(exists),
+        Err(err) => RocResult::err(err.into()),
+    }
+}
+
 pub fn file_rename(from_path: &RocList<u8>, to_path: &RocList<u8>) -> RocResult<(), IOErr> {
     let rust_from_path = path_from_roc_path(from_path);
     let rust_to_path = path_from_roc_path(to_path);
