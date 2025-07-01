@@ -31,6 +31,9 @@ main! = |_args|
     # Test file rename
     test_file_rename!({})?
 
+    # Test file exists
+    test_file_exists!({})?
+
     # Clean up test files
     cleanup_test_files!({})?
 
@@ -206,6 +209,33 @@ test_file_rename! = |{}|
     
     Ok({})
 
+test_file_exists! : {} => Result {} _
+test_file_exists! = |{}|
+    Stdout.line!("\nTesting File.exists!:")?
+
+    # Test that a file that exists returns true
+    filename = "test_exists.txt"
+    File.write_utf8!("", filename)?
+
+    test_file_exists = File.exists!(filename) ? |err| FileExistsCheckFailed(err)
+
+    if test_file_exists then 
+        Stdout.line!("✓ File.exists! returns true for a file that exists")?
+    else
+        Stderr.line!("✗ File.exists! returned false for a file that exists")?
+
+    # Test that a file that does not exist returns false
+    File.delete!(filename)?
+
+    test_file_exists_after_delete = File.exists!(filename) ? |err| FileExistsCheckAfterDeleteFailed(err)
+
+    if test_file_exists_after_delete then
+        Stderr.line!("✗ File.exists! returned true for a file that does not exist")?
+    else
+        Stdout.line!("✓ File.exists! returns false for a file that does not exist")?
+
+    Ok({})
+
 cleanup_test_files! : {} => Result {} _
 cleanup_test_files! = |{}|
     Stdout.line!("\nCleaning up test files...")?
@@ -217,7 +247,7 @@ cleanup_test_files! = |{}|
         "test_multiline.txt",
         "test_original_file.txt",
         "test_link_to_original.txt",
-        "test_rename_new.txt"
+        "test_rename_new.txt",
     ]
 
     List.for_each_try!(test_files, |filename| File.delete!(filename)) ? |err| FileDeletionFailed(err) 

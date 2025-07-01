@@ -324,6 +324,7 @@ pub fn init() {
         roc_fx_file_time_accessed as _,
         roc_fx_file_time_modified as _,
         roc_fx_file_time_created as _,
+        roc_fx_file_exists as _,
         roc_fx_file_rename as _,
         roc_fx_hard_link as _,
         roc_fx_cwd as _,
@@ -567,6 +568,11 @@ pub extern "C" fn roc_fx_file_time_created(
     roc_path: &RocList<u8>,
 ) -> RocResult<roc_std::U128, roc_io_error::IOErr> {
     roc_file::file_time_created(roc_path)
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_file_exists(roc_path: &RocList<u8>) -> RocResult<bool, roc_io_error::IOErr> {
+    roc_file::file_exists(roc_path)
 }
 
 #[no_mangle]
