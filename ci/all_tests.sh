@@ -38,7 +38,7 @@ for roc_file in $TESTS_DIR*.roc; do
     $ROC check $roc_file
 done
 
-$ROC build ci/check_all_exposed_funs_tested.roc
+$ROC build ci/check_all_exposed_funs_tested.roc --linker=legacy
 valgrind ./ci/check_all_exposed_funs_tested
 $ROC ci/check_cargo_versions_match.roc
 
