@@ -52,6 +52,10 @@ jobs:
 
       - run: expect -v
 
+      - name: install valgrind
+        run: |
+            sudo apt install -y valgrind
+
       - name: Run all tests
         run: ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
 
