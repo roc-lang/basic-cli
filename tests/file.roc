@@ -12,6 +12,15 @@ import json.Json
 
 main! : List Arg => Result {} _
 main! = |_args|
+    when run_tests!({}) is
+        Ok(_) ->
+            cleanup_test_files!(FilesNeedToExist)
+        Err(err) ->
+            cleanup_test_files!(FilesMaybeExist)?
+            Err(Exit(1, "Test run failed:\n\t${Inspect.to_str(err)}"))
+
+run_tests! : {} => Result {} _
+run_tests! = |{}|
     Stdout.line!("Testing some File functions...")?
     Stdout.line!("This will create and manipulate test files in the current directory.")?
     Stdout.line!("")?
@@ -33,9 +42,6 @@ main! = |_args|
 
     # Test file exists
     test_file_exists!({})?
-
-    # Clean up test files
-    cleanup_test_files!({})?
 
     Stdout.line!("\nI ran all file function tests.")
 
@@ -236,8 +242,8 @@ test_file_exists! = |{}|
 
     Ok({})
 
-cleanup_test_files! : {} => Result {} _
-cleanup_test_files! = |{}|
+cleanup_test_files! : [FilesNeedToExist, FilesMaybeExist] => Result {} _
+cleanup_test_files! = |files_requirement|
     Stdout.line!("\nCleaning up test files...")?
     
     test_files = [
@@ -250,5 +256,17 @@ cleanup_test_files! = |{}|
         "test_rename_new.txt",
     ]
 
-    List.for_each_try!(test_files, |filename| File.delete!(filename)) ? |err| FileDeletionFailed(err) 
+    delete_result = List.for_each_try!(
+        test_files,
+        |filename| File.delete!(filename)
+    )
+    
+    when files_requirement is
+        FilesNeedToExist ->
+            delete_result ? |err| FileDeletionFailed(err)
+            
+        FilesMaybeExist ->
+            Ok({})?
+
     Stdout.line!("✓ Deleted all files.")
+
