@@ -8,6 +8,7 @@ module [
     is_dir!,
     is_file!,
     is_sym_link!,
+    exists!,
     type!,
     write_utf8!,
     write_bytes!,
@@ -199,6 +200,16 @@ is_sym_link! : Path => Result Bool [PathErr IOErr]
 is_sym_link! = |path|
     res = type!(path)?
     Ok((res == IsSymLink))
+
+## Returns true if the path exists on disk.
+##
+## This uses [rust's std::path::try_exists](https://doc.rust-lang.org/std/path/struct.Path.html#method.try_exists).
+##
+## > [`File.exists!`](File#exists!) does the same thing, except it takes a [Str] instead of a [Path].
+exists! : Path => Result Bool [PathErr IOErr]
+exists! = |path|
+    Host.file_exists!(InternalPath.to_bytes(path))
+    |> Result.map_err(|err| PathErr(InternalIOErr.handle_err(err)))
 
 ## Return the type of the path if the path exists on disk.
 ##
