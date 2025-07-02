@@ -48,7 +48,7 @@ main! = |_args|
         {
             method: GET,
             headers: [],
-            uri: "https://github.com",
+            uri: "https://www.example.com",
             body: [],
             timeout_ms: TimeoutMilliseconds(5000),
         },
@@ -63,7 +63,7 @@ main! = |_args|
     
     response_2 =
         Http.default_request
-        |> &uri "https://github.com"
+        |> &uri "https://www.example.com"
         |> &headers [Http.header(("Accept", "text/html"))]
         |> Http.send!()?
 
