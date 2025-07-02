@@ -35,6 +35,9 @@ main! = |_args|
     # Test file rename
     test_path_rename!({})?
 
+    # Test path exists
+    test_path_exists!({})?
+
     # Clean up test files
     cleanup_test_files!({})?
 
@@ -361,6 +364,32 @@ test_path_rename! = |{}|
         Err(err) ->
             Stderr.line!("✗ File rename failed: ${Inspect.to_str(err)}")
 
+test_path_exists! : {} => Result {} _
+test_path_exists! = |{}|
+    Stdout.line!("\nTesting Path.exists!:")?
+    
+    # Test that a file that exists returns true
+    filename = Path.from_str("test_path_exists.txt")
+    Path.write_utf8!("This file exists", filename)?
+
+    file_exists = Path.exists!(filename) ? |err| PathExistsCheckFailed(err)
+
+    if file_exists then 
+        Stdout.line!("✓ Path.exists! returns true for a file that exists")?
+    else
+        Stderr.line!("✗ Path.exists! returned false for a file that exists")?
+
+    # Test that a file that does not exist returns false
+    Path.delete!(filename)?
+
+    file_exists_after_delete = Path.exists!(filename) ? |err| PathExistsCheckAfterDeleteFailed(err)
+
+    if file_exists_after_delete then
+        Stderr.line!("✗ Path.exists! returned true for a file that does not exist")?
+    else
+        Stdout.line!("✓ Path.exists! returns false for a file that does not exist")?
+
+    Ok({})
 
 cleanup_test_files! : {} => Result {} _
 cleanup_test_files! = |{}|
