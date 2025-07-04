@@ -12,6 +12,15 @@ import json.Json
 
 main! : List Arg => Result {} _
 main! = |_args|
+    when run_tests!({}) is
+        Ok(_) ->
+            cleanup_test_files!(FilesNeedToExist)
+        Err(err) ->
+            cleanup_test_files!(FilesMaybeExist)?
+            Err(Exit(1, "Test run failed:\n\t${Inspect.to_str(err)}"))
+
+run_tests!: {} => Result {} _
+run_tests! = |{}|
     Stdout.line!(
         """
         Testing Path functions...
@@ -37,9 +46,6 @@ main! = |_args|
 
     # Test path exists
     test_path_exists!({})?
-
-    # Clean up test files
-    cleanup_test_files!({})?
 
     Stdout.line!("\nI ran all Path function tests.")
 
@@ -391,8 +397,8 @@ test_path_exists! = |{}|
 
     Ok({})
 
-cleanup_test_files! : {} => Result {} _
-cleanup_test_files! = |{}|
+cleanup_test_files! : [FilesNeedToExist, FilesMaybeExist] => Result {} _
+cleanup_test_files! = |files_requirement|
     Stdout.line!("\nCleaning up test files...")?
     
     test_files = [
@@ -417,9 +423,15 @@ cleanup_test_files! = |{}|
             """
         )?
 
-        List.for_each_try!(test_files, |filename| 
+        delete_result = List.for_each_try!(test_files, |filename| 
             Path.delete!(Path.from_str(filename))
-        )?
+        )
+
+        when files_requirement is
+            FilesNeedToExist ->
+                delete_result ? |err| FileDeletionFailed(err)
+            FilesMaybeExist ->
+                Ok({})?
         
         # Verify cleanup
         ls_after_cleanup = Cmd.new("ls") |> Cmd.args(test_files) |> Cmd.output!()

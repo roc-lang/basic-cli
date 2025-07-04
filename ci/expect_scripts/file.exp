@@ -64,12 +64,13 @@ expect "Testing some File functions..." {
                                                                                                                                 expect "✓ File.exists! returns true for a file that exists" {
                                                                                                                                     expect "✓ File.exists! returns false for a file that does not exist" {
                                                                                                                                         
-                                                                                                                                        # Cleanup phase
-                                                                                                                                        expect "Cleaning up test files..." {
-                                                                                                                                            expect "✓ Deleted all files." {
+                                                                                                                                        expect "I ran all file function tests." {
+
+                                                                                                                                            expect "Cleaning up test files..." {
+                                                                                                                                                expect "✓ Deleted all files." {
                                                                                                                                                 
-                                                                                                                                                # Final completion message
-                                                                                                                                                expect "I ran all file function tests." {
+                                                                                                                                                    # Final completion message
+                                                                                                                                                
                                                                                                                                                     expect eof {
                                                                                                                                                         check_exit_and_segfault
                                                                                                                                                     }
