@@ -57,6 +57,8 @@ pub unsafe extern "C" fn roc_dealloc(c_ptr: *mut c_void, _alignment: u32) {
         heap.dealloc(c_ptr);
         return;
     }
+    // !! If you make any changes to this function, you may also need to update roc_dealloc in
+    // https://github.com/roc-lang/basic-webserver
     let heap = roc_sqlite::heap();
     if heap.in_range(c_ptr) {
         heap.dealloc(c_ptr);
