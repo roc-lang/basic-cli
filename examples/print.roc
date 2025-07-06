@@ -27,5 +27,5 @@ main! = |_args|
     ["Foo", "Bar", "Baz"]
     |> List.for_each_try!(|str| Stdout.line!(str))
     
-    # Use List.map! if you want to apply an effectful function that returns somehing.
+    # Use List.map! if you want to apply an effectful function that returns something.
     # Use List.map_try! if you want to apply an effectful function that returns a Result.
