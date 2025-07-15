@@ -41,7 +41,6 @@ delete_empty! = |path|
 ## This may fail if:
 ##   - the path doesn't exist
 ##   - the path is not a directory
-##   - the directory is not empty
 ##   - the user lacks permission to remove the directory.
 ##
 ## > [Path.delete_all!] does the same thing, except it takes a [Path] instead of a [Str].
