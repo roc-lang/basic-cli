@@ -12,6 +12,8 @@ permissions: {}
 jobs:
   test-latest-release:
     runs-on: [ubuntu-22.04]
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -31,3 +33,5 @@ jobs:
 
       - name: Run all tests with latest roc release + latest basic-cli release
         run: EXAMPLES_DIR=./examples/ ./ci/test_latest_release.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
