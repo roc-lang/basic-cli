@@ -32,7 +32,7 @@ mv "$NIGHTLY_FOLDER" roc_nightly
 ./roc_nightly/roc version
 
 # Get the latest basic-cli release file URL
-CLI_RELEASES_JSON=$(curl -s https://api.github.com/repos/roc-lang/basic-cli/releases)
+CLI_RELEASES_JSON=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" https://api.github.com/repos/roc-lang/basic-cli/releases)
 CLI_RELEASE_URL=$(echo $CLI_RELEASES_JSON | jq -r '.[0].assets | .[] | select(.name | test("\\.tar\\.br$")) | .browser_download_url')
 
 # Use the latest basic-cli release as the platform for every example
