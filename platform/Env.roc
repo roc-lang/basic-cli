@@ -49,8 +49,7 @@ var! = |name|
     Host.env_var!(name)
     |> Result.map_err(|{}| VarNotFound)
 
-## Reads the given environment variable and attempts to decode it.
-##
+## Reads the given environment variable and attempts to decode it into the correct type.
 ## The type being decoded into will be determined by type inference. For example,
 ## if this ends up being used like a `Result U16 _` then the environment variable
 ## will be decoded as a string representation of a `U16`. Trying to decode into
