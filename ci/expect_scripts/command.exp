@@ -12,10 +12,14 @@ spawn $env(EXAMPLES_DIR)command
 
 expect "Hello\r\n" {
     expect "Command output: Hi\r\n" {
-        expect "Command output: FOO=BAR\r\n" {
-            expect "Yo\r\n" {
-                expect eof {
-                    check_exit_and_segfault
+        expect "Command output: BAZ=DUCK\r\n" {
+            expect "FOO=BAR\r\n" {
+                expect "XYZ=ABC\r\n" {
+                    expect "Yo\r\n" {
+                        expect eof {
+                            check_exit_and_segfault
+                        }
+                    }
                 }
             }
         }

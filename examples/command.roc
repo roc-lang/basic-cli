@@ -72,6 +72,7 @@ env_example! = |{}|
         Cmd.new("env")
         |> Cmd.clear_envs # You probably don't need to clear all other environment variables, this is just an example.
         |> Cmd.env("FOO", "BAR")
+        |> Cmd.envs([("BAZ", "DUCK"), ("XYZ", "ABC")]) # Set multiple environment variables at once with `envs`
         |> Cmd.args(["-v"])
         |> Cmd.output!
 
