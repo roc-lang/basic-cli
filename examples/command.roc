@@ -61,7 +61,7 @@ print_output! = |cmd_output|
             Stderr.line!(err_data)
 
         Err(err) ->
-            Stderr.line!("Failed to start executing command: ${Inspect.to_str(err)}")
+            Stderr.line!("Failed to get exit code for command, error: ${Inspect.to_str(err)}")
 
 
 # Run command with an environment variable

@@ -130,7 +130,7 @@ output! = |@Cmd(cmd)|
     Host.command_output!(cmd)
     |> InternalCmd.from_host_output
 
-## Execute command and inherit stdin, stdout and stderr from parent
+## Execute command and inherit stdin, stdout and stderr from parent. Returns the exit code.
 ##
 status! : Cmd => Result I32 [CmdStatusErr InternalIOErr.IOErr]
 status! = |@Cmd(cmd)|
@@ -138,7 +138,7 @@ status! = |@Cmd(cmd)|
     |> Result.map_err(InternalIOErr.handle_err)
     |> Result.map_err(CmdStatusErr)
 
-## Execute command and inherit stdin, stdout and stderr from parent
+## Simplest way to execute a command while inheriting stdin, stdout and stderr from parent.
 ##
 ## ```
 ## # Call echo to print "hello world"
