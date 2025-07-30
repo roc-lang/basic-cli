@@ -10,9 +10,15 @@ source ./ci/expect_scripts/shared-code.exp
 spawn $env(EXAMPLES_DIR)command
 
 
-expect -exact "EXEC\r\nFOO=BAR\r\nBAZ=DUCK\r\nFOO=BAR\r\n" {
-    expect eof {
-        check_exit_and_segfault
+expect "Hello\r\n" {
+    expect "Command output: Hi\r\n" {
+        expect "Command output: FOO=BAR\r\n" {
+            expect "Yo\r\n" {
+                expect eof {
+                    check_exit_and_segfault
+                }
+            }
+        }
     }
 }
 
