@@ -32,6 +32,17 @@ Cmd := InternalCmd.Command
 ##
 Output : InternalCmd.Output
 
+# This hits a compiler bug: Alias `6.IdentId(11)` not registered in delayed aliases! ...
+# ## Converts output into a utf8 string. Invalid utf8 sequences in stderr are ignored.
+# to_str : Output -> Result Str [BadUtf8 { index : U64, problem : Str.Utf8Problem }]
+# to_str = |output|
+#     InternalCmd.output_to_str(output)
+
+# ## Converts output into a utf8 string, ignoring any invalid utf8 sequences.
+# to_str_lossy : Output -> Str
+# to_str_lossy = |output|
+#     InternalCmd.output_to_str_lossy(output)
+
 ## Create a new command to execute the given program in a child process.
 new : Str -> Cmd
 new = |program|
@@ -119,7 +130,7 @@ output! = |@Cmd(cmd)|
     Host.command_output!(cmd)
     |> InternalCmd.from_host_output
 
-## Execute command and inherit stdin, stdout and stderr from parent
+## Execute command and inherit stdin, stdout and stderr from parent. Returns the exit code.
 ##
 status! : Cmd => Result I32 [CmdStatusErr InternalIOErr.IOErr]
 status! = |@Cmd(cmd)|
@@ -127,7 +138,7 @@ status! = |@Cmd(cmd)|
     |> Result.map_err(InternalIOErr.handle_err)
     |> Result.map_err(CmdStatusErr)
 
-## Execute command and inherit stdin, stdout and stderr from parent
+## Simplest way to execute a command while inheriting stdin, stdout and stderr from parent.
 ##
 ## ```
 ## # Call echo to print "hello world"
