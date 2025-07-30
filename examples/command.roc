@@ -92,4 +92,4 @@ status_example! = |{}|
             Stderr.line!("Command failed with exit code: ${Num.to_str(exit_code)}")
 
         Err(err) ->
-            Stderr.line!("Failed to start executing command: ${Inspect.to_str(err)}")
+            Stderr.line!("Failed to get exit code for command, error: ${Inspect.to_str(err)}")
