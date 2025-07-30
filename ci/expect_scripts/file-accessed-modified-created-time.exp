@@ -10,7 +10,7 @@ source ./ci/expect_scripts/shared-code.exp
 spawn $env(EXAMPLES_DIR)file-accessed-modified-created-time
 
 expect {
-    -re {LICENSE file time metadata:\r\n    Modified: "20.*"\r\n    Accessed: "20.*"\r\n    Created: "20.*"\r\n} {
+    -re {LICENSE file time metadata:\r\n    Modified: 20.*\r\n    Accessed: 20.*\r\n    Created: 20.*\r\n} {
         expect eof {
             check_exit_and_segfault
         }

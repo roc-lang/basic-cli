@@ -24,8 +24,8 @@ main! = |_args|
     Stdout.line!(
         """
         ${file} file time metadata:
-            Modified: ${Inspect.to_str(time_modified)}
-            Accessed: ${Inspect.to_str(time_accessed)}
-            Created: ${Inspect.to_str(time_created)}
+            Modified: ${time_modified}
+            Accessed: ${time_accessed}
+            Created: ${time_created}
         """
     )
