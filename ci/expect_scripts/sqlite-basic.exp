@@ -12,15 +12,17 @@ set env(DB_PATH) $env(EXAMPLES_DIR)todos.db
 spawn $env(EXAMPLES_DIR)sqlite-basic
 
 
-expect "All Todos:" {
-    expect "\tid: 3, task: Share my ❤️  for Roc" {
-        expect "Completed Todos:" {
-            expect "\tid: 1, task: Prepare for AoC" {
-                expect eof {
-                    check_exit_and_segfault
-                }
-            }
-        }
+set expected_output [normalize_output {
+All Todos:
+	id: 3, task: Share my ❤️  for Roc, status: Todo
+
+Completed Todos:
+	id: 1, task: Prepare for AoC, status: Completed
+}]
+
+expect $expected_output {
+    expect eof {
+        check_exit_and_segfault
     }
 }
 

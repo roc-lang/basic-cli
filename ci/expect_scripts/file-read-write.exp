@@ -5,7 +5,21 @@
 
 set timeout 7
 
+source ./ci/expect_scripts/shared-code.exp
+
 spawn $env(EXAMPLES_DIR)file-read-write
 
-expect "Writing a string to out.txt"
-expect "I read the file back. Its contents: \"a string!\""
+
+set expected_output [normalize_output {
+Writing a string to out.txt
+I read the file back. Its contents are: "a string!"
+}]
+
+expect $expected_output {
+    expect eof {
+        check_exit_and_segfault
+    }
+}
+
+puts stderr "\nExpect script failed: output was different from expected value. uncomment `exp_internal 1` to debug."
+exit 1

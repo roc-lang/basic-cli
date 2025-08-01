@@ -9,7 +9,14 @@ source ./ci/expect_scripts/shared-code.exp
 
 spawn $env(EXAMPLES_DIR)file-permissions
 
-expect "LICENSE file permissions:\r\n    Executable: Bool.false\r\n    Readable: Bool.true\r\n    Writable: Bool.true\r\n" {
+set expected_output [normalize_output {
+LICENSE file permissions:
+    Executable: Bool.false
+    Readable: Bool.true
+    Writable: Bool.true
+}]
+
+expect $expected_output {
     expect eof {
         check_exit_and_segfault
     }

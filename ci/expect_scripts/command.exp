@@ -10,21 +10,15 @@ source ./ci/expect_scripts/shared-code.exp
 spawn $env(EXAMPLES_DIR)command
 
 
-expect "Hello\r\n" {
-    expect "Command output: Hi\r\n" {
-        expect "Command output: BAZ=DUCK\r\n" {
-            expect "FOO=BAR\r\n" {
-                expect "XYZ=ABC\r\n" {
-                    expect "Yo\r\n" {
-                        expect eof {
-                            check_exit_and_segfault
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
+set expected_output [normalize_output {
+Hello
+Command output: Hi
 
-puts stderr "\nExpect script failed: output was different from expected value. uncomment `exp_internal 1` to debug."
-exit 1
+Command output: BAZ=DUCK
+FOO=BAR
+XYZ=ABC
+
+Yo
+}]
+
+expect_with_diff $expected_output

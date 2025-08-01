@@ -13,12 +13,15 @@ set env(LETTERS) a,c,e,j
 spawn $env(EXAMPLES_DIR)env-var
 
 
-expect "Your favorite editor is nano!\r\n" {
-        expect "Your favorite letters are: a c e j\r\n" {
-            expect eof {
-                check_exit_and_segfault
-            }
-        }
+set expected_output [normalize_output {
+Your favorite editor is nano!
+Your favorite letters are: a c e j
+}]
+
+expect $expected_output {
+    expect eof {
+        check_exit_and_segfault
+    }
 }
 
 puts stderr "\nExpect script failed: output was different from expected value. uncomment `exp_internal 1` to debug."

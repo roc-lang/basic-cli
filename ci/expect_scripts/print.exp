@@ -9,7 +9,15 @@ source ./ci/expect_scripts/shared-code.exp
 
 spawn $env(EXAMPLES_DIR)print
 
-expect "Hello, world!\r\nNo newline after me.Hello, error!\r\nErr with no newline after.Foo\r\nBar\r\nBaz\r\n" {
+set expected_output [normalize_output {
+Hello, world!
+No newline after me.Hello, error!
+Err with no newline after.Foo
+Bar
+Baz
+}]
+
+expect $expected_output {
     expect eof {
         check_exit_and_segfault
     }

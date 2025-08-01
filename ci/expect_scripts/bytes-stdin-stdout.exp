@@ -11,7 +11,12 @@ spawn $env(EXAMPLES_DIR)bytes-stdin-stdout
 
 send -- "someinput\r"
 
-expect "someinput\r\nsomeinput\r\n" {
+set expected_output [normalize_output {
+someinput
+someinput
+}]
+
+expect $expected_output {
     expect eof {
         check_exit_and_segfault
     }

@@ -11,27 +11,24 @@ set env(DB_PATH) $env(EXAMPLES_DIR)todos2.db
 
 spawn $env(EXAMPLES_DIR)sqlite-everything
 
-expect "All Todos:" {
-    expect "\tid: 1, task: Prepare for AoC, status: Completed, edited: Null" {
-        expect "\tid: 2, task: Win all the Stars!, status: InProgress, edited: NotEdited" {
-            expect "\tid: 3, task: Share my ❤️  for Roc, status: Todo, edited: NotEdited" {
-                expect "In-progress Todos:" {
-                    expect "\tIn-progress tasks: Win all the Stars!" {
-                        expect "Todos sorted by length of task description:" {
-                            expect "\t task: Prepare for AoC, status: Completed" {
-                                expect "\t task: Win all the Stars!, status: InProgress" {
-                                    expect "\t task: Share my ❤️  for Roc, status: Todo" {
-                                        expect eof {
-                                            check_exit_and_segfault
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+set expected_output [normalize_output {
+All Todos:
+	id: 1, task: Prepare for AoC, status: Completed, edited: Null
+	id: 2, task: Win all the Stars!, status: InProgress, edited: NotEdited
+	id: 3, task: Share my ❤️  for Roc, status: Todo, edited: NotEdited
+
+In-progress Todos:
+	In-progress tasks: Win all the Stars!
+
+Todos sorted by length of task description:
+	 task: Prepare for AoC, status: Completed
+	 task: Win all the Stars!, status: InProgress
+	 task: Share my ❤️  for Roc, status: Todo
+}]
+
+expect $expected_output {
+    expect eof {
+        check_exit_and_segfault
     }
 }
 

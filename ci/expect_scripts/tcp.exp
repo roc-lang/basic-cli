@@ -16,23 +16,42 @@ sleep 1
 spawn $env(TESTS_DIR)tcp
 
 
-expect "Testing Tcp module functions" {
-    expect "Successfully connected to localhost" {
-        expect "Echo server reply: Hello" {
-            expect "Echo server reply: Test message from Roc!" {
-                expect "Tcp.read_up_to yielded: 'do not read past me'" {
-                    expect "Tcp.read_exactly yielded: 'ABC'" {
-                        expect "Tcp.read_until yielded: 'Line1\r\n'" {
-                            expect "All tests executed.\r\n" {
-                                expect eof {
-                                    check_exit_and_segfault
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+set expected_output [normalize_output {
+Testing Tcp module functions...
+Note: These tests require a TCP server running on localhost:8085
+You can start one with: ncat -e `which cat` -l 8085
+
+Testing Tcp.connect!:
+✓ Successfully connected to localhost:8085
+
+Testing Tcp.write!:
+Echo server reply: Hello
+
+
+
+Testing Tcp.write_utf8!:
+Echo server reply: Test message from Roc!
+
+
+
+Testing Tcp.read_up_to!:
+Tcp.read_up_to yielded: 'do not read past me'
+
+
+Testing Tcp.read_exactly!:
+Tcp.read_exactly yielded: 'ABC'
+
+
+Testing Tcp.read_until!:
+Tcp.read_until yielded: 'Line1
+'
+
+All tests executed.
+}]
+
+expect $expected_output {
+    expect eof {
+        check_exit_and_segfault
     }
 }
 
