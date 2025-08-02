@@ -6,60 +6,6 @@ proc normalize_output {output} {
     return $result
 }
 
-proc show_diff {expected actual} {
-    puts stderr "\n=== DIFF OUTPUT ==="
-    puts stderr "Expected:"
-    puts stderr [repr_string $expected]
-    puts stderr "\nActual:"
-    puts stderr [repr_string $actual]
-    
-    # Line-by-line comparison
-    set exp_lines [split $expected "\r\n"]
-    set act_lines [split $actual "\r\n"]
-    set max_lines [expr {max([llength $exp_lines], [llength $act_lines])}]
-    
-    puts stderr "\nLine-by-line comparison:"
-    for {set i 0} {$i < $max_lines} {incr i} {
-        set exp_line [lindex $exp_lines $i]
-        set act_line [lindex $act_lines $i]
-        
-        if {$exp_line ne $act_line} {
-            puts stderr "Line [expr {$i + 1}] differs:"
-            puts stderr "  Expected: [repr_string $exp_line]"
-            puts stderr "  Actual:   [repr_string $act_line]"
-        }
-    }
-}
-
-proc repr_string {str} {
-    # Show invisible characters
-    regsub -all {\r} $str "\\r" result
-    regsub -all {\n} $result "\\n" result
-    regsub -all {\t} $result "\\t" result
-    return "\"$result\""
-}
-
-proc expect_with_diff {expected_output} {
-    expect {
-        $expected_output {
-            expect eof {
-                check_exit_and_segfault
-            }
-        }
-        eof {
-            show_diff $expected_output $expect_out(buffer)
-            puts stderr "\nExpect script failed: output was different from expected value."
-            exit 1
-        }
-        timeout {
-            puts stderr "\nExpect script failed: timeout waiting for expected output."
-            puts stderr "Partial output received:"
-            puts stderr [repr_string $expect_out(buffer)]
-            exit 1
-        }
-    }
-}
-
 proc check_exit_and_segfault {} {
     set status [wait]
     set exit_code [lindex $status 2]
