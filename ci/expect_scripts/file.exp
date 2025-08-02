@@ -9,108 +9,63 @@ source ./ci/expect_scripts/shared-code.exp
 
 spawn $env(TESTS_DIR)file
 
-expect "Testing some File functions..." {
-    expect "This will create and manipulate test files in the current directory." {
-        
-        # Test File.write_bytes! and File.read_bytes!
-        expect "Testing File.write_bytes! and File.read_bytes!:" {
-            expect "Bytes in test_bytes.txt: \\\[72, 101, 108, 108, 111, 44, 32, 87, 111, 114, 108, 100, 33\\\]" {
-                
-                # Test File.write!
-                expect "Testing File.write!:" {
-                    expect "Content of test_write.json: {\"some\":\"json stuff\"}" {
-                        
-                        # Test File.is_file!
-                        expect "Testing File.is_file!:" {
-                            expect "✓ test_bytes.txt is confirmed to be a file" {
-                                
-                                # Test File.is_sym_link!
-                                expect "Testing File.is_sym_link!:" {
-                                    expect "✓ test_bytes.txt is not a symbolic link" {
-                                        expect "✓ test_symlink.txt is a symbolic link" {
-                                            
-                                            # Test File.type!
-                                            expect "Testing File.type!:" {
-                                                expect "test_bytes.txt file type: IsFile" {
-                                                    expect ". file type: IsDir" {
-                                                        expect "test_symlink.txt file type: IsSymLink" {
-                                                            
-                                                            # Test File.open_reader_with_capacity!
-                                                            expect "Testing File.open_reader_with_capacity!:" {
-                                                                expect "✓ Successfully opened reader with 3 byte capacity" {
-                                                                    
-                                                                    # Test reading lines from file
-                                                                    expect "Reading lines from file:" {
-                                                                        expect "Line 1: First line" {
-                                                                            expect "" {
-                                                                                expect "Line 2: Second line" {
-                                                                                    expect "" {
-                                                                                        
-                                                                                        # Test File.hard_link!
-                                                                                        expect "Testing File.hard_link!:" {
-                                                                                            expect "✓ Successfully created hard link: test_link_to_original.txt" {
-                                                                                                expect "Hard link inodes should be equal: Bool.true" {
-                                                                                                    expect "✓ Hard link contains same content as original" {
-                                                                                                        
-                                                                                                        # Test File.rename!
-                                                                                                        expect "Testing File.rename!:" {
-                                                                                                            expect "✓ Successfully renamed test_rename_original.txt to test_rename_new.txt" {
-                                                                                                                expect "✓ Original file test_rename_original.txt no longer exists" {
-                                                                                                                    expect "✓ Renamed file test_rename_new.txt exists" {
-                                                                                                                        expect "✓ Renamed file has correct content" {
-                                                                                                                            
-                                                                                                                            # Test File.exists!
-                                                                                                                            expect "Testing File.exists!:" {
-                                                                                                                                expect "✓ File.exists! returns true for a file that exists" {
-                                                                                                                                    expect "✓ File.exists! returns false for a file that does not exist" {
-                                                                                                                                        
-                                                                                                                                        expect "I ran all file function tests." {
+set expected_output [normalize_output "
+Testing some File functions...
+This will create and manipulate test files in the current directory.
 
-                                                                                                                                            expect "Cleaning up test files..." {
-                                                                                                                                                expect "✓ Deleted all files." {
-                                                                                                                                                
-                                                                                                                                                    # Final completion message
-                                                                                                                                                
-                                                                                                                                                    expect eof {
-                                                                                                                                                        check_exit_and_segfault
-                                                                                                                                                    }
-                                                                                                                                                }
-                                                                                                                                            }
-                                                                                                                                        }
-                                                                                                                                    }
-                                                                                                                                }
-                                                                                                                            }
-                                                                                                                        }
-                                                                                                                    }
-                                                                                                                }
-                                                                                                            }
-                                                                                                        }
-                                                                                                    }
-                                                                                                }
-                                                                                            }
-                                                                                        }
-                                                                                    }
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+Testing File.write_bytes! and File.read_bytes!:
+Bytes in test_bytes.txt: \\\[72, 101, 108, 108, 111, 44, 32, 87, 111, 114, 108, 100, 33\\\]
+
+Testing File.write!:
+Content of test_write.json: {\"some\":\"json stuff\"}
+
+Testing File.is_file!:
+✓ test_bytes.txt is confirmed to be a file
+
+Testing File.is_sym_link!:
+✓ test_bytes.txt is not a symbolic link
+✓ test_symlink.txt is a symbolic link
+
+Testing File.type!:
+test_bytes.txt file type: IsFile
+. file type: IsDir
+test_symlink.txt file type: IsSymLink
+
+Testing File.open_reader_with_capacity!:
+✓ Successfully opened reader with 3 byte capacity
+
+Reading lines from file:
+Line 1: First line
+
+Line 2: Second line
+
+
+Testing File.hard_link!:
+✓ Successfully created hard link: test_link_to_original.txt
+Hard link inodes should be equal: Bool.true
+✓ Hard link contains same content as original
+
+Testing File.rename!:
+✓ Successfully renamed test_rename_original.txt to test_rename_new.txt
+✓ Original file test_rename_original.txt no longer exists
+✓ Renamed file test_rename_new.txt exists
+✓ Renamed file has correct content
+
+Testing File.exists!:
+✓ File.exists! returns true for a file that exists
+✓ File.exists! returns false for a file that does not exist
+
+I ran all file function tests.
+
+Cleaning up test files...
+✓ Deleted all files.
+"]
+
+expect -re $expected_output {
+    expect eof {
+        check_exit_and_segfault
+    }  
 }
 
-puts stderr "\nExpect script failed: output was different from expected value. uncomment `exp_internal 1` to debug."
+puts stderr "\nExpect script failed: output was not as expected. Diff the output with expected_output in this script. Alternatively, uncomment `exp_internal 1` to debug."
 exit 1
