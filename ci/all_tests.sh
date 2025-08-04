@@ -58,11 +58,6 @@ for roc_file in $TESTS_DIR*.roc; do
     $ROC build $roc_file $ROC_BUILD_FLAGS
 done
 
-# prep for next step
-cd ci/rust_http_server
-cargo build --release
-cd ../..
-
 # Check for duplicate .roc file names between EXAMPLES_DIR and TESTS_DIR (this messes with checks)
 for example_file in $EXAMPLES_DIR*.roc; do
     example_basename=$(basename "$example_file")
@@ -71,6 +66,11 @@ for example_file in $EXAMPLES_DIR*.roc; do
         exit 1
     fi
 done
+
+# prep for next step
+cd ci/rust_http_server
+cargo build --release
+cd ../..
 
 # check output with linux expect
 for roc_file in $EXAMPLES_DIR*.roc; do
