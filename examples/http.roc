@@ -25,7 +25,7 @@ main! = |_args|
     #   ----------------
 
     hello_str : Str
-    hello_str = Http.get_utf8!("http://localhost:8000/utf8test")?
+    hello_str = Http.get_utf8!("http://localhost:9000/utf8test")?
     # If you want to see an example of the server side, see basic-cli/ci/rust_http_server/src/main.rs
 
     Stdout.line!("I received '${hello_str}' from the server.\n")?
@@ -35,7 +35,7 @@ main! = |_args|
 
     # We decode/deserialize the json `{ "foo": "something" }` into a Roc record
 
-    { foo } = Http.get!("http://localhost:8000", Json.utf8)?
+    { foo } = Http.get!("http://localhost:9000", Json.utf8)?
     # If you want to see an example of the server side, see basic-cli/ci/rust_http_server/src/main.rs
 
     Stdout.line!("The json I received was: { foo: \"$(foo)\" }\n")?

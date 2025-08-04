@@ -50,7 +50,7 @@ async fn handle_request(req: Request<Incoming>) -> Result<Response<BoxBody>, Gen
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Address to bind the server to
-    let addr: SocketAddr = ([127, 0, 0, 1], 8000).into();
+    let addr: SocketAddr = ([127, 0, 0, 1], 9000).into();
 
     // Bind to the port and listen for incoming TCP connections
     let listener = TcpListener::bind(addr).await?;
