@@ -1,8 +1,8 @@
 hosted [
     FileReader,
     TcpStream,
-    command_output!,
-    command_status!,
+    command_exec_output!,
+    command_exec_exit_code!,
     current_arch_os!,
     cwd!,
     dir_create!,
@@ -67,8 +67,8 @@ import InternalPath
 import InternalIOErr
 import InternalSqlite
 # COMMAND
-command_status! : InternalCmd.Command => Result I32 InternalIOErr.IOErrFromHost
-command_output! : InternalCmd.Command => InternalCmd.OutputFromHost
+command_exec_exit_code! : InternalCmd.Command => Result I32 InternalIOErr.IOErrFromHost
+command_exec_output! : InternalCmd.Command => Result InternalCmd.OutputFromHostSuccess (Result InternalCmd.OutputFromHostFailure InternalIOErr.IOErrFromHost)
 
 # FILE
 file_write_bytes! : List U8, List U8 => Result {} InternalIOErr.IOErrFromHost

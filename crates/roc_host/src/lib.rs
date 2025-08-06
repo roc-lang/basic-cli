@@ -339,8 +339,8 @@ pub fn init() {
         roc_fx_tcp_read_exactly as _,
         roc_fx_tcp_read_until as _,
         roc_fx_tcp_write as _,
-        roc_fx_command_status as _,
-        roc_fx_command_output as _,
+        roc_fx_command_exec_exit_code as _,
+        roc_fx_command_exec_output as _,
         roc_fx_dir_create as _,
         roc_fx_dir_create_all as _,
         roc_fx_dir_delete_empty as _,
@@ -742,17 +742,17 @@ pub extern "C" fn roc_fx_tcp_write(stream: RocBox<()>, msg: &RocList<u8>) -> Roc
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_command_status(
+pub extern "C" fn roc_fx_command_exec_exit_code(
     roc_cmd: &roc_command::Command,
 ) -> RocResult<i32, roc_io_error::IOErr> {
-    roc_command::command_status(roc_cmd)
+    roc_command::command_exec_exit_code(roc_cmd)
 }
 
 #[no_mangle]
-pub extern "C" fn roc_fx_command_output(
+pub extern "C" fn roc_fx_command_exec_output(
     roc_cmd: &roc_command::Command,
-) -> roc_command::OutputFromHost {
-    roc_command::command_output(roc_cmd)
+) -> RocResult<roc_command::OutputFromHostSuccess, RocResult<roc_command::OutputFromHostFailure, roc_io_error::IOErr>> {
+    roc_command::command_exec_output(roc_cmd)
 }
 
 #[no_mangle]
