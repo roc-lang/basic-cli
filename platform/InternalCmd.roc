@@ -2,6 +2,7 @@ module [
     Command,
     OutputFromHostSuccess,
     OutputFromHostFailure,
+    to_str,
 ]
 
 Command : {
@@ -21,3 +22,19 @@ OutputFromHostFailure : {
     stdout_bytes : List U8,
     stderr_bytes : List U8,
 }
+
+to_str : Command -> Str
+to_str = |cmd|
+    envs_str =
+        cmd.envs
+        #|> List.map(|(key, value)| "${key}=${value}")
+        |> Str.join_with(" ")
+
+    clear_envs_str = if cmd.clear_envs then "true" else "false"
+    
+    """
+    cmd: ${cmd.program}
+    args: ${Str.join_with(cmd.args, " ")}
+    envs: ${envs_str}
+    clear_envs: ${clear_envs_str}
+    """
