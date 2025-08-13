@@ -6,6 +6,8 @@ import pf.Arg exposing [Arg]
 
 # Tests some error branches in Cmd functions.
 
+# TODO test all error branches in Cmd functions
+
 main! : List Arg => Result {} _
 main! = |_args|
     
@@ -19,7 +21,7 @@ main! = |_args|
 
     _ = when exec_res is
         Ok(_) ->
-            Err(BlaBlaCommandShouldHaveFailed)?
+            Err(FakeBlaBlaCommandShouldHaveFailed)?
         Err(err) ->
             Stdout.line!("Expected failure: ${Inspect.to_str(err)}")?
             Ok({})

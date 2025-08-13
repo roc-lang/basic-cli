@@ -7,6 +7,7 @@ module [
     envs,
     clear_envs,
     exec_output!,
+    exec_output_bytes!,
     exec!,
     exec_cmd!,
     exec_exit_code!,
@@ -25,12 +26,12 @@ Cmd := InternalCmd.Command
 ## # Call echo to print "hello world"
 ## Cmd.exec!("echo", ["hello world"])?
 ## ```
-exec! : Str, List Str => Result {} [ExecFailed Str I32, FailedToGetExitCode Str IOErr]
+exec! : Str, List Str => Result {} [ExecFailed Str I32, FailedToGetExitCode({ command : Str, err : IOErr})]
 exec! = |cmd_name, arguments|
     exit_code =
         new(cmd_name)
         |> args(arguments)
-        |> exec_exit_code!?
+        |> exec_exit_code!()?
 
     if exit_code == 0i32 then
         Ok({})
@@ -48,7 +49,7 @@ exec! = |cmd_name, arguments|
 ## |> Cmd.env("RUST_BACKTRACE", "1")
 ## |> Cmd.exec_cmd!()?
 ## ```
-exec_cmd! : Cmd => Result {} [ExecCmdFailed Str I32, FailedToGetExitCode Str IOErr]
+exec_cmd! : Cmd => Result {} [ExecCmdFailed({ command : Str, exit_code : I32 }), FailedToGetExitCode({ command : Str, err : IOErr})]
 exec_cmd! = |@Cmd(cmd)|
     exit_code =
         exec_exit_code!(@Cmd(cmd))?
@@ -56,7 +57,7 @@ exec_cmd! = |@Cmd(cmd)|
     if exit_code == 0i32 then
         Ok({})
     else
-        Err(ExecCmdFailed(to_str(cmd), exit_code))
+        Err(ExecCmdFailed({ command: to_str(cmd), exit_code }))
 
 ## Execute command and capture stdout, stderr and the exit code in [Output].
 ##
@@ -68,50 +69,52 @@ exec_output! : Cmd =>
                     Result
                         {stdout_utf8 : Str, stderr_utf8_lossy : Str}
                         [
-                            StdoutContainsInvalidUtf8({ cmd : Str, err: [BadUtf8 { index : U64, problem : Str.Utf8Problem }]}),
-                            NonZeroExitCode({cmd : Str, exit_code: I32, stdout_utf8_lossy: Str, stderr_utf8_lossy: Str}),
-                            FailedToGetExitCode({ cmd : Str, err : IOErr})
+                            StdoutContainsInvalidUtf8({ cmd_str : Str, err: [BadUtf8 { index : U64, problem : Str.Utf8Problem }]}),
+                            NonZeroExitCode({command : Str, exit_code: I32, stdout_utf8_lossy: Str, stderr_utf8_lossy: Str}),
+                            FailedToGetExitCode({ command : Str, err : IOErr})
                         ]
 exec_output! = |@Cmd(cmd)|
     exec_res = Host.command_exec_output!(cmd)
     
     when exec_res is
-        Ok({stdout_bytes, stderr_bytes}) ->
-            stdout_utf8 = Str.from_utf8(stdout_bytes) ? |err| StdoutContainsInvalidUtf8({ cmd: to_str(cmd), err})
+        Ok({stderr_bytes, stdout_bytes}) ->
+            stdout_utf8 = Str.from_utf8(stdout_bytes) ? |err| StdoutContainsInvalidUtf8({cmd_str: to_str(cmd), err})#{ cmd: to_str(cmd), err})
             stderr_utf8_lossy = Str.from_utf8_lossy(stderr_bytes)
 
             Ok({stdout_utf8, stderr_utf8_lossy})
         Err(inside_res) ->
             when inside_res is
-                Ok({exit_code, stdout_bytes, stderr_bytes}) ->
-                    stdout_utf8_lossy = Str.from_utf8_lossy(stdout_bytes)
-                    stderr_utf8_lossy = Str.from_utf8_lossy(stderr_bytes)
+                Ok({exit_code, stderr_bytes, stdout_bytes}) ->
+                   stdout_utf8_lossy = Str.from_utf8_lossy(stdout_bytes)
+                   stderr_utf8_lossy = Str.from_utf8_lossy(stderr_bytes)
 
-                    Err(NonZeroExitCode({cmd : to_str(cmd), exit_code, stdout_utf8_lossy, stderr_utf8_lossy}))
+                   Err(NonZeroExitCode({command : to_str(cmd), exit_code, stdout_utf8_lossy, stderr_utf8_lossy}))
                 Err(err) ->
-                    Err(InternalIOErr.handle_err(err))
-                    |> Result.map_err(|er| FailedToGetExitCode({ cmd : to_str(cmd), err : er }))
+                    Err(FailedToGetExitCode({ command : to_str(cmd), err : InternalIOErr.handle_err(err) }))
 
-# TODO exec_output_bytes
+## TODO add type + explain command + when to use exec_output! + example 
+exec_output_bytes! = |@Cmd(cmd)|
+    exec_res = Host.command_exec_output!(cmd)
+    
+    when exec_res is
+        Ok({stderr_bytes, stdout_bytes}) ->
+            Ok({stdout_bytes, stderr_bytes})
+
+        Err(inside_res) ->
+            when inside_res is
+                Ok({exit_code, stderr_bytes, stdout_bytes}) ->
+                    Err(NonZeroExitCodeB({exit_code, stdout_bytes, stderr_bytes}))
+
+                Err(err) ->
+                    Err(FailedToGetExitCodeB(InternalIOErr.handle_err(err)))
 
 ## Execute command and inherit stdin, stdout and stderr from parent. Returns the exit code.
 ## Helper function.
-exec_exit_code! : Cmd => Result I32 [FailedToGetExitCode Str IOErr]
+exec_exit_code! : Cmd => Result I32 [FailedToGetExitCode({ command : Str, err : IOErr})]
 exec_exit_code! = |@Cmd(cmd)|
     Host.command_exec_exit_code!(cmd)
     |> Result.map_err(InternalIOErr.handle_err)
-    |> Result.map_err(|err| FailedToGetExitCode(to_str(cmd), err))
-
-# This hits a compiler bug: Alias `6.IdentId(11)` not registered in delayed aliases! ...
-# ## Converts output into a utf8 string. Invalid utf8 sequences in stderr are ignored.
-# to_str : Output -> Result Str [BadUtf8 { index : U64, problem : Str.Utf8Problem }]
-# to_str = |output|
-#     InternalCmd.output_to_str(output)
-
-# ## Converts output into a utf8 string, ignoring any invalid utf8 sequences.
-# to_str_lossy : Output -> Str
-# to_str_lossy = |output|
-#     InternalCmd.output_to_str_lossy(output)
+    |> Result.map_err(|err| FailedToGetExitCode({ command: to_str(cmd), err }))
 
 ## Create a new command to execute the given program in a child process.
 new : Str -> Cmd

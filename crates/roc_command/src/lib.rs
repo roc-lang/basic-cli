@@ -63,26 +63,26 @@ impl From<&Command> for std::process::Command {
 #[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct OutputFromHostSuccess {
-    pub stdout_bytes: roc_std::RocList<u8>,
     pub stderr_bytes: roc_std::RocList<u8>,
+    pub stdout_bytes: roc_std::RocList<u8>,
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[repr(C)]
 pub struct OutputFromHostFailure {
-    pub status: i32,
-    pub stdout_bytes: roc_std::RocList<u8>,
     pub stderr_bytes: roc_std::RocList<u8>,
+    pub stdout_bytes: roc_std::RocList<u8>,
+    pub exit_code: i32,
 }
 
 impl roc_std::RocRefcounted for OutputFromHostSuccess {
     fn inc(&mut self) {
-        self.stderr_bytes.inc();
         self.stdout_bytes.inc();
+        self.stderr_bytes.inc();
     }
     fn dec(&mut self) {
-        self.stderr_bytes.dec();
         self.stdout_bytes.dec();
+        self.stderr_bytes.dec();
     }
     fn is_refcounted() -> bool {
         true
@@ -91,14 +91,14 @@ impl roc_std::RocRefcounted for OutputFromHostSuccess {
 
 impl roc_std::RocRefcounted for OutputFromHostFailure {
     fn inc(&mut self) {
-        self.status.inc();
-        self.stderr_bytes.inc();
+        self.exit_code.inc();
         self.stdout_bytes.inc();
+        self.stderr_bytes.inc();
     }
     fn dec(&mut self) {
-        self.status.dec();
-        self.stderr_bytes.dec();
+        self.exit_code.dec();
         self.stdout_bytes.dec();
+        self.stderr_bytes.dec();
     }
     fn is_refcounted() -> bool {
         true
@@ -132,15 +132,27 @@ pub fn command_exec_output(roc_cmd: &Command) -> RocResult<OutputFromHostSuccess
     match std::process::Command::from(roc_cmd).output() {
         Ok(output) =>
             match output.status.code() {
-                Some(status) if status == 0 => RocResult::ok(OutputFromHostSuccess {
-                    stdout_bytes: RocList::from(&output.stdout[..]),
-                    stderr_bytes: RocList::from(&output.stderr[..]),
-                }),
-                Some(status) => RocResult::err(RocResult::ok(OutputFromHostFailure {
-                    status: status,
-                    stdout_bytes: RocList::from(&output.stdout[..]),
-                    stderr_bytes: RocList::from(&output.stdout[..]),
-                })),
+                Some(status) => {
+
+                    let stdout_bytes = RocList::from(&output.stdout[..]);
+                    let stderr_bytes = RocList::from(&output.stderr[..]);
+
+                    if status == 0 {
+                        // Success case
+                        RocResult::ok(OutputFromHostSuccess {
+                            stderr_bytes,
+                            stdout_bytes,
+                        })
+                    } else {
+                        println!("{:?}", stderr_bytes);
+                        // Failure case
+                        RocResult::err(RocResult::ok(OutputFromHostFailure {
+                            stderr_bytes,
+                            stdout_bytes,
+                            exit_code: status,
+                        }))
+                    }
+                },
                 None => RocResult::err(RocResult::err(killed_by_signal_err()))
             }
         Err(err) => RocResult::err(RocResult::err(err.into()))
