@@ -26,7 +26,7 @@ Cmd := InternalCmd.Command
 ## # Call echo to print "hello world"
 ## Cmd.exec!("echo", ["hello world"])?
 ## ```
-exec! : Str, List Str => Result {} [ExecFailed Str I32, FailedToGetExitCode({ command : Str, err : IOErr})]
+exec! : Str, List Str => Result {} [ExecFailed({ command : Str, exit_code : I32}), FailedToGetExitCode({ command : Str, err : IOErr})]
 exec! = |cmd_name, arguments|
     exit_code =
         new(cmd_name)
@@ -36,11 +36,11 @@ exec! = |cmd_name, arguments|
     if exit_code == 0i32 then
         Ok({})
     else
-        cmd_str = "${cmd_name} ${Str.join_with(arguments, " ")}"
-        Err(ExecFailed(cmd_str, exit_code))
+        command = "${cmd_name} ${Str.join_with(arguments, " ")}"
+        Err(ExecFailed({command, exit_code}))
 
 ## Execute a Cmd while inheriting stdin, stdout and stderr from parent.
-## You should prefer using `exec!`, only use this if you want to use [env], [envs] or [clear_envs].
+## You should prefer using [exec!], only use this if you want to use [env], [envs] or [clear_envs].
 ## If you want to capture the output, use [exec_output!].
 ## ```
 ## # Execute `cargo build` with env var.
@@ -59,12 +59,14 @@ exec_cmd! = |@Cmd(cmd)|
     else
         Err(ExecCmdFailed({ command: to_str(cmd), exit_code }))
 
-## Execute command and capture stdout, stderr and the exit code in [Output].
+## Execute command and capture stdout and stderr.
 ##
 ## > Stdin is not inherited from the parent and any attempt by the child process
 ## > to read from the stdin stream will result in the stream immediately closing.
 ##
-## TODO: explain when to use exec_output_bytes! vs exec_output!
+## Use [exec_output_bytes!] if you want to capture the output in the original form as bytes.
+## [exec_output_bytes!] may also be used for maximum performance, because you may be able to avoid unnecessary UTF-8 conversions.
+##
 exec_output! : Cmd =>
                     Result
                         {stdout_utf8 : Str, stderr_utf8_lossy : Str}
@@ -78,7 +80,7 @@ exec_output! = |@Cmd(cmd)|
     
     when exec_res is
         Ok({stderr_bytes, stdout_bytes}) ->
-            stdout_utf8 = Str.from_utf8(stdout_bytes) ? |err| StdoutContainsInvalidUtf8({cmd_str: to_str(cmd), err})#{ cmd: to_str(cmd), err})
+            stdout_utf8 = Str.from_utf8(stdout_bytes) ? |err| StdoutContainsInvalidUtf8({cmd_str: to_str(cmd), err})
             stderr_utf8_lossy = Str.from_utf8_lossy(stderr_bytes)
 
             Ok({stdout_utf8, stderr_utf8_lossy})
@@ -92,7 +94,14 @@ exec_output! = |@Cmd(cmd)|
                 Err(err) ->
                     Err(FailedToGetExitCode({ command : to_str(cmd), err : InternalIOErr.handle_err(err) }))
 
-## TODO add type + explain command + when to use exec_output! + example 
+## Execute command and capture stdout and stderr in the original form as bytes.
+## 
+## > Stdin is not inherited from the parent and any attempt by the child process
+## > to read from the stdin stream will result in the stream immediately closing.
+##
+## Use [exec_output!] if you want to get the output as UTF-8 strings.
+##
+exec_output_bytes! : Cmd => Result { stderr_bytes : List U8, stdout_bytes : List U8 } [FailedToGetExitCodeB(InternalIOErr.IOErr), NonZeroExitCodeB({ exit_code : I32, stderr_bytes : List U8, stdout_bytes : List U8 })]
 exec_output_bytes! = |@Cmd(cmd)|
     exec_res = Host.command_exec_output!(cmd)
     
@@ -109,7 +118,11 @@ exec_output_bytes! = |@Cmd(cmd)|
                     Err(FailedToGetExitCodeB(InternalIOErr.handle_err(err)))
 
 ## Execute command and inherit stdin, stdout and stderr from parent. Returns the exit code.
-## Helper function.
+##
+## You should prefer using [exec!] or [exec_cmd!], only use this if you want to take a specific action based on a **specific non-zero exit code**.
+## For example, `roc check` returns exit code 1 if there are errors, and exit code 2 if there are warnings.
+## So, you could use `exec_exit_code!` to ignore warnings on `roc check`.
+## 
 exec_exit_code! : Cmd => Result I32 [FailedToGetExitCode({ command : Str, err : IOErr})]
 exec_exit_code! = |@Cmd(cmd)|
     Host.command_exec_exit_code!(cmd)
@@ -180,7 +193,7 @@ envs = |@Cmd(cmd), key_values|
     @Cmd({ cmd & envs: List.concat(cmd.envs, values) })
 
 ## Clear all environment variables, and prevent inheriting from parent, only
-## the environment variables provided to command are available to the child.
+## the environment variables provided by [env] or [envs] are available to the child.
 ##
 ## ```
 ## # Represents "env" with only "FOO" environment variable set

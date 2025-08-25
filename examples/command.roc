@@ -6,8 +6,6 @@ import pf.Arg exposing [Arg]
 
 # Different ways to run commands like you do in a terminal. 
 
-# TODO add failure branch coverage to command test
-
 # To run this example: check the README.md in this folder
 
 main! : List Arg => Result {} _
@@ -16,7 +14,7 @@ main! = |_args|
     # Simplest way to execute a command (prints to your terminal).
     Cmd.exec!("echo", ["Hello"])?
 
-    # To execute and capture the output (stdout, stderr, and exit code) without inheriting your terminal.
+    # To execute and capture the output (stdout and stderr) without inheriting your terminal.
     cmd_output =
         Cmd.new("echo")
         |> Cmd.args(["Hi"])
@@ -33,14 +31,16 @@ main! = |_args|
     |> Cmd.exec_cmd!()?
 
     # To execute and just get the exit code (prints to your terminal).
+    # Prefer using `exec!` or `exec_cmd!`.
     exit_code =
         Cmd.new("cat")
-        |> Cmd.args(["temp.txt"])
+        |> Cmd.args(["non_existent.txt"])
         |> Cmd.exec_exit_code!()?
 
     Stdout.line!("Exit code: ${Num.to_str(exit_code)}")?
 
-    # To execute and capture the output in the original form as bytes (stdout, stderr, and exit code) without inheriting your terminal.
+    # To execute and capture the output (stdout and stderr) in the original form as bytes without inheriting your terminal.
+    # Prefer using `exec_output!`.
     cmd_output_bytes =
         Cmd.new("echo")
         |> Cmd.args(["Hi"])

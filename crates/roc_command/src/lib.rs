@@ -144,7 +144,6 @@ pub fn command_exec_output(roc_cmd: &Command) -> RocResult<OutputFromHostSuccess
                             stdout_bytes,
                         })
                     } else {
-                        println!("{:?}", stderr_bytes);
                         // Failure case
                         RocResult::err(RocResult::ok(OutputFromHostFailure {
                             stderr_bytes,

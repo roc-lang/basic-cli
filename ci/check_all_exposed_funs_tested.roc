@@ -106,39 +106,29 @@ is_function_unused! = |module_name, function_name|
     )?
 
     # Check if ripgrep is installed
-    rg_check_cmd = Cmd.new("rg") |> Cmd.arg("--version")
-    rg_check_output = Cmd.output!(rg_check_cmd)
+    _ = Cmd.exec!("rg", ["--version"]) ? |err| RipgrepNotInstalled(err)
 
-    when rg_check_output.status is
-        Ok(0) ->
-                unused_in_dir =
-                    search_dirs
-                    |> List.map_try!( |search_dir|
-                        # Skip searching if directory doesn't exist
-                        dir_exists = File.is_dir!(search_dir)?
-                        if !dir_exists then
-                            Ok(Bool.true) # Consider unused if we can't search
-                        else
-                            # Use ripgrep to search for the function pattern
-                            cmd =
-                                Cmd.new("rg")
-                                |> Cmd.arg("-q") # Quiet mode - we only care about exit code
-                                |> Cmd.arg(function_pattern)
-                                |> Cmd.arg(search_dir)
 
-                            status_res = Cmd.status!(cmd)
+    unused_in_dir =
+        search_dirs
+        |> List.map_try!( |search_dir|
+            # Skip searching if directory doesn't exist
+            dir_exists = File.is_dir!(search_dir)?
+            if !dir_exists then
+                Ok(Bool.true) # Consider unused if we can't search
+            else
+                # Use ripgrep to search for the function pattern
+                cmd_res =
+                    Cmd.exec!("rg", ["-q", function_pattern, search_dir])
 
-                            # ripgrep returns status 0 if matches were found, 1 if no matches
-                            when status_res is
-                                Ok(0) -> Ok(Bool.false) # Function is used (not unused)
-                                _ -> Ok(Bool.true)
-                    )?
+                when cmd_res is
+                    Ok(_) -> Ok(Bool.false) # Function is used (not unused)
+                    _ -> Ok(Bool.true)
+        )?
 
-                unused_in_dir
-                |> List.walk!(Bool.true, |state, is_unused_res| state && is_unused_res)
-                |> Ok
-        _ ->
-            err_s("Error: ripgrep (rg) is not installed or not available in PATH. Please install ripgrep to use this script. Full output: ${Inspect.to_str(rg_check_output)}")
+    unused_in_dir
+    |> List.walk!(Bool.true, |state, is_unused_res| state && is_unused_res)
+    |> Ok
 
 
 
