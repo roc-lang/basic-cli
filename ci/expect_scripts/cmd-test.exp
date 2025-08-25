@@ -7,7 +7,7 @@ set timeout 7
 
 source ./ci/expect_scripts/shared-code.exp
 
-spawn $env(TESTS_DIR)command
+spawn $env(TESTS_DIR)cmd-test
 
 
 set expected_output [normalize_output {

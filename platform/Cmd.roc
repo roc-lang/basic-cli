@@ -139,7 +139,7 @@ exec_output_bytes! = |@Cmd(cmd)|
 ## Execute command and inherit stdin, stdout and stderr from parent. Returns the exit code.
 ##
 ## You should prefer using [exec!] or [exec_cmd!] instead, only use this if you want to take a specific action based on a **specific non-zero exit code**.
-## For example, `roc check` returns exit code 1 if there are errors, and exit code 2 if there are warnings.
+## For example, `roc check` returns exit code 1 if there are errors, and exit code 2 if there are only warnings.
 ## So, you could use `exec_exit_code!` to ignore warnings on `roc check`.
 ##
 ## ```
@@ -212,7 +212,7 @@ new = |program|
     )
 
 ## Add a single argument to the command.
-## ! Shell features like variable subsitition (e.g. `$FOO`), glob patterns (e.g. `*.txt`), ... are not available.
+## ❗ Shell features like variable subsitition (e.g. `$FOO`), glob patterns (e.g. `*.txt`), ... are not available.
 ##
 ## ```
 ## # Represent the command "ls -l"
@@ -225,7 +225,7 @@ arg = |@Cmd(cmd), value|
     @Cmd({ cmd & args: List.append(cmd.args, value) })
 
 ## Add multiple arguments to the command.
-## ! Shell features like variable subsitition (e.g. `$FOO`), glob patterns (e.g. `*.txt`), ... are not available.
+## ❗ Shell features like variable subsitition (e.g. `$FOO`), glob patterns (e.g. `*.txt`), ... are not available.
 ##
 ## ```
 ## # Represent the command "ls -l -a"
