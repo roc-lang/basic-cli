@@ -47,7 +47,6 @@ roc_version! = |roc_cmd|
     info!("Checking provided roc; executing `${roc_cmd} version`:")?
 
     Cmd.exec!(roc_cmd, ["version"])
-    |> Result.map_err(RocVersionCheckFailed)
 
 get_os_and_arch! : {} => Result OSAndArch _
 get_os_and_arch! = |{}|
@@ -78,7 +77,6 @@ build_stub_app_lib! = |roc_cmd, stub_lib_path|
     info!("Building stubbed app shared library ...")?
 
     Cmd.exec!(roc_cmd, ["build", "--lib", "platform/libapp.roc", "--output", stub_lib_path, "--optimize"])
-    |> Result.map_err(ErrBuildingAppStub)
 
 stub_file_extension : OSAndArch -> Str
 stub_file_extension = |os_and_arch|
@@ -130,7 +128,6 @@ cargo_build_host! = |debug_mode|
     args = cargo_build_args!({})?
 
     Cmd.exec!("cargo", args)
-    |> Result.map_err(ErrBuildingHostBinaries)
 
 copy_host_lib! : OSAndArch, Str => Result {} _
 copy_host_lib! = |os_and_arch, rust_target_folder|
@@ -142,7 +139,6 @@ copy_host_lib! = |os_and_arch, rust_target_folder|
     info!("Moving the prebuilt binary from ${host_build_path} to ${host_dest_path} ...")?
 
     Cmd.exec!("cp", [host_build_path, host_dest_path])
-    |> Result.map_err(ErrMovingPrebuiltLegacyBinary)
 
 preprocess_host! : Str, Str, Str => Result {} _
 preprocess_host! = |roc_cmd, stub_lib_path, rust_target_folder|
@@ -152,7 +148,6 @@ preprocess_host! = |roc_cmd, stub_lib_path, rust_target_folder|
     surgical_build_path = "${rust_target_folder}host"
 
     Cmd.exec!(roc_cmd, ["preprocess-host", surgical_build_path, "platform/main.roc", stub_lib_path])
-    |> Result.map_err(ErrPreprocessingSurgicalBinary)
 
 info! : Str => Result {} _
 info! = |msg|
