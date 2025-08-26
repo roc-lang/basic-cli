@@ -19,7 +19,7 @@ A Roc [platform](https://github.com/roc-lang/roc/wiki/Roc-concepts-explained#pla
   - [0.17.0](https://roc-lang.github.io/basic-cli/0.17.0/)
   - [latest main branch](https://roc-lang.github.io/basic-cli/main/)
 
-## Running locally
+## Running Locally
 
 If you clone this repo instead of using the release URL you'll need to build the platform once:
 ```sh
