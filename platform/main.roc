@@ -44,15 +44,24 @@ main_for_host! = |raw_args|
                 _ = Stderr.line!(msg)
                 code
 
-        Err(msg) ->
+        Err(err) ->
+            err_str = Inspect.to_str(err)
+
+            clean_err_str =
+                # Inspect adds parentheses around errors, which are unnecessary here.
+                if Str.starts_with(err_str, "(") and Str.ends_with(err_str, ")") then
+                    err_str
+                    |> Str.replace_first("(", "")
+                    |> Str.replace_last(")", "")
+                else
+                    err_str
+
             help_msg =
                 """
 
                 Program exited with error:
 
-                    ❌ ${Inspect.to_str(msg)}
-
-                Tip: If you do not want to exit on this error, use `Result.map_err` to handle the error. Docs for `Result.map_err`: <https://www.roc-lang.org/builtins/Result#map_err>
+                    ❌ ${clean_err_str}
                 """
 
             _ = Stderr.line!(help_msg)

@@ -93,15 +93,13 @@ test_file_operations! = |{}|
     bytes_path = Path.from_str("test_path_bytes.txt")
     Path.write_bytes!(test_bytes, bytes_path)?
     
-    # Verify file exists using ls
-    ls_output = Cmd.new("ls") |> Cmd.args(["-la", "test_path_bytes.txt"]) |> Cmd.output!()
-    ls_exit_code = ls_output.status ? |err| LsFailedToGetExitCode(err)
+    # Verify file exists
+    _ = Cmd.exec!("test", ["-e", "test_path_bytes.txt"])?
     
     read_bytes = Path.read_bytes!(bytes_path)?
     
     Stdout.line!(
         """
-        test_path_bytes.txt exists: ${Inspect.to_str(ls_exit_code == 0)}
         Bytes written: ${Inspect.to_str(test_bytes)}
         Bytes read: ${Inspect.to_str(read_bytes)}
         Bytes match: ${Inspect.to_str(test_bytes == read_bytes)}
@@ -114,14 +112,13 @@ test_file_operations! = |{}|
     Path.write_utf8!(utf8_content, utf8_path)?
     
     # Check file content with cat
-    cat_output = Cmd.new("cat") |> Cmd.args(["test_path_utf8.txt"]) |> Cmd.output!()
-    cat_stdout = Str.from_utf8(cat_output.stdout) ? |_| CatInvalidUtf8
+    cat_output = Cmd.new("cat") |> Cmd.args(["test_path_utf8.txt"]) |> Cmd.exec_output!()?
     
     read_utf8 = Path.read_utf8!(utf8_path)?
     
     Stdout.line!(
         """
-        File content via cat: ${cat_stdout}
+        File content via cat: ${cat_output.stdout_utf8}
         UTF-8 written: ${utf8_content}
         UTF-8 read: ${read_utf8}
         UTF-8 content matches: ${Inspect.to_str(utf8_content == read_utf8)}
@@ -152,17 +149,16 @@ test_file_operations! = |{}|
     Path.write_utf8!("This file will be deleted", delete_path)?
     
     # Verify file exists before deletion
-    ls_before = Cmd.new("ls") |> Cmd.args(["test_to_delete.txt"]) |> Cmd.output!() 
+    _ = Cmd.exec!("test", ["-e", "test_to_delete.txt"])?
 
     Path.delete!(delete_path) ? |err| DeleteFailed(err)
     
     # Verify file is gone after deletion
-    ls_after = Cmd.new("ls") |> Cmd.args(["test_to_delete.txt"]) |> Cmd.output!()
+    exists_after_res = Cmd.exec!("test", ["-e", "test_to_delete.txt"])
     
     Stdout.line!(
         """
-        File exists before delete: ${Inspect.to_str(ls_before.status? == 0)}
-        File exists after delete: ${Inspect.to_str(ls_after.status? == 0)}
+        File no longer exists: ${Inspect.to_str(Result.is_err(exists_after_res))}
         """
     )?
 
@@ -170,39 +166,29 @@ test_file_operations! = |{}|
 
 test_directory_operations! : {} => Result {} _
 test_directory_operations! = |{}|
-    Stdout.line!("\nTesting Path directory operations:")?
+    Stdout.line!("\nTesting Path directory operations...")?
 
     # Test Path.create_dir!
     single_dir = Path.from_str("test_single_dir")
     Path.create_dir!(single_dir)?
     
     # Verify directory exists
-    ls_dir = Cmd.new("ls") |> Cmd.args(["-ld", "test_single_dir"]) |> Cmd.output!()
-    ls_dir_stdout = Str.from_utf8(ls_dir.stdout) ? |_| LsDirInvalidUtf8
-    is_dir = Str.starts_with(ls_dir_stdout, "d")
-    
-    Stdout.line!(
-        """
-        Created directory: ${Str.trim_end(ls_dir_stdout)}
-        Is a directory: ${Inspect.to_str(is_dir)}\n
-        """
-    )?
+    _ = Cmd.exec!("test", ["-d", "test_single_dir"])?
 
     # Test Path.create_all! (nested directories)
     nested_dir = Path.from_str("test_parent/test_child/test_grandchild")
     Path.create_all!(nested_dir)?
     
     # Verify nested structure with find
-    find_output = Cmd.new("find") |> Cmd.args(["test_parent", "-type", "d"]) |> Cmd.output!()
-    find_stdout = Str.from_utf8(find_output.stdout) ? |_| FindInvalidUtf8
+    find_output = Cmd.new("find") |> Cmd.args(["test_parent", "-type", "d"]) |> Cmd.exec_output!()?
     
     # Count directories created
-    dir_count = Str.split_on(find_stdout, "\n") |> List.len
+    dir_count = Str.split_on(find_output.stdout_utf8, "\n") |> List.len
     
     Stdout.line!(
         """
         Nested directory structure:
-        ${find_stdout}
+        ${find_output.stdout_utf8}
         Number of directories created: ${Num.to_str(dir_count - 1)}
         """
     )?
@@ -213,13 +199,12 @@ test_directory_operations! = |{}|
     Path.create_dir!(Path.from_str("test_single_dir/subdir"))?
     
     # List directory contents
-    ls_contents = Cmd.new("ls") |> Cmd.args(["-la", "test_single_dir"]) |> Cmd.output!()
-    ls_contents_stdout = Str.from_utf8(ls_contents.stdout) ? |_| LsContentsInvalidUtf8
+    ls_contents = Cmd.new("ls") |> Cmd.args(["-la", "test_single_dir"]) |> Cmd.exec_output!()?
     
     Stdout.line!(
         """
         Directory contents:
-        ${ls_contents_stdout}
+        ${ls_contents.stdout_utf8}
         """
     )?
 
@@ -228,34 +213,32 @@ test_directory_operations! = |{}|
     Path.create_dir!(empty_dir)?
     
     # Verify it exists
-    ls_empty_before = Cmd.new("ls") |> Cmd.args(["-ld", "test_empty_dir"]) |> Cmd.output!()
+    _ = Cmd.exec!("test", ["-e", "test_empty_dir"])?
     
     Path.delete_empty!(empty_dir)?
     
     # Verify it's gone
-    ls_empty_after = Cmd.new("ls") |> Cmd.args(["-ld", "test_empty_dir"]) |> Cmd.output!()
+    exists_after_res = Cmd.exec!("test", ["-e", "test_empty_dir"])
     
     Stdout.line!(
         """
-        Empty dir exists before delete: ${Inspect.to_str(ls_empty_before.status? == 0)}
-        Empty dir exists after delete: ${Inspect.to_str(ls_empty_after.status? == 0)}
+        Empty dir was deleted: ${Inspect.to_str(Result.is_err(exists_after_res))}
         """
     )?
 
     # Test Path.delete_all!
     # First show what we're about to delete
-    du_output = Cmd.new("du") |> Cmd.args(["-sh", "test_parent"]) |> Cmd.output!()
-    du_stdout = Str.from_utf8(du_output.stdout) ? |_| DuInvalidUtf8
+    du_output = Cmd.new("du") |> Cmd.args(["-sh", "test_parent"]) |> Cmd.exec_output!()?
     
     Path.delete_all!(Path.from_str("test_parent"))?
     
     # Verify it's gone
-    ls_parent_after = Cmd.new("ls") |> Cmd.args(["test_parent"]) |> Cmd.output!()
+    parent_exists_afer_res = Cmd.exec!("test", ["-e", "test_parent"])
     
     Stdout.line!(
         """
-        Size before delete_all: ${du_stdout}
-        Parent dir exists after delete_all: ${Inspect.to_str(ls_parent_after.status? == 0)}
+        Size before delete_all: ${du_output.stdout_utf8}
+        Parent dir no longer exists: ${Inspect.to_str(Result.is_err(parent_exists_afer_res))}
         """
     )?
 
@@ -273,16 +256,14 @@ test_hard_link! = |{}|
     Path.write_utf8!("Original content for Path hard link test", original_path)?
     
     # Get original file stats
-    stat_before = Cmd.new("stat") |> Cmd.args(["-c", "%h", "test_path_original.txt"]) |> Cmd.output!()
-    links_before = Str.from_utf8(stat_before.stdout) ? |_| StatBeforeInvalidUtf8
+    stat_before = Cmd.new("stat") |> Cmd.args(["-c", "%h", "test_path_original.txt"]) |> Cmd.exec_output!()?
     
     # Create hard link
     link_path = Path.from_str("test_path_hardlink.txt")
     when Path.hard_link!(original_path, link_path) is
         Ok({}) ->
             # Get link count after
-            stat_after = Cmd.new("stat") |> Cmd.args(["-c", "%h", "test_path_original.txt"]) |> Cmd.output!()
-            links_after = Str.from_utf8(stat_after.stdout) ? |_| StatAfterInvalidUtf8
+            stat_after = Cmd.new("stat") |> Cmd.args(["-c", "%h", "test_path_original.txt"]) |> Cmd.exec_output!()?
 
             # Verify both files exist and have same content
             original_content = Path.read_utf8!(original_path)?
@@ -290,8 +271,8 @@ test_hard_link! = |{}|
             
             Stdout.line!(
                 """
-                Hard link count before: ${Str.trim(links_before)}
-                Hard link count after: ${Str.trim(links_after)}
+                Hard link count before: ${Str.trim(stat_before.stdout_utf8)}
+                Hard link count after: ${Str.trim(stat_after.stdout_utf8)}
                 Original content: ${original_content}
                 Link content: ${link_content}
                 Content matches: ${Inspect.to_str(original_content == link_content)}
@@ -302,12 +283,10 @@ test_hard_link! = |{}|
             ls_li_output =
                 Cmd.new("ls")
                 |> Cmd.args(["-li", "test_path_original.txt", "test_path_hardlink.txt"])
-                |> Cmd.output!()
-
-            ls_li_stdout_utf8 = Str.from_utf8(ls_li_output.stdout) ? |_| LsLiInvalidUtf8
+                |> Cmd.exec_output!()?
 
             inodes =
-                Str.split_on(ls_li_stdout_utf8, "\n")
+                Str.split_on(ls_li_output.stdout_utf8, "\n")
                 |> List.map(|line| 
                                 Str.split_on(line, " ")
                                 |> List.take_first(1)
@@ -319,7 +298,7 @@ test_hard_link! = |{}|
             Stdout.line!(
                 """
                 Inode information:
-                ${ls_li_stdout_utf8}
+                ${ls_li_output.stdout_utf8}
                 First file inode: ${Inspect.to_str(first_inode)}
                 Second file inode: ${Inspect.to_str(second_inode)}
                 Inodes are equal: ${Inspect.to_str(first_inode == second_inode)}
@@ -411,35 +390,30 @@ cleanup_test_files! = |files_requirement|
     ]
 
     # Show files before cleanup
-    ls_before_cleanup = Cmd.new("ls") |> Cmd.args(["-la"] |> List.concat(test_files)) |> Cmd.output!()
+    ls_before_cleanup = Cmd.new("ls") |> Cmd.args(["-la"] |> List.concat(test_files)) |> Cmd.exec_output!()?
     
-    if ls_before_cleanup.status? == 0 then
-        cleanup_stdout = Str.from_utf8(ls_before_cleanup.stdout) ? |_| CleanupInvalidUtf8
-        
-        Stdout.line!(
-            """
-            Files to clean up:
-            ${cleanup_stdout}
-            """
-        )?
+    Stdout.line!(
+        """
+        Files to clean up:
+        ${ls_before_cleanup.stdout_utf8}
+        """
+    )?
 
-        delete_result = List.for_each_try!(test_files, |filename| 
-            Path.delete!(Path.from_str(filename))
-        )
+    delete_result = List.for_each_try!(test_files, |filename| 
+        Path.delete!(Path.from_str(filename))
+    )
 
-        when files_requirement is
-            FilesNeedToExist ->
-                delete_result ? |err| FileDeletionFailed(err)
-            FilesMaybeExist ->
-                Ok({})?
-        
-        # Verify cleanup
-        ls_after_cleanup = Cmd.new("ls") |> Cmd.args(test_files) |> Cmd.output!()
-        
-        Stdout.line!(
-            """
-            Files remaining after cleanup: ${Inspect.to_str(ls_after_cleanup.status? == 0)}
-            """
-        )
-    else
-        Stderr.line!("✗ Error listing files before cleanup: `ls -la ...` exited with non-zero exit code:\n\t${Inspect.to_str(ls_before_cleanup)}")
+    when files_requirement is
+        FilesNeedToExist ->
+            delete_result ? |err| FileDeletionFailed(err)
+        FilesMaybeExist ->
+            Ok({})?
+    
+    # Verify cleanup
+    ls_after_cleanup_res = Cmd.exec!("ls", test_files)
+    
+    Stdout.line!(
+        """
+        Files deleted successfully: ${Inspect.to_str(Result.is_err(ls_after_cleanup_res))}
+        """
+    )

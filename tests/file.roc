@@ -144,12 +144,10 @@ test_hard_link! = |{}|
             ls_li_output =
                 Cmd.new("ls")
                 |> Cmd.args(["-li", "test_original_file.txt", "test_link_to_original.txt"])
-                |> Cmd.output!()
-
-            ls_li_stdout_utf8 = Str.from_utf8(ls_li_output.stdout) ? |_| LsLiInvalidUtf8
+                |> Cmd.exec_output!()?
 
             inodes =
-                Str.split_on(ls_li_stdout_utf8, "\n")
+                Str.split_on(ls_li_output.stdout_utf8, "\n")
                 |> List.map(|line| 
                                 Str.split_on(line, " ")
                                 |> List.take_first(1)
