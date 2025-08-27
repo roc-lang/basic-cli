@@ -26,8 +26,8 @@ main! = |_args|
     ci_cargo_path = "ci/rust_http_server/Cargo.toml"
 
     # Check if both files exist
-    root_exists = File.is_file!(root_cargo_path)?
-    ci_exists = File.is_file!(ci_cargo_path)?
+    root_exists = File.exists!(root_cargo_path)?
+    ci_exists = File.exists!(ci_cargo_path)?
 
     if !root_exists then
         err_exit("${root_cargo_path} not found in ${Path.display(cwd)}.")
