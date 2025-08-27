@@ -4,9 +4,11 @@
 set -exo pipefail
 
 if [ -z "${EXAMPLES_DIR}" ]; then
-  echo "ERROR: The EXAMPLES_DIR environment variable is not set." >&2
+    echo "ERROR: The EXAMPLES_DIR environment variable is not set." >&2
 
-  exit 1
+    exit 1
+else
+    EXAMPLES_DIR=$(realpath "${EXAMPLES_DIR}")/
 fi
 
 if [ -z "${ROC}" ]; then
