@@ -44,10 +44,10 @@ exe_path! = |{}|
 ##
 ## If the value is invalid Unicode, the invalid parts will be replaced with the
 ## [Unicode replacement character](https://unicode.org/glossary/#replacement_character) ('�').
-var! : Str => Result Str [VarNotFound]
+var! : Str => Result Str [VarNotFound(Str)]
 var! = |name|
     Host.env_var!(name)
-    |> Result.map_err(|{}| VarNotFound)
+    |> Result.map_err(|{}| VarNotFound(name))
 
 ## Reads the given environment variable and attempts to decode it into the correct type.
 ## The type being decoded into will be determined by type inference. For example,
@@ -74,10 +74,10 @@ var! = |name|
 ## fail with [DecodeErr](https://www.roc-lang.org/builtins/Decode#DecodeError)
 ## because `123456789` is too large to fit in a [U16](https://www.roc-lang.org/builtins/Num#U16).
 ##
-decode! : Str => Result val [VarNotFound, DecodeErr DecodeError] where val implements Decoding
+decode! : Str => Result val [VarNotFound(Str), DecodeErr DecodeError] where val implements Decoding
 decode! = |name|
     when Host.env_var!(name) is
-        Err({}) -> Err(VarNotFound)
+        Err({}) -> Err(VarNotFound(name))
         Ok(var_str) ->
             Str.to_utf8(var_str)
             |> Decode.from_bytes(EnvDecoding.format({}))

@@ -251,7 +251,7 @@ is_writable! = |path_str|
 ## This uses [rust's std::fs::Metadata::accessed](https://doc.rust-lang.org/std/fs/struct.Metadata.html#method.accessed).
 ## Note that this is [not guaranteed to be correct in all cases](https://doc.rust-lang.org/std/fs/struct.Metadata.html#method.accessed).
 ##
-## NOTE: thise function will not work if the platform was built with musl, which is the case for the normal tar.br URL release.
+## NOTE: this function will not work on Linux if the platform was built with musl, which is the case for the normal tar.br URL release.
 ## See "Running Locally" in the README.md file to build without musl.
 time_accessed! : Str => Result Utc [PathErr IOErr]
 time_accessed! = |path_str|
@@ -263,7 +263,7 @@ time_accessed! = |path_str|
 ##
 ## This uses [rust's std::fs::Metadata::modified](https://doc.rust-lang.org/std/fs/struct.Metadata.html#method.modified).
 ##
-## NOTE: this function will not work if the platform was built with musl, which is the case for the normal tar.br URL release.
+## NOTE: this function will not work on Linux if the platform was built with musl, which is the case for the normal tar.br URL release.
 ## See "Running Locally" in the README.md file to build without musl.
 time_modified! : Str => Result Utc [PathErr IOErr]
 time_modified! = |path_str|
@@ -275,7 +275,7 @@ time_modified! = |path_str|
 ##
 ## This uses [rust's std::fs::Metadata::created](https://doc.rust-lang.org/std/fs/struct.Metadata.html#method.created).
 ##
-## NOTE: this function will not work if the platform was built with musl, which is the case for the normal tar.br URL release.
+## NOTE: this function will not work on Linux if the platform was built with musl, which is the case for the normal tar.br URL release.
 ## See "Running Locally" in the README.md file to build without musl.
 time_created! : Str => Result Utc [PathErr IOErr]
 time_created! = |path_str|
