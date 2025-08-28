@@ -16,7 +16,7 @@ main! = |_args|
         Ok(_) ->
             cleanup_test_files!(FilesNeedToExist)
         Err(err) ->
-            cleanup_test_files!(FilesMaybeExist)?
+            _ = cleanup_test_files!(FilesMaybeExist)
             Err(Exit(1, "Test run failed:\n\t${Inspect.to_str(err)}"))
 
 run_tests! : {} => Result {} _

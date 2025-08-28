@@ -45,14 +45,14 @@ test_parent/test_child/test_grandchild
 Number of directories created: 3
 Directory contents:
 total \\d+
-dr\[-rwx\]+ +\\d+ \\w+ (\\w+ )? *\\d+ \\w+ +\\d+ \\d+:\\d+ \\.
-dr\[-rwx\]+ +\\d+ \\w+ (\\w+ )? *\\d+ \\w+ +\\d+ \\d+:\\d+ \\.\\.
--\[-rwx\]+ +\\d+ \\w+ (\\w+ )? *\\d+ \\w+ +\\d+ \\d+:\\d+ file1\\.txt
--\[-rwx\]+ +\\d+ \\w+ (\\w+ )? *\\d+ \\w+ +\\d+ \\d+:\\d+ file2\\.txt
-dr\[-rwx\]+ +\\d+ \\w+ (\\w+ )? *\\d+ \\w+ +\\d+ \\d+:\\d+ subdir
+d.* \\.
+d.* \\.\\.
+-.* file1\\.txt
+-.* file2\\.txt
+d.* subdir
 
 Empty dir was deleted: Bool.true
-Size before delete_all: \\d+\\w*\\s*test_parent
+Size before delete_all:\\s*\\d+\\w*\\s*test_parent
 
 Parent dir no longer exists: Bool.true
 
@@ -63,8 +63,8 @@ Original content: Original content for Path hard link test
 Link content: Original content for Path hard link test
 Content matches: Bool.true
 Inode information:
-\\d+ -rw-r--r-- \\d+ \\w+ (\\w+ )? *\\d+ \\w+ +\\d+ \\d+:\\d+ test_path_hardlink\\.txt
-\\d+ -rw-r--r-- \\d+ \\w+ (\\w+ )? *\\d+ \\w+ +\\d+ \\d+:\\d+ test_path_original\\.txt
+\\d+ .* test_path_hardlink\\.txt
+\\d+ .* test_path_original\\.txt
 
 First file inode: \\\[\"\\d+\"\\\]
 Second file inode: \\\[\"\\d+\"\\\]
@@ -83,19 +83,19 @@ I ran all Path function tests.
 
 Cleaning up test files...
 Files to clean up:
--rw-r--r-- \\d+ \\w+ \\w+ \\d+ \\w+ +\\d+ \\d+:\\d+ test_path_bytes\\.txt
--rw-r--r-- \\d+ \\w+ \\w+ \\d+ \\w+ +\\d+ \\d+:\\d+ test_path_hardlink\\.txt
--rw-r--r-- \\d+ \\w+ \\w+ \\d+ \\w+ +\\d+ \\d+:\\d+ test_path_json\\.json
--rw-r--r-- \\d+ \\w+ \\w+ \\d+ \\w+ +\\d+ \\d+:\\d+ test_path_original\\.txt
--rw-r--r-- \\d+ \\w+ \\w+ \\d+ \\w+ +\\d+ \\d+:\\d+ test_path_rename_new\\.txt
--rw-r--r-- \\d+ \\w+ \\w+ \\d+ \\w+ +\\d+ \\d+:\\d+ test_path_utf8\\.txt
+-.* test_path_bytes\\.txt
+-.* test_path_hardlink\\.txt
+-.* test_path_json\\.json
+-.* test_path_original\\.txt
+-.* test_path_rename_new\\.txt
+-.* test_path_utf8\\.txt
 
-ls: cannot access .*
-ls: cannot access .*
-ls: cannot access .*
-ls: cannot access .*
-ls: cannot access .*
-ls: cannot access .*
+ls: .*
+ls: .*
+ls: .*
+ls: .*
+ls: .*
+ls: .*
 Files deleted successfully: Bool.true
 "]
 

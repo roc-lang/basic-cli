@@ -16,7 +16,7 @@ main! = |_args|
         Ok(_) ->
             cleanup_test_files!(FilesNeedToExist)
         Err(err) ->
-            cleanup_test_files!(FilesMaybeExist)?
+            _ = cleanup_test_files!(FilesMaybeExist)
             Err(Exit(1, "Test run failed:\n\t${Inspect.to_str(err)}"))
 
 run_tests!: {} => Result {} _
@@ -247,6 +247,21 @@ test_directory_operations! = |{}|
 
     Ok({})
 
+get_hard_link_count! : Str => Result Str _
+get_hard_link_count! = |path_str|
+    ls_l =
+        Cmd.new("ls")
+        |> Cmd.args(["-l", path_str])
+        |> Cmd.exec_output!()?
+
+    hard_link_count_str =
+        (ls_l.stdout_utf8
+        |> Str.split_on(" ")
+        |> List.keep_if(|str| !Str.is_empty(str))
+        |> List.get(1)) ? |_| IExpectedALineWithASpaceHere(ls_l)
+
+    Ok(hard_link_count_str)
+
 test_hard_link! : {} => Result {} _
 test_hard_link! = |{}|
     Stdout.line!("\nTesting Path.hard_link!:")?
@@ -255,15 +270,14 @@ test_hard_link! = |{}|
     original_path = Path.from_str("test_path_original.txt")
     Path.write_utf8!("Original content for Path hard link test", original_path)?
     
-    # Get original file stats
-    stat_before = Cmd.new("stat") |> Cmd.args(["-c", "%h", "test_path_original.txt"]) |> Cmd.exec_output!()?
+    hard_link_count_before = get_hard_link_count!("test_path_original.txt")?
     
     # Create hard link
     link_path = Path.from_str("test_path_hardlink.txt")
     when Path.hard_link!(original_path, link_path) is
         Ok({}) ->
             # Get link count after
-            stat_after = Cmd.new("stat") |> Cmd.args(["-c", "%h", "test_path_original.txt"]) |> Cmd.exec_output!()?
+            hard_link_count_after = get_hard_link_count!("test_path_original.txt")?
 
             # Verify both files exist and have same content
             original_content = Path.read_utf8!(original_path)?
@@ -271,8 +285,8 @@ test_hard_link! = |{}|
             
             Stdout.line!(
                 """
-                Hard link count before: ${Str.trim(stat_before.stdout_utf8)}
-                Hard link count after: ${Str.trim(stat_after.stdout_utf8)}
+                Hard link count before: ${hard_link_count_before}
+                Hard link count after: ${hard_link_count_after}
                 Original content: ${original_content}
                 Link content: ${link_content}
                 Content matches: ${Inspect.to_str(original_content == link_content)}
