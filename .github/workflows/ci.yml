@@ -48,7 +48,6 @@ jobs:
       - name: Install dependencies (Ubuntu)
         if: startsWith(matrix.os, 'ubuntu-')
         run: |
-          sudo apt update
           sudo apt install -y expect ncat ripgrep
 
       - name: Install dependencies (macOS)
