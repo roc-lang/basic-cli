@@ -21,7 +21,7 @@ if [ -z "${ROC}" ]; then
   exit 1
 fi
 
-TESTS_DIR="${EXAMPLES_DIR/\/examples\//\/tests\/}"
+TESTS_DIR="$(dirname "$EXAMPLES_DIR")/tests/"
 export TESTS_DIR
 
 if [ "$NO_BUILD" != "1" ]; then
