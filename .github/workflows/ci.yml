@@ -12,7 +12,7 @@ permissions: {}
 
 jobs:
   build-and-test-native:
-    runs-on: ${{ matrix.operating-system }}
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         operating-system: [ubuntu-22.04, ubuntu-24.04, ubuntu-24.04-arm, macos-15]
