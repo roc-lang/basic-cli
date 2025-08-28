@@ -89,6 +89,6 @@ jobs:
         if: startsWith(matrix.os, 'ubuntu-')
         run: |
           # TODO remove `if` when above TODOs are done
-          if [[ "${{ matrix.operating-system }}" != *"-arm" ]]; then
+          if [[ "${{ matrix.os }}" != *"-arm" ]]; then
             NO_BUILD=1 IS_MUSL=1 ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
           fi
