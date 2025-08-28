@@ -19,6 +19,9 @@ err_s = |err_msg| Err(StrErr(err_msg))
 
 main! : List Arg => Result {} _
 main! = |_args|
+    # Check if ripgrep is installed
+    _ = Cmd.exec!("rg", ["--version"]) ? |err| RipgrepNotInstalled(err)
+
     cwd = Env.cwd!({}) ? |err| FailedToGetCwd(err)
     Stdout.line!("Current working directory: ${Path.display(cwd)}")?
 
@@ -104,9 +107,6 @@ is_function_unused! = |module_name, function_name|
                 Err err ->
                     err_s("Error checking directory '${search_dir}': ${Inspect.to_str(err)}")
     )?
-
-    # Check if ripgrep is installed
-    _ = Cmd.exec!("rg", ["--version"]) ? |err| RipgrepNotInstalled(err)
 
 
     unused_in_dir =
