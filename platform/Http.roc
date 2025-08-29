@@ -90,7 +90,7 @@ header = |(name, value)| { name, value }
 ## response =
 ##     Http.send!({ Http.default_request & uri: "https://www.roc-lang.org" })?
 ##
-## Stdout.line!(Str.from_utf8(response.body))?
+## Stdout.line!(Str.from_utf8(response.body)?)?
 ## ```
 send! : Request => Result Response [HttpErr [Timeout, NetworkError, BadBody, Other (List U8)]]
 send! = |request|
