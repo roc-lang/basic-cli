@@ -66,7 +66,7 @@ jobs:
         if: startsWith(matrix.os, 'ubuntu-')
         run: |
           sudo apt-get install -y musl-tools
-          if [[ "${{ matrix.operating-system }}" == *"-arm" ]]; then
+          if [[ "${{ matrix.os }}" == *"-arm" ]]; then
             # TODO re-enable once TODO below is done: rustup target add aarch64-unknown-linux-musl
             echo "no-op"
           else
@@ -78,7 +78,7 @@ jobs:
         env:
           ROC: ./roc_nightly/roc
         run: |
-          if [[ "${{ matrix.operating-system }}" == *"-arm" ]]; then
+          if [[ "${{ matrix.os}}" == *"-arm" ]]; then
             # TODO debug this: CARGO_BUILD_TARGET=aarch64-unknown-linux-musl $ROC build.roc
             echo "no-op"
           else
@@ -89,6 +89,6 @@ jobs:
         if: startsWith(matrix.os, 'ubuntu-')
         run: |
           # TODO remove `if` when above TODOs are done
-          if [[ "${{ matrix.operating-system }}" != *"-arm" ]]; then
+          if [[ "${{ matrix.os }}" != *"-arm" ]]; then
             NO_BUILD=1 IS_MUSL=1 ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
           fi
