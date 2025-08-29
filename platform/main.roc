@@ -61,7 +61,7 @@ main_for_host! = |raw_args|
 
                 Program exited with error:
 
-                    ❌ ${clean_err_str}
+                ❌ ${clean_err_str}
                 """
 
             _ = Stderr.line!(help_msg)
