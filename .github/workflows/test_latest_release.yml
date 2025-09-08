@@ -17,6 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: install dependencies
+        run: sudo apt install -y expect ncat ripgrep
+
       - name: remove everything except some ci scripts
         run: |
           mkdir temp
