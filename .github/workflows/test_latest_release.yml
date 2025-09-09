@@ -34,6 +34,12 @@ jobs:
       - name: Use ./ci/test_latest_release.sh of the latest git main
         run: mv -f ./temp/test_latest_release.sh ./ci/
 
+      - name: Remove things that dont work on musl
+        run: |
+          rm ./examples/file-accessed-modified-created-time.roc
+          sed -i.bak -e '/time_accessed!,$/d' -e '/time_modified!,$/d' -e '/time_created!,$/d' -e '/^time_accessed!/,/^$/d' -e '/^time_modified!/,/^$/d' -e '/^time_created!/,/^$/d' -e '/^import Utc exposing \[Utc\]$/d' ./platform/File.roc
+          rm ./platform/File.roc.bak
+
       - name: Run all tests with latest roc release + latest basic-cli release
         run: EXAMPLES_DIR=./examples/ ./ci/test_latest_release.sh
         env:
