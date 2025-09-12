@@ -20,9 +20,9 @@ err_s = |err_msg| Err(StrErr(err_msg))
 main! : List Arg => Result {} _
 main! = |_args|
     # Check if ripgrep is installed
-    _ = Cmd.exec!("rg", ["--version"]) ? |err| RipgrepNotInstalled(err)
+    _ = Cmd.exec!("rg", ["--version"]) ? RipgrepNotInstalled
 
-    cwd = Env.cwd!({}) ? |err| FailedToGetCwd(err)
+    cwd = Env.cwd!({}) ? FailedToGetCwd
     Stdout.line!("Current working directory: ${Path.display(cwd)}")?
 
     path_to_platform_main = "platform/main.roc"
@@ -87,7 +87,7 @@ is_function_unused! = |module_name, function_name|
     search_dirs = ["examples", "tests"]
 
     # Check current working directory
-    cwd = Env.cwd!({}) ? |err| FailedToGetCwd2(err)
+    cwd = Env.cwd!({}) ? FailedToGetCwd2
 
     # Check if directories exist
     List.for_each_try!(

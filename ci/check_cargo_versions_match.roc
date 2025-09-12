@@ -19,7 +19,7 @@ err_exit = |err_msg| Err(Exit(1, "\n❌ ${err_msg}"))
 
 main! : List Arg => Result {} _
 main! = |_args|
-    cwd = Env.cwd!({}) ? |err| FailedToGetCwd(err)
+    cwd = Env.cwd!({}) ? FailedToGetCwd
     Stdout.line!("Current working directory: ${Path.display(cwd)}")?
 
     root_cargo_path = "Cargo.toml"

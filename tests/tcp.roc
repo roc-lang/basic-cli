@@ -59,8 +59,8 @@ test_tcp_functions! = |stream|
     do_not_read_bytes = [100, 111, 32, 110, 111, 116, 32, 114, 101, 97, 100, 32, 112, 97, 115, 116, 32, 109, 101, 65] # "do not read past meA" in bytes
     Tcp.write!(stream, do_not_read_bytes)?
 
-    nineteen_bytes = Tcp.read_up_to!(stream, 19) ? |err| FailedReadUpTo(err)
-    nineteen_bytes_as_str = Str.from_utf8(nineteen_bytes) ? |err| ReadUpToFromUtf8(err)
+    nineteen_bytes = Tcp.read_up_to!(stream, 19) ? FailedReadUpTo
+    nineteen_bytes_as_str = Str.from_utf8(nineteen_bytes) ? ReadUpToFromUtf8
 
     Stdout.line!(
         """
@@ -72,8 +72,8 @@ test_tcp_functions! = |stream|
     )?
     Tcp.write_utf8!(stream, "BC")?
 
-    three_bytes = Tcp.read_exactly!(stream, 3) ? |err| FailedReadExactly(err)
-    three_bytes_as_str = Str.from_utf8(three_bytes) ? |err| ReadExactlyFromUtf8(err)
+    three_bytes = Tcp.read_exactly!(stream, 3) ? FailedReadExactly
+    three_bytes_as_str = Str.from_utf8(three_bytes) ? ReadExactlyFromUtf8
 
     Stdout.line!(
         """
@@ -85,8 +85,8 @@ test_tcp_functions! = |stream|
     )?
     Tcp.write_utf8!(stream, "Line1\nLine2\n")?
 
-    bytes_until = Tcp.read_until!(stream, '\n') ? |err| FailedReadUntil(err)
-    bytes_until_as_str = Str.from_utf8(bytes_until) ? |err| ReadUntilFromUtf8(err)
+    bytes_until = Tcp.read_until!(stream, '\n') ? FailedReadUntil
+    bytes_until_as_str = Str.from_utf8(bytes_until) ? ReadUntilFromUtf8
 
     Stdout.line!("Tcp.read_until yielded: '${bytes_until_as_str}'")?
 
