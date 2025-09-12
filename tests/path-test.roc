@@ -151,7 +151,7 @@ test_file_operations! = |{}|
     # Verify file exists before deletion
     _ = Cmd.exec!("test", ["-e", "test_to_delete.txt"])?
 
-    Path.delete!(delete_path) ? |err| DeleteFailed(err)
+    Path.delete!(delete_path) ? DeleteFailed
     
     # Verify file is gone after deletion
     exists_after_res = Cmd.exec!("test", ["-e", "test_to_delete.txt"])
@@ -331,7 +331,7 @@ test_path_rename! = |{}|
     new_path = Path.from_str("test_path_rename_new.txt")
     test_file_content = "Content for rename test."
 
-    Path.write_utf8!(test_file_content, original_path) ? |err| WriteOriginalFailed(err)
+    Path.write_utf8!(test_file_content, original_path) ? WriteOriginalFailed
     
     # Rename the file
     when Path.rename!(original_path, new_path) is
@@ -346,12 +346,12 @@ test_path_rename! = |{}|
             else
                 Stdout.line!("✓ Original file no longer exists")?
             
-            new_file_exists = Path.is_file!(new_path) ? |err| NewIsFileFailed(err)
+            new_file_exists = Path.is_file!(new_path) ? NewIsFileFailed
 
             if new_file_exists then
                 Stdout.line!("✓ Renamed file exists")?
                 
-                content = Path.read_utf8!(new_path) ? |err| NewFileReadFailed(err)
+                content = Path.read_utf8!(new_path) ? NewFileReadFailed
 
                 if content == test_file_content then
                     Stdout.line!("✓ Renamed file has correct content")
@@ -371,7 +371,7 @@ test_path_exists! = |{}|
     filename = Path.from_str("test_path_exists.txt")
     Path.write_utf8!("This file exists", filename)?
 
-    file_exists = Path.exists!(filename) ? |err| PathExistsCheckFailed(err)
+    file_exists = Path.exists!(filename) ? PathExistsCheckFailed
 
     if file_exists then 
         Stdout.line!("✓ Path.exists! returns true for a file that exists")?
@@ -381,7 +381,7 @@ test_path_exists! = |{}|
     # Test that a file that does not exist returns false
     Path.delete!(filename)?
 
-    file_exists_after_delete = Path.exists!(filename) ? |err| PathExistsCheckAfterDeleteFailed(err)
+    file_exists_after_delete = Path.exists!(filename) ? PathExistsCheckAfterDeleteFailed
 
     if file_exists_after_delete then
         Stderr.line!("✗ Path.exists! returned true for a file that does not exist")?
@@ -419,7 +419,7 @@ cleanup_test_files! = |files_requirement|
 
     when files_requirement is
         FilesNeedToExist ->
-            delete_result ? |err| FileDeletionFailed(err)
+            delete_result ? FileDeletionFailed
         FilesMaybeExist ->
             Ok({})?
     
