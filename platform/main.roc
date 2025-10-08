@@ -18,6 +18,7 @@ platform "cli"
         Tty,
         Locale,
         Sqlite,
+        Random,
     ]
     packages {}
     imports []

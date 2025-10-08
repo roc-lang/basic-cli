@@ -11,6 +11,7 @@ members = [
     "crates/roc_stdio",
     "crates/roc_env",
     "crates/roc_sqlite",
+    "crates/roc_random",
 ]
 
 [workspace.package]
@@ -37,6 +38,7 @@ roc_http = { path = "crates/roc_http" }
 roc_io_error = { path = "crates/roc_io_error" }
 roc_stdio = { path = "crates/roc_stdio" }
 roc_env = { path = "crates/roc_env" }
+roc_random = { path = "crates/roc_random" }
 roc_sqlite = { path = "crates/roc_sqlite" }
 memchr = "=2.7.4"
 hyper = { version = "=1.6.0", default-features = false, features = [
@@ -61,3 +63,4 @@ libc = "=0.2.172"
 backtrace = "=0.3.75"
 libsqlite3-sys = { version = "=0.33.0", features = ["bundled"] }
 thread_local = "=1.1.8"
+getrandom = { version = "0.3.3", features = [ "std" ] }

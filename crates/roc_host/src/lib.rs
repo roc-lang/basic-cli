@@ -349,6 +349,7 @@ pub fn init() {
         roc_fx_temp_dir as _,
         roc_fx_get_locale as _,
         roc_fx_get_locales as _,
+        roc_fx_random_seed as _,
         roc_fx_sqlite_bind as _,
         roc_fx_sqlite_column_value as _,
         roc_fx_sqlite_columns as _,
@@ -658,7 +659,7 @@ async fn async_send_request(request: hyper::Request<http_body_util::Full<Bytes>>
 
     let client: Client<_, http_body_util::Full<Bytes>> =
         Client::builder(TokioExecutor::new()).build(https);
-        
+
     let response_res = client.request(request).await;
 
     match response_res {
@@ -807,6 +808,11 @@ pub extern "C" fn roc_fx_get_locale() -> RocResult<RocStr, ()> {
 #[no_mangle]
 pub extern "C" fn roc_fx_get_locales() -> RocList<RocStr> {
     roc_env::get_locales()
+}
+
+#[no_mangle]
+pub extern "C" fn roc_fx_random_seed() -> RocResult<u64, IOErr> {
+    roc_random::seed()
 }
 
 #[no_mangle]

@@ -27,6 +27,7 @@ roc_io_error.workspace = true
 roc_http.workspace = true
 roc_stdio.workspace = true
 roc_env.workspace = true
+roc_random.workspace = true
 roc_sqlite.workspace = true
 hyper.workspace = true
 hyper-rustls.workspace = true
