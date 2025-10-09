@@ -1,6 +1,6 @@
 [package]
 name = "roc_random"
-description = "Common functionality for Roc to interface with rand"
+description = "Common functionality for Roc to interface with getrandom"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true

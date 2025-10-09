@@ -7,9 +7,15 @@ set timeout 7
 
 source ./ci/expect_scripts/shared-code.exp
 
-spawn $env(EXAMPLES_DIR)random-seed
+spawn $env(EXAMPLES_DIR)random
 
-expect -re "Seed is: \\d+" {
+set expected_output [normalize_output "
+Random U64 is: \\\d+
+Random U32 is: \\\d+
+Random bytes are: \\\[\\\d+, \\\d+, \\\d+, \\\d+\\\]
+"]
+
+expect -re $expected_output {
     expect eof {
         check_exit_and_segfault
     }
