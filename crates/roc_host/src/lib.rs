@@ -351,7 +351,6 @@ pub fn init() {
         roc_fx_get_locales as _,
         roc_fx_random_u64 as _,
         roc_fx_random_u32 as _,
-        roc_fx_random_bytes as _,
         roc_fx_sqlite_bind as _,
         roc_fx_sqlite_column_value as _,
         roc_fx_sqlite_columns as _,
@@ -820,11 +819,6 @@ pub extern "C" fn roc_fx_random_u64() -> RocResult<u64, IOErr> {
 #[no_mangle]
 pub extern "C" fn roc_fx_random_u32() -> RocResult<u32, IOErr> {
     roc_random::random_u32()
-}
-
-#[no_mangle]
-pub extern "C" fn roc_fx_random_bytes(count: u64) -> RocResult<RocList<u8>, IOErr> {
-    roc_random::random_bytes(count)
 }
 
 #[no_mangle]

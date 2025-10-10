@@ -10,11 +10,11 @@ import pf.Arg exposing [Arg]
 
 main! : List Arg => Result {} _
 main! = |_args|
-    random_u64 = Random.random_u64!({})?
-    Stdout.line!("Random U64 is: ${Inspect.to_str(random_u64)}")?
+    random_u64 = Random.random_seed_u64!({})?
+    Stdout.line!("Random U64 seed is: ${Inspect.to_str(random_u64)}")?
 
-    random_u32 = Random.random_u32!({})?
-    Stdout.line!("Random U32 is: ${Inspect.to_str(random_u32)}")?
+    random_u32 = Random.random_seed_u32!({})?
+    Stdout.line!("Random U32 seed is: ${Inspect.to_str(random_u32)}")
 
-    random_bytes = Random.random_bytes!(4)?
-    Stdout.line!("Random bytes are: ${Inspect.to_str(random_bytes)}")
+    # See the example linked below on how to generate a sequence of random numbers using a seed
+    # https://github.com/roc-lang/examples/blob/main/examples/RandomNumbers/main.roc

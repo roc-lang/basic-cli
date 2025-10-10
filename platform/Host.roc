@@ -35,7 +35,6 @@ hosted [
     posix_time!,
     random_u64!,
     random_u32!,
-    random_bytes!,
     send_request!,
     set_cwd!,
     sleep_millis!,
@@ -152,4 +151,3 @@ set_cwd! : List U8 => Result {} {}
 
 random_u64! : {} => Result U64 InternalIOErr.IOErrFromHost
 random_u32! : {} => Result U32 InternalIOErr.IOErrFromHost
-random_bytes! : U64 => Result (List U8) InternalIOErr.IOErrFromHost
