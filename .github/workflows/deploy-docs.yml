@@ -37,18 +37,12 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Downloading latest roc nightly
-        run: |
-          curl -fOL https://github.com/roc-lang/roc/releases/download/nightly/roc_nightly-linux_x86_64-latest.tar.gz
+      - uses: roc-lang/setup-roc@39c354a6a838a0089eea9068a0414f49b62c5c08
+        with:
+          # Note: nightly hashes are not verified because they are updated regularly.
+          version: nightly
 
-      - name: prep nightly tar for use
-        run: |
-          mv $(ls | grep "roc_nightly.*tar\.gz") roc_nightly.tar.gz
-          tar -xzf roc_nightly.tar.gz
-          rm roc_nightly.tar.gz
-          mv roc_nightly* roc_nightly
-
-      - run: ./roc_nightly/roc version
+      - run: roc version
         
       - name: Create temp directory for docs
         run: mkdir -p ./temp_docs
@@ -101,7 +95,7 @@ jobs:
         env:
           ROC_DOCS_URL_ROOT: /basic-cli/main
         run: |
-          ./roc_nightly/roc docs ./platform/main.roc
+          roc docs ./platform/main.roc
 
           mkdir -p "./temp_docs/main"
 

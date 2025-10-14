@@ -22,28 +22,12 @@ jobs:
       - name: Does init() in platform/src/lib.rs contain all roc_fx functions? (Imperfect check)
         run: cat platform/src/lib.rs | grep -oP 'roc_fx_[^(\s]*' | sort | uniq -u | grep -q . && exit 1 || exit 0
 
-      - name: Downloading latest roc nightly
-        run: |
-          if [[ "${{ runner.os }}-${{ runner.arch }}" == "Linux-ARM64" ]]; then
-            curl -fOL https://github.com/roc-lang/roc/releases/download/nightly/roc_nightly-linux_arm64-latest.tar.gz
-          elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            curl -fOL https://github.com/roc-lang/roc/releases/download/nightly/roc_nightly-macos_apple_silicon-latest.tar.gz
-          else
-            curl -fOL https://github.com/roc-lang/roc/releases/download/nightly/roc_nightly-linux_x86_64-latest.tar.gz
-          fi
+      - uses: roc-lang/setup-roc@39c354a6a838a0089eea9068a0414f49b62c5c08
+        with:
+          # Note: nightly hashes are not verified because they are updated regularly.
+          version: nightly
 
-      - name: rename nightly tar
-        run: mv $(ls | grep "roc_nightly.*tar\.gz") roc_nightly.tar.gz
-
-      - name: decompress the tar
-        run: tar -xzf roc_nightly.tar.gz
-
-      - run: rm roc_nightly.tar.gz
-
-      - name: simplify nightly folder name
-        run: mv roc_nightly* roc_nightly
-
-      - run: ./roc_nightly/roc version
+      - run: roc version
 
       - name: Install dependencies (Ubuntu)
         if: startsWith(matrix.os, 'ubuntu-')
@@ -60,7 +44,7 @@ jobs:
       - run: expect -v
 
       - name: Run all tests
-        run: ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
+        run: ROC=roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
 
       - name: Install dependencies for musl build
         if: startsWith(matrix.os, 'ubuntu-')
@@ -76,7 +60,7 @@ jobs:
       - name: Test building with musl target
         if: startsWith(matrix.os, 'ubuntu-')
         env:
-          ROC: ./roc_nightly/roc
+          ROC: roc
         run: |
           if [[ "${{ matrix.os}}" == *"-arm" ]]; then
             # TODO debug this: CARGO_BUILD_TARGET=aarch64-unknown-linux-musl $ROC build.roc
@@ -90,5 +74,5 @@ jobs:
         run: |
           # TODO remove `if` when above TODOs are done
           if [[ "${{ matrix.os }}" != *"-arm" ]]; then
-            NO_BUILD=1 IS_MUSL=1 ROC=./roc_nightly/roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
+            NO_BUILD=1 IS_MUSL=1 ROC=roc EXAMPLES_DIR=./examples/ ./ci/all_tests.sh
           fi
