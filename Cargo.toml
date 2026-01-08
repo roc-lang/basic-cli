@@ -10,13 +10,14 @@ repository = "https://github.com/roc-lang/basic-cli"
 name = "host"
 crate-type = ["staticlib"]
 
+# Note: we use "=version" for reproducability, cargo may silently use a more recent version if you do not use `=`.
 [dependencies]
-libc = "0.2"
+libc = "=0.2.180" # keep version in sync with libc workspace dep below
 roc_std_new.workspace = true
 roc_io_error.workspace = true
 roc_random.workspace = true
 roc_command.workspace = true
-memoffset = "0.9.1"
+memoffset = "=0.9.1"
 
 [workspace]
 members = [
@@ -42,11 +43,13 @@ roc_random = { path = "crates/roc_random" }
 roc_command = { path = "crates/roc_command" }
 
 # External dependencies
-getrandom = "0.2"
-sys-locale = "0.3"
-libc = "0.2"
+getrandom = "=0.2.16"
+sys-locale = "=0.3.2"
+libc = "=0.2.180"
 
 [profile.release]
 lto = true
 strip = "debuginfo"
 panic = "abort"
+# Setting this to 1 should improve execution speed by making things easier to optimize for LLVM.
+codegen-units = 1
