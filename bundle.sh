@@ -24,6 +24,7 @@ done
 for f in "${lib_files[@]}"; do
     echo "  $f"
 done
+echo "  THIRD_PARTY_LICENSES.md"
 echo ""
 
-roc bundle "${roc_files[@]}" "${lib_files[@]}" --output-dir "$root_dir" "$@"
+roc bundle "${roc_files[@]}" "${lib_files[@]}" "$root_dir/THIRD_PARTY_LICENSES.md" --output-dir "$root_dir" "$@"
