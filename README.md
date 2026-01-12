@@ -17,22 +17,11 @@ A Roc [platform](https://github.com/roc-lang/roc/wiki/Roc-concepts-explained#pla
 
 **⚠️ IMPORTANT**: This branch (`migrate-zig-compiler`) requires the new Roc compiler and `roc_std_new` to be at matching versions to avoid ABI layout mismatches.
 
-### Version Requirements
+### Roc Nightly Version
 
-The `roc_std_new` dependency version in `Cargo.toml` MUST match your local Roc compiler version:
+This project uses pre-built Roc nightly releases from [roc-lang/nightlies](https://github.com/roc-lang/nightlies). The pinned nightly version is specified in `Cargo.toml` via the `# roc-nightly:` comment and `roc_std_new` rev.
 
-```toml
-# In Cargo.toml, update this to match your Roc compiler commit:
-roc_std_new = { path = "/path/to/your/roc/crates/roc_std_new" }
-# OR
-roc_std_new = { git = "https://github.com/roc-lang/roc", rev = "YOUR_COMMIT_HASH" }
-```
-
-**To check your Roc compiler version:**
-```sh
-roc --version  # Shows commit hash
-cd /path/to/roc && git log -1 --format="%H"  # Full commit hash
-```
+The CI scripts automatically download the correct nightly based on this configuration. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to update the Roc version.
 
 ### Migration Status
 

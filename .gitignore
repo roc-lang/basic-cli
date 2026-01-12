@@ -65,8 +65,8 @@ temp-dir
 env-var
 out.txt
 
-# local roc folder for testing
-roc_nightly
+# Downloaded Roc nightly
+roc_nightly*
 
 # Roc source built by CI
 roc-src

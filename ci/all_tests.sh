@@ -37,51 +37,51 @@ cleanup() {
 # Set up trap to ensure cleanup runs on exit
 trap cleanup EXIT
 
-# Get the roc commit pinned in Cargo.toml
-ROC_COMMIT=$(python3 ci/get_roc_commit.py)
-ROC_COMMIT_SHORT="${ROC_COMMIT:0:8}"
-NEED_BUILD=false
+# Get nightly version info from Cargo.toml
+source ci/get_roc_nightly_url.sh
+NEED_DOWNLOAD=false
 
 echo "=== basic-cli CI ==="
 echo ""
 
-# Check if roc exists and matches pinned commit
-if [ -d "roc-src" ] && [ -f "roc-src/zig-out/bin/roc" ]; then
-    CACHED_VERSION=$(./roc-src/zig-out/bin/roc version 2>/dev/null || echo "unknown")
-    if echo "$CACHED_VERSION" | grep -q "$ROC_COMMIT_SHORT"; then
+# Check if cached roc exists and matches pinned version
+ROC_DIR="roc_nightly-${ROC_NIGHTLY_DATE}-${ROC_NIGHTLY_COMMIT}"
+if [ -d "$ROC_DIR" ] && [ -f "$ROC_DIR/roc" ]; then
+    CACHED_VERSION=$("./$ROC_DIR/roc" version 2>/dev/null || echo "unknown")
+    if echo "$CACHED_VERSION" | grep -q "$ROC_NIGHTLY_COMMIT"; then
         echo "roc already at correct version: $CACHED_VERSION"
     else
-        echo "Cached roc ($CACHED_VERSION) doesn't match pinned commit ($ROC_COMMIT_SHORT)"
-        echo "Removing stale roc-src..."
-        rm -rf roc-src
-        NEED_BUILD=true
+        echo "Cached roc ($CACHED_VERSION) doesn't match nightly ($ROC_NIGHTLY_COMMIT)"
+        echo "Removing stale roc directory..."
+        rm -rf "$ROC_DIR"
+        NEED_DOWNLOAD=true
     fi
 else
-    NEED_BUILD=true
+    NEED_DOWNLOAD=true
 fi
 
-if [ "$NEED_BUILD" = true ]; then
-    echo "Building roc from pinned commit $ROC_COMMIT..."
+if [ "$NEED_DOWNLOAD" = true ]; then
+    echo "Downloading Roc nightly $ROC_NIGHTLY_COMMIT..."
+    echo "URL: $ROC_NIGHTLY_URL"
 
-    rm -rf roc-src
-    git init roc-src
-    cd roc-src
-    git remote add origin https://github.com/roc-lang/roc
-    git fetch --depth 1 origin "$ROC_COMMIT"
-    git checkout --detach "$ROC_COMMIT"
+    # Clean up any old nightly directories
+    rm -rf roc_nightly-*
 
-    zig build roc
+    curl -fOL "$ROC_NIGHTLY_URL"
+    tar -xzf "$ROC_NIGHTLY_ARCHIVE"
+    rm -f "$ROC_NIGHTLY_ARCHIVE"
+
+    # Find the extracted directory
+    ROC_DIR=$(ls -d roc_nightly-*/ 2>/dev/null | head -1 | sed 's|/$||')
 
     # Add to GITHUB_PATH if running in CI
     if [ -n "${GITHUB_PATH:-}" ]; then
-        echo "$(pwd)/zig-out/bin" >> "$GITHUB_PATH"
+        echo "$(pwd)/$ROC_DIR" >> "$GITHUB_PATH"
     fi
-
-    cd ..
 fi
 
 # Ensure roc is in PATH
-export PATH="$(pwd)/roc-src/zig-out/bin:$PATH"
+export PATH="$(pwd)/$ROC_DIR:$PATH"
 
 echo ""
 echo "Using roc version: $(roc version)"

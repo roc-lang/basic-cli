@@ -47,20 +47,14 @@ jobs:
           rustup target add x86_64-unknown-linux-musl
           rustup target add aarch64-unknown-linux-musl
 
-      - name: Build Roc from pinned commit
+      - name: Download Roc nightly
         run: |
-          echo "Building roc from pinned commit..."
-          ROC_COMMIT=$(python3 ci/get_roc_commit.py)
-
-          git init roc-src
-          cd roc-src
-          git remote add origin https://github.com/roc-lang/roc
-          git fetch --depth 1 origin "$ROC_COMMIT"
-          git checkout --detach "$ROC_COMMIT"
-
-          zig build roc
-
-          echo "$(pwd)/zig-out/bin" >> "$GITHUB_PATH"
+          source ci/get_roc_nightly_url.sh
+          echo "Downloading $ROC_NIGHTLY_URL"
+          curl -fOL "$ROC_NIGHTLY_URL"
+          tar -xzf "$ROC_NIGHTLY_ARCHIVE"
+          ROC_DIR=$(ls -d roc_nightly-*/ | head -1)
+          echo "$(pwd)/${ROC_DIR}" >> "$GITHUB_PATH"
 
       - name: Build platform for all targets
         run: ./build.sh --all
@@ -126,20 +120,14 @@ jobs:
         if: startsWith(matrix.os, 'macos-')
         run: brew install expect
 
-      - name: Build Roc from pinned commit
+      - name: Download Roc nightly
         run: |
-          echo "Building roc from pinned commit..."
-          ROC_COMMIT=$(python3 ci/get_roc_commit.py)
-
-          git init roc-src
-          cd roc-src
-          git remote add origin https://github.com/roc-lang/roc
-          git fetch --depth 1 origin "$ROC_COMMIT"
-          git checkout --detach "$ROC_COMMIT"
-
-          zig build roc
-
-          echo "$(pwd)/zig-out/bin" >> "$GITHUB_PATH"
+          source ci/get_roc_nightly_url.sh
+          echo "Downloading $ROC_NIGHTLY_URL"
+          curl -fOL "$ROC_NIGHTLY_URL"
+          tar -xzf "$ROC_NIGHTLY_ARCHIVE"
+          ROC_DIR=$(ls -d roc_nightly-*/ | head -1)
+          echo "$(pwd)/${ROC_DIR}" >> "$GITHUB_PATH"
 
       - name: Download bundle artifact
         uses: actions/download-artifact@v4
@@ -217,7 +205,8 @@ jobs:
             exit 1
           fi
 
-          ROC_COMMIT=$(python3 ci/get_roc_commit.py | cut -c1-8)
+          source ci/get_roc_nightly_url.sh
+          ROC_COMMIT="$ROC_NIGHTLY_COMMIT"
 
           # Create release with auto-generated notes
           gh release create "${{ github.event.inputs.release_tag }}" \
