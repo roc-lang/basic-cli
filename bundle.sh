@@ -27,4 +27,8 @@ done
 echo "  THIRD_PARTY_LICENSES.md"
 echo ""
 
-roc bundle "${roc_files[@]}" "${lib_files[@]}" ../THIRD_PARTY_LICENSES.md --output-dir "$root_dir" "$@"
+# Copy THIRD_PARTY_LICENSES.md into platform dir (roc bundle doesn't allow .. paths)
+cp "$root_dir/THIRD_PARTY_LICENSES.md" .
+trap 'rm -f THIRD_PARTY_LICENSES.md' EXIT
+
+roc bundle "${roc_files[@]}" "${lib_files[@]}" THIRD_PARTY_LICENSES.md --output-dir "$root_dir" "$@"
