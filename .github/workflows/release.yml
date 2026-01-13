@@ -62,9 +62,16 @@ jobs:
       - name: Bundle platform
         id: bundle
         run: |
-          # Run bundle.sh and capture output
+          # Run bundle.sh and capture output (disable set -e to ensure output is printed)
+          set +e
           BUNDLE_OUTPUT=$(./bundle.sh 2>&1)
+          EXIT_CODE=$?
+          set -e
           echo "$BUNDLE_OUTPUT"
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "bundle.sh failed with exit code $EXIT_CODE"
+            exit $EXIT_CODE
+          fi
 
           # Extract the tar.zst filename from "Created: /path/to/HASH.tar.zst" line
           BUNDLE_PATH=$(echo "$BUNDLE_OUTPUT" | grep "^Created:" | awk '{print $2}')
