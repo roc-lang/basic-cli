@@ -27,4 +27,4 @@ done
 echo "  THIRD_PARTY_LICENSES.md"
 echo ""
 
-roc bundle "${roc_files[@]}" "${lib_files[@]}" "$root_dir/THIRD_PARTY_LICENSES.md" --output-dir "$root_dir" "$@"
+roc bundle "${roc_files[@]}" "${lib_files[@]}" ../THIRD_PARTY_LICENSES.md --output-dir "$root_dir" "$@"
