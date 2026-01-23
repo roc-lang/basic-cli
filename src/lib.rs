@@ -5,9 +5,10 @@ use std::fs;
 use std::io::{self, BufRead, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use roc_std_new::{
-    HostedFn, HostedFunctions, RocAlloc, RocCrashed, RocDbg, RocDealloc, RocExpectFailed,
-    RocList, RocOps, RocRealloc, RocStr, RocTry,
+    HostedFn, HostedFunctions, RocAlloc, RocCrashed, RocDbg, RocDealloc, RocExpectFailed, RocList,
+    RocOps, RocRealloc, RocStr, RocTry,
 };
 
 /// Wrapper for single-variant tag unions like [PathErr(IOErr)].
@@ -19,14 +20,14 @@ use roc_std_new::{
 #[repr(C)]
 pub struct RocSingleTagWrapper<T> {
     pub payload: T,
-    pub discriminant: u8,  // Always 0 for single-variant tag unions
+    pub discriminant: u8, // Always 0 for single-variant tag unions
 }
 
 impl<T> RocSingleTagWrapper<T> {
     pub fn new(payload: T) -> Self {
         Self {
             payload,
-            discriminant: 0,  // Single variant always has discriminant 0
+            discriminant: 0, // Single variant always has discriminant 0
         }
     }
 }
@@ -205,17 +206,17 @@ type TryI32CmdErr = RocTry<i32, CmdErr>;
 /// Memory layout: Both RocStr are 24 bytes, alphabetical: stderr_utf8_lossy, stdout_utf8
 #[repr(C)]
 pub struct CmdOutputSuccess {
-    pub stderr_utf8_lossy: RocStr,  // offset 0 (24 bytes)
-    pub stdout_utf8: RocStr,        // offset 24 (24 bytes)
+    pub stderr_utf8_lossy: RocStr, // offset 0 (24 bytes)
+    pub stdout_utf8: RocStr,       // offset 24 (24 bytes)
 }
 
 /// NonZeroExit error payload: { exit_code : I32, stderr_utf8_lossy : Str, stdout_utf8_lossy : Str }
 /// Memory layout: RocStr (24 bytes) > I32 (4 bytes), so: stderr_utf8_lossy, stdout_utf8_lossy, exit_code
 #[repr(C)]
 pub struct NonZeroExitPayload {
-    pub stderr_utf8_lossy: RocStr,   // offset 0 (24 bytes)
-    pub stdout_utf8_lossy: RocStr,   // offset 24 (24 bytes)
-    pub exit_code: i32,              // offset 48 (4 bytes + padding)
+    pub stderr_utf8_lossy: RocStr, // offset 0 (24 bytes)
+    pub stdout_utf8_lossy: RocStr, // offset 24 (24 bytes)
+    pub exit_code: i32,            // offset 48 (4 bytes + padding)
 }
 
 /// Error type for exec_output!: [CmdErr(IOErr), NonZeroExit({ exit_code, stderr, stdout })]
@@ -242,7 +243,11 @@ impl CmdOutputErr {
         }
     }
 
-    pub fn non_zero_exit(stderr_utf8_lossy: RocStr, stdout_utf8_lossy: RocStr, exit_code: i32) -> Self {
+    pub fn non_zero_exit(
+        stderr_utf8_lossy: RocStr,
+        stdout_utf8_lossy: RocStr,
+        exit_code: i32,
+    ) -> Self {
         Self {
             payload: CmdOutputErrPayload {
                 non_zero_exit: core::mem::ManuallyDrop::new(NonZeroExitPayload {
@@ -297,12 +302,10 @@ extern "C" fn hosted_cmd_exec_output(
 
     let result = roc_command::command_exec_output(cmd, roc_ops);
     let try_result: TryCmdOutputResult = match result {
-        roc_command::CommandOutputResult::Success(output) => {
-            RocTry::ok(CmdOutputSuccess {
-                stderr_utf8_lossy: output.stderr_utf8_lossy,
-                stdout_utf8: output.stdout_utf8,
-            })
-        }
+        roc_command::CommandOutputResult::Success(output) => RocTry::ok(CmdOutputSuccess {
+            stderr_utf8_lossy: output.stderr_utf8_lossy,
+            stdout_utf8: output.stdout_utf8,
+        }),
         roc_command::CommandOutputResult::NonZeroExit(failure) => {
             RocTry::err(CmdOutputErr::non_zero_exit(
                 failure.stderr_utf8_lossy,
@@ -322,11 +325,7 @@ extern "C" fn hosted_cmd_exec_output(
 
 /// Hosted function: Dir.create! (index 2)
 /// Takes Str, returns Try({}, [DirErr(IOErr)])
-extern "C" fn hosted_dir_create(
-    ops: *const RocOps,
-    ret_ptr: *mut c_void,
-    args_ptr: *mut c_void,
-) {
+extern "C" fn hosted_dir_create(ops: *const RocOps, ret_ptr: *mut c_void, args_ptr: *mut c_void) {
     let roc_ops = unsafe { &*ops };
     let result = unsafe {
         let path = args_ptr as *const RocStr;
@@ -418,11 +417,7 @@ extern "C" fn hosted_dir_delete_empty(
 
 /// Hosted function: Dir.list! (index 4)
 /// Takes Str, returns Try(List(Str), [DirErr(IOErr)])
-extern "C" fn hosted_dir_list(
-    ops: *const RocOps,
-    ret_ptr: *mut c_void,
-    args_ptr: *mut c_void,
-) {
+extern "C" fn hosted_dir_list(ops: *const RocOps, ret_ptr: *mut c_void, args_ptr: *mut c_void) {
     let roc_ops = unsafe { &*ops };
     let path = unsafe {
         let args = args_ptr as *const RocStr;
@@ -433,9 +428,7 @@ extern "C" fn hosted_dir_list(
     let try_result: TryListStrDirErr = match result {
         Ok(rd) => {
             let entries: Vec<String> = rd
-                .filter_map(|entry| {
-                    entry.ok().map(|e| e.path().to_string_lossy().into_owned())
-                })
+                .filter_map(|entry| entry.ok().map(|e| e.path().to_string_lossy().into_owned()))
                 .collect();
             let mut list = RocList::with_capacity(entries.len(), roc_ops);
             for entry in entries {
@@ -457,11 +450,7 @@ extern "C" fn hosted_dir_list(
 
 /// Hosted function: Env.cwd! (index 5)
 /// Takes {}, returns Str
-extern "C" fn hosted_env_cwd(
-    ops: *const RocOps,
-    ret_ptr: *mut c_void,
-    _args_ptr: *mut c_void,
-) {
+extern "C" fn hosted_env_cwd(ops: *const RocOps, ret_ptr: *mut c_void, _args_ptr: *mut c_void) {
     let roc_ops = unsafe { &*ops };
     let cwd = std::env::current_dir()
         .map(|p| p.to_string_lossy().into_owned())
@@ -491,11 +480,7 @@ extern "C" fn hosted_env_exe_path(
 
 /// Hosted function: Env.var! (index 7)
 /// Takes Str, returns Str
-extern "C" fn hosted_env_var(
-    ops: *const RocOps,
-    ret_ptr: *mut c_void,
-    args_ptr: *mut c_void,
-) {
+extern "C" fn hosted_env_var(ops: *const RocOps, ret_ptr: *mut c_void, args_ptr: *mut c_void) {
     let roc_ops = unsafe { &*ops };
     let name = unsafe {
         let args = args_ptr as *const RocStr;
@@ -510,11 +495,7 @@ extern "C" fn hosted_env_var(
 
 /// Hosted function: File.delete! (index 8)
 /// Takes Str (path), returns Try({}, [FileErr(IOErr)])
-extern "C" fn hosted_file_delete(
-    ops: *const RocOps,
-    ret_ptr: *mut c_void,
-    args_ptr: *mut c_void,
-) {
+extern "C" fn hosted_file_delete(ops: *const RocOps, ret_ptr: *mut c_void, args_ptr: *mut c_void) {
     let roc_ops = unsafe { &*ops };
     let path = unsafe {
         let args = args_ptr as *const RocStr;
@@ -688,13 +669,87 @@ unsafe fn write_try_bool_result(
     std::ptr::write(ret_ptr as *mut TryBoolPathErr, try_result);
 }
 
+#[cfg(target_os = "macos")]
+fn locale_from_env() -> Option<String> {
+    for key in ["LC_ALL", "LC_CTYPE", "LANG"] {
+        if let Ok(value) = std::env::var(key) {
+            let trimmed = value.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            let locale = trimmed
+                .split('.')
+                .next()
+                .unwrap_or(trimmed)
+                .split('@')
+                .next()
+                .unwrap_or(trimmed)
+                .trim();
+            if !locale.is_empty() {
+                return Some(locale.to_string());
+            }
+        }
+    }
+
+    None
+}
+
+/// Hosted function: Locale.all!
+/// Takes {}, returns List(Str)
+#[cfg(target_os = "macos")]
+extern "C" fn hosted_locale_all(ops: *const RocOps, ret_ptr: *mut c_void, _args_ptr: *mut c_void) {
+    let roc_ops = unsafe { &*ops };
+    let locales = locale_from_env().unwrap_or_else(|| "en-US".to_string());
+    let mut list = RocList::with_capacity(1, roc_ops);
+    list.push(RocStr::from_str(&locales, roc_ops), roc_ops);
+    unsafe {
+        *(ret_ptr as *mut RocList<RocStr>) = list;
+    }
+}
+
+/// Hosted function: Locale.all!
+/// Takes {}, returns List(Str)
+#[cfg(not(target_os = "macos"))]
+extern "C" fn hosted_locale_all(ops: *const RocOps, ret_ptr: *mut c_void, _args_ptr: *mut c_void) {
+    let roc_ops = unsafe { &*ops };
+    let locales = sys_locale::get_locales().collect::<Vec<_>>();
+    let mut list = RocList::with_capacity(locales.len(), roc_ops);
+    for locale in locales {
+        let roc_str = RocStr::from_str(&locale, roc_ops);
+        list.push(roc_str, roc_ops);
+    }
+    unsafe {
+        *(ret_ptr as *mut RocList<RocStr>) = list;
+    }
+}
+
+/// Hosted function: Locale.get!
+/// Takes {}, returns Str
+#[cfg(target_os = "macos")]
+extern "C" fn hosted_locale_get(ops: *const RocOps, ret_ptr: *mut c_void, _args_ptr: *mut c_void) {
+    let roc_ops = unsafe { &*ops };
+    let locale = locale_from_env().unwrap_or_else(|| "en-US".to_string());
+    let roc_str = RocStr::from_str(&locale, roc_ops);
+    unsafe {
+        *(ret_ptr as *mut RocStr) = roc_str;
+    }
+}
+
+/// Hosted function: Locale.get!
+/// Takes {}, returns Str
+#[cfg(not(target_os = "macos"))]
+extern "C" fn hosted_locale_get(ops: *const RocOps, ret_ptr: *mut c_void, _args_ptr: *mut c_void) {
+    let roc_ops = unsafe { &*ops };
+    let locale = sys_locale::get_locale().unwrap_or_else(|| "en-US".to_string());
+    let roc_str = RocStr::from_str(&locale, roc_ops);
+    unsafe {
+        *(ret_ptr as *mut RocStr) = roc_str;
+    }
+}
+
 /// Hosted function: Path.is_dir! (index 13)
 /// Takes Str, returns Try(Bool, [PathErr(IOErr)])
-extern "C" fn hosted_path_is_dir(
-    ops: *const RocOps,
-    ret_ptr: *mut c_void,
-    args_ptr: *mut c_void,
-) {
+extern "C" fn hosted_path_is_dir(ops: *const RocOps, ret_ptr: *mut c_void, args_ptr: *mut c_void) {
     let roc_ops = unsafe { &*ops };
     let result = unsafe {
         let path = args_ptr as *const RocStr;
@@ -711,11 +766,7 @@ extern "C" fn hosted_path_is_dir(
 
 /// Hosted function: Path.is_file! (index 14)
 /// Takes Str, returns Try(Bool, [PathErr(IOErr)])
-extern "C" fn hosted_path_is_file(
-    ops: *const RocOps,
-    ret_ptr: *mut c_void,
-    args_ptr: *mut c_void,
-) {
+extern "C" fn hosted_path_is_file(ops: *const RocOps, ret_ptr: *mut c_void, args_ptr: *mut c_void) {
     let roc_ops = unsafe { &*ops };
     let result = unsafe {
         let path = args_ptr as *const RocStr;
@@ -750,7 +801,6 @@ extern "C" fn hosted_path_is_sym_link(
         write_try_bool_result(ret_ptr, result, roc_ops);
     }
 }
-
 
 // ============================================================================
 // Random Module Types and Functions
@@ -852,11 +902,7 @@ extern "C" fn hosted_stderr_write(
 
 /// Hosted function: Stdin.line! (index 18)
 /// Takes {}, returns Str
-extern "C" fn hosted_stdin_line(
-    ops: *const RocOps,
-    ret_ptr: *mut c_void,
-    _args_ptr: *mut c_void,
-) {
+extern "C" fn hosted_stdin_line(ops: *const RocOps, ret_ptr: *mut c_void, _args_ptr: *mut c_void) {
     let mut line = String::new();
     let _ = io::stdin().lock().read_line(&mut line);
 
@@ -905,13 +951,29 @@ extern "C" fn hosted_stdout_write(
     }
 }
 
-/// Hosted function: Utc.now!
-/// Takes {}, returns U128 (nanoseconds since Unix epoch)
-extern "C" fn hosted_utc_now(
+/// Hosted function: Tty.disable_raw_mode!
+/// Takes {}, returns {}
+extern "C" fn hosted_tty_disable_raw_mode(
     _ops: *const RocOps,
-    ret_ptr: *mut c_void,
+    _ret_ptr: *mut c_void,
     _args_ptr: *mut c_void,
 ) {
+    let _ = disable_raw_mode();
+}
+
+/// Hosted function: Tty.enable_raw_mode!
+/// Takes {}, returns {}
+extern "C" fn hosted_tty_enable_raw_mode(
+    _ops: *const RocOps,
+    _ret_ptr: *mut c_void,
+    _args_ptr: *mut c_void,
+) {
+    let _ = enable_raw_mode();
+}
+
+/// Hosted function: Utc.now!
+/// Takes {}, returns U128 (nanoseconds since Unix epoch)
+extern "C" fn hosted_utc_now(_ops: *const RocOps, ret_ptr: *mut c_void, _args_ptr: *mut c_void) {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     let since_epoch = SystemTime::now()
@@ -926,34 +988,38 @@ extern "C" fn hosted_utc_now(
 
 /// Array of hosted function pointers, sorted alphabetically by fully-qualified name.
 /// IMPORTANT: Order must match the order Roc expects based on alphabetical sorting.
-static HOSTED_FNS: [HostedFn; 27] = [
-    hosted_cmd_exec_exit_code, // 0:  Cmd.exec_exit_code!
-    hosted_cmd_exec_output,    // 1:  Cmd.exec_output!
-    hosted_dir_create,         // 2:  Dir.create!
-    hosted_dir_create_all,     // 3:  Dir.create_all!
-    hosted_dir_delete_all,     // 4:  Dir.delete_all!
-    hosted_dir_delete_empty,   // 5:  Dir.delete_empty!
-    hosted_dir_list,           // 6:  Dir.list!
-    hosted_env_cwd,            // 7:  Env.cwd!
-    hosted_env_exe_path,       // 8:  Env.exe_path!
-    hosted_env_var,            // 9:  Env.var!
-    hosted_file_delete,        // 10: File.delete!
-    hosted_file_read_bytes,    // 11: File.read_bytes!
-    hosted_file_read_utf8,     // 12: File.read_utf8!
-    hosted_file_write_bytes,   // 13: File.write_bytes!
-    hosted_file_write_utf8,    // 14: File.write_utf8!
-    hosted_path_is_dir,        // 15: Path.is_dir!
-    hosted_path_is_file,       // 16: Path.is_file!
-    hosted_path_is_sym_link,   // 17: Path.is_sym_link!
-    hosted_random_seed_u32,    // 18: Random.seed_u32!
-    hosted_random_seed_u64,    // 19: Random.seed_u64!
-    hosted_sleep_millis,       // 21: Sleep.millis!
-    hosted_stderr_line,        // 22: Stderr.line!
-    hosted_stderr_write,       // 23: Stderr.write!
-    hosted_stdin_line,         // 24: Stdin.line!
-    hosted_stdout_line,        // 25: Stdout.line!
-    hosted_stdout_write,       // 26: Stdout.write!
-    hosted_utc_now,            // 27: Utc.now!
+static HOSTED_FNS: [HostedFn; 31] = [
+    hosted_cmd_exec_exit_code,   // 0:  Cmd.exec_exit_code!
+    hosted_cmd_exec_output,      // 1:  Cmd.exec_output!
+    hosted_dir_create,           // 2:  Dir.create!
+    hosted_dir_create_all,       // 3:  Dir.create_all!
+    hosted_dir_delete_all,       // 4:  Dir.delete_all!
+    hosted_dir_delete_empty,     // 5:  Dir.delete_empty!
+    hosted_dir_list,             // 6:  Dir.list!
+    hosted_env_cwd,              // 7:  Env.cwd!
+    hosted_env_exe_path,         // 8:  Env.exe_path!
+    hosted_env_var,              // 9:  Env.var!
+    hosted_file_delete,          // 10: File.delete!
+    hosted_file_read_bytes,      // 11: File.read_bytes!
+    hosted_file_read_utf8,       // 12: File.read_utf8!
+    hosted_file_write_bytes,     // 13: File.write_bytes!
+    hosted_file_write_utf8,      // 14: File.write_utf8!
+    hosted_locale_all,           // 15: Locale.all!
+    hosted_locale_get,           // 16: Locale.get!
+    hosted_path_is_dir,          // 17: Path.is_dir!
+    hosted_path_is_file,         // 18: Path.is_file!
+    hosted_path_is_sym_link,     // 19: Path.is_sym_link!
+    hosted_random_seed_u32,      // 20: Random.seed_u32!
+    hosted_random_seed_u64,      // 21: Random.seed_u64!
+    hosted_sleep_millis,         // 22: Sleep.millis!
+    hosted_stderr_line,          // 23: Stderr.line!
+    hosted_stderr_write,         // 24: Stderr.write!
+    hosted_stdin_line,           // 25: Stdin.line!
+    hosted_stdout_line,          // 26: Stdout.line!
+    hosted_stdout_write,         // 27: Stdout.write!
+    hosted_tty_disable_raw_mode, // 28: Tty.disable_raw_mode!
+    hosted_tty_enable_raw_mode,  // 29: Tty.enable_raw_mode!
+    hosted_utc_now,              // 30: Utc.now!
 ];
 
 /// Build a RocList<RocStr> from command-line arguments.

@@ -10,7 +10,8 @@ main! = |_args| {
     Stdout.line!("The most preferred locale for this system or application: ${locale_str}")
 
     all_locales = Locale.all!()
-    Stdout.line!("All available locales: ${Inspect.to_str(all_locales)}")
+    locales_str = Str.join_with(all_locales, ", ")
+    Stdout.line!("All available locales for this system or application: [${locales_str}]")
 
     Ok({})
 }

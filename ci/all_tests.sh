@@ -86,6 +86,14 @@ export PATH="$(pwd)/$ROC_DIR:$PATH"
 echo ""
 echo "Using roc version: $(roc version)"
 
+if [ "$(uname -s)" = "Darwin" ] && [ -z "${SDKROOT:-}" ]; then
+    SDKROOT=$(xcrun --sdk macosx --show-sdk-path 2>/dev/null || true)
+    if [ -n "$SDKROOT" ]; then
+        export SDKROOT
+        echo "Using SDKROOT: $SDKROOT"
+    fi
+fi
+
 # Build the platform
 if [ "${NO_BUILD:-}" != "1" ]; then
     echo ""
@@ -105,6 +113,8 @@ MIGRATED_EXAMPLES=(
     "command"
     "time"
     "random"
+    "locale"
+    "tty"
 )
 
 EXAMPLES_DIR="${ROOT_DIR}/examples/"
