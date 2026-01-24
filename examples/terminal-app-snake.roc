@@ -37,11 +37,11 @@ init_snake_len = len(initial_state.snake_lst)
 
 main! : List Arg => Result {} _
 main! = |_args|
-    Tty.enable_raw_mode!({})
+    Tty.enable_raw_mode!()
 
     game_loop!(initial_state)?
 
-    Tty.disable_raw_mode!({})
+    Tty.disable_raw_mode!()
     Stdout.line!("\n--- Game Over ---")
 
 game_loop! : GameState => Result {} _
@@ -111,7 +111,7 @@ move_head = |head, direction|
 
 draw_game! : GameState => Result {} _
 draw_game! = |state|
-    clear_screen!({})?
+    clear_screen!()?
 
     Stdout.line!("\nControls: W A S D to move, Q to quit\n\r")?
 
@@ -148,7 +148,7 @@ draw_game_pure = |state|
     )
     |> Str.join_with("\r\n")
 
-clear_screen! = |{}|
+clear_screen! = |()|
     Stdout.write!("\u(001b)[2J\u(001b)[H") # ANSI escape codes to clear screen
 
 # NonEmptyList helpers

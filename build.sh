@@ -17,6 +17,7 @@ get_rust_triple() {
     esac
 }
 
+
 # All supported targets
 ALL_TARGETS="x64mac arm64mac x64musl arm64musl"
 

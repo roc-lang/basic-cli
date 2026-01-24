@@ -13,11 +13,15 @@ crate-type = ["staticlib"]
 # Note: we use "=version" for reproducability, cargo may silently use a more recent version if you do not use `=`.
 [dependencies]
 libc = "=0.2.180" # keep version in sync with libc workspace dep below
+crossterm = "=0.29.0"
 roc_std_new.workspace = true
 roc_io_error.workspace = true
 roc_random.workspace = true
 roc_command.workspace = true
 memoffset = "=0.9.1"
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+sys-locale.workspace = true
 
 [workspace]
 members = [

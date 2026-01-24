@@ -58,6 +58,47 @@ pub fn exe_path() -> RocResult<RocList<u8>, ()> {
     }
 }
 
+#[cfg(target_os = "macos")]
+fn locale_from_env() -> Option<String> {
+    for key in ["LC_ALL", "LC_CTYPE", "LANG"] {
+        if let Ok(value) = std::env::var(key) {
+            let trimmed = value.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            let locale = trimmed
+                .split('.')
+                .next()
+                .unwrap_or(trimmed)
+                .split('@')
+                .next()
+                .unwrap_or(trimmed)
+                .trim();
+            if !locale.is_empty() {
+                return Some(locale.to_string());
+            }
+        }
+    }
+
+    None
+}
+
+#[cfg(target_os = "macos")]
+pub fn get_locale() -> RocResult<RocStr, ()> {
+    locale_from_env()
+        .map(|locale| RocResult::ok(locale.as_str().into()))
+        .unwrap_or_else(|| RocResult::err(()))
+}
+
+#[cfg(target_os = "macos")]
+pub fn get_locales() -> RocList<RocStr> {
+    match locale_from_env() {
+        Some(locale) => RocList::from_slice(&[RocStr::from(locale.as_str())]),
+        None => RocList::empty(),
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
 pub fn get_locale() -> RocResult<RocStr, ()> {
     sys_locale::get_locale().map_or_else(
         || RocResult::err(()),
@@ -65,6 +106,7 @@ pub fn get_locale() -> RocResult<RocStr, ()> {
     )
 }
 
+#[cfg(not(target_os = "macos"))]
 pub fn get_locales() -> RocList<RocStr> {
     const DEFAULT_MAX_LOCALES: usize = 10;
     let locales = sys_locale::get_locales();
