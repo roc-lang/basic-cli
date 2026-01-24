@@ -5,18 +5,11 @@
 
 set timeout 7
 
-spawn $env(EXAMPLES_DIR)/command-line-args foo
-
 source ./ci/expect_scripts/shared-code.exp
 
+spawn $env(EXAMPLES_DIR)/command-line-args foo
 
-set expected_output [normalize_output {
-received argument: foo
-Unix argument, bytes: \[102, 111, 111\]
-back to Arg: "foo"
-}]
-
-expect $expected_output {
+expect "received argument: foo\r\n" {
     expect eof {
         check_exit_and_segfault
     }

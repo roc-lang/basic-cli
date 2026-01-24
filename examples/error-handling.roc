@@ -1,30 +1,32 @@
 app [main!] { pf: platform "../platform/main.roc" }
 
 import pf.Stdout
-import pf.Stderr
 import pf.File
-import pf.Arg exposing [Arg]
 
-# To run this example: check the README.md in this folder
+# Demonstrates error handling patterns
 
-# Demonstrates handling of every possible error
-
-main! : List Arg => Result {} _
-main! = |_args|
+main! = |_args| {
     file_name = "test-file.txt"
 
-    file_read_result = File.read_utf8!(file_name)
+    # Try to read a file that doesn't exist - should error
+    result = File.read_utf8!("nonexistent-file.txt")
+    match result {
+        Ok(content) => Stdout.line!("Unexpected success: ${content}")
+        Err(FileErr(NotFound)) => Stdout.line!("Expected error: File not found (NotFound)")
+        Err(FileErr(PermissionDenied)) => Stdout.line!("Error: Permission denied")
+        Err(FileErr(Other(msg))) => Stdout.line!("Error: ${msg}")
+        Err(_) => Stdout.line!("Error: Other file error")
+    }
 
-    when file_read_result is
-        Ok(file_content) ->
-            Stdout.line!("${file_name} contatins: ${file_content}")
+    # Now demonstrate success path - create, read, then cleanup
+    # Using ? operator to propagate errors (works with open tag unions)
+    File.write_utf8!(file_name, "Hello from error-handling example!")?
 
-        Err(err) ->
-            err_msg =
-                when err is
-                    FileReadErr(_, io_err) -> "Error: failed to read file ${file_name} with error:\n\t${Inspect.to_str(io_err)}"
-                    FileReadUtf8Err(_, io_err) -> "Error: file ${file_name} contains invalid UTF-8:\n\t${Inspect.to_str(io_err)}"
+    content = File.read_utf8!(file_name)?
+    Stdout.line!("${file_name} contains: ${content}")
 
-            
-            Stderr.line!(err_msg)?
-            Err(Exit(1, "")) # non-zero exit code to indicate failure
+    # Cleanup
+    File.delete!(file_name)?
+
+    Ok({})
+}

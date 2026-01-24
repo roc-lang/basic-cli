@@ -9,23 +9,17 @@ source ./ci/expect_scripts/shared-code.exp
 
 spawn $env(EXAMPLES_DIR)command
 
+expect "Hello"
+expect "{stderr_utf8_lossy: \"\", stdout_utf8: \"Hi"
+expect "\"}"
+expect "BAZ=DUCK"
+expect "FOO=BAR"
+expect "XYZ=ABC"
+expect "cat: non_existent.txt: No such file or directory"
+expect "Exit code: 1"
 
-set expected_output [normalize_output {
-Hello
-\{stderr_utf8_lossy: "", stdout_utf8: "Hi
-"\}
-BAZ=DUCK
-FOO=BAR
-XYZ=ABC
-cat: non_existent.txt: No such file or directory
-Exit code: 1
-\{stderr_bytes: \[\], stdout_bytes: \[72, 105, 10\]\}
-}]
-
-expect $expected_output {
-    expect eof {
-        check_exit_and_segfault
-    }
+expect eof {
+    check_exit_and_segfault
 }
 
 puts stderr "\nExpect script failed: output was not as expected. Diff the output with expected_output in this script. Alternatively, uncomment `exp_internal 1` to debug."

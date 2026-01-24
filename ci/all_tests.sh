@@ -1,192 +1,230 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-# https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
-set -exo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
-if [ -z "${EXAMPLES_DIR}" ]; then
-    echo "ERROR: The EXAMPLES_DIR environment variable is not set." >&2
+cd "$ROOT_DIR"
 
-    exit 1
+# Cleanup function to restore examples and stop HTTP server
+cleanup() {
+    echo ""
+    echo "=== Cleaning up ==="
+
+    # Restore examples from backups
+    for f in examples/*.roc.bak; do
+        if [ -f "$f" ]; then
+            mv "$f" "${f%.bak}"
+        fi
+    done
+
+    # Stop HTTP server if running
+    if [ -n "${HTTP_SERVER_PID:-}" ]; then
+        kill "$HTTP_SERVER_PID" 2>/dev/null || true
+    fi
+
+    # Remove built binaries
+    for example in "${MIGRATED_EXAMPLES[@]}"; do
+        rm -f "examples/${example}"
+    done
+
+    # Remove bundle file
+    if [ -n "${BUNDLE_FILE:-}" ] && [ -f "$BUNDLE_FILE" ]; then
+        rm -f "$BUNDLE_FILE"
+    fi
+}
+
+# Set up trap to ensure cleanup runs on exit
+trap cleanup EXIT
+
+# Get nightly version info from Cargo.toml
+source ci/get_roc_nightly_url.sh
+NEED_DOWNLOAD=false
+
+echo "=== basic-cli CI ==="
+echo ""
+
+# Check if cached roc exists and matches pinned version
+ROC_DIR="roc_nightly-${ROC_NIGHTLY_DATE}-${ROC_NIGHTLY_COMMIT}"
+if [ -d "$ROC_DIR" ] && [ -f "$ROC_DIR/roc" ]; then
+    CACHED_VERSION=$("./$ROC_DIR/roc" version 2>/dev/null || echo "unknown")
+    if echo "$CACHED_VERSION" | grep -q "$ROC_NIGHTLY_COMMIT"; then
+        echo "roc already at correct version: $CACHED_VERSION"
+    else
+        echo "Cached roc ($CACHED_VERSION) doesn't match nightly ($ROC_NIGHTLY_COMMIT)"
+        echo "Removing stale roc directory..."
+        rm -rf "$ROC_DIR"
+        NEED_DOWNLOAD=true
+    fi
 else
-    EXAMPLES_DIR=$(realpath "${EXAMPLES_DIR}")/
+    NEED_DOWNLOAD=true
 fi
 
-if [ -z "${ROC}" ]; then
-  echo "ERROR: The ROC environment variable is not set.
-    Set it to something like:
-        /home/username/Downloads/roc_nightly-linux_x86_64-2023-10-30-cb00cfb/roc
-        or
-        /home/username/gitrepos/roc/target/build/release/roc" >&2
+if [ "$NEED_DOWNLOAD" = true ]; then
+    echo "Downloading Roc nightly $ROC_NIGHTLY_COMMIT..."
+    echo "URL: $ROC_NIGHTLY_URL"
 
-  exit 1
+    # Clean up any old nightly directories
+    rm -rf roc_nightly-*
+
+    curl -fOL "$ROC_NIGHTLY_URL"
+    tar -xzf "$ROC_NIGHTLY_ARCHIVE"
+    rm -f "$ROC_NIGHTLY_ARCHIVE"
+
+    # Find the extracted directory
+    ROC_DIR=$(ls -d roc_nightly-*/ 2>/dev/null | head -1 | sed 's|/$||')
+
+    # Add to GITHUB_PATH if running in CI
+    if [ -n "${GITHUB_PATH:-}" ]; then
+        echo "$(pwd)/$ROC_DIR" >> "$GITHUB_PATH"
+    fi
 fi
 
-TESTS_DIR="$(dirname "$EXAMPLES_DIR")/tests/"
-export TESTS_DIR
+# Ensure roc is in PATH
+export PATH="$(pwd)/$ROC_DIR:$PATH"
 
-if [ "$NO_BUILD" != "1" ]; then
-  # May be needed for breaking roc changes. Also replace platform in build.roc with `cli: platform "platform/main.roc",`
-  ./jump-start.sh
+echo ""
+echo "Using roc version: $(roc version)"
 
-  # build the basic-cli platform
-  $ROC dev ./build.roc --linker=legacy -- --roc $ROC
+if [ "$(uname -s)" = "Darwin" ] && [ -z "${SDKROOT:-}" ]; then
+    SDKROOT=$(xcrun --sdk macosx --show-sdk-path 2>/dev/null || true)
+    if [ -n "$SDKROOT" ]; then
+        export SDKROOT
+        echo "Using SDKROOT: $SDKROOT"
+    fi
 fi
 
-# roc check
-for roc_file in $EXAMPLES_DIR*.roc; do
-    $ROC check $roc_file
-done
-for roc_file in $TESTS_DIR*.roc; do
-    $ROC check $roc_file
-done
+# Build the platform
+if [ "${NO_BUILD:-}" != "1" ]; then
+    echo ""
+    echo "=== Building platform ==="
+    ./build.sh
+else
+    echo ""
+    echo "=== Skipping platform build (NO_BUILD=1) ==="
+fi
 
-$ROC ci/check_all_exposed_funs_tested.roc
-$ROC ci/check_cargo_versions_match.roc
+# List of migrated examples that have expect tests
+MIGRATED_EXAMPLES=(
+    "command-line-args"
+    "hello-world"
+    "stdin-basic"
+    "path"
+    "command"
+    "time"
+    "random"
+    "locale"
+    "tty"
+)
 
-# roc build
-architecture=$(uname -m)
+EXAMPLES_DIR="${ROOT_DIR}/examples/"
+export EXAMPLES_DIR
 
-for roc_file in $EXAMPLES_DIR*.roc; do
-    base_file=$(basename "$roc_file")
-
-    if [ "$base_file" == "temp-dir.roc" ]; then
-        $ROC build $roc_file $ROC_BUILD_FLAGS --linker=legacy
-    else
-        $ROC build $roc_file $ROC_BUILD_FLAGS
-    fi
-
-done
-for roc_file in $TESTS_DIR*.roc; do
-    $ROC build $roc_file $ROC_BUILD_FLAGS
-done
-
-# Check for duplicate .roc file names between EXAMPLES_DIR and TESTS_DIR (this messes with checks)
-for example_file in $EXAMPLES_DIR*.roc; do
-    example_basename=$(basename "$example_file")
-    if [ -f "$TESTS_DIR$example_basename" ]; then
-        echo "ERROR: Duplicate file name found: $example_basename exists in both $EXAMPLES_DIR and $TESTS_DIR. Change the name of one of them." >&2
-        exit 1
+# Check if all target libraries exist for bundling
+ALL_TARGETS_EXIST=true
+for target in x64mac arm64mac x64musl arm64musl; do
+    if [ ! -f "platform/targets/$target/libhost.a" ]; then
+        ALL_TARGETS_EXIST=false
+        break
     fi
 done
 
-# prep for next step
-cd ci/rust_http_server
-cargo build --release
-cd ../..
+# Bundle and set up HTTP server if all targets exist
+BUNDLE_FILE=""
+HTTP_SERVER_PID=""
+USE_BUNDLE=false
 
-# check output with linux expect
-for roc_file in $EXAMPLES_DIR*.roc; do
-    base_file=$(basename "$roc_file")
+if [ "$ALL_TARGETS_EXIST" = true ]; then
+    echo ""
+    echo "=== Bundling platform ==="
+    BUNDLE_OUTPUT=$(./bundle.sh 2>&1)
+    echo "$BUNDLE_OUTPUT"
 
-    # Skip env-var.roc when on aarch64
-    if [ "$architecture" == "aarch64" ] && [ "$base_file" == "env-var.roc" ]; then
-        continue
-    fi
+    # Extract bundle filename from output
+    BUNDLE_PATH=$(echo "$BUNDLE_OUTPUT" | grep "^Created:" | awk '{print $2}')
+    BUNDLE_FILE=$(basename "$BUNDLE_PATH")
 
-    ## Skip file-accessed-modified-created-time.roc when IS_MUSL=1
-    if [ "$IS_MUSL" == "1" ] && [ "$base_file" == "file-accessed-modified-created-time.roc" ]; then
-        continue
-    fi
+    if [ -n "$BUNDLE_FILE" ] && [ -f "$BUNDLE_FILE" ]; then
+        echo ""
+        echo "=== Starting HTTP server for bundle testing ==="
+        python3 -m http.server 8000 &
+        HTTP_SERVER_PID=$!
+        sleep 2
 
-    roc_file_only="$(basename "$roc_file")"
-    no_ext_name=${roc_file_only%.*}
+        # Verify server is running
+        if curl -f -I "http://localhost:8000/$BUNDLE_FILE" > /dev/null 2>&1; then
+            echo "HTTP server running at http://localhost:8000"
+            echo "Bundle: $BUNDLE_FILE"
 
-    # not used, leaving here for future reference if we want to run valgrind on an example
-    # if [ "$no_ext_name" == "args" ] && command -v valgrind &> /dev/null; then
-    #     valgrind $EXAMPLES_DIR/args argument
-    # fi
-
-    expect ci/expect_scripts/$no_ext_name.exp
-done
-for roc_file in $TESTS_DIR*.roc; do
-
-    roc_file_only="$(basename "$roc_file")"
-    no_ext_name=${roc_file_only%.*}
-
-    expect ci/expect_scripts/$no_ext_name.exp
-done
-
-# remove Dir example directorys if they exist
-rm -rf dirExampleE
-rm -rf dirExampleA
-rm -rf dirExampleD
-
-# countdown, echo, form... all require user input or special setup
-ignore_list=("stdin-basic.roc" "stdin-pipe.roc" "command-line-args.roc" "http.roc" "env-var.roc" "bytes-stdin-stdout.roc" "error-handling.roc" "tcp-client.roc" "tcp.roc" "terminal-app-snake.roc")
-
-# roc dev (some expects only run with `roc dev`)
-for roc_file in $EXAMPLES_DIR*.roc; do
-    base_file=$(basename "$roc_file")
-
-
-    # check if base_file matches something from ignore_list
-    for file in "${ignore_list[@]}"; do
-        if [ "$base_file" == "$file" ]; then
-            continue 2 # continue the outer loop if a match is found
+            # Modify examples to use bundle URL
+            echo ""
+            echo "=== Configuring examples to use bundle ==="
+            for example in examples/*.roc; do
+                sed -i.bak "s|platform \"../platform/main.roc\"|platform \"http://localhost:8000/$BUNDLE_FILE\"|" "$example"
+            done
+            USE_BUNDLE=true
+        else
+            echo "Warning: HTTP server failed to start, testing with local platform"
+            kill "$HTTP_SERVER_PID" 2>/dev/null || true
+            HTTP_SERVER_PID=""
         fi
-    done
-
-    # For path.roc we need be inside the EXAMPLES_DIR
-    if [ "$base_file" == "path.roc" ]; then
-        absolute_roc=$(which $ROC | xargs realpath)
-        cd $EXAMPLES_DIR
-        $absolute_roc dev $base_file $ROC_BUILD_FLAGS
-        cd ..
-    elif [ "$base_file" == "sqlite-basic.roc" ]; then
-        DB_PATH=${EXAMPLES_DIR}todos.db $ROC dev $roc_file $ROC_BUILD_FLAGS
-    elif [ "$base_file" == "sqlite-everything.roc" ]; then
-        DB_PATH=${EXAMPLES_DIR}todos2.db $ROC dev $roc_file $ROC_BUILD_FLAGS
-    elif [ "$base_file" == "temp-dir.roc" ]; then
-        $ROC dev $roc_file $ROC_BUILD_FLAGS --linker=legacy
-    elif [ "$base_file" == "file-accessed-modified-created-time.roc" ] && [ "$IS_MUSL" == "1" ]; then
-        continue
     else
-
-        $ROC dev $roc_file $ROC_BUILD_FLAGS
+        echo "Warning: Bundle creation failed, testing with local platform"
     fi
+else
+    echo ""
+    echo "=== Skipping bundle (not all targets built) ==="
+    echo "Run './build.sh --all' first to test with bundled platform"
+fi
+
+# roc check migrated examples
+echo ""
+echo "=== Checking examples ==="
+for example in "${MIGRATED_EXAMPLES[@]}"; do
+    echo "Checking: ${example}.roc"
+    roc check "examples/${example}.roc"
 done
 
-for roc_file in $TESTS_DIR*.roc; do
-    base_file=$(basename "$roc_file")
+# roc build migrated examples
+echo ""
+if [ "$USE_BUNDLE" = true ]; then
+    echo "=== Building examples (using bundle) ==="
+else
+    echo "=== Building examples (using local platform) ==="
+fi
+for example in "${MIGRATED_EXAMPLES[@]}"; do
+    echo "Building: ${example}.roc"
+    roc build "examples/${example}.roc"
+    mv "./${example}" "examples/"
+done
 
-    # check if base_file matches something from ignore_list
-    for file in "${ignore_list[@]}"; do
-        if [ "$base_file" == "$file" ]; then
-            continue 2 # continue the outer loop if a match is found
-        fi
-    done
-
-    if [ "$base_file" == "sqlite.roc" ]; then
-        DB_PATH=${TESTS_DIR}test.db $ROC dev $roc_file $ROC_BUILD_FLAGS
+# Run expect tests
+echo ""
+echo "=== Running expect tests ==="
+FAILED=0
+for example in "${MIGRATED_EXAMPLES[@]}"; do
+    echo ""
+    echo "--- Testing: $example ---"
+    set +e
+    expect "ci/expect_scripts/${example}.exp"
+    EXIT_CODE=$?
+    set -e
+    if [ $EXIT_CODE -eq 0 ]; then
+        echo "PASS: $example"
     else
-        $ROC dev $roc_file $ROC_BUILD_FLAGS
+        echo "FAIL: $example (exit code: $EXIT_CODE)"
+        FAILED=1
     fi
 done
 
-# remove Dir example directorys if they exist
-rm -rf dirExampleE
-rm -rf dirExampleA
-rm -rf dirExampleD
-
-# `roc test` every roc file if it contains a test, skip roc_nightly folder
-find . -type d -name "roc_nightly" -prune -o -type f -name "*.roc" -print | while read file; do
-    # Arg/*.roc hits github.com/roc-lang/roc/issues/5701
-    if ! [[ "$file" =~ Arg/[A-Z][a-zA-Z0-9]*.roc ]]; then
-
-        if grep -qE '^\s*expect(\s+|$)' "$file"; then
-
-            # don't exit script if test_command fails
-            set +e
-            test_command=$($ROC test "$file")
-            test_exit_code=$?
-            set -e
-
-            if [[ $test_exit_code -ne 0 && $test_exit_code -ne 2 ]]; then
-                exit $test_exit_code
-            fi
-        fi
+echo ""
+if [ $FAILED -eq 0 ]; then
+    if [ "$USE_BUNDLE" = true ]; then
+        echo "=== All tests passed (with bundle)! ==="
+    else
+        echo "=== All tests passed! ==="
     fi
-done
-
-# test building website
-$ROC docs platform/main.roc
+else
+    echo "=== Some tests failed ==="
+    exit 1
+fi

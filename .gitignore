@@ -1,3 +1,12 @@
+### Do not modify these first three ignore rules.  Needed to ignore files with no extension ###
+# Ignore all files including binary files that have no extension
+*
+# Unignore all files with extensions
+!*.*
+# Unignore all directories
+!*/
+
+
 *.rh*
 *.rm*
 dynhost
@@ -56,8 +65,11 @@ temp-dir
 env-var
 out.txt
 
-# local roc folder for testing
-roc_nightly
+# Downloaded Roc nightly
+roc_nightly*
+
+# Roc source built by CI
+roc-src
 
 # see examples/dir.roc
 dirExampleE
@@ -67,13 +79,20 @@ dirExampleD
 # see ci/all_tests.sh
 all_tests_output.log
 
+# Old build artifacts (platform/*.a was pre-migration location)
 platform/*.a
 
 ci/check_all_exposed_funs_tested
 ci/check_cargo_versions_match
 
-# glue generated files
-crates/roc_std
-
 # build script artifacts
 build
+
+# Platform host libraries (we manually add things to track like crt1.o, libc.a, libunwind.a)
+platform/targets/*/libhost.a
+
+# Cargo lock for reproducible builds
+!Cargo.lock
+
+# Bundled platform package
+*.tar.zst

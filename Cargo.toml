@@ -1,66 +1,60 @@
+[package]
+name = "roc_host"
+version = "0.0.1"
+authors = ["The Roc Contributors"]
+edition = "2021"
+license = "UPL-1.0"
+repository = "https://github.com/roc-lang/basic-cli"
+
+[lib]
+name = "host"
+crate-type = ["staticlib"]
+
+# Note: we use "=version" for reproducability, cargo may silently use a more recent version if you do not use `=`.
+[dependencies]
+libc = "=0.2.180" # keep version in sync with libc workspace dep below
+crossterm = "=0.29.0"
+roc_std_new.workspace = true
+roc_io_error.workspace = true
+roc_random.workspace = true
+roc_command.workspace = true
+memoffset = "=0.9.1"
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+sys-locale.workspace = true
+
 [workspace]
-resolver = "2"
 members = [
-    "crates/roc_command",
-    "crates/roc_host",
-    "crates/roc_host_lib",
-    "crates/roc_file",
-    "crates/roc_host_bin",
-    "crates/roc_http",
     "crates/roc_io_error",
-    "crates/roc_stdio",
-    "crates/roc_env",
-    "crates/roc_sqlite",
     "crates/roc_random",
+    "crates/roc_command",
 ]
 
 [workspace.package]
 authors = ["The Roc Contributors"]
 edition = "2021"
 license = "UPL-1.0"
-repository = "https://github.com/roc-lang/basic-cli"
 version = "0.0.1"
+repository = "https://github.com/roc-lang/basic-cli"
+
+[workspace.dependencies]
+# Core Roc types
+# roc-nightly: 2026-01-12
+roc_std_new = { git = "https://github.com/roc-lang/roc", rev = "36e9ff29fed0ebe6e9d47e30c14bc2d0a2545a5f" }
+
+# Internal crates
+roc_io_error = { path = "crates/roc_io_error" }
+roc_random = { path = "crates/roc_random" }
+roc_command = { path = "crates/roc_command" }
+
+# External dependencies
+getrandom = "=0.2.16"
+sys-locale = "=0.3.2"
+libc = "=0.2.180"
 
 [profile.release]
 lto = true
 strip = "debuginfo"
-# You can comment this out if you hit a segmentation fault similar to the one in see issue github.com/roc-lang/roc/issues/6121
+panic = "abort"
 # Setting this to 1 should improve execution speed by making things easier to optimize for LLVM.
-# codegen-units = 1
-
-[workspace.dependencies]
-roc_std = { git = "https://github.com/roc-lang/roc.git" }
-roc_std_heap = { git = "https://github.com/roc-lang/roc.git" }
-roc_command = { path = "crates/roc_command" }
-roc_file = { path = "crates/roc_file" }
-roc_host = { path = "crates/roc_host" }
-roc_http = { path = "crates/roc_http" }
-roc_io_error = { path = "crates/roc_io_error" }
-roc_stdio = { path = "crates/roc_stdio" }
-roc_env = { path = "crates/roc_env" }
-roc_random = { path = "crates/roc_random" }
-roc_sqlite = { path = "crates/roc_sqlite" }
-memchr = "=2.7.4"
-hyper = { version = "=1.6.0", default-features = false, features = [
-    "http1",
-    "client",
-] }
-hyper-util = "=0.1.12"
-hyper-rustls = { version = "=0.27.6", default-features = false, features = [
-    "http1",
-    "tls12",
-    "native-tokio",
-    "rustls-native-certs", # required for with_native_roots
-    "ring", # required for with_native_roots
-] }
-http-body-util = "=0.1.3"
-tokio = { version = "=1.45.0", default-features = false }
-sys-locale = "=0.3.2"
-bytes = "=1.10.1"
-crossterm = "=0.29.0"
-memmap2 = "=0.9.4"
-libc = "=0.2.172"
-backtrace = "=0.3.75"
-libsqlite3-sys = { version = "=0.33.0", features = ["bundled"] }
-thread_local = "=1.1.8"
-getrandom = { version = "0.3.3", features = [ "std" ] }
+codegen-units = 1

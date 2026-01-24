@@ -10,4 +10,6 @@ version.workspace = true
 [dependencies]
 roc_std.workspace = true
 roc_file.workspace = true
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
 sys-locale.workspace = true

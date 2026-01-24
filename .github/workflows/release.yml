@@ -1,0 +1,226 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag (e.g., v0.1.0)'
+        required: true
+        type: string
+  pull_request:
+
+# Ensure only one release workflow runs at a time
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Do not add permissions here! Configure them at the job level!
+permissions:
+  contents: read
+
+env:
+  ZIG_VERSION: 0.15.2
+
+jobs:
+  build-and-bundle:
+    name: Build and Bundle Platform
+    runs-on: macos-15  # macOS can cross-compile to all targets
+    outputs:
+      bundle_filename: ${{ steps.bundle.outputs.bundle_filename }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Zig
+        uses: mlugg/setup-zig@8d6198c65fb0feaa111df26e6b467fea8345e46f # ratchet:mlugg/setup-zig@v2.0.5
+        with:
+          version: ${{ env.ZIG_VERSION }}
+
+      - name: Install Rust cross-compilation targets
+        run: |
+          rustup target add x86_64-apple-darwin
+          rustup target add aarch64-apple-darwin
+          rustup target add x86_64-unknown-linux-musl
+          rustup target add aarch64-unknown-linux-musl
+
+      - name: Download Roc nightly
+        run: |
+          source ci/get_roc_nightly_url.sh
+          echo "Downloading $ROC_NIGHTLY_URL"
+          curl -fOL "$ROC_NIGHTLY_URL"
+          tar -xzf "$ROC_NIGHTLY_ARCHIVE"
+          ROC_DIR=$(ls -d roc_nightly-*/ | head -1)
+          echo "$(pwd)/${ROC_DIR}" >> "$GITHUB_PATH"
+
+      - name: Build platform for all targets
+        run: ./build.sh --all
+
+      - name: Bundle platform
+        id: bundle
+        run: |
+          # Run bundle.sh and capture output (disable set -e to ensure output is printed)
+          set +e
+          BUNDLE_OUTPUT=$(./bundle.sh 2>&1)
+          EXIT_CODE=$?
+          set -e
+          echo "$BUNDLE_OUTPUT"
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "bundle.sh failed with exit code $EXIT_CODE"
+            exit $EXIT_CODE
+          fi
+
+          # Extract the tar.zst filename from "Created: /path/to/HASH.tar.zst" line
+          BUNDLE_PATH=$(echo "$BUNDLE_OUTPUT" | grep "^Created:" | awk '{print $2}')
+          BUNDLE_FILENAME=$(basename "$BUNDLE_PATH")
+
+          if [ -z "$BUNDLE_FILENAME" ]; then
+            echo "Error: Could not extract bundle filename from output"
+            echo "Bundle output was:"
+            echo "$BUNDLE_OUTPUT"
+            exit 1
+          fi
+
+          echo "Bundle created: $BUNDLE_FILENAME"
+          echo "bundle_filename=$BUNDLE_FILENAME" >> "$GITHUB_OUTPUT"
+
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: platform-bundle
+          path: ${{ steps.bundle.outputs.bundle_filename }}
+          retention-days: 30
+
+  test-bundle:
+    name: Test Bundle (${{ matrix.os }})
+    needs: build-and-bundle
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-15          # Apple Silicon
+          - macos-15-intel    # Intel Mac
+          - ubuntu-22.04      # Linux x86_64
+          - ubuntu-24.04-arm  # Linux ARM64
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Zig
+        uses: mlugg/setup-zig@8d6198c65fb0feaa111df26e6b467fea8345e46f # ratchet:mlugg/setup-zig@v2.0.5
+        with:
+          version: ${{ env.ZIG_VERSION }}
+
+      - name: Install expect (Ubuntu)
+        if: startsWith(matrix.os, 'ubuntu-')
+        run: sudo apt-get install -y expect
+
+      - name: Install expect (macOS)
+        if: startsWith(matrix.os, 'macos-')
+        run: brew install expect
+
+      - name: Download Roc nightly
+        run: |
+          source ci/get_roc_nightly_url.sh
+          echo "Downloading $ROC_NIGHTLY_URL"
+          curl -fOL "$ROC_NIGHTLY_URL"
+          tar -xzf "$ROC_NIGHTLY_ARCHIVE"
+          ROC_DIR=$(ls -d roc_nightly-*/ | head -1)
+          echo "$(pwd)/${ROC_DIR}" >> "$GITHUB_PATH"
+
+      - name: Download bundle artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: platform-bundle
+
+      - name: Start HTTP server for bundle
+        run: |
+          # Start Python HTTP server in background on port 8000
+          python3 -m http.server 8000 &
+          HTTP_SERVER_PID=$!
+          echo "HTTP_SERVER_PID=$HTTP_SERVER_PID" >> "$GITHUB_ENV"
+
+          # Wait for server to start
+          sleep 5
+
+          # Verify server is running and bundle is accessible
+          if ! curl -f -I "http://localhost:8000/${{ needs.build-and-bundle.outputs.bundle_filename }}" > /dev/null 2>&1; then
+            echo "Error: HTTP server not accessible or bundle not found"
+            kill $HTTP_SERVER_PID || true
+            exit 1
+          fi
+
+          echo "HTTP server started on port 8000 (PID: $HTTP_SERVER_PID)"
+          echo "Bundle accessible at: http://localhost:8000/${{ needs.build-and-bundle.outputs.bundle_filename }}"
+
+      - name: Modify examples to use bundled platform
+        run: |
+          # Replace local platform path with HTTP URL in all examples
+          for example in examples/*.roc; do
+            sed -i.bak "s|platform \"../platform/main.roc\"|platform \"http://localhost:8000/${{ needs.build-and-bundle.outputs.bundle_filename }}\"|g" "$example"
+          done
+
+          # Show diff for verification
+          echo "Modified examples:"
+          git diff examples/ | head -50 || true
+
+      # Skip native build since we're using the bundle
+      # The test script will detect all targets exist and use bundle testing
+      # Run all tests against the bundled platform
+      - name: Run tests with bundled platform
+        uses: roc-lang/roc/.github/actions/flaky-retry@main
+        with:
+          command: bash ci/all_tests.sh
+          error_string_contains: "error: unable"
+        env:
+          NO_BUILD: "1"
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-and-bundle, test-bundle]
+    runs-on: ubuntu-24.04
+    # Only run on manual trigger
+    if: github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download bundle artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: platform-bundle
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BUNDLE_FILE=$(ls *.tar.zst | head -1)
+
+          if [ -z "$BUNDLE_FILE" ]; then
+            echo "Error: No bundle file found"
+            exit 1
+          fi
+
+          source ci/get_roc_nightly_url.sh
+          ROC_COMMIT="$ROC_NIGHTLY_COMMIT"
+
+          # Create release with auto-generated notes
+          gh release create "${{ github.event.inputs.release_tag }}" \
+            "$BUNDLE_FILE" \
+            --title "${{ github.event.inputs.release_tag }}" \
+            --generate-notes \
+            --notes "Platform bundle built with Rust (stable) and Roc $ROC_COMMIT"
+
+          echo "Release created: ${{ github.event.inputs.release_tag }}"
+          echo "Bundle uploaded: $BUNDLE_FILE"

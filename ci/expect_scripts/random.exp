@@ -9,12 +9,7 @@ source ./ci/expect_scripts/shared-code.exp
 
 spawn $env(EXAMPLES_DIR)random
 
-set expected_output [normalize_output "
-Random U64 seed is: \\\d+
-Random U32 seed is: \\\d+
-"]
-
-expect -re $expected_output {
+expect -re "Random U64 seed is: \[0-9\]+\r\n" {
     expect eof {
         check_exit_and_segfault
     }

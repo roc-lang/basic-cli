@@ -1,6 +1,0 @@
-# Ignore all files including binary files that have no extension
-*
-# Unignore all files with extensions
-!*.*
-# Unignore all directories
-!*/

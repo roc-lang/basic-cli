@@ -16,7 +16,6 @@ path = "src/lib.rs"
 crossterm.workspace = true
 memmap2.workspace = true
 memchr.workspace = true
-sys-locale.workspace = true
 libc.workspace = true
 backtrace.workspace = true
 roc_std.workspace = true

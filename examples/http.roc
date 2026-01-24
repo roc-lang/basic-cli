@@ -10,9 +10,8 @@ import pf.Arg exposing [Arg]
 
 # Demo of all basic-cli Http functions
 
-# To run this example: 
+# To run this example:
 # ```
-# nix develop
 # cd basic-cli/ci/rust_http_server
 # cargo run
 # ```

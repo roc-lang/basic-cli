@@ -2,24 +2,18 @@ app [main!] { pf: platform "../platform/main.roc" }
 
 import pf.Stdout
 import pf.Env
-import pf.Arg exposing [Arg]
 
-# How to read environment variables with Env.decode
+# How to read environment variables with Env.var!
 
-# To run this example: check the README.md in this folder
+main! : List(Str) => Try({}, [Exit(I32)])
+main! = |_args| {
+    editor = Env.var!("EDITOR")
 
-main! : List Arg => Result {} _
-main! = |_args|
+    if Str.is_empty(editor) {
+        Stdout.line!("EDITOR is not set")
+    } else {
+        Stdout.line!("Your favorite editor is ${editor}!")
+    }
 
-    editor = Env.decode!("EDITOR")?
-
-    Stdout.line!("Your favorite editor is ${editor}!")?
-
-    # Env.decode! does not return the same type everywhere.
-    # The type is determined based on type inference.
-    # Here `Str.join_with` forces the type that Env.decode! returns to be `List Str`
-    joined_letters =
-        Env.decode!("LETTERS")
-        |> Result.map_ok(|letters| Str.join_with(letters, " "))?
-
-    Stdout.line!("Your favorite letters are: ${joined_letters}")
+    Ok({})
+}

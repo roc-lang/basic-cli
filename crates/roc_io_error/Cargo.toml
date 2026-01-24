@@ -8,5 +8,4 @@ license.workspace = true
 version.workspace = true
 
 [dependencies]
-roc_std.workspace = true
-roc_std_heap.workspace = true
+roc_std_new.workspace = true
