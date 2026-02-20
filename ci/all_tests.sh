@@ -182,7 +182,7 @@ echo ""
 echo "=== Checking examples ==="
 for example in "${MIGRATED_EXAMPLES[@]}"; do
     echo "Checking: ${example}.roc"
-    roc check "examples/${example}.roc"
+    roc check --no-cache "examples/${example}.roc"
 done
 
 # roc build migrated examples
@@ -194,7 +194,7 @@ else
 fi
 for example in "${MIGRATED_EXAMPLES[@]}"; do
     echo "Building: ${example}.roc"
-    roc build "examples/${example}.roc"
+    roc build --no-cache "examples/${example}.roc"
     mv "./${example}" "examples/"
 done
 

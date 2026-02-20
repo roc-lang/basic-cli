@@ -1,6 +1,6 @@
-Random := [].{
-    IOErr := [NotFound, PermissionDenied, BrokenPipe, AlreadyExists, Interrupted, Unsupported, OutOfMemory, Other(Str)]
+import IOErr exposing [IOErr]
 
+Random := [].{
     ## Generate a random 64-bit unsigned integer seed.
     seed_u64! : {} => Try(U64, [RandomErr(IOErr)])
 

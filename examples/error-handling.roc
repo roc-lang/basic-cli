@@ -11,22 +11,41 @@ main! = |_args| {
     # Try to read a file that doesn't exist - should error
     result = File.read_utf8!("nonexistent-file.txt")
     match result {
-        Ok(content) => Stdout.line!("Unexpected success: ${content}")
-        Err(FileErr(NotFound)) => Stdout.line!("Expected error: File not found (NotFound)")
-        Err(FileErr(PermissionDenied)) => Stdout.line!("Error: Permission denied")
-        Err(FileErr(Other(msg))) => Stdout.line!("Error: ${msg}")
-        Err(_) => Stdout.line!("Error: Other file error")
+        Ok(content) => {
+            _r = Stdout.line!("Unexpected success: ${content}")
+        }
+        Err(FileErr(NotFound)) => {
+            _r = Stdout.line!("Expected error: File not found (NotFound)")
+        }
+        Err(FileErr(PermissionDenied)) => {
+            _r = Stdout.line!("Error: Permission denied")
+        }
+        Err(FileErr(Other(msg))) => {
+            _r = Stdout.line!("Error: ${msg}")
+        }
+        Err(_) => {
+            _r = Stdout.line!("Error: Other file error")
+        }
     }
 
     # Now demonstrate success path - create, read, then cleanup
-    # Using ? operator to propagate errors (works with open tag unions)
-    File.write_utf8!(file_name, "Hello from error-handling example!")?
+    file_result = {
+        File.write_utf8!(file_name, "Hello from error-handling example!")?
 
-    content = File.read_utf8!(file_name)?
-    Stdout.line!("${file_name} contains: ${content}")
+        content = File.read_utf8!(file_name)?
+        _r = Stdout.line!("${file_name} contains: ${content}")
 
-    # Cleanup
-    File.delete!(file_name)?
+        # Cleanup
+        File.delete!(file_name)?
 
-    Ok({})
+        Ok({})
+    }
+
+    match file_result {
+        Ok({}) => Ok({})
+        Err(_) => {
+            _r = Stdout.line!("Error during file operations")
+            Err(Exit(1))
+        }
+    }
 }
