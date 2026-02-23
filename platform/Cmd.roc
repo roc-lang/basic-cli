@@ -1,10 +1,9 @@
 import IOErr exposing [IOErr]
-import CmdInternal
 
 Cmd :: {
     args : List(Str),
     clear_envs : Bool,
-    envs : List(Str),
+    envs : List(Str), # TODO change this to List((Str, Str))
     program : Str,
 }.{
 
@@ -16,20 +15,20 @@ Cmd :: {
     ## ```roc
     ## Cmd.exec!("echo", ["hello world"])?
     ## ```
-    exec! : Str, List(Str) => Try({}, [ExecFailed({ command : Str, exit_code : I32 }), FailedToGetExitCode { command : Str, err : IOErr }, ..])
-    exec! = |program, arguments| {
-        exit_code =
-            new(program)
-            .args(arguments)
-            .exec_exit_code!()?
+    #exec! : Str, List(Str) => Try({}, [ExecFailed({ command : Str, exit_code : I32 }), FailedToGetExitCode { command : Str, err : IOErr }, ..])
+    #exec! = |program, arguments| {
+    #    exit_code =
+    #        new(program)
+    #        .args(arguments)
+    #        .exec_exit_code!()?
 
-        if exit_code == 0 {
-            Ok({})
-        } else {
-            command = "${cmd_name} ${arguments.join_with(" ")}"
-            Err(ExecFailed({ command, exit_code }))
-        }
-    }
+    #    if exit_code == 0 {
+    #        Ok({})
+    #    } else {
+    #        command = "${cmd_name} ${arguments.join_with(" ")}"
+    #        Err(ExecFailed({ command, exit_code }))
+    #    }
+    #}
 
     ## Execute a Cmd (using the builder pattern).
     ## Stdin, stdout, and stderr are inherited from the parent process.
@@ -43,16 +42,16 @@ Cmd :: {
     ##     .env("RUST_BACKTRACE", "1")
     ##     .exec_cmd!()?
     ## ```
-    exec_cmd! : Cmd => Try({}, [ExecCmdFailed { command : Str, exit_code : I32 }, FailedToGetExitCode { command : Str, err : IOErr }, ..])
-    exec_cmd! = |cmd| {
-        exit_code = exec_exit_code!(cmd)?
-        
-        if exit_code == 0 {
-            Ok({})
-        } else {
-            Err(ExecCmdFailed({ command: to_str(cmd), exit_code }))
-        }
-    }
+    #exec_cmd! : Cmd => Try({}, [ExecCmdFailed { command : Str, exit_code : I32 }, FailedToGetExitCode { command : Str, err : IOErr }, ..])
+    #exec_cmd! = |cmd| {
+    #    exit_code = exec_exit_code!(cmd)?
+    #    
+    #    if exit_code == 0 {
+    #        Ok({})
+    #    } else {
+    #        Err(ExecCmdFailed({ command: to_str(cmd), exit_code }))
+    #    }
+    #}
 
     ## Execute command and capture stdout and stderr as UTF-8 strings.
     ## Invalid UTF-8 sequences are replaced with the Unicode replacement character.
@@ -68,40 +67,40 @@ Cmd :: {
     ##
     ## Stdout.line!("Echo output: ${cmd_output.stdout_utf8}")?
     ## ```
-    exec_output! : Cmd => Try(
-        { stdout_utf8 : Str, stderr_utf8_lossy : Str },
-        [
-            StdoutContainsInvalidUtf8({ cmd_str : Str, err : [BadUtf8 { index : U64, problem : Str.Utf8Problem }] }),
-            NonZeroExitCode({ command : Str, exit_code : I32, stdout_utf8_lossy : Str, stderr_utf8_lossy : Str }),
-            FailedToGetExitCode({ command : Str, err : IOErr }),
-            ..
-        ]
-    )
-    exec_output! = |cmd|
-        exec_try = CmdInternal.command_exec_output!(cmd)
+    #exec_output! : Cmd => Try(
+    #    { stdout_utf8 : Str, stderr_utf8_lossy : Str },
+    #    [
+    #        StdoutContainsInvalidUtf8({ cmd_str : Str, err : [BadUtf8 { index : U64, problem : Str.Utf8Problem }] }),
+    #        NonZeroExitCode({ command : Str, exit_code : I32, stdout_utf8_lossy : Str, stderr_utf8_lossy : Str }),
+    #        FailedToGetExitCode({ command : Str, err : IOErr }),
+    #        ..
+    #    ]
+    #)
+    #exec_output! = |cmd|
+    #    exec_try = CmdInternal.command_exec_output!(cmd)
 
-        match exec_try {
-            Ok({ stderr_bytes, stdout_bytes }) =>
-                stdout_utf8 =
-                    Str.from_utf8(stdout_bytes)
-                        .map_err(|err| StdoutContainsInvalidUtf8({ cmd_str: to_str(cmd), err }))?
+    #   match exec_try {
+    #        Ok({ stderr_bytes, stdout_bytes }) =>
+    #            stdout_utf8 =
+    #                Str.from_utf8(stdout_bytes)
+    #                    .map_err(|err| StdoutContainsInvalidUtf8({ cmd_str: to_str(cmd), err }))?
 
-                stderr_utf8_lossy = Str.from_utf8_lossy(stderr_bytes)
+    #            stderr_utf8_lossy = Str.from_utf8_lossy(stderr_bytes)
 
-                Ok({ stdout_utf8, stderr_utf8_lossy })
+    #            Ok({ stdout_utf8, stderr_utf8_lossy })
 
-            Err(inside_try) =>
-                match inside_try {
-                    Ok({ exit_code, stderr_bytes, stdout_bytes }) =>
-                        stdout_utf8_lossy = Str.from_utf8_lossy(stdout_bytes)
-                        stderr_utf8_lossy = Str.from_utf8_lossy(stderr_bytes)
+    #        Err(inside_try) =>
+    #            match inside_try {
+    #                Ok({ exit_code, stderr_bytes, stdout_bytes }) =>
+    #                    stdout_utf8_lossy = Str.from_utf8_lossy(stdout_bytes)
+    #                    stderr_utf8_lossy = Str.from_utf8_lossy(stderr_bytes)
 
-                        Err(NonZeroExitCode({ command: to_str(cmd), exit_code, stdout_utf8_lossy, stderr_utf8_lossy }))
+    #                    Err(NonZeroExitCode({ command: to_str(cmd), exit_code, stdout_utf8_lossy, stderr_utf8_lossy }))
 
-                    Err(err) =>
-                        Err(FailedToGetExitCode({ command: to_str(cmd), err: InternalIOErr.handle_err(err) }))
-                }
-        }
+    #                Err(err) =>
+    #                    Err(FailedToGetExitCode({ command: to_str(cmd), err: InternalIOErr.handle_err(err) }))
+    #            }
+    #    }
 
     ## Execute command and capture stdout and stderr in the original form as bytes.
     ##
@@ -115,31 +114,31 @@ Cmd :: {
     ##
     ## Stdout.line!("${Str.inspect(cmd_output_bytes)}")? # {stderr_bytes: [], stdout_bytes: [72, 105, 10]}
     ## ```
-    exec_output_bytes! : Cmd => Try(
-        { stderr_bytes : List(U8), stdout_bytes : List(U8) }
-        [
-            FailedToGetExitCodeB(IOErr), # TODO: perhaps no need for B?
-            NonZeroExitCode({ exit_code : I32, stderr_bytes : List(U8), stdout_bytes : List(U8) }),
-            ..
-        ]
-    )
-    exec_output_bytes! = |cmd| {
-        exec_try = CmdInternal.command_exec_output!(cmd) # TODO
+    #exec_output_bytes! : Cmd => Try(
+    #    { stderr_bytes : List(U8), stdout_bytes : List(U8) }
+    #    [
+    #        FailedToGetExitCodeB(IOErr), # TODO: perhaps no need for B?
+    #        NonZeroExitCode({ exit_code : I32, stderr_bytes : List(U8), stdout_bytes : List(U8) }),
+    #        ..
+    #    ]
+    #)
+    #exec_output_bytes! = |cmd| {
+    #    exec_try = CmdInternal.command_exec_output!(cmd) # TODO
 
-        match exec_try {
-            Ok({ stderr_bytes, stdout_bytes }) =>
-                Ok({ stdout_bytes, stderr_bytes })
+    #    match exec_try {
+    #        Ok({ stderr_bytes, stdout_bytes }) =>
+    #            Ok({ stdout_bytes, stderr_bytes })
 
-            Err(inside_try) =>
-                match inside_try {
-                    Ok({ exit_code, stderr_bytes, stdout_bytes }) ->
-                        Err(NonZeroExitCodeB({ exit_code, stdout_bytes, stderr_bytes }))
+    #        Err(inside_try) =>
+    #            match inside_try {
+    #                Ok({ exit_code, stderr_bytes, stdout_bytes }) ->
+    #                    Err(NonZeroExitCodeB({ exit_code, stdout_bytes, stderr_bytes }))
 
-                    Err(err) ->
-                        Err(FailedToGetExitCodeB(InternalIOErr.handle_err(err)))
-                }
-        }
-    }
+    #                Err(err) ->
+    #                    Err(FailedToGetExitCodeB(InternalIOErr.handle_err(err)))
+    #            }
+    #    }
+    #}
 
     ## Execute a command and return its exit code.
     ## Stdin, stdout, and stderr are inherited from the parent process.
@@ -151,11 +150,7 @@ Cmd :: {
     ## ```roc
     ## exit_code = Cmd.new("cat").arg("non_existent.txt").exec_exit_code!()?
     ## ```
-    exec_exit_code! : Cmd => Try(I32, [FailedToGetExitCode { command : Str, err : IOErr }, ..])
-    exec_exit_code! = |cmd| {
-        CmdInternal.command_exec_exit_code!(cmd) # TODO
-            .map_err(|err| FailedToGetExitCode({ command: to_str(cmd), err }))
-    }
+    exec_exit_code! : Cmd => Try(I32, [FailedToGetExitCode({ command : Str, err : IOErr }), ..])
 
     ## Create a new command with the given program name. Use a function that starts with `exec_` to execute it.
     ##
@@ -237,4 +232,32 @@ Cmd :: {
         envs: cmd.envs,
         program: cmd.program,
     }
+
+    to_str : Cmd -> Str
+    to_str = |cmd| {
+        my_trim = |trimmed_str| {if trimmed_str.is_empty() "" else "envs: ${trimmed_str}"}
+
+        envs_str =
+            cmd.envs
+                # TODO once we're using List of tuples: .map(|(key, value)| "${key}=${value}")
+                .join_with(" ")
+                .trim()->my_trim()
+
+        clear_envs_str = if cmd.clear_envs ", clear_envs: true" else ""
+        
+        \\{ cmd: ${cmd.program}, args: ${Str.join_with(cmd.args, " ")}${envs_str}${clear_envs_str} }
+    }
+}
+
+# Do not change the order of the fields! It will lead to a segfault.
+OutputFromHostSuccess : {
+    stderr_bytes : List(U8),
+    stdout_bytes : List(U8),
+}
+
+# Do not change the order of the fields! It will lead to a segfault.
+OutputFromHostFailure : {
+    stderr_bytes : List(U8),
+    stdout_bytes : List(U8),
+    exit_code : I32,
 }

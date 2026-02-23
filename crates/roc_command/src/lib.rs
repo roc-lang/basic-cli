@@ -33,6 +33,45 @@ impl RocRefcounted for Command {
     }
 }
 
+impl std::fmt::Display for Command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let args_str = self
+            .args
+            .iter()
+            .map(|a| a.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        let envs_slice = self.envs.as_slice();
+        let envs_str = envs_slice
+            .chunks(2)
+            .filter(|c| c.len() == 2)
+            .map(|c| format!("{}={}", c[0].as_str(), c[1].as_str()))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let envs_part = if envs_str.is_empty() {
+            String::new()
+        } else {
+            format!(", envs: {envs_str}")
+        };
+
+        let clear_envs_part = if self.clear_envs != 0 {
+            ", clear_envs: true"
+        } else {
+            ""
+        };
+
+        write!(
+            f,
+            "{{ cmd: {}, args: {}{}{} }}",
+            self.program.as_str(),
+            args_str,
+            envs_part,
+            clear_envs_part,
+        )
+    }
+}
+
 impl Command {
     /// Convert to std::process::Command
     pub fn to_std_command(&self) -> std::process::Command {
@@ -86,26 +125,22 @@ impl RocRefcounted for CommandOutputSuccess {
     }
 }
 
-/// Output when command fails (non-zero exit code)
-/// Roc type: { exit_code : I32, stdout_utf8_lossy : Str, stderr_utf8_lossy : Str }
+/// Represents the record inside the Roc tag `FailedToGetExitCode({ command : Str, err : IOErr })`
 /// Memory layout: Fields sorted by size descending, then alphabetically.
-/// RocStr (24 bytes) > I32 (4 bytes), so: stderr_utf8_lossy (24), stdout_utf8_lossy (24), exit_code (4)
+/// RocStr (24 bytes) > IOErr (??? bytes)
 #[derive(Clone, Debug)]
 #[repr(C)]
-pub struct CommandOutputFailure {
-    pub stderr_utf8_lossy: RocStr,   // offset 0 (24 bytes)
-    pub stdout_utf8_lossy: RocStr,   // offset 24 (24 bytes)
-    pub exit_code: i32,              // offset 48 (4 bytes + padding)
+pub struct FailedToGetExitCodeContent {
+    pub command: RocStr,   // offset 0 (24 bytes)
+    pub err: roc_io_error::IOErr,   // offset 24 (??? bytes)
 }
 
-impl RocRefcounted for CommandOutputFailure {
+impl RocRefcounted for FailedToGetExitCodeContent {
     fn inc(&mut self) {
-        self.stderr_utf8_lossy.inc();
-        self.stdout_utf8_lossy.inc();
+        self.command.inc();
     }
     fn dec(&mut self) {
-        self.stderr_utf8_lossy.dec();
-        self.stdout_utf8_lossy.dec();
+        self.command.dec();
     }
     fn is_refcounted() -> bool {
         true
@@ -119,16 +154,6 @@ fn bytes_to_roc_str_lossy(bytes: &[u8], roc_ops: &RocOps) -> RocStr {
     RocStr::from_str(s.as_ref(), roc_ops)
 }
 
-/// Result of executing a command for output
-pub enum CommandOutputResult {
-    /// Command succeeded with exit code 0
-    Success(CommandOutputSuccess),
-    /// Command failed with non-zero exit code
-    NonZeroExit(CommandOutputFailure),
-    /// Command failed to execute
-    Error(IOErr),
-}
-
 /// Execute command and return exit code
 pub fn command_exec_exit_code(cmd: &Command, roc_ops: &RocOps) -> Result<i32, IOErr> {
     match cmd.to_std_command().status() {
@@ -140,29 +165,29 @@ pub fn command_exec_exit_code(cmd: &Command, roc_ops: &RocOps) -> Result<i32, IO
     }
 }
 
-/// Execute command and capture stdout/stderr as UTF-8 strings.
-/// Invalid UTF-8 sequences are replaced with the Unicode replacement character.
-pub fn command_exec_output(cmd: &Command, roc_ops: &RocOps) -> CommandOutputResult {
-    match cmd.to_std_command().output() {
-        Ok(output) => {
-            let stdout_utf8 = bytes_to_roc_str_lossy(&output.stdout, roc_ops);
-            let stderr_utf8_lossy = bytes_to_roc_str_lossy(&output.stderr, roc_ops);
+// /// Execute command and capture stdout/stderr as UTF-8 strings.
+// /// Invalid UTF-8 sequences are replaced with the Unicode replacement character.
+// pub fn command_exec_output(cmd: &Command, roc_ops: &RocOps) -> CommandOutputResult {
+//     match cmd.to_std_command().output() {
+//         Ok(output) => {
+//             let stdout_utf8 = bytes_to_roc_str_lossy(&output.stdout, roc_ops);
+//             let stderr_utf8_lossy = bytes_to_roc_str_lossy(&output.stderr, roc_ops);
 
-            match output.status.code() {
-                Some(0) => CommandOutputResult::Success(CommandOutputSuccess {
-                    stderr_utf8_lossy,
-                    stdout_utf8,
-                }),
-                Some(exit_code) => CommandOutputResult::NonZeroExit(CommandOutputFailure {
-                    stderr_utf8_lossy,
-                    stdout_utf8_lossy: stdout_utf8,
-                    exit_code,
-                }),
-                None => CommandOutputResult::Error(
-                    IOErr::new_other("Process was killed by signal", roc_ops)
-                ),
-            }
-        }
-        Err(e) => CommandOutputResult::Error(IOErr::from_io_error(&e, roc_ops)),
-    }
-}
+//             match output.status.code() {
+//                 Some(0) => CommandOutputResult::Success(CommandOutputSuccess {
+//                     stderr_utf8_lossy,
+//                     stdout_utf8,
+//                 }),
+//                 Some(exit_code) => CommandOutputResult::NonZeroExit(CommandOutputFailure {
+//                     stderr_utf8_lossy,
+//                     stdout_utf8_lossy: stdout_utf8,
+//                     exit_code,
+//                 }),
+//                 None => CommandOutputResult::Error(
+//                     IOErr::new_other("Process was killed by signal", roc_ops)
+//                 ),
+//             }
+//         }
+//         Err(e) => CommandOutputResult::Error(IOErr::from_io_error(&e, roc_ops)),
+//     }
+// }

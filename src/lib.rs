@@ -6,6 +6,7 @@ use std::io::{self, BufRead, Read, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+use roc_command::FailedToGetExitCodeContent;
 use roc_std_new::{
     HostedFn, HostedFunctions, RocAlloc, RocCrashed, RocDbg, RocDealloc, RocExpectFailed, RocList,
     RocOps, RocRealloc, RocStr, RocTry,
@@ -198,65 +199,65 @@ extern "C" fn roc_crashed_fn(roc_crashed: *const RocCrashed, _env: *mut c_void) 
 
 /// Output record: { stderr_utf8_lossy : Str, stdout_utf8 : Str }
 /// Memory layout: Both RocLists are 24 bytes, alphabetical: stderr_utf8_lossy, stdout_utf8
-#[repr(C)]
-pub struct OutputFromHostSuccess {
-    pub stderr_utf8_lossy: RocList<u8>, // offset 0 (24 bytes)
-    pub stdout_utf8: RocList<u8>,       // offset 24 (24 bytes)
-}
+// #[repr(C)]
+// pub struct OutputFromHostSuccess {
+//     pub stderr_utf8_lossy: RocList<u8>, // offset 0 (24 bytes)
+//     pub stdout_utf8: RocList<u8>,       // offset 24 (24 bytes)
+// }
 
-/// Output record: { exit_code : I32, stderr_utf8_lossy : List(U8), stdout_utf8_lossy : List(U8) }
-/// Memory layout: RocList (24 bytes) > I32 (4 bytes), so: stderr_utf8_lossy, stdout_utf8_lossy, exit_code
-#[repr(C)]
-pub struct OutputFromHostFailure {
-    pub stderr_utf8_lossy: RocList<u8>, // offset 0 (24 bytes)
-    pub stdout_utf8_lossy: RocList<u8>, // offset 24 (24 bytes)
-    pub exit_code: i32,            // offset 48 (4 bytes + padding)
-}
+// /// Output record: { exit_code : I32, stderr_utf8_lossy : List(U8), stdout_utf8_lossy : List(U8) }
+// /// Memory layout: RocList (24 bytes) > I32 (4 bytes), so: stderr_utf8_lossy, stdout_utf8_lossy, exit_code
+// #[repr(C)]
+// pub struct OutputFromHostFailure {
+//     pub stderr_utf8_lossy: RocList<u8>, // offset 0 (24 bytes)
+//     pub stdout_utf8_lossy: RocList<u8>, // offset 24 (24 bytes)
+//     pub exit_code: i32,            // offset 48 (4 bytes + padding)
+// }
 
-/// Error type for command_exec_output!: [CmdErr(IOErr), NonZeroExit({ exit_code, stderr, stdout })]
-/// Alphabetically: CmdErr=0, NonZeroExit=1
-#[repr(C)]
-pub union CmdOutputErrPayload {
-    cmd_err: core::mem::ManuallyDrop<roc_io_error::IOErr>,
-    non_zero_exit: core::mem::ManuallyDrop<NonZeroExitPayload>,
-}
+// /// Error type for command_exec_output!: [CmdErr(IOErr), NonZeroExit({ exit_code, stderr, stdout })]
+// /// Alphabetically: CmdErr=0, NonZeroExit=1
+// #[repr(C)]
+// pub union CmdOutputErrPayload {
+//     cmd_err: core::mem::ManuallyDrop<roc_io_error::IOErr>,
+//     non_zero_exit: core::mem::ManuallyDrop<NonZeroExitPayload>,
+// }
 
-#[repr(C)]
-pub struct CmdOutputErr {
-    payload: CmdOutputErrPayload,
-    discriminant: u8, // CmdErr=0, NonZeroExit=1
-}
+// #[repr(C)]
+// pub struct CmdOutputErr {
+//     payload: CmdOutputErrPayload,
+//     discriminant: u8, // CmdErr=0, NonZeroExit=1
+// }
 
-impl CmdOutputErr {
-    pub fn cmd_err(io_err: roc_io_error::IOErr) -> Self {
-        Self {
-            payload: CmdOutputErrPayload {
-                cmd_err: core::mem::ManuallyDrop::new(io_err),
-            },
-            discriminant: 0,
-        }
-    }
+// impl CmdOutputErr {
+//     pub fn cmd_err(io_err: roc_io_error::IOErr) -> Self {
+//         Self {
+//             payload: CmdOutputErrPayload {
+//                 cmd_err: core::mem::ManuallyDrop::new(io_err),
+//             },
+//             discriminant: 0,
+//         }
+//     }
 
-    pub fn non_zero_exit(
-        stderr_utf8_lossy: RocStr,
-        stdout_utf8_lossy: RocStr,
-        exit_code: i32,
-    ) -> Self {
-        Self {
-            payload: CmdOutputErrPayload {
-                non_zero_exit: core::mem::ManuallyDrop::new(NonZeroExitPayload {
-                    stderr_utf8_lossy,
-                    stdout_utf8_lossy,
-                    exit_code,
-                }),
-            },
-            discriminant: 1,
-        }
-    }
-}
+//     pub fn non_zero_exit(
+//         stderr_utf8_lossy: RocStr,
+//         stdout_utf8_lossy: RocStr,
+//         exit_code: i32,
+//     ) -> Self {
+//         Self {
+//             payload: CmdOutputErrPayload {
+//                 non_zero_exit: core::mem::ManuallyDrop::new(NonZeroExitPayload {
+//                     stderr_utf8_lossy,
+//                     stdout_utf8_lossy,
+//                     exit_code,
+//                 }),
+//             },
+//             discriminant: 1,
+//         }
+//     }
+// }
 
 /// Type alias for Try({ stderr, stdout }, [CmdErr(IOErr), NonZeroExit(...)]) - using official RocTry
-type TryCmdOutputResult = RocTry<CmdOutputSuccess, CmdOutputErr>;
+//type TryCmdOutputResult = RocTry<CmdOutputSuccess, CmdOutputErr>;
 
 // ============================================================================
 // Hosted Functions (sorted alphabetically by fully-qualified name)
@@ -272,50 +273,39 @@ extern "C" fn hosted_cmd_exec_exit_code(
     let roc_ops = unsafe { &*ops };
     let cmd = unsafe { &*(args_ptr as *const roc_command::Command) };
 
-    let result = roc_command::command_exec_exit_code(cmd, roc_ops);
-
-    let try_result: RocTry<i32, roc_io_error::IOErr> = match result {
-        Ok(exit_code) => RocTry::ok(exit_code),
-        Err(io_err) => RocTry::err(io_err),
+    let exec_try = match roc_command::command_exec_exit_code(cmd, roc_ops) {
+        Ok(code) => RocTry::ok(code),
+        Err(io_err) => {
+            let cmd_as_str = RocStr::from_str(&cmd.to_string(), roc_ops);
+            RocTry::err(
+                RocSingleTagWrapper::new(
+                    roc_command::FailedToGetExitCodeContent{command: cmd_as_str, err: io_err}
+                )
+            )
+        },
     };
 
     unsafe {
-        std::ptr::write(ret_ptr as *mut RocTry<i32, roc_io_error::IOErr>, try_result);
+        std::ptr::write(ret_ptr as *mut RocTry<i32, RocSingleTagWrapper<FailedToGetExitCodeContent>>, exec_try);
     }
 }
 
 /// Hosted function: Cmd.exec_output! (index 1)
 /// Takes Command, returns Try({ stderr_utf8_lossy, stdout_utf8 }, [CmdErr(IOErr), NonZeroExit(...)])
-extern "C" fn hosted_cmd_exec_output(
-    ops: *const RocOps,
-    ret_ptr: *mut c_void,
-    args_ptr: *mut c_void,
-) {
-    let roc_ops = unsafe { &*ops };
-    let cmd = unsafe { &*(args_ptr as *const roc_command::Command) };
+// extern "C" fn hosted_cmd_exec_output(
+//     ops: *const RocOps,
+//     ret_ptr: *mut c_void,
+//     args_ptr: *mut c_void,
+// ) {
+//     let roc_ops = unsafe { &*ops };
+//     let cmd = unsafe { &*(args_ptr as *const roc_command::Command) };
 
-    let result = roc_command::command_exec_output(cmd, roc_ops);
-    let try_result: TryCmdOutputResult = match result {
-        roc_command::CommandOutputResult::Success(output) => RocTry::ok(CmdOutputSuccess {
-            stderr_utf8_lossy: output.stderr_utf8_lossy,
-            stdout_utf8: output.stdout_utf8,
-        }),
-        roc_command::CommandOutputResult::NonZeroExit(failure) => {
-            RocTry::err(CmdOutputErr::non_zero_exit(
-                failure.stderr_utf8_lossy,
-                failure.stdout_utf8_lossy,
-                failure.exit_code,
-            ))
-        }
-        roc_command::CommandOutputResult::Error(io_err) => {
-            RocTry::err(CmdOutputErr::cmd_err(io_err))
-        }
-    };
+//     let result = roc_command::command_exec_output(cmd, roc_ops);
 
-    unsafe {
-        std::ptr::write(ret_ptr as *mut TryCmdOutputResult, try_result);
-    }
-}
+//     unsafe {
+//         std::ptr::write(ret_ptr as *mut TryCmdOutputResult, result);
+//     }
+// }
 
 /// Hosted function: Dir.create! (index 2)
 /// Takes Str, returns Try({}, [DirErr(IOErr)])
@@ -1238,9 +1228,9 @@ extern "C" fn hosted_utc_now(_ops: *const RocOps, ret_ptr: *mut c_void, _args_pt
 
 /// Array of hosted function pointers, sorted alphabetically by fully-qualified name.
 /// IMPORTANT: Order must match the order Roc expects based on alphabetical sorting.
-static HOSTED_FNS: [HostedFn; 35] = [
+static HOSTED_FNS: [HostedFn; 34] = [
     hosted_cmd_exec_exit_code,    // 0:  Cmd.exec_exit_code!
-    hosted_cmd_exec_output,       // 1:  Cmd.exec_output!
+    //hosted_cmd_exec_output,       // 1:  Cmd.exec_output!
     hosted_dir_create,            // 2:  Dir.create!
     hosted_dir_create_all,        // 3:  Dir.create_all!
     hosted_dir_delete_all,        // 4:  Dir.delete_all!
