@@ -33,45 +33,6 @@ impl RocRefcounted for Command {
     }
 }
 
-impl std::fmt::Display for Command {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let args_str = self
-            .args
-            .iter()
-            .map(|a| a.as_str())
-            .collect::<Vec<_>>()
-            .join(" ");
-
-        let envs_slice = self.envs.as_slice();
-        let envs_str = envs_slice
-            .chunks(2)
-            .filter(|c| c.len() == 2)
-            .map(|c| format!("{}={}", c[0].as_str(), c[1].as_str()))
-            .collect::<Vec<_>>()
-            .join(" ");
-        let envs_part = if envs_str.is_empty() {
-            String::new()
-        } else {
-            format!(", envs: {envs_str}")
-        };
-
-        let clear_envs_part = if self.clear_envs != 0 {
-            ", clear_envs: true"
-        } else {
-            ""
-        };
-
-        write!(
-            f,
-            "{{ cmd: {}, args: {}{}{} }}",
-            self.program.as_str(),
-            args_str,
-            envs_part,
-            clear_envs_part,
-        )
-    }
-}
-
 impl Command {
     /// Convert to std::process::Command
     pub fn to_std_command(&self) -> std::process::Command {
@@ -123,35 +84,6 @@ impl RocRefcounted for CommandOutputSuccess {
     fn is_refcounted() -> bool {
         true
     }
-}
-
-/// Represents the record inside the Roc tag `FailedToGetExitCode({ command : Str, err : IOErr })`
-/// Memory layout: Fields sorted by size descending, then alphabetically.
-/// RocStr (24 bytes) > IOErr (??? bytes)
-#[derive(Clone, Debug)]
-#[repr(C)]
-pub struct FailedToGetExitCodeContent {
-    pub command: RocStr,   // offset 0 (24 bytes)
-    pub err: roc_io_error::IOErr,   // offset 24 (??? bytes)
-}
-
-impl RocRefcounted for FailedToGetExitCodeContent {
-    fn inc(&mut self) {
-        self.command.inc();
-    }
-    fn dec(&mut self) {
-        self.command.dec();
-    }
-    fn is_refcounted() -> bool {
-        true
-    }
-}
-
-/// Convert bytes to RocStr using lossy UTF-8 conversion.
-/// Invalid UTF-8 sequences are replaced with the Unicode replacement character (U+FFFD).
-fn bytes_to_roc_str_lossy(bytes: &[u8], roc_ops: &RocOps) -> RocStr {
-    let s = String::from_utf8_lossy(bytes);
-    RocStr::from_str(s.as_ref(), roc_ops)
 }
 
 /// Execute command and return exit code

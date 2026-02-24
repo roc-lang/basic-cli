@@ -6,7 +6,6 @@ use std::io::{self, BufRead, Read, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
-use roc_command::FailedToGetExitCodeContent;
 use roc_std_new::{
     HostedFn, HostedFunctions, RocAlloc, RocCrashed, RocDbg, RocDealloc, RocExpectFailed, RocList,
     RocOps, RocRealloc, RocStr, RocTry,
@@ -265,7 +264,7 @@ extern "C" fn roc_crashed_fn(roc_crashed: *const RocCrashed, _env: *mut c_void) 
 
 /// Hosted function: Cmd.exec_exit_code! (index 0)
 /// Takes Command, returns Try(I32, IOErr)
-extern "C" fn hosted_cmd_exec_exit_code(
+extern "C" fn hosted_cmd_host_exec_exit_code(
     ops: *const RocOps,
     ret_ptr: *mut c_void,
     args_ptr: *mut c_void,
@@ -275,18 +274,11 @@ extern "C" fn hosted_cmd_exec_exit_code(
 
     let exec_try = match roc_command::command_exec_exit_code(cmd, roc_ops) {
         Ok(code) => RocTry::ok(code),
-        Err(io_err) => {
-            let cmd_as_str = RocStr::from_str(&cmd.to_string(), roc_ops);
-            RocTry::err(
-                RocSingleTagWrapper::new(
-                    roc_command::FailedToGetExitCodeContent{command: cmd_as_str, err: io_err}
-                )
-            )
-        },
+        Err(io_err) => RocTry::err(io_err),
     };
 
     unsafe {
-        std::ptr::write(ret_ptr as *mut RocTry<i32, RocSingleTagWrapper<FailedToGetExitCodeContent>>, exec_try);
+        std::ptr::write(ret_ptr as *mut RocTry<i32, roc_io_error::IOErr>, exec_try);
     }
 }
 
@@ -1229,7 +1221,7 @@ extern "C" fn hosted_utc_now(_ops: *const RocOps, ret_ptr: *mut c_void, _args_pt
 /// Array of hosted function pointers, sorted alphabetically by fully-qualified name.
 /// IMPORTANT: Order must match the order Roc expects based on alphabetical sorting.
 static HOSTED_FNS: [HostedFn; 34] = [
-    hosted_cmd_exec_exit_code,    // 0:  Cmd.exec_exit_code!
+    hosted_cmd_host_exec_exit_code,    // 0:  Cmd.exec_exit_code!
     //hosted_cmd_exec_output,       // 1:  Cmd.exec_output!
     hosted_dir_create,            // 2:  Dir.create!
     hosted_dir_create_all,        // 3:  Dir.create_all!

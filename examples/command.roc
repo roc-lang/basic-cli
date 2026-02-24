@@ -27,12 +27,22 @@ main! = |_args| {
 
 	# To execute and just get the exit code (prints to your terminal).
 	# Prefer using `exec!` or `exec_cmd!`.
-	exit_code = 
-		Cmd.new("cat")
+	output1 = 
+		Cmd.new("cattt") # line! prints do work if this is just `cat` (this is the non-error case)
 			.args(["non_existent.txt"])
-			.exec_exit_code!()?
+			.exec_exit_code!()
 
-	Stdout.line!("Exit code: ${exit_code.to_str()}")?
+	Stdout.line!("pre Inspect1")?
+
+	Stdout.line!("Inspect1: ${Str.inspect(output1)}")?
+
+	Stdout.line!("post Inspect1")?
+
+	output2 = output1?
+
+	Stdout.line!("Inspect2: ${Str.inspect(output2)}")?
+
+	Stdout.line!("done")?
 
     # TODO add exec_output_bytes
 

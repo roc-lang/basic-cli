@@ -151,6 +151,12 @@ Cmd :: {
     ## exit_code = Cmd.new("cat").arg("non_existent.txt").exec_exit_code!()?
     ## ```
     exec_exit_code! : Cmd => Try(I32, [FailedToGetExitCode({ command : Str, err : IOErr }), ..])
+    exec_exit_code! = |cmd| {
+        match host_exec_exit_code!(cmd) {
+            Ok(num) => Ok(num)
+            Err(io_err) => Err(FailedToGetExitCode({ command : to_str(cmd), err: io_err }))
+        }
+    }
 
     ## Create a new command with the given program name. Use a function that starts with `exec_` to execute it.
     ##
@@ -232,21 +238,23 @@ Cmd :: {
         envs: cmd.envs,
         program: cmd.program,
     }
+}
 
-    to_str : Cmd -> Str
-    to_str = |cmd| {
-        my_trim = |trimmed_str| {if trimmed_str.is_empty() "" else "envs: ${trimmed_str}"}
+host_exec_exit_code! : Cmd => Try(I32, IOErr)
 
-        envs_str =
-            cmd.envs
-                # TODO once we're using List of tuples: .map(|(key, value)| "${key}=${value}")
-                .join_with(" ")
-                .trim()->my_trim()
+to_str : Cmd -> Str
+to_str = |cmd| {
+    my_trim = |trimmed_str| {if trimmed_str.is_empty() "" else "envs: ${trimmed_str}"}
 
-        clear_envs_str = if cmd.clear_envs ", clear_envs: true" else ""
-        
-        \\{ cmd: ${cmd.program}, args: ${Str.join_with(cmd.args, " ")}${envs_str}${clear_envs_str} }
-    }
+    envs_str =
+        cmd.envs
+            # TODO once we're using List of tuples: .map(|(key, value)| "${key}=${value}")
+            .join_with(" ")
+            .trim()->my_trim()
+
+    clear_envs_str = if cmd.clear_envs ", clear_envs: true" else ""
+    
+    \\{ cmd: ${cmd.program}, args: ${Str.join_with(cmd.args, " ")}${envs_str}${clear_envs_str} }
 }
 
 # Do not change the order of the fields! It will lead to a segfault.
