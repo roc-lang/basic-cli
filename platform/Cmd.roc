@@ -15,20 +15,20 @@ Cmd :: {
     ## ```roc
     ## Cmd.exec!("echo", ["hello world"])?
     ## ```
-    #exec! : Str, List(Str) => Try({}, [ExecFailed({ command : Str, exit_code : I32 }), FailedToGetExitCode { command : Str, err : IOErr }, ..])
-    #exec! = |program, arguments| {
-    #    exit_code =
-    #        new(program)
-    #        .args(arguments)
-    #        .exec_exit_code!()?
+    exec! : Str, List(Str) => Try({}, [ExecFailed({ command : Str, exit_code : I32 }), FailedToGetExitCode({ command : Str, err : IOErr }), ..])
+    exec! = |program, arguments| {
+        exit_code =
+            new(program)
+            .args(arguments)
+            .exec_exit_code!()?
 
-    #    if exit_code == 0 {
-    #        Ok({})
-    #    } else {
-    #        command = "${cmd_name} ${arguments.join_with(" ")}"
-    #        Err(ExecFailed({ command, exit_code }))
-    #    }
-    #}
+        if exit_code == 0 {
+            Ok({})
+        } else {
+            command = "${program} ${arguments.join_with(" ")}"
+            Err(ExecFailed({ command, exit_code }))
+        }
+    }
 
     ## Execute a Cmd (using the builder pattern).
     ## Stdin, stdout, and stderr are inherited from the parent process.
@@ -42,16 +42,16 @@ Cmd :: {
     ##     .env("RUST_BACKTRACE", "1")
     ##     .exec_cmd!()?
     ## ```
-    #exec_cmd! : Cmd => Try({}, [ExecCmdFailed { command : Str, exit_code : I32 }, FailedToGetExitCode { command : Str, err : IOErr }, ..])
-    #exec_cmd! = |cmd| {
-    #    exit_code = exec_exit_code!(cmd)?
-    #    
-    #    if exit_code == 0 {
-    #        Ok({})
-    #    } else {
-    #        Err(ExecCmdFailed({ command: to_str(cmd), exit_code }))
-    #    }
-    #}
+    exec_cmd! : Cmd => Try({}, [ExecCmdFailed({ command : Str, exit_code : I32 }), FailedToGetExitCode({ command : Str, err : IOErr }), ..])
+    exec_cmd! = |cmd| {
+        exit_code = exec_exit_code!(cmd)?
+        
+        if exit_code == 0 {
+            Ok({})
+        } else {
+            Err(ExecCmdFailed({ command: to_str(cmd), exit_code }))
+        }
+    }
 
     ## Execute command and capture stdout and stderr as UTF-8 strings.
     ## Invalid UTF-8 sequences are replaced with the Unicode replacement character.
