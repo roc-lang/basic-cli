@@ -76,31 +76,33 @@ Cmd :: {
     #        ..
     #    ]
     #)
-    #exec_output! = |cmd|
-    #    exec_try = CmdInternal.command_exec_output!(cmd)
+    exec_output! = |cmd| {
+        exec_try = host_exec_output!(cmd)
 
-    #   match exec_try {
-    #        Ok({ stderr_bytes, stdout_bytes }) =>
-    #            stdout_utf8 =
-    #                Str.from_utf8(stdout_bytes)
-    #                    .map_err(|err| StdoutContainsInvalidUtf8({ cmd_str: to_str(cmd), err }))?
+       match exec_try {
+            Ok({ stderr_bytes, stdout_bytes }) => {
+                stdout_utf8 =
+                    Str.from_utf8(stdout_bytes)
+                        .map_err(|err| StdoutContainsInvalidUtf8({ cmd_str: to_str(cmd), err }))?
 
-    #            stderr_utf8_lossy = Str.from_utf8_lossy(stderr_bytes)
+                stderr_utf8_lossy = Str.from_utf8_lossy(stderr_bytes)
 
-    #            Ok({ stdout_utf8, stderr_utf8_lossy })
+                Ok({ stdout_utf8, stderr_utf8_lossy })
+            }
+            Err(inside_try) => {
+                match inside_try {
+                    Ok({ exit_code, stderr_bytes, stdout_bytes }) =>
+                        stdout_utf8_lossy = Str.from_utf8_lossy(stdout_bytes)
+                        stderr_utf8_lossy = Str.from_utf8_lossy(stderr_bytes)
 
-    #        Err(inside_try) =>
-    #            match inside_try {
-    #                Ok({ exit_code, stderr_bytes, stdout_bytes }) =>
-    #                    stdout_utf8_lossy = Str.from_utf8_lossy(stdout_bytes)
-    #                    stderr_utf8_lossy = Str.from_utf8_lossy(stderr_bytes)
+                        Err(NonZeroExitCode({ command: to_str(cmd), exit_code, stdout_utf8_lossy, stderr_utf8_lossy }))
 
-    #                    Err(NonZeroExitCode({ command: to_str(cmd), exit_code, stdout_utf8_lossy, stderr_utf8_lossy }))
-
-    #                Err(err) =>
-    #                    Err(FailedToGetExitCode({ command: to_str(cmd), err: InternalIOErr.handle_err(err) }))
-    #            }
-    #    }
+                    Err(err) =>
+                        Err(FailedToGetExitCode({ command: to_str(cmd), err: InternalIOErr.handle_err(err) }))
+                }
+            }
+        }
+    }
 
     ## Execute command and capture stdout and stderr in the original form as bytes.
     ##
@@ -241,6 +243,8 @@ Cmd :: {
 }
 
 host_exec_exit_code! : Cmd => Try(I32, IOErr)
+
+host_exec_output! : Cmd => Try(OutputFromHostSuccess, (Try(OutputFromHostFailure, IOErr)))
 
 to_str : Cmd -> Str
 to_str = |cmd| {

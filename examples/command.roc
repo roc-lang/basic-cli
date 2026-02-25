@@ -10,12 +10,12 @@ main! = |_args| {
 	Cmd.exec!("echo", ["Hello"])?
 
 	# To execute and capture the output (stdout and stderr) without inheriting your terminal.
-	#cmd_output = 
-	#	Cmd.new("echo")
-	#		.args(["Hi"])
-	#		.exec_output!()?
+	cmd_output = 
+		Cmd.new("echo")
+			.args(["Hi"])
+			.exec_output!()?
 
-	#Stdout.line!("${Str.inspect(cmd_output)}")?
+	Stdout.line!("${Str.inspect(cmd_output)}")?
 
 	# To run a command with environment variables.
 	Cmd.new("env")

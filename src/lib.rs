@@ -284,20 +284,20 @@ extern "C" fn hosted_cmd_host_exec_exit_code(
 
 /// Hosted function: Cmd.exec_output! (index 1)
 /// Takes Command, returns Try({ stderr_utf8_lossy, stdout_utf8 }, [CmdErr(IOErr), NonZeroExit(...)])
-// extern "C" fn hosted_cmd_exec_output(
-//     ops: *const RocOps,
-//     ret_ptr: *mut c_void,
-//     args_ptr: *mut c_void,
-// ) {
-//     let roc_ops = unsafe { &*ops };
-//     let cmd = unsafe { &*(args_ptr as *const roc_command::Command) };
+extern "C" fn hosted_cmd_host_exec_output(
+     ops: *const RocOps,
+    ret_ptr: *mut c_void,
+    args_ptr: *mut c_void,
+) {
+    let roc_ops = unsafe { &*ops };
+    let cmd = unsafe { &*(args_ptr as *const roc_command::Command) };
 
-//     let result = roc_command::command_exec_output(cmd, roc_ops);
+    let output_try = roc_command::command_exec_output(cmd, roc_ops);
 
-//     unsafe {
-//         std::ptr::write(ret_ptr as *mut TryCmdOutputResult, result);
-//     }
-// }
+    unsafe {
+        std::ptr::write(ret_ptr as *mut roc_command::CommandOutputTry, output_try);
+    }
+}
 
 /// Hosted function: Dir.create! (index 2)
 /// Takes Str, returns Try({}, [DirErr(IOErr)])
@@ -1220,9 +1220,9 @@ extern "C" fn hosted_utc_now(_ops: *const RocOps, ret_ptr: *mut c_void, _args_pt
 
 /// Array of hosted function pointers, sorted alphabetically by fully-qualified name.
 /// IMPORTANT: Order must match the order Roc expects based on alphabetical sorting.
-static HOSTED_FNS: [HostedFn; 34] = [
-    hosted_cmd_host_exec_exit_code,    // 0:  Cmd.exec_exit_code!
-    //hosted_cmd_exec_output,       // 1:  Cmd.exec_output!
+static HOSTED_FNS: [HostedFn; 35] = [
+    hosted_cmd_host_exec_exit_code,    // 0:  Cmd.host_exec_exit_code!
+    hosted_cmd_host_exec_output,       // 1:  Cmd.host_exec_output!
     hosted_dir_create,            // 2:  Dir.create!
     hosted_dir_create_all,        // 3:  Dir.create_all!
     hosted_dir_delete_all,        // 4:  Dir.delete_all!
