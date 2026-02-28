@@ -67,15 +67,15 @@ Cmd :: {
     ##
     ## Stdout.line!("Echo output: ${cmd_output.stdout_utf8}")?
     ## ```
-    #exec_output! : Cmd => Try(
-    #    { stdout_utf8 : Str, stderr_utf8_lossy : Str },
-    #    [
-    #        StdoutContainsInvalidUtf8({ cmd_str : Str, err : [BadUtf8 { index : U64, problem : Str.Utf8Problem }] }),
-    #        NonZeroExitCode({ command : Str, exit_code : I32, stdout_utf8_lossy : Str, stderr_utf8_lossy : Str }),
-    #        FailedToGetExitCode({ command : Str, err : IOErr }),
-    #        ..
-    #    ]
-    #)
+    exec_output! : Cmd => Try(
+        { stdout_utf8 : Str, stderr_utf8_lossy : Str },
+        [
+            StdoutContainsInvalidUtf8({ cmd_str : Str, err : [BadUtf8({ problem : _, index : U64 })] }),
+            NonZeroExitCode({ command : Str, exit_code : I32, stdout_utf8_lossy : Str, stderr_utf8_lossy : Str }),
+            FailedToGetExitCode({ command : Str, err : IOErr }),
+            ..
+        ]
+    )
     exec_output! = |cmd| {
         exec_try = host_exec_output!(cmd)
 
@@ -118,30 +118,32 @@ Cmd :: {
     ## Stdout.line!("${Str.inspect(cmd_output_bytes)}")? # {stderr_bytes: [], stdout_bytes: [72, 105, 10]}
     ## ```
     #exec_output_bytes! : Cmd => Try(
-    #    { stderr_bytes : List(U8), stdout_bytes : List(U8) }
+    #    { stderr_bytes : List(U8), stdout_bytes : List(U8) },
     #    [
     #        FailedToGetExitCodeB(IOErr), # TODO: perhaps no need for B?
     #        NonZeroExitCode({ exit_code : I32, stderr_bytes : List(U8), stdout_bytes : List(U8) }),
     #        ..
     #    ]
     #)
-    #exec_output_bytes! = |cmd| {
-    #    exec_try = CmdInternal.command_exec_output!(cmd) # TODO
+    exec_output_bytes! = |cmd| {
+        exec_try = host_exec_output!(cmd)
 
-    #    match exec_try {
-    #        Ok({ stderr_bytes, stdout_bytes }) =>
-    #            Ok({ stdout_bytes, stderr_bytes })
+        match exec_try {
+            Ok({ stderr_bytes, stdout_bytes }) =>
+                Ok({ stdout_bytes, stderr_bytes })
 
-    #        Err(inside_try) =>
-    #            match inside_try {
-    #                Ok({ exit_code, stderr_bytes, stdout_bytes }) ->
-    #                    Err(NonZeroExitCodeB({ exit_code, stdout_bytes, stderr_bytes }))
+            Err(inside_try) =>
+                match inside_try {
+                    Ok({ exit_code, stderr_bytes, stdout_bytes }) => {
+                        Err(NonZeroExitCodeB({ exit_code, stdout_bytes, stderr_bytes }))
+                    }
 
-    #                Err(err) ->
-    #                    Err(FailedToGetExitCodeB(InternalIOErr.handle_err(err)))
-    #            }
-    #    }
-    #}
+                    Err(err) => {
+                        Err(FailedToGetExitCodeB(err))
+                    }
+                }
+        }
+    }
 
     ## Execute a command and return its exit code.
     ## Stdin, stdout, and stderr are inherited from the parent process.
@@ -245,19 +247,23 @@ Cmd :: {
 
 host_exec_exit_code! : Cmd => Try(I32, IOErr)
 
+
 # Do not change the order of the fields! It will lead to a segfault.
+# TODO uncomment once #9216 is fixed
 #OutputFromHostSuccess : {
 #    stderr_bytes : List(U8),
 #    stdout_bytes : List(U8),
 #}
 
 # Do not change the order of the fields! It will lead to a segfault.
+# TODO uncomment once #9216 is fixed
 #OutputFromHostFailure : {
 #    stderr_bytes : List(U8),
 #    stdout_bytes : List(U8),
 #    exit_code : I32,
 #}
 
+# TODO use OutputFromHostSuccess and OutputFromHostFailure once #9216 is fixed
 host_exec_output! : Cmd => Try({stderr_bytes : List(U8), stdout_bytes : List(U8)}, (Try({stderr_bytes : List(U8), stdout_bytes : List(U8), exit_code : I32}, IOErr)))
 
 to_str : Cmd -> Str

@@ -38,12 +38,12 @@ main! = |_args| {
 
 	# To execute and capture the output (stdout and stderr) in the original form as bytes without inheriting your terminal.
 	# Prefer using `exec_output!`.
-	#cmd_output_bytes = 
-	#	Cmd.new("echo")
-	#		.args(["Hi"])
-	#		.exec_output_bytes!()?
+	cmd_output_bytes = 
+		Cmd.new("echo")
+			.args(["Hi"])
+			.exec_output_bytes!()?
 
-	#Stdout.line!("${Str.inspect(cmd_output_bytes)}")?
+	Stdout.line!("${Str.inspect(cmd_output_bytes)}")?
 
 	Ok({})
 }
