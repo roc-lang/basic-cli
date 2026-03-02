@@ -117,14 +117,14 @@ Cmd :: {
     ##
     ## Stdout.line!("${Str.inspect(cmd_output_bytes)}")? # {stderr_bytes: [], stdout_bytes: [72, 105, 10]}
     ## ```
-    #exec_output_bytes! : Cmd => Try(
-    #    { stderr_bytes : List(U8), stdout_bytes : List(U8) },
-    #    [
-    #        FailedToGetExitCodeB(IOErr), # TODO: perhaps no need for B?
-    #        NonZeroExitCode({ exit_code : I32, stderr_bytes : List(U8), stdout_bytes : List(U8) }),
-    #        ..
-    #    ]
-    #)
+    exec_output_bytes! : Cmd => Try(
+        { stderr_bytes : List(U8), stdout_bytes : List(U8) },
+        [
+            NonZeroExitCodeB({ exit_code : I32, stdout_bytes : List(U8), stderr_bytes : List(U8) }),
+            FailedToGetExitCodeB(IOErr),
+            ..
+        ]
+    )
     exec_output_bytes! = |cmd| {
         exec_try = host_exec_output!(cmd)
 

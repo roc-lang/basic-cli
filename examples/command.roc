@@ -34,8 +34,6 @@ main! = |_args| {
 
 	Stdout.line!("Exit code: ${exit_code.to_str()}")?
 
-    # TODO add exec_output_bytes
-
 	# To execute and capture the output (stdout and stderr) in the original form as bytes without inheriting your terminal.
 	# Prefer using `exec_output!`.
 	cmd_output_bytes = 
