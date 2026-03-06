@@ -161,7 +161,7 @@ jobs:
           echo "HTTP server started on port 8000 (PID: $HTTP_SERVER_PID)"
           echo "Bundle accessible at: http://localhost:8000/${{ needs.build-and-bundle.outputs.bundle_filename }}"
 
-      - name: Modify examples to use bundled platform
+      - name: Modify examples and tests to use bundled platform
         run: |
           # Replace local platform path with HTTP URL in all examples
           for example in examples/*.roc; do
