@@ -41,10 +41,10 @@ main! = |_args| {
     )?
 
     # Test StdoutContainsInvalidUtf8 - blocked by compiler bug
-    # expect_err(
-    #     Cmd.new("printf").args(["\\377\\376"]).exec_output!(),
-    #     "Try.Err(StdoutContainsInvalidUtf8({ cmd_str: \"{ cmd: printf, args: \\377\\376 }\", err: BadUtf8({ index: 0, problem: InvalidStartByte }) }))"
-    # )?
+    expect_err(
+        Cmd.new("printf").args(["\\377\\376"]).exec_output!(),
+        "Try.Err(StdoutContainsInvalidUtf8({ cmd_str: \"{ cmd: printf, args: \\\\377\\\\376 }\", err: BadUtf8({ index: 0, problem: InvalidStartByte }) }))"
+    )?
 
     # exec_output_bytes!
     expect_err(

@@ -27,6 +27,12 @@ cleanup() {
     for example in "${MIGRATED_EXAMPLES[@]}"; do
         rm -f "examples/${example}"
     done
+    # Remove built test binaries
+    for f in tests/*.roc; do
+        if [ -f "$f" ]; then
+            rm -f "tests/$(basename "${f%.roc}")"
+        fi
+    done
 
     # Remove bundle file
     if [ -n "${BUNDLE_FILE:-}" ] && [ -f "$BUNDLE_FILE" ]; then
@@ -45,7 +51,9 @@ echo "=== basic-cli CI ==="
 echo ""
 
 # Check if cached roc exists and matches pinned version
-ROC_DIR="roc_nightly-${ROC_NIGHTLY_DATE}-${ROC_NIGHTLY_COMMIT}"
+# Derive directory name from archive name (strip .tar.gz or .zip extension)
+ROC_DIR="${ROC_NIGHTLY_ARCHIVE%.tar.gz}"
+ROC_DIR="${ROC_DIR%.zip}"
 if [ -d "$ROC_DIR" ] && [ -f "$ROC_DIR/roc" ]; then
     CACHED_VERSION=$("./$ROC_DIR/roc" version 2>/dev/null || echo "unknown")
     if echo "$CACHED_VERSION" | grep -q "$ROC_NIGHTLY_COMMIT"; then
@@ -70,9 +78,6 @@ if [ "$NEED_DOWNLOAD" = true ]; then
     curl -fOL "$ROC_NIGHTLY_URL"
     tar -xzf "$ROC_NIGHTLY_ARCHIVE"
     rm -f "$ROC_NIGHTLY_ARCHIVE"
-
-    # Find the extracted directory
-    ROC_DIR=$(ls -d roc_nightly-*/ 2>/dev/null | head -1 | sed 's|/$||')
 
     # Add to GITHUB_PATH if running in CI
     if [ -n "${GITHUB_PATH:-}" ]; then
@@ -119,6 +124,9 @@ MIGRATED_EXAMPLES=(
 
 EXAMPLES_DIR="${ROOT_DIR}/examples/"
 export EXAMPLES_DIR
+
+TESTS_DIR="${ROOT_DIR}/tests/"
+export TESTS_DIR
 
 # Check if all target libraries exist for bundling
 ALL_TARGETS_EXIST=true
@@ -177,12 +185,26 @@ else
     echo "Run './build.sh --all' first to test with bundled platform"
 fi
 
+# Collect test files from TESTS_DIR
+TESTS_FILES=()
+for roc_file in "${TESTS_DIR}"*.roc; do
+    [ -f "$roc_file" ] && TESTS_FILES+=("$(basename "${roc_file%.roc}")")
+done
+
 # roc check migrated examples
 echo ""
 echo "=== Checking examples ==="
 for example in "${MIGRATED_EXAMPLES[@]}"; do
     echo "Checking: ${example}.roc"
     roc check --no-cache "examples/${example}.roc"
+done
+
+# roc check tests
+echo ""
+echo "=== Checking tests ==="
+for test in "${TESTS_FILES[@]}"; do
+    echo "Checking: ${test}.roc"
+    roc check --no-cache "tests/${test}.roc"
 done
 
 # roc build migrated examples
@@ -196,6 +218,15 @@ for example in "${MIGRATED_EXAMPLES[@]}"; do
     echo "Building: ${example}.roc"
     roc build --no-cache "examples/${example}.roc"
     mv "./${example}" "examples/"
+done
+
+# roc build tests
+echo ""
+echo "=== Building tests ==="
+for test in "${TESTS_FILES[@]}"; do
+    echo "Building: ${test}.roc"
+    roc build --no-cache "tests/${test}.roc"
+    mv "./${test}" "tests/"
 done
 
 # Run expect tests
@@ -213,6 +244,22 @@ for example in "${MIGRATED_EXAMPLES[@]}"; do
         echo "PASS: $example"
     else
         echo "FAIL: $example (exit code: $EXIT_CODE)"
+        FAILED=1
+    fi
+done
+
+# Run test expect tests
+for test in "${TESTS_FILES[@]}"; do
+    echo ""
+    echo "--- Testing: $test ---"
+    set +e
+    expect "ci/expect_scripts/${test}.exp"
+    EXIT_CODE=$?
+    set -e
+    if [ $EXIT_CODE -eq 0 ]; then
+        echo "PASS: $test"
+    else
+        echo "FAIL: $test (exit code: $EXIT_CODE)"
         FAILED=1
     fi
 done
