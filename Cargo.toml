@@ -40,8 +40,8 @@ repository = "https://github.com/roc-lang/basic-cli"
 
 [workspace.dependencies]
 # Core Roc types
-# roc-nightly: 2026-03-06
-roc_std_new = { git = "https://github.com/roc-lang/roc", rev = "a02d2287afd24d9f13baff3a5c6059e795b01661" }
+# roc-nightly: 2026-03-30
+roc_std_new = { git = "https://github.com/roc-lang/roc", rev = "c593bfd81918bde53955fd0f5ad964ce479d521f" }
 
 # Internal crates
 roc_io_error = { path = "crates/roc_io_error" }

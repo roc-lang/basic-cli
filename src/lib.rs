@@ -11,27 +11,6 @@ use roc_std_new::{
     RocOps, RocRealloc, RocStr, RocTry,
 };
 
-/// Wrapper for single-variant tag unions like [PathErr(IOErr)].
-///
-/// Example: `[PathErr(IOErr)]` in Roc = `RocSingleTagWrapper<IOErr>` in Rust
-///
-/// Even though there's only one variant, Roc still includes a discriminant byte.
-/// Layout: payload (T) followed by discriminant (u8) + padding to alignment.
-#[repr(C)]
-pub struct RocSingleTagWrapper<T> {
-    pub payload: T,
-    pub discriminant: u8, // Always 0 for single-variant tag unions
-}
-
-impl<T> RocSingleTagWrapper<T> {
-    pub fn new(payload: T) -> Self {
-        Self {
-            payload,
-            discriminant: 0, // Single variant always has discriminant 0
-        }
-    }
-}
-
 /// Global flag to track if dbg or expect_failed was called.
 /// If set, program exits with non-zero code to prevent accidental commits.
 static DEBUG_OR_EXPECT_CALLED: AtomicBool = AtomicBool::new(false);
@@ -245,7 +224,7 @@ extern "C" fn hosted_dir_create(ops: *const RocOps, ret_ptr: *mut c_void, args_p
         Ok(()) => RocTry::ok(()),
         Err(e) => {
             let io_err = roc_io_error::IOErr::from_io_error(&e, roc_ops);
-            RocTry::err(RocSingleTagWrapper::new(io_err))
+            RocTry::err(io_err)
         }
     };
     unsafe {
@@ -269,7 +248,7 @@ extern "C" fn hosted_dir_create_all(
         Ok(()) => RocTry::ok(()),
         Err(e) => {
             let io_err = roc_io_error::IOErr::from_io_error(&e, roc_ops);
-            RocTry::err(RocSingleTagWrapper::new(io_err))
+            RocTry::err(io_err)
         }
     };
     unsafe {
@@ -293,7 +272,7 @@ extern "C" fn hosted_dir_delete_all(
         Ok(()) => RocTry::ok(()),
         Err(e) => {
             let io_err = roc_io_error::IOErr::from_io_error(&e, roc_ops);
-            RocTry::err(RocSingleTagWrapper::new(io_err))
+            RocTry::err(io_err)
         }
     };
     unsafe {
@@ -317,7 +296,7 @@ extern "C" fn hosted_dir_delete_empty(
         Ok(()) => RocTry::ok(()),
         Err(e) => {
             let io_err = roc_io_error::IOErr::from_io_error(&e, roc_ops);
-            RocTry::err(RocSingleTagWrapper::new(io_err))
+            RocTry::err(io_err)
         }
     };
     unsafe {
@@ -349,7 +328,7 @@ extern "C" fn hosted_dir_list(ops: *const RocOps, ret_ptr: *mut c_void, args_ptr
         }
         Err(e) => {
             let io_err = roc_io_error::IOErr::from_io_error(&e, roc_ops);
-            RocTry::err(RocSingleTagWrapper::new(io_err))
+            RocTry::err(io_err)
         }
     };
 
@@ -372,8 +351,8 @@ impl ZeroPayloadTag {
     }
 }
 
-/// Type alias for [VarNotFound(Str)] = RocSingleTagWrapper<RocStr>
-type VarNotFoundErr = RocSingleTagWrapper<RocStr>;
+/// Type alias for [VarNotFound(Str)] in Roc
+type VarNotFoundErr = RocStr;
 type TryStrVarNotFound = RocTry<RocStr, VarNotFoundErr>;
 type TryStrCwdUnavailable = RocTry<RocStr, ZeroPayloadTag>;
 type TryStrExePathUnavailable = RocTry<RocStr, ZeroPayloadTag>;
@@ -429,7 +408,7 @@ extern "C" fn hosted_env_var(ops: *const RocOps, ret_ptr: *mut c_void, args_ptr:
         }
         Err(_) => {
             let roc_name = RocStr::from_str(&name, roc_ops);
-            RocTry::err(RocSingleTagWrapper::new(roc_name))
+            RocTry::err(roc_name)
         }
     };
     unsafe {
@@ -450,7 +429,7 @@ extern "C" fn hosted_file_delete(ops: *const RocOps, ret_ptr: *mut c_void, args_
         Ok(()) => RocTry::ok(()),
         Err(e) => {
             let io_err = roc_io_error::IOErr::from_io_error(&e, roc_ops);
-            RocTry::err(RocSingleTagWrapper::new(io_err))
+            RocTry::err(io_err)
         }
     };
     unsafe {
@@ -481,7 +460,7 @@ extern "C" fn hosted_file_read_bytes(
         }
         Err(e) => {
             let io_err = roc_io_error::IOErr::from_io_error(&e, roc_ops);
-            RocTry::err(RocSingleTagWrapper::new(io_err))
+            RocTry::err(io_err)
         }
     };
     unsafe {
@@ -509,7 +488,7 @@ extern "C" fn hosted_file_read_utf8(
         }
         Err(e) => {
             let io_err = roc_io_error::IOErr::from_io_error(&e, roc_ops);
-            RocTry::err(RocSingleTagWrapper::new(io_err))
+            RocTry::err(io_err)
         }
     };
     unsafe {
@@ -535,7 +514,7 @@ extern "C" fn hosted_file_write_bytes(
         Ok(()) => RocTry::ok(()),
         Err(e) => {
             let io_err = roc_io_error::IOErr::from_io_error(&e, roc_ops);
-            RocTry::err(RocSingleTagWrapper::new(io_err))
+            RocTry::err(io_err)
         }
     };
     unsafe {
@@ -561,7 +540,7 @@ extern "C" fn hosted_file_write_utf8(
         Ok(()) => RocTry::ok(()),
         Err(e) => {
             let io_err = roc_io_error::IOErr::from_io_error(&e, roc_ops);
-            RocTry::err(RocSingleTagWrapper::new(io_err))
+            RocTry::err(io_err)
         }
     };
     unsafe {
@@ -570,13 +549,14 @@ extern "C" fn hosted_file_write_utf8(
 }
 
 /// Type alias for the Path error type: [PathErr(IOErr)] in Roc
-type PathErr = RocSingleTagWrapper<roc_io_error::IOErr>;
+/// Single-variant tag unions have no discriminant in Roc's layout (discriminant_size=0).
+type PathErr = roc_io_error::IOErr;
 
 /// Type alias for Try(Bool, [PathErr(IOErr)]) - used by Path.is_file!, etc.
 type TryBoolPathErr = RocTry<bool, PathErr>;
 
 /// Type alias for the File error type: [FileErr(IOErr)] in Roc
-type FileErr = RocSingleTagWrapper<roc_io_error::IOErr>;
+type FileErr = roc_io_error::IOErr;
 
 /// Type alias for Try({}, [FileErr(IOErr)]) - used by File.write_*, File.delete!
 type TryUnitFileErr = RocTry<(), FileErr>;
@@ -588,7 +568,7 @@ type TryStrFileErr = RocTry<RocStr, FileErr>;
 type TryBytesFileErr = RocTry<RocList<u8>, FileErr>;
 
 /// Type alias for the Dir error type: [DirErr(IOErr)] in Roc
-type DirErr = RocSingleTagWrapper<roc_io_error::IOErr>;
+type DirErr = roc_io_error::IOErr;
 
 /// Type alias for Try({}, [DirErr(IOErr)]) - used by Dir.create!, etc.
 type TryUnitDirErr = RocTry<(), DirErr>;
@@ -606,7 +586,7 @@ unsafe fn write_try_bool_result(
         Ok(value) => RocTry::ok(value),
         Err(e) => {
             let io_err = roc_io_error::IOErr::from_io_error(&e, roc_ops);
-            RocTry::err(RocSingleTagWrapper::new(io_err))
+            RocTry::err(io_err)
         }
     };
 
@@ -757,7 +737,7 @@ extern "C" fn hosted_path_is_sym_link(
 // ============================================================================
 
 /// Type alias for the Random error type: [RandomErr(IOErr)] in Roc
-type RandomErr = RocSingleTagWrapper<roc_io_error::IOErr>;
+type RandomErr = roc_io_error::IOErr;
 
 /// Type alias for Try(U32, [RandomErr(IOErr)]) - using official RocTry
 type TryU32RandomErr = RocTry<u32, RandomErr>;
@@ -777,7 +757,7 @@ extern "C" fn hosted_random_seed_u32(
 
     let try_result: TryU32RandomErr = match result {
         Ok(value) => RocTry::ok(value),
-        Err(io_err) => RocTry::err(RocSingleTagWrapper::new(io_err)),
+        Err(io_err) => RocTry::err(io_err),
     };
 
     unsafe {
@@ -797,7 +777,7 @@ extern "C" fn hosted_random_seed_u64(
 
     let try_result: TryU64RandomErr = match result {
         Ok(value) => RocTry::ok(value),
-        Err(io_err) => RocTry::err(RocSingleTagWrapper::new(io_err)),
+        Err(io_err) => RocTry::err(io_err),
     };
 
     unsafe {
@@ -817,13 +797,13 @@ extern "C" fn hosted_sleep_millis(
 }
 
 /// Type alias for the Stdout error type: [StdoutErr(IOErr)] in Roc
-type StdoutErr = RocSingleTagWrapper<roc_io_error::IOErr>;
+type StdoutErr = roc_io_error::IOErr;
 
 /// Type alias for Try({}, [StdoutErr(IOErr)])
 type TryUnitStdoutErr = RocTry<(), StdoutErr>;
 
 /// Type alias for the Stderr error type: [StderrErr(IOErr)] in Roc
-type StderrErr = RocSingleTagWrapper<roc_io_error::IOErr>;
+type StderrErr = roc_io_error::IOErr;
 
 /// Type alias for Try({}, [StderrErr(IOErr)])
 type TryUnitStderrErr = RocTry<(), StderrErr>;
@@ -845,7 +825,7 @@ extern "C" fn hosted_stderr_line(
         Ok(()) => RocTry::ok(()),
         Err(e) => {
             let io_err = roc_io_error::IOErr::from_io_error(&e, roc_ops);
-            RocTry::err(RocSingleTagWrapper::new(io_err))
+            RocTry::err(io_err)
         }
     };
     unsafe {
@@ -870,7 +850,7 @@ extern "C" fn hosted_stderr_write(
         Ok(()) => RocTry::ok(()),
         Err(e) => {
             let io_err = roc_io_error::IOErr::from_io_error(&e, roc_ops);
-            RocTry::err(RocSingleTagWrapper::new(io_err))
+            RocTry::err(io_err)
         }
     };
     unsafe {
@@ -895,7 +875,7 @@ extern "C" fn hosted_stderr_write_bytes(
         Ok(()) => RocTry::ok(()),
         Err(e) => {
             let io_err = roc_io_error::IOErr::from_io_error(&e, roc_ops);
-            RocTry::err(RocSingleTagWrapper::new(io_err))
+            RocTry::err(io_err)
         }
     };
     unsafe {
@@ -969,7 +949,7 @@ extern "C" fn hosted_stdin_line(ops: *const RocOps, ret_ptr: *mut c_void, _args_
 }
 
 /// Type alias for [StdinErr(IOErr)] - single variant tag union
-type StdinErr = RocSingleTagWrapper<roc_io_error::IOErr>;
+type StdinErr = roc_io_error::IOErr;
 
 /// Type alias for Try(List(U8), [EndOfFile, StdinErr(IOErr)]) - same error type as line!
 type TryBytesStdinLineErr = RocTry<RocList<u8>, StdinLineErr>;
@@ -1033,7 +1013,7 @@ extern "C" fn hosted_stdin_read_to_end(
         }
         Err(e) => {
             let io_err = roc_io_error::IOErr::from_io_error(&e, roc_ops);
-            RocTry::err(RocSingleTagWrapper::new(io_err))
+            RocTry::err(io_err)
         }
     };
 
@@ -1059,7 +1039,7 @@ extern "C" fn hosted_stdout_line(
         Ok(()) => RocTry::ok(()),
         Err(e) => {
             let io_err = roc_io_error::IOErr::from_io_error(&e, roc_ops);
-            RocTry::err(RocSingleTagWrapper::new(io_err))
+            RocTry::err(io_err)
         }
     };
     unsafe {
@@ -1084,7 +1064,7 @@ extern "C" fn hosted_stdout_write(
         Ok(()) => RocTry::ok(()),
         Err(e) => {
             let io_err = roc_io_error::IOErr::from_io_error(&e, roc_ops);
-            RocTry::err(RocSingleTagWrapper::new(io_err))
+            RocTry::err(io_err)
         }
     };
     unsafe {
@@ -1109,7 +1089,7 @@ extern "C" fn hosted_stdout_write_bytes(
         Ok(()) => RocTry::ok(()),
         Err(e) => {
             let io_err = roc_io_error::IOErr::from_io_error(&e, roc_ops);
-            RocTry::err(RocSingleTagWrapper::new(io_err))
+            RocTry::err(io_err)
         }
     };
     unsafe {
@@ -1178,15 +1158,15 @@ static HOSTED_FNS: [HostedFn; 35] = [
     hosted_random_seed_u32,       // 20: Random.seed_u32!
     hosted_random_seed_u64,       // 21: Random.seed_u64!
     hosted_sleep_millis,          // 22: Sleep.millis!
-    hosted_stderr_line,           // 23: Stderr.line!
-    hosted_stderr_write,          // 24: Stderr.write!
-    hosted_stderr_write_bytes,    // 25: Stderr.write_bytes!
-    hosted_stdin_bytes,           // 26: Stdin.bytes!
-    hosted_stdin_line,            // 27: Stdin.line!
-    hosted_stdin_read_to_end,     // 28: Stdin.read_to_end!
-    hosted_stdout_line,           // 29: Stdout.line!
-    hosted_stdout_write,          // 30: Stdout.write!
-    hosted_stdout_write_bytes,    // 31: Stdout.write_bytes!
+    hosted_stderr_line,           // 23: Stderr.host_stderr_line!
+    hosted_stderr_write,          // 24: Stderr.host_stderr_write!
+    hosted_stderr_write_bytes,    // 25: Stderr.host_stderr_write_bytes!
+    hosted_stdin_bytes,           // 26: Stdin.host_stdin_bytes!
+    hosted_stdin_line,            // 27: Stdin.host_stdin_line!
+    hosted_stdin_read_to_end,     // 28: Stdin.host_stdin_read_to_end!
+    hosted_stdout_line,           // 29: Stdout.host_stdout_line!
+    hosted_stdout_write,          // 30: Stdout.host_stdout_write!
+    hosted_stdout_write_bytes,    // 31: Stdout.host_stdout_write_bytes!
     hosted_tty_disable_raw_mode,  // 32: Tty.disable_raw_mode!
     hosted_tty_enable_raw_mode,   // 33: Tty.enable_raw_mode!
     hosted_utc_now,               // 34: Utc.now!

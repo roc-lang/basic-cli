@@ -20,9 +20,9 @@ main! = |_args| {
 	# To run a command with environment variables.
 	Cmd.new("env")
 		.clear_envs() # You probably don't need to clear all other environment variables, this is just an example.
+		.env("BAZ", "DUCK")
 		.env("FOO", "BAR")
-		.envs([("BAZ", "DUCK"), ("XYZ", "ABC")]) # Set multiple environment variables at once with `envs`
-		.args(["-v"])
+		.env("XYZ", "ABC")
 		.exec_cmd!()?
 
 	# To execute and just get the exit code (prints to your terminal).

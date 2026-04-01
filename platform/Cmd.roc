@@ -208,8 +208,8 @@ Cmd :: {
     ## ```
     env : Cmd, Str, Str -> Cmd
     env = |cmd, key, value| {
-        ..cmd,
-        envs: cmd.envs.concat([key, value]),
+        new_envs = cmd.envs.append(key).append(value)
+        { args: cmd.args, clear_envs: cmd.clear_envs, envs: new_envs, program: cmd.program }
     }
 
     ## Add multiple environment variables to the command.
@@ -219,11 +219,8 @@ Cmd :: {
     ## ```
     envs : Cmd, List((Str, Str)) -> Cmd
     envs = |cmd, pairs| {
-        flat = pairs.fold([], |acc, (k, v)| acc.concat([k, v]))
-        {
-            ..cmd,
-            envs: cmd.envs.concat(flat),
-        }
+        new_envs = flatten_str_pairs(pairs, cmd.envs, 0)
+        { args: cmd.args, clear_envs: cmd.clear_envs, envs: new_envs, program: cmd.program }
     }
 
     ## Clear all environment variables before running the command.
@@ -265,6 +262,20 @@ host_exec_exit_code! : Cmd => Try(I32, IOErr)
 
 # TODO use OutputFromHostSuccess and OutputFromHostFailure once #9216 is fixed
 host_exec_output! : Cmd => Try({stderr_bytes : List(U8), stdout_bytes : List(U8)}, (Try({stderr_bytes : List(U8), stdout_bytes : List(U8), exit_code : I32}, IOErr)))
+
+flatten_str_pairs : List((Str, Str)), List(Str), U64 -> List(Str)
+flatten_str_pairs = |pairs, acc, idx| {
+    if idx >= pairs.len() {
+        acc
+    } else {
+        match pairs.get(idx) {
+            Ok(pair) =>
+                flatten_str_pairs(pairs, acc.append(pair.0).append(pair.1), idx + 1)
+            Err(_) =>
+                acc
+        }
+    }
+}
 
 to_str : Cmd -> Str
 to_str = |cmd| {

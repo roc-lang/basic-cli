@@ -43,50 +43,56 @@ cleanup() {
 # Set up trap to ensure cleanup runs on exit
 trap cleanup EXIT
 
-# Get nightly version info from Cargo.toml
-source ci/get_roc_nightly_url.sh
-NEED_DOWNLOAD=false
-
 echo "=== basic-cli CI ==="
 echo ""
 
-# Check if cached roc exists and matches pinned version
-# Derive directory name from archive name (strip .tar.gz or .zip extension)
-ROC_DIR="${ROC_NIGHTLY_ARCHIVE%.tar.gz}"
-ROC_DIR="${ROC_DIR%.zip}"
-if [ -d "$ROC_DIR" ] && [ -f "$ROC_DIR/roc" ]; then
-    CACHED_VERSION=$("./$ROC_DIR/roc" version 2>/dev/null || echo "unknown")
-    if echo "$CACHED_VERSION" | grep -q "$ROC_NIGHTLY_COMMIT"; then
-        echo "roc already at correct version: $CACHED_VERSION"
+if [ -n "${ROC:-}" ]; then
+    # Use user-specified roc binary
+    ROC_BIN_DIR="$(cd "$(dirname "$ROC")" && pwd)"
+    export PATH="$ROC_BIN_DIR:$PATH"
+else
+    # Get nightly version info from Cargo.toml
+    source ci/get_roc_nightly_url.sh
+    NEED_DOWNLOAD=false
+
+    # Check if cached roc exists and matches pinned version
+    # Derive directory name from archive name (strip .tar.gz or .zip extension)
+    ROC_DIR="${ROC_NIGHTLY_ARCHIVE%.tar.gz}"
+    ROC_DIR="${ROC_DIR%.zip}"
+    if [ -d "$ROC_DIR" ] && [ -f "$ROC_DIR/roc" ]; then
+        CACHED_VERSION=$("./$ROC_DIR/roc" version 2>/dev/null || echo "unknown")
+        if echo "$CACHED_VERSION" | grep -q "$ROC_NIGHTLY_COMMIT"; then
+            echo "roc already at correct version: $CACHED_VERSION"
+        else
+            echo "Cached roc ($CACHED_VERSION) doesn't match nightly ($ROC_NIGHTLY_COMMIT)"
+            echo "Removing stale roc directory..."
+            rm -rf "$ROC_DIR"
+            NEED_DOWNLOAD=true
+        fi
     else
-        echo "Cached roc ($CACHED_VERSION) doesn't match nightly ($ROC_NIGHTLY_COMMIT)"
-        echo "Removing stale roc directory..."
-        rm -rf "$ROC_DIR"
         NEED_DOWNLOAD=true
     fi
-else
-    NEED_DOWNLOAD=true
-fi
 
-if [ "$NEED_DOWNLOAD" = true ]; then
-    echo "Downloading Roc nightly $ROC_NIGHTLY_COMMIT..."
-    echo "URL: $ROC_NIGHTLY_URL"
+    if [ "$NEED_DOWNLOAD" = true ]; then
+        echo "Downloading Roc nightly $ROC_NIGHTLY_COMMIT..."
+        echo "URL: $ROC_NIGHTLY_URL"
 
-    # Clean up any old nightly directories
-    rm -rf roc_nightly-*
+        # Clean up any old nightly directories
+        rm -rf roc_nightly-*
 
-    curl -fOL "$ROC_NIGHTLY_URL"
-    tar -xzf "$ROC_NIGHTLY_ARCHIVE"
-    rm -f "$ROC_NIGHTLY_ARCHIVE"
+        curl -fOL "$ROC_NIGHTLY_URL"
+        tar -xzf "$ROC_NIGHTLY_ARCHIVE"
+        rm -f "$ROC_NIGHTLY_ARCHIVE"
 
-    # Add to GITHUB_PATH if running in CI
-    if [ -n "${GITHUB_PATH:-}" ]; then
-        echo "$(pwd)/$ROC_DIR" >> "$GITHUB_PATH"
+        # Add to GITHUB_PATH if running in CI
+        if [ -n "${GITHUB_PATH:-}" ]; then
+            echo "$(pwd)/$ROC_DIR" >> "$GITHUB_PATH"
+        fi
     fi
-fi
 
-# Ensure roc is in PATH
-export PATH="$(pwd)/$ROC_DIR:$PATH"
+    # Ensure roc is in PATH
+    export PATH="$(pwd)/$ROC_DIR:$PATH"
+fi
 
 echo ""
 echo "Using roc version: $(roc version)"
