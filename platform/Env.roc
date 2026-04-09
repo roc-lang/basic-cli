@@ -4,17 +4,17 @@ Env := [].{
     ## If the value is invalid Unicode, the invalid parts will be replaced with the
     ## [Unicode replacement character](https://unicode.org/glossary/#replacement_character).
     ##
-    ## Returns an empty string if the variable is not found.
-    var! : Str => Str
+    ## Returns `Err(VarNotFound(name))` if the variable is not set.
+    var! : Str => Try(Str, [VarNotFound(Str)])
 
     ## Reads the [current working directory](https://en.wikipedia.org/wiki/Working_directory)
     ## from the environment.
     ##
-    ## Returns an empty string if the cwd is unavailable.
-    cwd! : {} => Str
+    ## Returns `Err(CwdUnavailable)` if the cwd cannot be determined.
+    cwd! : {} => Try(Str, [CwdUnavailable])
 
     ## Gets the path to the currently-running executable.
     ##
-    ## Returns an empty string if the path is unavailable.
-    exe_path! : {} => Str
+    ## Returns `Err(ExePathUnavailable)` if the path cannot be determined.
+    exe_path! : {} => Try(Str, [ExePathUnavailable])
 }

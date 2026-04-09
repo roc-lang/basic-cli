@@ -5,23 +5,22 @@ import pf.Stderr
 
 # Printing to stdout and stderr
 
-main! : List(Str) => Try({}, [Exit(I32)])
 main! = |_args| {
     # Print a string to stdout
-    Stdout.line!("Hello, world!")
+    match Stdout.line!("Hello, world!") { _ => {} }
 
     # Print without a newline
-    Stdout.write!("No newline after me.")
+    match Stdout.write!("No newline after me.") { _ => {} }
 
     # Print a string to stderr
-    Stderr.line!("Hello, error!")
+    match Stderr.line!("Hello, error!") { _ => {} }
 
     # Print a string to stderr without a newline
-    Stderr.write!("Err with no newline after.")
+    match Stderr.write!("Err with no newline after.") { _ => {} }
 
     # Print a list to stdout
     List.for_each!(["Foo", "Bar", "Baz"], |str| {
-        Stdout.line!(str)
+        match Stdout.line!(str) { _ => {} }
     })
 
     Ok({})

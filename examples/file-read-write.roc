@@ -8,16 +8,26 @@ import pf.File
 main! = |_args| {
     out_file = "out.txt"
 
-    Stdout.line!("Writing a string to out.txt")
+    _r = Stdout.line!("Writing a string to out.txt")
 
-    File.write_utf8!(out_file, "a string!")?
+    result = {
+        File.write_utf8!(out_file, "a string!")?
 
-    contents = File.read_utf8!(out_file)?
+        contents = File.read_utf8!(out_file)?
 
-    Stdout.line!("I read the file back. Its contents are: \"${contents}\"")
+        _r = Stdout.line!("I read the file back. Its contents are: \"${contents}\"")
 
-    # Cleanup
-    File.delete!(out_file)?
+        # Cleanup
+        File.delete!(out_file)?
 
-    Ok({})
+        Ok({})
+    }
+
+    match result {
+        Ok({}) => Ok({})
+        Err(_) => {
+            _r = Stdout.line!("Error during file operations")
+            Err(Exit(1))
+        }
+    }
 }

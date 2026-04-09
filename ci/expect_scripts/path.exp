@@ -11,9 +11,9 @@ cd $env(EXAMPLES_DIR)
 spawn ./path
 
 set expected_output [normalize_output {
-is_file: Try.Ok(True)
-is_dir: Try.Ok(False)
-is_sym_link: Try.Ok(False)
+is_file: Ok(True)
+is_dir: Ok(False)
+is_sym_link: Ok(False)
 }]
 
 expect $expected_output {

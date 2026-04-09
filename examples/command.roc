@@ -6,45 +6,42 @@ import pf.Cmd
 # Different ways to run commands like you do in a terminal.
 
 main! = |_args| {
-    # Simplest way to execute a command (prints to your terminal).
-    exec_result = Cmd.exec!("echo", ["Hello"])
-    match exec_result {
-        Ok({}) => {}
-        Err(_) => Stdout.line!("Error running echo")
-    }
+	# Simplest way to execute a command (prints to your terminal).
+	Cmd.exec!("echo", ["Hello"])?
 
-    # To execute and capture the output (stdout and stderr) without inheriting your terminal.
-    output_result = Cmd.exec_output!(Cmd.args(Cmd.new("echo"), ["Hi"]))
-    match output_result {
-        Ok(cmd_output) => Stdout.line!("{stderr_utf8_lossy: \"${cmd_output.stderr_utf8_lossy}\", stdout_utf8: \"${cmd_output.stdout_utf8}\"}")
-        Err(_) => Stdout.line!("Error capturing output")
-    }
+	# To execute and capture the output (stdout and stderr) without inheriting your terminal.
+	cmd_output = 
+		Cmd.new("echo")
+			.args(["Hi"])
+			.exec_output!()?
 
-    # To run a command with environment variables.
-    env_cmd = Cmd.args(
-        Cmd.envs(
-            Cmd.env(
-                Cmd.clear_envs(Cmd.new("env")),
-                "FOO",
-                "BAR",
-            ),
-            [("BAZ", "DUCK"), ("XYZ", "ABC")],
-        ),
-        ["-v"],
-    )
-    env_result = Cmd.exec_cmd!(env_cmd)
-    match env_result {
-        Ok({}) => {}
-        Err(_) => Stdout.line!("Error running env")
-    }
+	Stdout.line!("${Str.inspect(cmd_output)}")?
 
-    # To execute and just get the exit code (prints to your terminal).
-    # Prefer using `exec!` or `exec_cmd!`.
-    exit_result = Cmd.exec_exit_code!(Cmd.args(Cmd.new("cat"), ["non_existent.txt"]))
-    match exit_result {
-        Ok(exit_code) => Stdout.line!("Exit code: ${exit_code.to_str()}")
-        Err(_) => Stdout.line!("Error getting exit code")
-    }
+	# To run a command with environment variables.
+	Cmd.new("env")
+		.clear_envs() # You probably don't need to clear all other environment variables, this is just an example.
+		.env("BAZ", "DUCK")
+		.env("FOO", "BAR")
+		.env("XYZ", "ABC")
+		.exec_cmd!()?
 
-    Ok({})
+	# To execute and just get the exit code (prints to your terminal).
+	# Prefer using `exec!` or `exec_cmd!`.
+	exit_code = 
+		Cmd.new("cat")
+			.args(["non_existent.txt"])
+			.exec_exit_code!()?
+
+	Stdout.line!("Exit code: ${exit_code.to_str()}")?
+
+	# To execute and capture the output (stdout and stderr) in the original form as bytes without inheriting your terminal.
+	# Prefer using `exec_output!`.
+	cmd_output_bytes = 
+		Cmd.new("echo")
+			.args(["Hi"])
+			.exec_output_bytes!()?
+
+	Stdout.line!("${Str.inspect(cmd_output_bytes)}")?
+
+	Ok({})
 }

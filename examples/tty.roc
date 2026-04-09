@@ -7,10 +7,10 @@ import pf.Tty
 ## This is useful for running an app like vim or a game in the terminal.
 
 main! = |_args| {
-    Stdout.line!("Tty: enabling raw mode")
+    match Stdout.line!("Tty: enabling raw mode") { _ => {} }
     Tty.enable_raw_mode!()
 
-    Stdout.line!("Tty: disabling raw mode")
+    match Stdout.line!("Tty: disabling raw mode") { _ => {} }
     Tty.disable_raw_mode!()
 
     Ok({})

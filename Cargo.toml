@@ -31,6 +31,7 @@ members = [
 ]
 
 [workspace.package]
+
 authors = ["The Roc Contributors"]
 edition = "2021"
 license = "UPL-1.0"
@@ -39,8 +40,8 @@ repository = "https://github.com/roc-lang/basic-cli"
 
 [workspace.dependencies]
 # Core Roc types
-# roc-nightly: 2026-01-12
-roc_std_new = { git = "https://github.com/roc-lang/roc", rev = "36e9ff29fed0ebe6e9d47e30c14bc2d0a2545a5f" }
+# roc-nightly: 2026-04-09
+roc_std_new = { git = "https://github.com/roc-lang/roc", rev = "aecf9fdc3b5b51176580746b197fc03ac196e0d5" }
 
 # Internal crates
 roc_io_error = { path = "crates/roc_io_error" }

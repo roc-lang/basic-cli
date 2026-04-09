@@ -1,6 +1,6 @@
 platform ""
     requires {} { main! : List(Str) => Try({}, [Exit(I32), ..]) }
-    exposes [Cmd, Dir, Env, File, Locale, Path, Random, Sleep, Stdin, Stdout, Stderr, Tty, Utc]
+    exposes [Cmd, Dir, Env, File, IOErr, Locale, Path, Random, Sleep, Stdin, Stdout, Stderr, Tty, Utc]
     packages {}
     provides { main_for_host! : "main_for_host" }
     targets: {
@@ -17,6 +17,7 @@ import Cmd
 import Dir
 import Env
 import File
+import IOErr
 import Locale
 import Path
 import Random
@@ -32,8 +33,8 @@ main_for_host! = |args|
     match main!(args) {
         Ok({}) => 0
         Err(Exit(code)) => code
-        Err(other) => {
-            Stderr.line!("Program exited with error: ${Str.inspect(other)}")
-            1
-        }
+        Err(other) =>
+            match Stderr.line!("Program exited with error: ${Str.inspect(other)}") {
+                _ => 1
+            }
     }

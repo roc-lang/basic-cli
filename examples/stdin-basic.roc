@@ -3,14 +3,19 @@ app [main!] { pf: platform "../platform/main.roc" }
 import pf.Stdin
 import pf.Stdout
 
-main! : List(Str) => Try({}, [Exit(I32)])
 main! = |_args| {
-    Stdout.line!("What's your first name?")
-    first = Stdin.line!({})
+    match Stdout.line!("What's your first name?") { _ => {} }
+    first = match Stdin.line!({}) {
+        Ok(line) => line
+        Err(_) => ""
+    }
 
-    Stdout.line!("What's your last name?")
-    last = Stdin.line!({})
+    match Stdout.line!("What's your last name?") { _ => {} }
+    last = match Stdin.line!({}) {
+        Ok(line) => line
+        Err(_) => ""
+    }
 
-    Stdout.line!("Hi, ${first} ${last}! \u(1F44B)")
+    match Stdout.line!("Hi, ${first} ${last}! \u(1F44B)") { _ => {} }
     Ok({})
 }
