@@ -9,33 +9,47 @@ on:
         type: string
   pull_request:
 
-permissions:
-  contents: read
+# Do not add permissions here! Configure them at the job level!
+permissions: {}
 
 concurrency:
   group: ${{ github.event_name == 'workflow_dispatch' && format('release-{0}', github.repository) || format('release-validate-{0}-{1}', github.repository, github.ref) }}
   cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 jobs:
+  rust-version:
+    name: read Rust version
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: read
+        run: |
+          version=$(sed -n 's/^channel = "\(.*\)".*/\1/p' rust-toolchain.toml)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
   build-windows-host:
     name: Build Windows x64 host
+    needs: rust-version
     runs-on: windows-2025
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@1.83.0
-        with:
-          targets: x86_64-pc-windows-msvc
+        shell: bash
+        run: |
+          rustup toolchain install "${{ needs.rust-version.outputs.version }}" --profile minimal --target x86_64-pc-windows-msvc
+          rustup default "${{ needs.rust-version.outputs.version }}"
 
       - name: Build Windows host
         shell: pwsh
         run: python scripts/build.py
 
       - name: Upload Windows host
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-x64-host
           path: platform/targets/x64win/*.lib
@@ -44,7 +58,7 @@ jobs:
 
   build:
     name: Build release bundle
-    needs: build-windows-host
+    needs: [rust-version, build-windows-host]
     # macOS cross-compiles the Apple and Linux musl hosts. Windows is built
     # natively above because the Rust dependencies require the Windows SDK.
     runs-on: macos-15
@@ -55,7 +69,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -70,13 +84,14 @@ jobs:
           version: 0.16.0
 
       - name: Install Rust with cross-compilation targets
-        uses: dtolnay/rust-toolchain@1.83.0
-        with:
-          components: llvm-tools-preview
-          targets: x86_64-apple-darwin,aarch64-apple-darwin,x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
+        run: |
+          rustup toolchain install "${{ needs.rust-version.outputs.version }}" --profile minimal --component llvm-tools-preview \
+            --target x86_64-apple-darwin --target aarch64-apple-darwin \
+            --target x86_64-unknown-linux-musl --target aarch64-unknown-linux-musl
+          rustup default "${{ needs.rust-version.outputs.version }}"
 
       - name: Download Windows host
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: windows-x64-host
           path: platform/targets/x64win
@@ -138,7 +153,7 @@ jobs:
           test_os_json: '["macos-15","macos-15-intel","ubuntu-22.04","windows-2025"]'
 
       - name: Upload release bundles
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-bundles
           path: .release/bundles/*
@@ -146,7 +161,7 @@ jobs:
           retention-days: 7
 
       - name: Upload release metadata
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-metadata
           path: |
@@ -159,7 +174,7 @@ jobs:
 
   test-bundles:
     name: Test ${{ matrix.bundle_name }} bundle (${{ matrix.os }})
-    needs: build
+    needs: [rust-version, build]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -168,7 +183,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Roc
         uses: roc-lang/setup-roc@bd311e2fb815a3d2255f7ee14a922f0b736e020b
@@ -176,10 +191,13 @@ jobs:
           version: nightly-new-compiler
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@1.83.0
+        shell: bash
+        run: |
+          rustup toolchain install "${{ needs.rust-version.outputs.version }}" --profile minimal
+          rustup default "${{ needs.rust-version.outputs.version }}"
 
       - name: Download release bundles
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-bundles
           path: .release/test-bundles
@@ -209,7 +227,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Roc
         uses: roc-lang/setup-roc@bd311e2fb815a3d2255f7ee14a922f0b736e020b
@@ -245,7 +263,7 @@ jobs:
         run: tar -czf docs.tar.gz -C docs-site "$DOCS_VERSION"
 
       - name: Upload docs archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: platform-docs
           path: docs.tar.gz
@@ -265,24 +283,24 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Download release bundles
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-bundles
           path: .release/bundles
 
       - name: Download release metadata
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-metadata
           path: .release
 
       - name: Download docs archive
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: platform-docs
 
@@ -318,7 +336,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Roc
         uses: roc-lang/setup-roc@bd311e2fb815a3d2255f7ee14a922f0b736e020b
@@ -326,7 +344,7 @@ jobs:
           version: nightly-new-compiler
 
       - name: Download release metadata
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-metadata
           path: .release
@@ -426,13 +444,13 @@ jobs:
             -exec sed -i 's|/packages/basic-cli/|/basic-cli/|g' {} +
 
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: temp_docs
 
       - name: Deploy Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

@@ -15,8 +15,8 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
-permissions:
-  contents: read
+# Do not add permissions here! Configure them at the job level!
+permissions: {}
 
 jobs:
   deploy:
@@ -26,16 +26,15 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     permissions:
-      contents: read
       pages: write
       id-token: write
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Install Roc
         uses: roc-lang/setup-roc@bd311e2fb815a3d2255f7ee14a922f0b736e020b
@@ -61,10 +60,10 @@ jobs:
             -exec sed -i 's|/packages/basic-cli/|/basic-cli/|g' {} +
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: temp_docs
 
       - name: Deploy Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

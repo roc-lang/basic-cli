@@ -1,4 +1,4 @@
-## Run child processes, capture their output, and configure their environment.
+## Run commands, capture their output, and set their env vars.
 app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.21.0-rc4/FvCh4vdqm3nBY6DWEfZ8RuGCVfjuMY43HA8KSNk9qVDn.tar.zst" }
 
 import pf.OsStr

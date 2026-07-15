@@ -8,47 +8,62 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Do not add permissions here! Configure them at the job level!
+permissions: {}
+
 jobs:
+  rust-version:
+    name: read Rust version
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: read
+        run: |
+          version=$(sed -n 's/^channel = "\(.*\)".*/\1/p' rust-toolchain.toml)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
   validate:
     name: validate sources
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: read
+    needs: rust-version
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: mlugg/setup-zig@8d6198c65fb0feaa111df26e6b467fea8345e46f # ratchet:mlugg/setup-zig@v2.0.5
         with:
           version: 0.16.0
       - uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
-      - uses: dtolnay/rust-toolchain@1.83.0
-        with:
-          components: llvm-tools-preview
-          targets: x86_64-unknown-linux-musl
+      - name: Install Rust toolchain
+        run: |
+          rustup toolchain install "${{ needs.rust-version.outputs.version }}" --profile minimal --target x86_64-unknown-linux-musl --component llvm-tools-preview
+          rustup default "${{ needs.rust-version.outputs.version }}"
       - name: Format, check, and test examples
         run: ./scripts/test.py --operation validate
 
   validate-windows:
     name: validate sources (windows)
+    needs: rust-version
     runs-on: windows-2025
-    permissions:
-      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
-      - uses: dtolnay/rust-toolchain@1.83.0
-        with:
-          targets: x86_64-pc-windows-msvc
+      - name: Install Rust toolchain
+        shell: bash
+        run: |
+          rustup toolchain install "${{ needs.rust-version.outputs.version }}" --profile minimal --target x86_64-pc-windows-msvc
+          rustup default "${{ needs.rust-version.outputs.version }}"
       - name: Format, check, and test examples
         shell: bash
         run: ./scripts/test.py --operation validate
 
   build-examples:
     name: build examples (${{ matrix.target }})
-    needs: validate
+    needs: [rust-version, validate]
     permissions:
       contents: read
     strategy:
@@ -56,23 +71,23 @@ jobs:
       matrix:
         include:
           - target: x64mac
-            os: macos-15
+            os: macos-26-intel
             rust_target: x86_64-apple-darwin
           - target: arm64mac
-            os: macos-15
+            os: macos-26
             rust_target: aarch64-apple-darwin
           - target: x64musl
-            os: ubuntu-22.04
+            os: ubuntu-24.04
             rust_target: x86_64-unknown-linux-musl
           - target: arm64musl
-            os: ubuntu-22.04
+            os: ubuntu-24.04-arm
             rust_target: aarch64-unknown-linux-musl
           - target: x64win
             os: windows-2025
             rust_target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Zig
         if: runner.os != 'Windows'
         uses: mlugg/setup-zig@8d6198c65fb0feaa111df26e6b467fea8345e46f # ratchet:mlugg/setup-zig@v2.0.5
@@ -81,9 +96,11 @@ jobs:
       - uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
-      - uses: dtolnay/rust-toolchain@1.83.0
-        with:
-          targets: ${{ matrix.rust_target }}
+      - name: Install Rust toolchain
+        shell: bash
+        run: |
+          rustup toolchain install "${{ needs.rust-version.outputs.version }}" --profile minimal --target ${{ matrix.rust_target }}
+          rustup default "${{ needs.rust-version.outputs.version }}"
       - name: Install LLVM tools for Linux host stripping
         if: endsWith(matrix.target, 'musl')
         run: rustup component add llvm-tools-preview
@@ -91,7 +108,7 @@ jobs:
         shell: bash
         run: ./scripts/test.py --operation build --target "${{ matrix.target }}" --artifact-dir dist/example-binaries
       - name: Upload example binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: basic-cli-example-binaries-${{ matrix.target }}
           path: dist/example-binaries/${{ matrix.target }}
@@ -99,27 +116,31 @@ jobs:
 
   run-examples:
     name: run examples (${{ matrix.target }})
-    needs: build-examples
-    permissions:
-      contents: read
+    needs: [rust-version, build-examples]
     strategy:
       fail-fast: false
       matrix:
         include:
           - target: x64mac
-            os: macos-15-intel
+            os: macos-26-intel
           - target: arm64mac
-            os: macos-15
+            os: macos-26
           - target: x64musl
-            os: ubuntu-22.04
+            os: ubuntu-24.04
+          - target: arm64musl
+            os: ubuntu-24.04-arm
           - target: x64win
             os: windows-2025
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.83.0
+      - uses: actions/checkout@v7
+      - name: Install Rust toolchain
+        shell: bash
+        run: |
+          rustup toolchain install "${{ needs.rust-version.outputs.version }}" --profile minimal
+          rustup default "${{ needs.rust-version.outputs.version }}"
       - name: Download native example binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: basic-cli-example-binaries-${{ matrix.target }}
           path: dist/example-binaries/${{ matrix.target }}
