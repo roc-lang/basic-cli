@@ -1,4 +1,8 @@
 ## Read a file incrementally with a buffer instead of loading it all at once.
+##
+## This can be useful to process large files without using a lot of RAM or
+## requiring the user to wait until the complete file is processed when they
+## only wanted to look at the first page.
 app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.21.0-rc4/FvCh4vdqm3nBY6DWEfZ8RuGCVfjuMY43HA8KSNk9qVDn.tar.zst" }
 
 import pf.OsStr

@@ -1,4 +1,4 @@
-## Query a SQLite database and decode rows into application records.
+## Query a SQLite database and decode rows into records.
 app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.21.0-rc4/FvCh4vdqm3nBY6DWEfZ8RuGCVfjuMY43HA8KSNk9qVDn.tar.zst" }
 
 import pf.OsStr
@@ -50,6 +50,7 @@ print_line! : Str => Try({}, _)
 print_line! = |line| Stdout.line!(line)
 
 query_todos_by_status! = |db_path, status|
+# `many` when you expect multiple rows to be returned.
 	Sqlite.query_many!({
 		path: db_path,
 		query: "SELECT id, task, status FROM todos WHERE status = :status;",
@@ -58,7 +59,7 @@ query_todos_by_status! = |db_path, status|
 	})
 
 # A row decoder is `List(Str) -> (Stmt => Try(a, err))`; the new compiler does not
-# support the record-builder (`<-`) sugar, so we combine the leaf decoders by hand.
+# support the old record-builder (`<-`) sugar, so we combine the leaf decoders by hand.
 decode_todo = |cols|
 	|stmt| {
 		id = Sqlite.i64("id")(cols)(stmt)?

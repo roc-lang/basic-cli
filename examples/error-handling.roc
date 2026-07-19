@@ -1,8 +1,9 @@
-## Handle common filesystem errors with tag-pattern matching.
+## Handle errors with tag-pattern matching.
 app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.21.0-rc4/FvCh4vdqm3nBY6DWEfZ8RuGCVfjuMY43HA8KSNk9qVDn.tar.zst" }
 
 import pf.OsStr
 import pf.Stdout
+import pf.Stderr
 import pf.Path
 
 main! : List(OsStr) => Try({}, _)
@@ -15,20 +16,22 @@ main! = |_args| {
 	missing_file : Path
 	missing_file = "nonexistent-file.txt"
 
+	# For professional software, use error tags (like `PathErr(NotFound)`) internally and convert
+	# them to a message for the user at the edge of your program. This also makes it easy to provide
+	# error messages in different languages.
 	match missing_file.read_utf8!() {
 		Ok(content) => Err(UnexpectedReadSuccess(content))?
-		Err(PathErr(NotFound)) => Stdout.line!("Expected error: Path not found (NotFound)")?
-		Err(PathErr(PermissionDenied)) => Stdout.line!("Error: Permission denied")?
-		Err(PathErr(Other(msg))) => Stdout.line!("Error: ${msg}")?
-		Err(_) => Stdout.line!("Error: Other file error")?
+		Err(PathErr(NotFound)) => Stderr.line!("Expected error: Path not found (NotFound)")?
+		Err(PathErr(PermissionDenied)) => Stderr.line!("Error: Permission denied")?
+		Err(PathErr(Other(msg))) => Stderr.line!("Error: ${msg}")?
+		Err(_) => Stderr.line!("Error: Other file error")?
 	}
 
-	# Filesystem kind mismatches are portable typed errors.
 	directory : Path
 	directory = "examples"
 
 	match directory.read_bytes!() {
-		Err(PathErr(IsADirectory)) => Stdout.line!("Expected error: Path is a directory (IsADirectory)")?
+		Err(PathErr(IsADirectory)) => Stderr.line!("Expected error: Path is a directory (IsADirectory)")?
 		Ok(_) => Err(UnexpectedDirectoryReadSuccess)?
 		Err(err) => Err(UnexpectedDirectoryReadError(err))?
 	}
@@ -37,7 +40,7 @@ main! = |_args| {
 	regular_file = "LICENSE"
 
 	match regular_file.list!() {
-		Err(PathErr(NotADirectory)) => Stdout.line!("Expected error: Path is not a directory (NotADirectory)")?
+		Err(PathErr(NotADirectory)) => Stderr.line!("Expected error: Path is not a directory (NotADirectory)")?
 		Ok(_) => Err(UnexpectedFileListSuccess)?
 		Err(err) => Err(UnexpectedFileListError(err))?
 	}

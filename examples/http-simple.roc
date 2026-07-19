@@ -8,7 +8,6 @@ import pf.OsStr
 import pf.Http
 import pf.Stdout
 import http.Request
-import http.Response
 
 main! : List(OsStr) => Try({}, _)
 main! = |_args| {
@@ -26,12 +25,6 @@ main! = |_args| {
 
 	Stdout.line!("Response body:")?
 	Stdout.line!(body)?
-
-	response_2 = Http.send!(Request.from_method(GET).with_uri("http://127.0.0.1:9000/html")) ? |err| SendSecondHtmlFailed(err)
-	body_2 = Str.from_utf8(Response.body(response_2)) ? |err| SecondHtmlBodyUtf8Failed(err)
-
-	Stdout.line!("Response body 2:")?
-	Stdout.line!(body_2)?
 
 	Ok({})
 }

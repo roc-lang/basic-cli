@@ -198,7 +198,7 @@
       ]
     },
     {
-      "path": "examples/http.roc",
+      "path": "examples/http-simple.roc",
       "cases": [
         {
           "name": "server-available",

@@ -1,4 +1,4 @@
-## Exercise SQLite queries, decoders, nullable values, and prepared writes.
+## Shows SQLite queries, decoders, nullable values, and prepared writes.
 app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.21.0-rc4/FvCh4vdqm3nBY6DWEfZ8RuGCVfjuMY43HA8KSNk9qVDn.tar.zst" }
 
 import pf.OsStr
@@ -85,6 +85,9 @@ run! = || {
 		", ",
 	)
 
+	# Bindings map each named placeholder (like :task0) in the query to its actual
+	# value. Passing values this way lets SQLite handle escaping and type conversion,
+	# which avoids SQL injection and quoting bugs from building the query as a string.
 	binding_groups = List.map_with_index(
 		todos_list,
 		|t, indx| {
@@ -148,7 +151,8 @@ run! = || {
 	}) ? |err| PrepareUpdateTodoFailed(err)
 
 	prepared_update.execute!([{ name: ":id", value: Integer(1) }]) ? |err| ExecutePreparedUpdateFailed(err)
-	# Reuse verifies that execution resets the statement before returning.
+	# You can run the same prepared statement again with different values.
+	# Each execution starts fresh, so the previous run's values don't carry over.
 	prepared_update.execute!([{ name: ":id", value: Integer(2) }]) ? |err| ReusePreparedUpdateFailed(err)
 
 	prepared_count = Sqlite.prepare!({
@@ -165,7 +169,7 @@ run! = || {
 	}) ? |err| PrepareSortedTodosFailed(err)
 
 	todos_sorted = prepared_query.query_many!([], decode_task_status) ? |err| QuerySortedTodosFailed(err)
-	# Reuse verifies that querying resets the statement before returning.
+	# Note that the result is not cached if we run the same prepared query again.
 	todos_sorted_again = prepared_query.query_many!([], decode_task_status) ? |err| ReuseSortedTodosFailed(err)
 	expect todos_sorted_again.len() == todos_sorted.len()
 

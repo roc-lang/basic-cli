@@ -13,5 +13,7 @@ main! = |_args| {
 	random_u32 = Random.seed_u32!()?
 	Stdout.line!("Random U32 seed is: ${random_u32.to_str()}")?
 
+	# TODO link to example showing how to use the seed values to generate random numbers
+
 	Ok({})
 }
