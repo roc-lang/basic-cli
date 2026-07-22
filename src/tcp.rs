@@ -588,8 +588,17 @@ mod tests {
 
     #[test]
     fn connect_timeout_includes_localhost_resolution() {
-        let (port, server) = local_server(|_stream| {});
-        tcp_connect_with_timeout_impl("localhost".to_string(), port, 1_000).unwrap();
+        // Bind through the same hostname the client resolves so both sides use
+        // the platform's preferred address family (IPv6 on Windows, IPv4 on
+        // some Unix hosts). Otherwise an unavailable first address can consume
+        // a deliberately short deadline before the matching address is tried.
+        let listener = TcpListener::bind(("localhost", 0)).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = thread::spawn(move || {
+            listener.accept().unwrap();
+        });
+
+        tcp_connect_with_timeout_impl("localhost".to_string(), port, 10_000).unwrap();
         server.join().unwrap();
 
         let error = tcp_connect_with_timeout_impl("localhost".to_string(), port, 0).unwrap_err();
