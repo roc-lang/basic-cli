@@ -118,4 +118,11 @@ Host :: [].{
 	}
 	env_dict! : () => List((NativeOsStr, NativeOsStr))
 	env_set_cwd! : NativePath => Try({}, IOErr)
+	# Timeout-aware TCP functions are appended to preserve existing hosted ABI numbering.
+	tcp_connect_with_timeout! : Str, U16, U64 => Try(TcpStream, Str)
+	tcp_read_up_to_with_timeout! : TcpStream, U64, U64 => Try(List(U8), Str)
+	tcp_read_exactly_with_timeout! : TcpStream, U64, U64 => Try(List(U8), Str)
+	tcp_read_until_bounded! : TcpStream, U8, U64 => Try(List(U8), Str)
+	tcp_read_until_with_timeout! : TcpStream, U8, U64, U64 => Try(List(U8), Str)
+	tcp_write_with_timeout! : TcpStream, List(U8), U64 => Try({}, Str)
 }

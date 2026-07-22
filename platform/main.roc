@@ -80,6 +80,13 @@ platform ""
 		"hosted_env_platform": Host.env_platform!,
 		"hosted_env_dict": Host.env_dict!,
 		"hosted_env_set_cwd": Host.env_set_cwd!,
+		# Timeout-aware TCP additions are appended to preserve existing hosted ABI numbering.
+		"hosted_tcp_connect_with_timeout": Host.tcp_connect_with_timeout!,
+		"hosted_tcp_read_up_to_with_timeout": Host.tcp_read_up_to_with_timeout!,
+		"hosted_tcp_read_exactly_with_timeout": Host.tcp_read_exactly_with_timeout!,
+		"hosted_tcp_read_until_bounded": Host.tcp_read_until_bounded!,
+		"hosted_tcp_read_until_with_timeout": Host.tcp_read_until_with_timeout!,
+		"hosted_tcp_write_with_timeout": Host.tcp_write_with_timeout!,
 	}
 	targets: {
 		inputs_dir: "targets/",

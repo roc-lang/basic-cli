@@ -555,6 +555,8 @@ def run_suite(
             command("cargo", "build", "--locked", "--release", cwd=ROOT / "ci" / "rust_http_server")
         binaries: dict[str, Path] = {}
         if "validate" in operations:
+            print("\n=== RUST TEST ===")
+            command("cargo", "test", "--locked", "--lib")
             print("\n=== PLATFORM TEST ===")
             command("roc", "test", ROOT / "platform" / "main.roc", *roc_extra_args())
         for stage in ("fmt", "check", "test"):
