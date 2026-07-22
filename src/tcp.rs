@@ -416,26 +416,11 @@ fn try_tcp_write_err(error: RocStr) -> HostTcpWriteResult {
 }
 
 #[no_mangle]
-pub extern "C" fn hosted_tcp_connect(host: RocStr, port: u16) -> HostTcpConnectResult {
-    let roc_host = roc_host();
-    let host_string = host.as_str().to_owned();
-    unsafe { host.decref(roc_host) };
-
-    match TcpStream::connect((host_string.as_str(), port)) {
-        Ok(stream) => {
-            let handle = box_tcp_stream(BufReader::new(stream), roc_host);
-            try_tcp_connect_ok(handle)
-        }
-        Err(err) => try_tcp_connect_err(to_tcp_connect_err(err, roc_host)),
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn hosted_tcp_connect_with_timeout(
+pub extern "C" fn hosted_tcp_connect(
     host: RocStr,
     port: u16,
     timeout_ms: u64,
-) -> HostTcpConnectWithTimeoutResult {
+) -> HostTcpConnectResult {
     let roc_host = roc_host();
     let host_string = host.as_str().to_owned();
     unsafe { host.decref(roc_host) };
@@ -453,25 +438,8 @@ pub extern "C" fn hosted_tcp_connect_with_timeout(
 pub extern "C" fn hosted_tcp_read_up_to(
     handle: *mut u64,
     bytes_to_read: u64,
-) -> HostTcpReadUpToResult {
-    let roc_host = roc_host();
-    let result = {
-        let stream = unsafe { tcp_stream_ref(handle) };
-        match tcp_read_up_to_impl(stream, bytes_to_read, None) {
-            Ok(received) => try_tcp_read_ok(roc_u8_list_from_slice(&received, roc_host)),
-            Err(err) => try_tcp_read_err(to_tcp_stream_err(err, roc_host)),
-        }
-    };
-    release_tcp_stream(handle, roc_host);
-    result
-}
-
-#[no_mangle]
-pub extern "C" fn hosted_tcp_read_up_to_with_timeout(
-    handle: *mut u64,
-    bytes_to_read: u64,
     timeout_ms: u64,
-) -> HostTcpReadUpToWithTimeoutResult {
+) -> HostTcpReadUpToResult {
     let roc_host = roc_host();
     let result = {
         let stream = unsafe { tcp_stream_ref(handle) };
@@ -490,28 +458,8 @@ pub extern "C" fn hosted_tcp_read_up_to_with_timeout(
 pub extern "C" fn hosted_tcp_read_exactly(
     handle: *mut u64,
     bytes_to_read: u64,
-) -> HostTcpReadExactlyResult {
-    let roc_host = roc_host();
-    let result = {
-        let stream = unsafe { tcp_stream_ref(handle) };
-        match tcp_read_exactly_impl(stream, bytes_to_read, None) {
-            Ok(buffer) => try_tcp_read_ok(roc_u8_list_from_slice(&buffer, roc_host)),
-            Err(err) if err.kind() == io::ErrorKind::UnexpectedEof => {
-                try_tcp_read_err(RocStr::from_str("UnexpectedEof", roc_host))
-            }
-            Err(err) => try_tcp_read_err(to_tcp_stream_err(err, roc_host)),
-        }
-    };
-    release_tcp_stream(handle, roc_host);
-    result
-}
-
-#[no_mangle]
-pub extern "C" fn hosted_tcp_read_exactly_with_timeout(
-    handle: *mut u64,
-    bytes_to_read: u64,
     timeout_ms: u64,
-) -> HostTcpReadExactlyWithTimeoutResult {
+) -> HostTcpReadExactlyResult {
     let roc_host = roc_host();
     let result = {
         let stream = unsafe { tcp_stream_ref(handle) };
@@ -530,48 +478,12 @@ pub extern "C" fn hosted_tcp_read_exactly_with_timeout(
 }
 
 #[no_mangle]
-pub extern "C" fn hosted_tcp_read_until(handle: *mut u64, byte: u8) -> HostTcpReadUntilResult {
-    let roc_host = roc_host();
-    let result = {
-        let stream = unsafe { tcp_stream_ref(handle) };
-        match tcp_read_until_impl(stream, byte, None, None) {
-            Ok(buffer) => try_tcp_read_ok(roc_u8_list_from_slice(&buffer, roc_host)),
-            Err(ReadUntilError::Io(err)) => try_tcp_read_err(to_tcp_stream_err(err, roc_host)),
-            Err(ReadUntilError::LimitExceeded) => unreachable!(),
-        }
-    };
-    release_tcp_stream(handle, roc_host);
-    result
-}
-
-#[no_mangle]
-pub extern "C" fn hosted_tcp_read_until_bounded(
-    handle: *mut u64,
-    byte: u8,
-    max_bytes: u64,
-) -> HostTcpReadUntilBoundedResult {
-    let roc_host = roc_host();
-    let result = {
-        let stream = unsafe { tcp_stream_ref(handle) };
-        match tcp_read_until_impl(stream, byte, Some(max_bytes), None) {
-            Ok(buffer) => try_tcp_read_ok(roc_u8_list_from_slice(&buffer, roc_host)),
-            Err(ReadUntilError::Io(err)) => try_tcp_read_err(to_tcp_stream_err(err, roc_host)),
-            Err(ReadUntilError::LimitExceeded) => {
-                try_tcp_read_err(RocStr::from_str("LimitExceeded", roc_host))
-            }
-        }
-    };
-    release_tcp_stream(handle, roc_host);
-    result
-}
-
-#[no_mangle]
-pub extern "C" fn hosted_tcp_read_until_with_timeout(
+pub extern "C" fn hosted_tcp_read_until(
     handle: *mut u64,
     byte: u8,
     max_bytes: u64,
     timeout_ms: u64,
-) -> HostTcpReadUntilWithTimeoutResult {
+) -> HostTcpReadUntilResult {
     let roc_host = roc_host();
     let result = {
         let stream = unsafe { tcp_stream_ref(handle) };
@@ -591,26 +503,8 @@ pub extern "C" fn hosted_tcp_read_until_with_timeout(
 pub extern "C" fn hosted_tcp_write(
     handle: *mut u64,
     msg: RocListWith<u8, false>,
-) -> HostTcpWriteResult {
-    let roc_host = roc_host();
-    let result = {
-        let stream = unsafe { tcp_stream_ref(handle) };
-        match tcp_write_impl(stream.get_mut(), msg.as_slice(), None) {
-            Ok(()) => try_tcp_write_ok(),
-            Err(err) => try_tcp_write_err(to_tcp_stream_err(err, roc_host)),
-        }
-    };
-    unsafe { msg.decref(roc_host) };
-    release_tcp_stream(handle, roc_host);
-    result
-}
-
-#[no_mangle]
-pub extern "C" fn hosted_tcp_write_with_timeout(
-    handle: *mut u64,
-    msg: RocListWith<u8, false>,
     timeout_ms: u64,
-) -> HostTcpWriteWithTimeoutResult {
+) -> HostTcpWriteResult {
     let roc_host = roc_host();
     let result = {
         let stream = unsafe { tcp_stream_ref(handle) };

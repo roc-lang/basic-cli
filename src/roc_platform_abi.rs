@@ -4903,74 +4903,33 @@ pub struct HostStdoutWriteBytesArgs {
 }
 
 /// Arguments for Host.tcp_connect!
-/// Roc signature: Str, U16 => Try(Host.TcpStream, Str)
+/// Roc signature: Str, U16, U64 => Try(Host.TcpStream, Str)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct HostTcpConnectArgs {
     pub arg0: RocStr,
     pub arg1: u16,
-}
-
-/// Arguments for Host.tcp_connect_with_timeout!
-/// Roc signature: Str, U16, U64 => Try(Host.TcpStream, Str)
-/// Refcounted fields are owned by the hosted function.
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub struct HostTcpConnectWithTimeoutArgs {
-    pub arg0: RocStr,
-    pub arg1: u16,
     pub arg2: u64,
 }
 
 /// Arguments for Host.tcp_read_exactly!
-/// Roc signature: Host.TcpStream, U64 => Try(List(U8), Str)
+/// Roc signature: Host.TcpStream, U64, U64 => Try(List(U8), Str)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct HostTcpReadExactlyArgs {
     pub arg0: *mut u64,
     pub arg1: u64,
-}
-
-/// Arguments for Host.tcp_read_exactly_with_timeout!
-/// Roc signature: Host.TcpStream, U64, U64 => Try(List(U8), Str)
-/// Refcounted fields are owned by the hosted function.
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub struct HostTcpReadExactlyWithTimeoutArgs {
-    pub arg0: *mut u64,
-    pub arg1: u64,
     pub arg2: u64,
 }
 
 /// Arguments for Host.tcp_read_until!
-/// Roc signature: Host.TcpStream, U8 => Try(List(U8), Str)
-/// Refcounted fields are owned by the hosted function.
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub struct HostTcpReadUntilArgs {
-    pub arg0: *mut u64,
-    pub arg1: u8,
-}
-
-/// Arguments for Host.tcp_read_until_bounded!
-/// Roc signature: Host.TcpStream, U8, U64 => Try(List(U8), Str)
-/// Refcounted fields are owned by the hosted function.
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub struct HostTcpReadUntilBoundedArgs {
-    pub arg0: *mut u64,
-    pub arg1: u8,
-    pub arg2: u64,
-}
-
-/// Arguments for Host.tcp_read_until_with_timeout!
 /// Roc signature: Host.TcpStream, U8, U64, U64 => Try(List(U8), Str)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct HostTcpReadUntilWithTimeoutArgs {
+pub struct HostTcpReadUntilArgs {
     pub arg0: *mut u64,
     pub arg1: u8,
     pub arg2: u64,
@@ -4978,42 +4937,22 @@ pub struct HostTcpReadUntilWithTimeoutArgs {
 }
 
 /// Arguments for Host.tcp_read_up_to!
-/// Roc signature: Host.TcpStream, U64 => Try(List(U8), Str)
+/// Roc signature: Host.TcpStream, U64, U64 => Try(List(U8), Str)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct HostTcpReadUpToArgs {
     pub arg0: *mut u64,
     pub arg1: u64,
-}
-
-/// Arguments for Host.tcp_read_up_to_with_timeout!
-/// Roc signature: Host.TcpStream, U64, U64 => Try(List(U8), Str)
-/// Refcounted fields are owned by the hosted function.
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub struct HostTcpReadUpToWithTimeoutArgs {
-    pub arg0: *mut u64,
-    pub arg1: u64,
     pub arg2: u64,
 }
 
 /// Arguments for Host.tcp_write!
-/// Roc signature: Host.TcpStream, List(U8) => Try({}, Str)
-/// Refcounted fields are owned by the hosted function.
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub struct HostTcpWriteArgs {
-    pub arg0: *mut u64,
-    pub arg1: RocListWith<u8, false>,
-}
-
-/// Arguments for Host.tcp_write_with_timeout!
 /// Roc signature: Host.TcpStream, List(U8), U64 => Try({}, Str)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct HostTcpWriteWithTimeoutArgs {
+pub struct HostTcpWriteArgs {
     pub arg0: *mut u64,
     pub arg1: RocListWith<u8, false>,
     pub arg2: u64,
@@ -5138,30 +5077,12 @@ pub type HostStdoutWriteResultTag = HostStdoutLineResultTag;
 pub type HostStdoutWriteBytesResult = HostStdoutLineResult;
 pub type HostStdoutWriteBytesResultPayload = HostStdoutLineResultPayload;
 pub type HostStdoutWriteBytesResultTag = HostStdoutLineResultTag;
-pub type HostTcpConnectWithTimeoutResult = HostTcpConnectResult;
-pub type HostTcpConnectWithTimeoutResultPayload = HostTcpConnectResultPayload;
-pub type HostTcpConnectWithTimeoutResultTag = HostTcpConnectResultTag;
-pub type HostTcpReadExactlyWithTimeoutResult = HostTcpReadExactlyResult;
-pub type HostTcpReadExactlyWithTimeoutResultPayload = HostTcpReadExactlyResultPayload;
-pub type HostTcpReadExactlyWithTimeoutResultTag = HostTcpReadExactlyResultTag;
 pub type HostTcpReadUntilResult = HostTcpReadExactlyResult;
 pub type HostTcpReadUntilResultPayload = HostTcpReadExactlyResultPayload;
 pub type HostTcpReadUntilResultTag = HostTcpReadExactlyResultTag;
-pub type HostTcpReadUntilBoundedResult = HostTcpReadExactlyResult;
-pub type HostTcpReadUntilBoundedResultPayload = HostTcpReadExactlyResultPayload;
-pub type HostTcpReadUntilBoundedResultTag = HostTcpReadExactlyResultTag;
-pub type HostTcpReadUntilWithTimeoutResult = HostTcpReadExactlyResult;
-pub type HostTcpReadUntilWithTimeoutResultPayload = HostTcpReadExactlyResultPayload;
-pub type HostTcpReadUntilWithTimeoutResultTag = HostTcpReadExactlyResultTag;
 pub type HostTcpReadUpToResult = HostTcpReadExactlyResult;
 pub type HostTcpReadUpToResultPayload = HostTcpReadExactlyResultPayload;
 pub type HostTcpReadUpToResultTag = HostTcpReadExactlyResultTag;
-pub type HostTcpReadUpToWithTimeoutResult = HostTcpReadExactlyResult;
-pub type HostTcpReadUpToWithTimeoutResultPayload = HostTcpReadExactlyResultPayload;
-pub type HostTcpReadUpToWithTimeoutResultTag = HostTcpReadExactlyResultTag;
-pub type HostTcpWriteWithTimeoutResult = HostTcpWriteResult;
-pub type HostTcpWriteWithTimeoutResultPayload = HostTcpWriteResultPayload;
-pub type HostTcpWriteWithTimeoutResultTag = HostTcpWriteResultTag;
 pub type MainForHostArg0 = OsStr;
 pub type MainForHostArg0Payload = OsStrPayload;
 pub type MainForHostArg0Tag = OsStrTag;
@@ -7450,48 +7371,24 @@ unsafe extern "C" {
     pub fn hosted_stdout_write_bytes(arg0: RocListWith<u8, false>) -> HostStdoutLineResult;
 
     /// Hosted symbol for Host.tcp_connect!
-    /// Roc signature: Str, U16 => Try(Host.TcpStream, Str)
-    pub fn hosted_tcp_connect(arg0: RocStr, arg1: u16) -> HostTcpConnectResult;
-
-    /// Hosted symbol for Host.tcp_connect_with_timeout!
     /// Roc signature: Str, U16, U64 => Try(Host.TcpStream, Str)
-    pub fn hosted_tcp_connect_with_timeout(arg0: RocStr, arg1: u16, arg2: u64) -> HostTcpConnectResult;
+    pub fn hosted_tcp_connect(arg0: RocStr, arg1: u16, arg2: u64) -> HostTcpConnectResult;
 
     /// Hosted symbol for Host.tcp_read_exactly!
-    /// Roc signature: Host.TcpStream, U64 => Try(List(U8), Str)
-    pub fn hosted_tcp_read_exactly(arg0: *mut u64, arg1: u64) -> HostTcpReadExactlyResult;
-
-    /// Hosted symbol for Host.tcp_read_exactly_with_timeout!
     /// Roc signature: Host.TcpStream, U64, U64 => Try(List(U8), Str)
-    pub fn hosted_tcp_read_exactly_with_timeout(arg0: *mut u64, arg1: u64, arg2: u64) -> HostTcpReadExactlyResult;
+    pub fn hosted_tcp_read_exactly(arg0: *mut u64, arg1: u64, arg2: u64) -> HostTcpReadExactlyResult;
 
     /// Hosted symbol for Host.tcp_read_until!
-    /// Roc signature: Host.TcpStream, U8 => Try(List(U8), Str)
-    pub fn hosted_tcp_read_until(arg0: *mut u64, arg1: u8) -> HostTcpReadExactlyResult;
-
-    /// Hosted symbol for Host.tcp_read_until_bounded!
-    /// Roc signature: Host.TcpStream, U8, U64 => Try(List(U8), Str)
-    pub fn hosted_tcp_read_until_bounded(arg0: *mut u64, arg1: u8, arg2: u64) -> HostTcpReadExactlyResult;
-
-    /// Hosted symbol for Host.tcp_read_until_with_timeout!
     /// Roc signature: Host.TcpStream, U8, U64, U64 => Try(List(U8), Str)
-    pub fn hosted_tcp_read_until_with_timeout(arg0: *mut u64, arg1: u8, arg2: u64, arg3: u64) -> HostTcpReadExactlyResult;
+    pub fn hosted_tcp_read_until(arg0: *mut u64, arg1: u8, arg2: u64, arg3: u64) -> HostTcpReadExactlyResult;
 
     /// Hosted symbol for Host.tcp_read_up_to!
-    /// Roc signature: Host.TcpStream, U64 => Try(List(U8), Str)
-    pub fn hosted_tcp_read_up_to(arg0: *mut u64, arg1: u64) -> HostTcpReadExactlyResult;
-
-    /// Hosted symbol for Host.tcp_read_up_to_with_timeout!
     /// Roc signature: Host.TcpStream, U64, U64 => Try(List(U8), Str)
-    pub fn hosted_tcp_read_up_to_with_timeout(arg0: *mut u64, arg1: u64, arg2: u64) -> HostTcpReadExactlyResult;
+    pub fn hosted_tcp_read_up_to(arg0: *mut u64, arg1: u64, arg2: u64) -> HostTcpReadExactlyResult;
 
     /// Hosted symbol for Host.tcp_write!
-    /// Roc signature: Host.TcpStream, List(U8) => Try({}, Str)
-    pub fn hosted_tcp_write(arg0: *mut u64, arg1: RocListWith<u8, false>) -> HostTcpWriteResult;
-
-    /// Hosted symbol for Host.tcp_write_with_timeout!
     /// Roc signature: Host.TcpStream, List(U8), U64 => Try({}, Str)
-    pub fn hosted_tcp_write_with_timeout(arg0: *mut u64, arg1: RocListWith<u8, false>, arg2: u64) -> HostTcpWriteResult;
+    pub fn hosted_tcp_write(arg0: *mut u64, arg1: RocListWith<u8, false>, arg2: u64) -> HostTcpWriteResult;
 
     /// Hosted symbol for Host.tty_disable_raw_mode!
     /// Roc signature: {} => {}
