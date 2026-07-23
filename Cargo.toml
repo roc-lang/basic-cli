@@ -3,7 +3,7 @@ name = "roc_host"
 version = "0.21.0-rc4"
 authors = ["The Roc Contributors"]
 edition = "2021"
-rust-version = "1.83"
+rust-version = "1.97"
 license = "UPL-1.0"
 repository = "https://github.com/roc-lang/basic-cli"
 
