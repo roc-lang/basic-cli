@@ -379,7 +379,7 @@ utf8_to_utf16 = |remaining, out|
 			utf8_to_utf16(rest, out.append(U8.to_u16(byte)))
 
 		[byte1, byte2, .. as rest] if byte1 < 0xE0 => {
-			top = U32.shift_left_by(U8.to_u32(U8.bitwise_and(byte1, 0x1F)), 6)
+			top = U32.shl_wrap(U8.to_u32(U8.bitwise_and(byte1, 0x1F)), 6)
 			bottom = U8.to_u32(U8.bitwise_and(byte2, 0x3F))
 			code_point = U32.bitwise_or(top, bottom)
 
@@ -387,8 +387,8 @@ utf8_to_utf16 = |remaining, out|
 		}
 
 		[byte1, byte2, byte3, .. as rest] if byte1 < 0xF0 => {
-			top = U32.shift_left_by(U8.to_u32(U8.bitwise_and(byte1, 0x0F)), 12)
-			middle = U32.shift_left_by(U8.to_u32(U8.bitwise_and(byte2, 0x3F)), 6)
+			top = U32.shl_wrap(U8.to_u32(U8.bitwise_and(byte1, 0x0F)), 12)
+			middle = U32.shl_wrap(U8.to_u32(U8.bitwise_and(byte2, 0x3F)), 6)
 			bottom = U8.to_u32(U8.bitwise_and(byte3, 0x3F))
 			code_point = U32.bitwise_or(U32.bitwise_or(top, middle), bottom)
 
@@ -396,14 +396,14 @@ utf8_to_utf16 = |remaining, out|
 		}
 
 		[byte1, byte2, byte3, byte4, .. as rest] => {
-			top = U32.shift_left_by(U8.to_u32(U8.bitwise_and(byte1, 0x07)), 18)
-			middle1 = U32.shift_left_by(U8.to_u32(U8.bitwise_and(byte2, 0x3F)), 12)
-			middle2 = U32.shift_left_by(U8.to_u32(U8.bitwise_and(byte3, 0x3F)), 6)
+			top = U32.shl_wrap(U8.to_u32(U8.bitwise_and(byte1, 0x07)), 18)
+			middle1 = U32.shl_wrap(U8.to_u32(U8.bitwise_and(byte2, 0x3F)), 12)
+			middle2 = U32.shl_wrap(U8.to_u32(U8.bitwise_and(byte3, 0x3F)), 6)
 			bottom = U8.to_u32(U8.bitwise_and(byte4, 0x3F))
 			upper = U32.bitwise_or(U32.bitwise_or(top, middle1), middle2)
 			code_point = U32.bitwise_or(upper, bottom)
 
-			high = U32.to_u16_wrap(0xD800 + U32.shift_right_by(code_point - 0x10000, 10))
+			high = U32.to_u16_wrap(0xD800 + U32.shr_wrap(code_point - 0x10000, 10))
 			low = U32.to_u16_wrap(0xDC00 + U32.bitwise_and(code_point - 0x10000, 0x3FF))
 
 			utf8_to_utf16(rest, out.append(high).append(low))
@@ -432,7 +432,7 @@ utf16_to_utf8 = |remaining, out, index|
 		[] => Ok(out)
 
 		[high, low, .. as rest] if is_high_surrogate(high) and is_low_surrogate(low) => {
-			high_bits = U32.shift_left_by(U16.to_u32(high) - 0xD800, 10)
+			high_bits = U32.shl_wrap(U16.to_u32(high) - 0xD800, 10)
 			low_bits = U16.to_u32(low) - 0xDC00
 			code_point = 0x10000 + high_bits + low_bits
 
@@ -454,7 +454,7 @@ utf16_to_utf8_lossy_help = |remaining, out|
 		[] => out
 
 		[high, low, .. as rest] if is_high_surrogate(high) and is_low_surrogate(low) => {
-			high_bits = U32.shift_left_by(U16.to_u32(high) - 0xD800, 10)
+			high_bits = U32.shl_wrap(U16.to_u32(high) - 0xD800, 10)
 			low_bits = U16.to_u32(low) - 0xDC00
 			code_point = 0x10000 + high_bits + low_bits
 
@@ -473,16 +473,16 @@ append_code_point_utf8 = |out, code_point|
 	if code_point < 0x80 {
 		out.append(U32.to_u8_wrap(code_point))
 	} else if code_point < 0x800 {
-		out.append(U32.to_u8_wrap(0xC0 + U32.shift_right_by(code_point, 6)))
+		out.append(U32.to_u8_wrap(0xC0 + U32.shr_wrap(code_point, 6)))
 			.append(U32.to_u8_wrap(0x80 + U32.bitwise_and(code_point, 0x3F)))
 	} else if code_point < 0x10000 {
-		out.append(U32.to_u8_wrap(0xE0 + U32.shift_right_by(code_point, 12)))
-			.append(U32.to_u8_wrap(0x80 + U32.bitwise_and(U32.shift_right_by(code_point, 6), 0x3F)))
+		out.append(U32.to_u8_wrap(0xE0 + U32.shr_wrap(code_point, 12)))
+			.append(U32.to_u8_wrap(0x80 + U32.bitwise_and(U32.shr_wrap(code_point, 6), 0x3F)))
 			.append(U32.to_u8_wrap(0x80 + U32.bitwise_and(code_point, 0x3F)))
 	} else {
-		out.append(U32.to_u8_wrap(0xF0 + U32.shift_right_by(code_point, 18)))
-			.append(U32.to_u8_wrap(0x80 + U32.bitwise_and(U32.shift_right_by(code_point, 12), 0x3F)))
-			.append(U32.to_u8_wrap(0x80 + U32.bitwise_and(U32.shift_right_by(code_point, 6), 0x3F)))
+		out.append(U32.to_u8_wrap(0xF0 + U32.shr_wrap(code_point, 18)))
+			.append(U32.to_u8_wrap(0x80 + U32.bitwise_and(U32.shr_wrap(code_point, 12), 0x3F)))
+			.append(U32.to_u8_wrap(0x80 + U32.bitwise_and(U32.shr_wrap(code_point, 6), 0x3F)))
 			.append(U32.to_u8_wrap(0x80 + U32.bitwise_and(code_point, 0x3F)))
 	}
 
