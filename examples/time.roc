@@ -14,8 +14,7 @@ main! = |_args| {
 
 	Stdout.line!("Started at ${Utc.to_iso_8601(start)}")?
 
-	# 1000 ms = 1 second
-	Sleep.millis!(1000)
+	Sleep.seconds!(1)
 
 	finish : U128
 	finish = Utc.now!()
