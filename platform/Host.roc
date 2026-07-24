@@ -93,11 +93,11 @@ Host :: [].{
 	stdout_write! : Str => Try({}, [StdoutErr(IOErr)])
 	stdout_write_bytes! : List(U8) => Try({}, [StdoutErr(IOErr)])
 
-	tcp_connect! : Str, U16 => Try(TcpStream, Str)
-	tcp_read_up_to! : TcpStream, U64 => Try(List(U8), Str)
-	tcp_read_exactly! : TcpStream, U64 => Try(List(U8), Str)
-	tcp_read_until! : TcpStream, U8 => Try(List(U8), Str)
-	tcp_write! : TcpStream, List(U8) => Try({}, Str)
+	tcp_connect! : Str, U16, U64 => Try(TcpStream, Str)
+	tcp_read_up_to! : TcpStream, U64, U64 => Try(List(U8), Str)
+	tcp_read_exactly! : TcpStream, U64, U64 => Try(List(U8), Str)
+	tcp_read_until! : TcpStream, U8, U64, U64 => Try(List(U8), Str)
+	tcp_write! : TcpStream, List(U8), U64 => Try({}, Str)
 
 	tty_enable_raw_mode! : () => {}
 	tty_disable_raw_mode! : () => {}

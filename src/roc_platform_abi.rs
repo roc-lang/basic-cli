@@ -118,6 +118,10 @@ pub struct RocErasedCallablePayload {
     pub on_drop: Option<RocErasedCallableOnDrop>,
 }
 
+const _: () = assert!(core::mem::size_of::<RocErasedCallablePayload>() == 2 * core::mem::size_of::<usize>(), "RocErasedCallablePayload size mismatch");
+const _: () = assert!(core::mem::offset_of!(RocErasedCallablePayload, callable_fn_ptr) == 0, "RocErasedCallablePayload.callable_fn_ptr offset mismatch");
+const _: () = assert!(core::mem::offset_of!(RocErasedCallablePayload, on_drop) == core::mem::size_of::<usize>(), "RocErasedCallablePayload.on_drop offset mismatch");
+
 /// Runtime representation of `Box(function)`.
 pub type RocErasedCallable = *mut u8;
 
@@ -394,6 +398,12 @@ pub struct RocStr {
     pub length: usize,
 }
 
+const _: () = assert!(core::mem::size_of::<RocStr>() == 3 * core::mem::size_of::<usize>(), "RocStr size mismatch");
+const _: () = assert!(core::mem::align_of::<RocStr>() == core::mem::align_of::<usize>(), "RocStr alignment mismatch");
+const _: () = assert!(core::mem::offset_of!(RocStr, bytes) == 0, "RocStr.bytes offset mismatch");
+const _: () = assert!(core::mem::offset_of!(RocStr, capacity_or_alloc_ptr) == core::mem::size_of::<usize>(), "RocStr.capacity_or_alloc_ptr offset mismatch");
+const _: () = assert!(core::mem::offset_of!(RocStr, length) == 2 * core::mem::size_of::<usize>(), "RocStr.length offset mismatch");
+
 const ROC_STR_SIZE: usize = core::mem::size_of::<RocStr>();
 const ROC_SMALL_STR_MAX_LEN: usize = ROC_STR_SIZE - 1;
 const ROC_SMALL_STR_BIT: usize = isize::MIN as usize;
@@ -594,6 +604,12 @@ pub struct RocListWith<T, const ELEMENTS_REFCOUNTED: bool> {
     pub length: usize,
     pub capacity_or_alloc_ptr: usize,
 }
+
+const _: () = assert!(core::mem::size_of::<RocList<u8>>() == 3 * core::mem::size_of::<usize>(), "RocList size mismatch");
+const _: () = assert!(core::mem::align_of::<RocList<u8>>() == core::mem::align_of::<usize>(), "RocList alignment mismatch");
+const _: () = assert!(core::mem::offset_of!(RocList<u8>, elements) == 0, "RocList.elements offset mismatch");
+const _: () = assert!(core::mem::offset_of!(RocList<u8>, length) == core::mem::size_of::<usize>(), "RocList.length offset mismatch");
+const _: () = assert!(core::mem::offset_of!(RocList<u8>, capacity_or_alloc_ptr) == 2 * core::mem::size_of::<usize>(), "RocList.capacity_or_alloc_ptr offset mismatch");
 
 impl<T, const ELEMENTS_REFCOUNTED: bool> RocListWith<T, ELEMENTS_REFCOUNTED> {
     #[inline]
@@ -4887,53 +4903,59 @@ pub struct HostStdoutWriteBytesArgs {
 }
 
 /// Arguments for Host.tcp_connect!
-/// Roc signature: Str, U16 => Try(Host.TcpStream, Str)
+/// Roc signature: Str, U16, U64 => Try(Host.TcpStream, Str)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct HostTcpConnectArgs {
     pub arg0: RocStr,
     pub arg1: u16,
+    pub arg2: u64,
 }
 
 /// Arguments for Host.tcp_read_exactly!
-/// Roc signature: Host.TcpStream, U64 => Try(List(U8), Str)
+/// Roc signature: Host.TcpStream, U64, U64 => Try(List(U8), Str)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct HostTcpReadExactlyArgs {
     pub arg0: *mut u64,
     pub arg1: u64,
+    pub arg2: u64,
 }
 
 /// Arguments for Host.tcp_read_until!
-/// Roc signature: Host.TcpStream, U8 => Try(List(U8), Str)
+/// Roc signature: Host.TcpStream, U8, U64, U64 => Try(List(U8), Str)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct HostTcpReadUntilArgs {
     pub arg0: *mut u64,
     pub arg1: u8,
+    pub arg2: u64,
+    pub arg3: u64,
 }
 
 /// Arguments for Host.tcp_read_up_to!
-/// Roc signature: Host.TcpStream, U64 => Try(List(U8), Str)
+/// Roc signature: Host.TcpStream, U64, U64 => Try(List(U8), Str)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct HostTcpReadUpToArgs {
     pub arg0: *mut u64,
     pub arg1: u64,
+    pub arg2: u64,
 }
 
 /// Arguments for Host.tcp_write!
-/// Roc signature: Host.TcpStream, List(U8) => Try({}, Str)
+/// Roc signature: Host.TcpStream, List(U8), U64 => Try({}, Str)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct HostTcpWriteArgs {
     pub arg0: *mut u64,
     pub arg1: RocListWith<u8, false>,
+    pub arg2: u64,
 }
 
 // Platform Type Aliases
@@ -7349,24 +7371,24 @@ unsafe extern "C" {
     pub fn hosted_stdout_write_bytes(arg0: RocListWith<u8, false>) -> HostStdoutLineResult;
 
     /// Hosted symbol for Host.tcp_connect!
-    /// Roc signature: Str, U16 => Try(Host.TcpStream, Str)
-    pub fn hosted_tcp_connect(arg0: RocStr, arg1: u16) -> HostTcpConnectResult;
+    /// Roc signature: Str, U16, U64 => Try(Host.TcpStream, Str)
+    pub fn hosted_tcp_connect(arg0: RocStr, arg1: u16, arg2: u64) -> HostTcpConnectResult;
 
     /// Hosted symbol for Host.tcp_read_exactly!
-    /// Roc signature: Host.TcpStream, U64 => Try(List(U8), Str)
-    pub fn hosted_tcp_read_exactly(arg0: *mut u64, arg1: u64) -> HostTcpReadExactlyResult;
+    /// Roc signature: Host.TcpStream, U64, U64 => Try(List(U8), Str)
+    pub fn hosted_tcp_read_exactly(arg0: *mut u64, arg1: u64, arg2: u64) -> HostTcpReadExactlyResult;
 
     /// Hosted symbol for Host.tcp_read_until!
-    /// Roc signature: Host.TcpStream, U8 => Try(List(U8), Str)
-    pub fn hosted_tcp_read_until(arg0: *mut u64, arg1: u8) -> HostTcpReadExactlyResult;
+    /// Roc signature: Host.TcpStream, U8, U64, U64 => Try(List(U8), Str)
+    pub fn hosted_tcp_read_until(arg0: *mut u64, arg1: u8, arg2: u64, arg3: u64) -> HostTcpReadExactlyResult;
 
     /// Hosted symbol for Host.tcp_read_up_to!
-    /// Roc signature: Host.TcpStream, U64 => Try(List(U8), Str)
-    pub fn hosted_tcp_read_up_to(arg0: *mut u64, arg1: u64) -> HostTcpReadExactlyResult;
+    /// Roc signature: Host.TcpStream, U64, U64 => Try(List(U8), Str)
+    pub fn hosted_tcp_read_up_to(arg0: *mut u64, arg1: u64, arg2: u64) -> HostTcpReadExactlyResult;
 
     /// Hosted symbol for Host.tcp_write!
-    /// Roc signature: Host.TcpStream, List(U8) => Try({}, Str)
-    pub fn hosted_tcp_write(arg0: *mut u64, arg1: RocListWith<u8, false>) -> HostTcpWriteResult;
+    /// Roc signature: Host.TcpStream, List(U8), U64 => Try({}, Str)
+    pub fn hosted_tcp_write(arg0: *mut u64, arg1: RocListWith<u8, false>, arg2: u64) -> HostTcpWriteResult;
 
     /// Hosted symbol for Host.tty_disable_raw_mode!
     /// Roc signature: {} => {}

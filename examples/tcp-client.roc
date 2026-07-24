@@ -15,7 +15,7 @@ main! : List(OsStr) => Try({}, _)
 main! = |_args| {
 
 	stream : Tcp.Stream
-	stream = Tcp.connect!("127.0.0.1", 8085) ? |err| ConnectFailed(err)
+	stream = Tcp.connect!("127.0.0.1", 8085, 1_000) ? |err| ConnectFailed(err)
 
 	verify_stream_methods!(stream)?
 
@@ -27,16 +27,16 @@ main! = |_args| {
 ## Exercise every read and write operation against the echo test server.
 verify_stream_methods! : Tcp.Stream => Try({}, _)
 verify_stream_methods! = |stream| {
-	stream.write!([1, 2, 3])?
-	exact_bytes = stream.read_exactly!(3)?
+	stream.write!([1, 2, 3], 1_000)?
+	exact_bytes = stream.read_exactly!(3, 1_000)?
 	expect exact_bytes == [1, 2, 3]
 
-	stream.write_utf8!("until|")?
-	until_bytes = stream.read_until!(124)?
+	stream.write_utf8!("until|", 1_000)?
+	until_bytes = stream.read_until!(124, 64, 1_000)?
 	expect until_bytes == [117, 110, 116, 105, 108, 124]
 
-	stream.write!([42])?
-	up_to_bytes = stream.read_up_to!(1)?
+	stream.write!([42], 1_000)?
+	up_to_bytes = stream.read_up_to!(1, 1_000)?
 	expect up_to_bytes == [42]
 
 	Ok({})
@@ -51,8 +51,8 @@ run! = |stream| {
 		Err(EndOfFile) => Ok({})
 		Err(StdinErr(err)) => Err(StdinReadFailed(err))
 		Ok(out_msg) => {
-			stream.write_utf8!("${out_msg}\n") ? |err| TcpWriteFailed(err)
-			in_msg = stream.read_line!() ? |err| TcpReadFailed(err)
+			stream.write_utf8!("${out_msg}\n", 5_000) ? |err| TcpWriteFailed(err)
+			in_msg = stream.read_line!(1_048_576, 5_000) ? |err| TcpReadFailed(err)
 			Stdout.line!("< ${in_msg}")?
 			run!(stream)
 		}
