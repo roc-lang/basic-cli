@@ -1568,10 +1568,7 @@ fn file_permission_bit(
     Ok(metadata.permissions().mode() & bit != 0)
 }
 
-fn file_is_executable(
-    path: UnixBytesOrUtf8OrWindowsU16s,
-    roc_host: &RocHost,
-) -> io::Result<bool> {
+fn file_is_executable(path: UnixBytesOrUtf8OrWindowsU16s, roc_host: &RocHost) -> io::Result<bool> {
     #[cfg(unix)]
     {
         file_permission_bit(path, roc_host, 0o111)
@@ -1600,10 +1597,7 @@ fn file_is_executable(
     }
 }
 
-fn file_is_readable(
-    path: UnixBytesOrUtf8OrWindowsU16s,
-    roc_host: &RocHost,
-) -> io::Result<bool> {
+fn file_is_readable(path: UnixBytesOrUtf8OrWindowsU16s, roc_host: &RocHost) -> io::Result<bool> {
     #[cfg(unix)]
     {
         file_permission_bit(path, roc_host, 0o400)
@@ -1624,10 +1618,7 @@ fn file_is_readable(
     }
 }
 
-fn file_is_writable(
-    path: UnixBytesOrUtf8OrWindowsU16s,
-    roc_host: &RocHost,
-) -> io::Result<bool> {
+fn file_is_writable(path: UnixBytesOrUtf8OrWindowsU16s, roc_host: &RocHost) -> io::Result<bool> {
     #[cfg(unix)]
     {
         file_permission_bit(path, roc_host, 0o200)
