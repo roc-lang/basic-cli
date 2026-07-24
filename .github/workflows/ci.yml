@@ -3,6 +3,9 @@ name: CI
 on:
   pull_request:
   workflow_dispatch:
+  schedule:
+    # Run daily at 11 AM UTC, after the nightlies are typically published.
+    - cron: '0 11 * * *'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
