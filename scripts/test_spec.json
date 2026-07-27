@@ -149,6 +149,18 @@
       ]
     },
     {
+      "path": "examples/file-replace.roc",
+      "cases": [
+        {
+          "name": "happy",
+          "temp_cwd": true,
+          "contains": [
+            "After replacing: \"Goodbye, World! Goodbye, Roc!\""
+          ]
+        }
+      ]
+    },
+    {
       "path": "examples/file-size.roc",
       "cases": [
         {
