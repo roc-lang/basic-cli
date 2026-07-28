@@ -37,7 +37,7 @@ jobs:
         uses: actions/configure-pages@v6
 
       - name: Install Roc
-        uses: roc-lang/setup-roc@bd311e2fb815a3d2255f7ee14a922f0b736e020b
+        uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
 

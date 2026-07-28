@@ -7,6 +7,10 @@ For local work, use any recent `roc` on `PATH`, or download the latest archive
 for your operating system from the
 [`roc-lang/nightlies` releases](https://github.com/roc-lang/nightlies/releases/latest).
 
+Release artifacts use the exact nightly named by `ROC_NIGHTLY_TAG` in
+`.github/workflows/release.yml`. Advance that pin to a nightly that has passed
+the moving daily CI before dispatching a release.
+
 ## Code of Conduct
 
 We are committed to providing a friendly, safe, and welcoming environment for all. See the [Code of Conduct](https://github.com/roc-lang/roc/blob/main/CODE_OF_CONDUCT.md) for details.

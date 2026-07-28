@@ -16,6 +16,11 @@ concurrency:
   group: ${{ github.event_name == 'workflow_dispatch' && format('release-{0}', github.repository) || format('release-validate-{0}-{1}', github.repository, github.ref) }}
   cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
+# Release artifacts must be reproducible. Daily CI intentionally follows the
+# moving nightly channel and this pin is advanced after that toolchain is green.
+env:
+  ROC_NIGHTLY_TAG: nightly-2026-July-27-f4b3c60
+
 jobs:
   rust-version:
     name: read Rust version
@@ -111,9 +116,10 @@ jobs:
           fetch-depth: 0
 
       - name: Install Roc
-        uses: roc-lang/setup-roc@bd311e2fb815a3d2255f7ee14a922f0b736e020b
+        uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
+          nightly-tag: ${{ env.ROC_NIGHTLY_TAG }}
 
       - name: Install Zig
         uses: mlugg/setup-zig@8d6198c65fb0feaa111df26e6b467fea8345e46f
@@ -211,9 +217,10 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Install Roc
-        uses: roc-lang/setup-roc@bd311e2fb815a3d2255f7ee14a922f0b736e020b
+        uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
+          nightly-tag: ${{ env.ROC_NIGHTLY_TAG }}
 
       - name: Install Rust
         shell: bash
@@ -255,9 +262,10 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Install Roc
-        uses: roc-lang/setup-roc@bd311e2fb815a3d2255f7ee14a922f0b736e020b
+        uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
+          nightly-tag: ${{ env.ROC_NIGHTLY_TAG }}
 
       - name: Create docs staging tree
         run: mkdir -p docs-site
@@ -402,9 +410,10 @@ jobs:
           fetch-depth: 0
 
       - name: Install Roc
-        uses: roc-lang/setup-roc@bd311e2fb815a3d2255f7ee14a922f0b736e020b
+        uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
+          nightly-tag: ${{ env.ROC_NIGHTLY_TAG }}
 
       - name: Download release metadata
         uses: actions/download-artifact@v8
