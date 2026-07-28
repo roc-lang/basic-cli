@@ -470,7 +470,7 @@ dependencies = [
 
 [[package]]
 name = "roc_host"
-version = "0.21.0-rc4"
+version = "0.21.0"
 dependencies = [
  "bytes",
  "crossterm",
