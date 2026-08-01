@@ -19,6 +19,20 @@
       ]
     },
     {
+      "path": "examples/check-command.roc",
+      "platforms": { "windows": { "run": false } },
+      "reason": "Checks a Unix command is on the PATH",
+      "cases": [
+        {
+          "name": "happy",
+          "contains": [
+            "sh is available",
+            "definitely-not-a-real-command-xyz is not available"
+          ]
+        }
+      ]
+    },
+    {
       "path": "examples/command-line-args.roc",
       "cases": [
         {
