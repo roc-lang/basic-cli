@@ -27,6 +27,9 @@ File :: [].{
 
 	## Open a file for buffered reading using the default buffer capacity.
 	##
+	## Failing to open reports the path, using the same `PathErr` as the
+	## whole-file operations so both combine in one error type.
+	##
 	## ```roc
 	## reader = File.open_reader!("LICENSE")?
 	## line = reader.read_line!()?
@@ -34,11 +37,11 @@ File :: [].{
 	open_reader! = |path|
 		Host.file_open_reader!(Path.to_raw(path), 0)
 			.map_ok(|reader| Reader.{ host: reader })
-			.map_err(|FileErr(err)| FileErr(err))
+			.map_err(|FileErr(err)| PathErr(err, path))
 
 	## Open a file for buffered reading using a specific buffer capacity.
 	open_reader_with_capacity! = |path, capacity|
 		Host.file_open_reader!(Path.to_raw(path), capacity)
 			.map_ok(|reader| Reader.{ host: reader })
-			.map_err(|FileErr(err)| FileErr(err))
+			.map_err(|FileErr(err)| PathErr(err, path))
 }

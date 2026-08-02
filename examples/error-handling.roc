@@ -16,14 +16,16 @@ main! = |_args| {
 	missing_file : Path
 	missing_file = "nonexistent-file.txt"
 
-	# For professional software, use error tags (like `PathErr(NotFound)`) internally and convert
+	# For professional software, use error tags (like `PathErr(NotFound, path)`) internally and convert
 	# them to a message for the user at the edge of your program. This also makes it easy to provide
 	# error messages in different languages.
 	match missing_file.read_utf8!() {
 		Ok(content) => Err(UnexpectedReadSuccess(content))?
-		Err(PathErr(NotFound)) => Stderr.line!("Expected error: Path not found (NotFound)")?
-		Err(PathErr(PermissionDenied)) => Stderr.line!("Error: Permission denied")?
-		Err(PathErr(Other(msg))) => Stderr.line!("Error: ${msg}")?
+		# The failing path comes back with the error, so the message can name it.
+		Err(PathErr(NotFound, path)) => Stderr.line!("Expected error: Path not found (NotFound): ${path.display()}")?
+		# Use `_` when the path does not add anything to the message.
+		Err(PathErr(PermissionDenied, _)) => Stderr.line!("Error: Permission denied")?
+		Err(PathErr(Other(msg), _)) => Stderr.line!("Error: ${msg}")?
 		Err(_) => Stderr.line!("Error: Other file error")?
 	}
 
@@ -31,7 +33,7 @@ main! = |_args| {
 	directory = "examples"
 
 	match directory.read_bytes!() {
-		Err(PathErr(IsADirectory)) => Stderr.line!("Expected error: Path is a directory (IsADirectory)")?
+		Err(PathErr(IsADirectory, _)) => Stderr.line!("Expected error: Path is a directory (IsADirectory)")?
 		Ok(_) => Err(UnexpectedDirectoryReadSuccess)?
 		Err(err) => Err(UnexpectedDirectoryReadError(err))?
 	}
@@ -40,7 +42,7 @@ main! = |_args| {
 	regular_file = "LICENSE"
 
 	match regular_file.list!() {
-		Err(PathErr(NotADirectory)) => Stderr.line!("Expected error: Path is not a directory (NotADirectory)")?
+		Err(PathErr(NotADirectory, _)) => Stderr.line!("Expected error: Path is not a directory (NotADirectory)")?
 		Ok(_) => Err(UnexpectedFileListSuccess)?
 		Err(err) => Err(UnexpectedFileListError(err))?
 	}
