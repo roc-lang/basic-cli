@@ -18,7 +18,7 @@ main! = |args| {
 
 	created_line = match file.time_created!() {
 		Ok(time_created) => "    Created: ${Utc.to_millis_since_epoch(time_created).to_str()} ms since epoch"
-		Err(PathErr(Unsupported, _)) => "    Created: unsupported"
+		Err(PathErr(Unsupported, _path)) => "    Created: unsupported"
 		Err(err) => Err(err)?
 	}
 

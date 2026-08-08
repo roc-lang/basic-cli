@@ -21,19 +21,18 @@ main! = |_args| {
 	# error messages in different languages.
 	match missing_file.read_utf8!() {
 		Ok(content) => Err(UnexpectedReadSuccess(content))?
-		# The failing path comes back with the error, so the message can name it.
-		Err(PathErr(NotFound, path)) => Stderr.line!("Expected error: Path not found (NotFound): ${path.display()}")?
-		# Use `_` when the path does not add anything to the message.
-		Err(PathErr(PermissionDenied, _)) => Stderr.line!("Error: Permission denied")?
-		Err(PathErr(Other(msg), _)) => Stderr.line!("Error: ${msg}")?
-		Err(_) => Stderr.line!("Error: Other file error")?
+		# The failing path comes back with the error, so we can show it to the user.
+		Err(PathErr(NotFound, path)) => Stderr.line!("(Expected ✅) error: Path not found (NotFound): ${path.display()}")?
+		Err(PathErr(PermissionDenied, path)) => Stderr.line!("Unexpected Error: Permission denied for path:\n\t${path.display()}")?
+		Err(PathErr(Other(msg), path)) => Stderr.line!("Unexpected Error:\n\t${msg}\nFor path:\n\t${path.display()}")?
+		Err(err) => Stderr.line!("Unexpected Error: ${Str.inspect(err)}")?
 	}
 
 	directory : Path
 	directory = "examples"
 
 	match directory.read_bytes!() {
-		Err(PathErr(IsADirectory, _)) => Stderr.line!("Expected error: Path is a directory (IsADirectory)")?
+		Err(PathErr(IsADirectory, path)) => Stderr.line!("(Expected ✅) error: Path is a directory: ${path.display()}")?
 		Ok(_) => Err(UnexpectedDirectoryReadSuccess)?
 		Err(err) => Err(UnexpectedDirectoryReadError(err))?
 	}
@@ -42,7 +41,7 @@ main! = |_args| {
 	regular_file = "LICENSE"
 
 	match regular_file.list!() {
-		Err(PathErr(NotADirectory, _)) => Stderr.line!("Expected error: Path is not a directory (NotADirectory)")?
+		Err(PathErr(NotADirectory, path)) => Stderr.line!("(Expected ✅) error: Path is not a directory: ${path.display()}")?
 		Ok(_) => Err(UnexpectedFileListSuccess)?
 		Err(err) => Err(UnexpectedFileListError(err))?
 	}
