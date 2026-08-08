@@ -107,6 +107,18 @@ Path := [
 	write_utf8! : Path, Str => Try({}, [PathErr(IOErr), ..])
 	write_utf8! = |path, content| map_file_result(Host.file_write_utf8!(to_raw(path), content))
 
+	## Replace every occurrence of `pattern` with `replacement` in the UTF-8 file
+	## at this path.
+	##
+	## This reads the whole file, substitutes, and writes it back, so it is not
+	## atomic: a failure mid-write can leave the file partially written, exactly
+	## as a bare [write_utf8!] would.
+	replace_utf8! : Path, Str, Str => Try({}, [PathErr(IOErr), ..])
+	replace_utf8! = |path, pattern, replacement| {
+		content = read_utf8!(path)?
+		write_utf8!(path, Str.replace_each(content, pattern, replacement))
+	}
+
 	## Delete a file at this path.
 	delete! : Path => Try({}, [PathErr(IOErr), ..])
 	delete! = |path| map_file_result(Host.file_delete!(to_raw(path)))
