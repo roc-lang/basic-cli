@@ -89,7 +89,7 @@
         {
           "name": "handled-not-found",
           "contains": [
-            "Expected error: Path not found (NotFound)",
+            "Expected error: Path not found (NotFound): nonexistent-file.txt",
             "Expected error: Path is a directory (IsADirectory)",
             "Expected error: Path is not a directory (NotADirectory)",
             "test-file.txt contains: Hello from error-handling example!"
@@ -173,7 +173,7 @@
           "args": ["missing.txt"],
           "temp_cwd": true,
           "exit_code": 1,
-          "contains": ["PathErr(NotFound)"]
+          "contains": ["PathErr(NotFound, Path."]
         }
       ]
     },
