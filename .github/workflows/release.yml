@@ -43,7 +43,7 @@ jobs:
 
       - name: Validate release request
         id: validate
-        uses: roc-lang/release-package/actions/validate-release@d2560ead9f724bfaabfbc8134b8895e120171064
+        uses: roc-lang/release-package/actions/validate-release@af2f0cd8662874b825ff3917f4286e793ba18c55
         with:
           release_version: ${{ github.event_name == 'workflow_dispatch' && inputs.release_version || '' }}
           dry_run: ${{ github.event_name != 'workflow_dispatch' }}
@@ -150,7 +150,7 @@ jobs:
       - name: Resolve previous release
         if: github.event_name == 'workflow_dispatch'
         id: previous
-        uses: roc-lang/release-package/actions/resolve-previous-release@d2560ead9f724bfaabfbc8134b8895e120171064
+        uses: roc-lang/release-package/actions/resolve-previous-release@af2f0cd8662874b825ff3917f4286e793ba18c55
         with:
           github_token: ${{ github.token }}
 
@@ -159,7 +159,7 @@ jobs:
       # either predecessor. Change this to `require` after the first stable
       # new-compiler .tar.zst release.
       - name: Check version bump
-        uses: roc-lang/release-package/actions/run-bump-check@d2560ead9f724bfaabfbc8134b8895e120171064
+        uses: roc-lang/release-package/actions/run-bump-check@af2f0cd8662874b825ff3917f4286e793ba18c55
         with:
           release_version: ${{ needs.release-info.outputs.release_version }}
           dry_run: ${{ github.event_name != 'workflow_dispatch' }}
@@ -172,7 +172,7 @@ jobs:
 
       - name: Prepare release bundle metadata
         id: bundles
-        uses: roc-lang/release-package/actions/prepare-bundles@d2560ead9f724bfaabfbc8134b8895e120171064
+        uses: roc-lang/release-package/actions/prepare-bundles@af2f0cd8662874b825ff3917f4286e793ba18c55
         with:
           bundle_glob: dist/*.tar.zst
           test_os_json: '["macos-15","macos-15-intel","ubuntu-22.04","windows-2025"]'
@@ -229,7 +229,7 @@ jobs:
 
       - name: Test release bundle (Unix)
         if: matrix.os != 'windows-2025'
-        uses: roc-lang/release-package/actions/test-bundle@d2560ead9f724bfaabfbc8134b8895e120171064
+        uses: roc-lang/release-package/actions/test-bundle@af2f0cd8662874b825ff3917f4286e793ba18c55
         with:
           test_bundle_command: ./scripts/test.py --bundle-path
           bundle_path: .release/test-bundles/${{ matrix.artifact_file }}
@@ -238,7 +238,7 @@ jobs:
 
       - name: Test release bundle (Windows)
         if: matrix.os == 'windows-2025'
-        uses: roc-lang/release-package/actions/test-bundle@d2560ead9f724bfaabfbc8134b8895e120171064
+        uses: roc-lang/release-package/actions/test-bundle@af2f0cd8662874b825ff3917f4286e793ba18c55
         with:
           test_bundle_command: python scripts/test.py --bundle-path
           bundle_path: .release/test-bundles/${{ matrix.artifact_file }}
@@ -263,7 +263,7 @@ jobs:
         run: mkdir -p docs-site
 
       - name: Snapshot docs staging tree
-        uses: roc-lang/release-package/actions/docs-snapshot@d2560ead9f724bfaabfbc8134b8895e120171064
+        uses: roc-lang/release-package/actions/docs-snapshot@af2f0cd8662874b825ff3917f4286e793ba18c55
         with:
           docs_root: docs-site
 
@@ -277,7 +277,7 @@ jobs:
           ROC_DOCS_URL_ROOT="$DOCS_URL_ROOT" roc docs --output="docs-site/$DOCS_VERSION" platform/main.roc
 
       - name: Validate versioned docs
-        uses: roc-lang/release-package/actions/docs-validate@d2560ead9f724bfaabfbc8134b8895e120171064
+        uses: roc-lang/release-package/actions/docs-validate@af2f0cd8662874b825ff3917f4286e793ba18c55
         with:
           docs_root: docs-site
           docs_version: ${{ needs.build.outputs.docs_version }}
@@ -328,7 +328,7 @@ jobs:
 
       - name: Open release source follow-up PR
         id: release-source
-        uses: roc-lang/release-package/actions/create-followup-pr@d2560ead9f724bfaabfbc8134b8895e120171064
+        uses: roc-lang/release-package/actions/create-followup-pr@af2f0cd8662874b825ff3917f4286e793ba18c55
         with:
           release_version: ${{ needs.build.outputs.release_version }}
           paths: |
@@ -363,7 +363,7 @@ jobs:
           name: platform-docs
 
       - name: Make release notes
-        uses: roc-lang/release-package/actions/make-release-notes@d2560ead9f724bfaabfbc8134b8895e120171064
+        uses: roc-lang/release-package/actions/make-release-notes@af2f0cd8662874b825ff3917f4286e793ba18c55
         with:
           release_version: ${{ needs.build.outputs.release_version }}
           target: ${{ steps.release-source.outputs.commit_sha || github.sha }}
@@ -371,7 +371,7 @@ jobs:
           github_token: ${{ github.token }}
 
       - name: Publish release
-        uses: roc-lang/release-package/actions/publish-release@48ccc909bd8f6ba60feb1d33d8b6ac1dc1c7af36
+        uses: roc-lang/release-package/actions/publish-release@af2f0cd8662874b825ff3917f4286e793ba18c55
         with:
           release_version: ${{ needs.build.outputs.release_version }}
           target: ${{ steps.release-source.outputs.commit_sha || github.sha }}
@@ -449,7 +449,7 @@ jobs:
         run: ./scripts/restore_release_docs.sh www
 
       - name: Snapshot existing docs
-        uses: roc-lang/release-package/actions/docs-snapshot@d2560ead9f724bfaabfbc8134b8895e120171064
+        uses: roc-lang/release-package/actions/docs-snapshot@af2f0cd8662874b825ff3917f4286e793ba18c55
         with:
           docs_root: www
 
@@ -464,19 +464,19 @@ jobs:
             platform/main.roc
 
       - name: Update docs index
-        uses: roc-lang/release-package/actions/docs-index@d2560ead9f724bfaabfbc8134b8895e120171064
+        uses: roc-lang/release-package/actions/docs-index@af2f0cd8662874b825ff3917f4286e793ba18c55
         with:
           docs_root: www
           docs_version: ${{ needs.build.outputs.docs_version }}
 
       - name: Validate docs
-        uses: roc-lang/release-package/actions/docs-validate@d2560ead9f724bfaabfbc8134b8895e120171064
+        uses: roc-lang/release-package/actions/docs-validate@af2f0cd8662874b825ff3917f4286e793ba18c55
         with:
           docs_root: www
           docs_version: ${{ needs.build.outputs.docs_version }}
 
       - name: Open release follow-up PR
-        uses: roc-lang/release-package/actions/create-followup-pr@d2560ead9f724bfaabfbc8134b8895e120171064
+        uses: roc-lang/release-package/actions/create-followup-pr@af2f0cd8662874b825ff3917f4286e793ba18c55
         with:
           release_version: ${{ needs.build.outputs.release_version }}
           paths: |
