@@ -475,25 +475,6 @@ jobs:
           docs_root: www
           docs_version: ${{ needs.build.outputs.docs_version }}
 
-      - name: Open release follow-up PR
-        uses: roc-lang/release-package/actions/create-followup-pr@af2f0cd8662874b825ff3917f4286e793ba18c55
-        with:
-          release_version: ${{ needs.build.outputs.release_version }}
-          paths: |
-            Cargo.toml
-            Cargo.lock
-            examples
-          branch_prefix: release-followup
-          base_branch: ${{ github.event.repository.default_branch }}
-          commit_message: Update sources for ${{ needs.build.outputs.release_version }}
-          pr_title: Update sources for ${{ needs.build.outputs.release_version }}
-          pr_body: |
-            Release follow-up for ${{ needs.build.outputs.release_version }}.
-
-            Updates the Cargo package version and checked-in examples to match
-            the published platform release.
-          github_token: ${{ github.token }}
-
       - name: Create Pages tree
         run: |
           mkdir -p temp_docs
@@ -520,3 +501,28 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v5
+
+      # Runs last on purpose. This step only opens a PR for humans to merge
+      # later, so nothing above depends on it, and keeping it after the deploy
+      # means a failure here can never skip the Pages steps the way it did on
+      # 0.21.0. It reads the same working tree either way: the examples were
+      # already rewritten near the top of this job, and `git checkout -B` only
+      # moves a branch pointer at HEAD.
+      - name: Open release follow-up PR
+        uses: roc-lang/release-package/actions/create-followup-pr@af2f0cd8662874b825ff3917f4286e793ba18c55
+        with:
+          release_version: ${{ needs.build.outputs.release_version }}
+          paths: |
+            Cargo.toml
+            Cargo.lock
+            examples
+          branch_prefix: release-followup
+          base_branch: ${{ github.event.repository.default_branch }}
+          commit_message: Update sources for ${{ needs.build.outputs.release_version }}
+          pr_title: Update sources for ${{ needs.build.outputs.release_version }}
+          pr_body: |
+            Release follow-up for ${{ needs.build.outputs.release_version }}.
+
+            Updates the Cargo package version and checked-in examples to match
+            the published platform release.
+          github_token: ${{ github.token }}
