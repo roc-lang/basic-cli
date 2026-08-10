@@ -89,9 +89,9 @@
         {
           "name": "handled-not-found",
           "contains": [
-            "Expected error: Path not found (NotFound): nonexistent-file.txt",
-            "Expected error: Path is a directory (IsADirectory)",
-            "Expected error: Path is not a directory (NotADirectory)",
+            "(Expected ✅) error: Path not found (NotFound): nonexistent-file.txt",
+            "(Expected ✅) error: Path is a directory: examples",
+            "(Expected ✅) error: Path is not a directory: LICENSE",
             "test-file.txt contains: Hello from error-handling example!"
           ]
         }
