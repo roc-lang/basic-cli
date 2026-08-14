@@ -86,8 +86,9 @@ Locale :: { raw : Str }.{
 
 	## Returns the most preferred locale for the system or application.
 	##
-	## Host locale strings are trusted because the platform host is responsible
-	## for returning BCP 47 language tags.
+	## POSIX locale names are normalized by removing encoding and modifier
+	## suffixes and replacing underscores with hyphens. The special `C` and
+	## `POSIX` locales are not language tags and are ignored.
 	##
 	## Returns `Err(NotAvailable)` if the locale cannot be determined.
 	get! : () => Try(Locale, [NotAvailable, ..])
@@ -98,8 +99,9 @@ Locale :: { raw : Str }.{
 
 	## Returns the preferred locales for the system or application.
 	##
-	## Host locale strings are trusted because the platform host is responsible
-	## for returning BCP 47 language tags.
+	## Values are normalized and validated as described by `get!`. Invalid values
+	## are omitted, and duplicates are removed case-insensitively while preserving
+	## preference order.
 	all! : () => List(Locale)
 	all! = || Host.locale_all!().map(|raw| Locale.{ raw })
 }
