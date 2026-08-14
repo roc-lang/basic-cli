@@ -39,6 +39,7 @@ jobs:
       - uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
+          nightly-tag: nightly-2026-08-13-2fdd90e
       - name: Install Rust toolchain
         run: |
           rustup toolchain install "${{ needs.rust-version.outputs.version }}" --profile minimal --target x86_64-unknown-linux-musl --component llvm-tools-preview
@@ -57,6 +58,7 @@ jobs:
       - uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
+          nightly-tag: nightly-2026-08-13-2fdd90e
       - name: Install Rust toolchain
         shell: bash
         run: |
@@ -101,6 +103,7 @@ jobs:
       - uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
+          nightly-tag: nightly-2026-08-13-2fdd90e
       - name: Install Rust toolchain
         shell: bash
         run: |

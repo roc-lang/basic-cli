@@ -43,6 +43,16 @@ run! = || {
 		print_line!("    id: ${I64.to_str(t.id)}, task: ${t.task}, status: ${status_to_str(t.status)}, edited: ${edited_to_str(decode_edited(t.edited_val))}")?
 	}
 
+	# Keep a runtime-allocated string live after binding it. This guards against
+	# the host recursively releasing fields that remain owned by the Roc caller.
+	heap_binding = Str.repeat("x", 40)
+	Sqlite.execute!({
+		path: db_path,
+		query: "UPDATE todos SET task = task WHERE task = :never;",
+		bindings: [{ name: ":never", value: String(heap_binding) }],
+	}) ? |err| HeapStringBindingFailed(err)
+	expect heap_binding == "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
 	# Example: filter rows by status (decode a single column)
 	tasks_in_progress = Sqlite.query_many!({
 		path: db_path,
