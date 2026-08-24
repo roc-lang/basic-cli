@@ -1,5 +1,5 @@
 ## Shows SQLite queries, decoders, nullable values, and prepared writes.
-app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.21.0/4rAQg8kUYZ3Vksr4qMQHpaFYNiHSn9GgS7gVxghd1XYV.tar.zst" }
+app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.22.0/F1JVZPYfWP71s8vk6tHcV1Qx1Ef6CZkwswGoCn8VHZmL.tar.zst" }
 
 import pf.OsStr
 import pf.Env
@@ -42,6 +42,16 @@ run! = || {
 	for t in all_todos {
 		print_line!("    id: ${I64.to_str(t.id)}, task: ${t.task}, status: ${status_to_str(t.status)}, edited: ${edited_to_str(decode_edited(t.edited_val))}")?
 	}
+
+	# Keep a runtime-allocated string live after binding it. This guards against
+	# the host recursively releasing fields that remain owned by the Roc caller.
+	heap_binding = Str.repeat("x", 40)
+	Sqlite.execute!({
+		path: db_path,
+		query: "UPDATE todos SET task = task WHERE task = :never;",
+		bindings: [{ name: ":never", value: String(heap_binding) }],
+	}) ? |err| HeapStringBindingFailed(err)
+	expect heap_binding == "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 	# Example: filter rows by status (decode a single column)
 	tasks_in_progress = Sqlite.query_many!({

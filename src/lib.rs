@@ -659,6 +659,13 @@ fn try_locale_get_ok(value: RocStr) -> HostLocaleGetResult {
     }
 }
 
+fn try_locale_get_err() -> HostLocaleGetResult {
+    HostLocaleGetResult {
+        payload: HostLocaleGetResultPayload { err: [] },
+        tag: HostLocaleGetResultTag::Err,
+    }
+}
+
 fn try_path_type_ok(value: PathType) -> HostPathTypeResult {
     HostPathTypeResult {
         payload: HostPathTypeResultPayload {
@@ -1756,55 +1763,97 @@ pub extern "C" fn hosted_file_write_utf8(
 }
 
 #[cfg(target_os = "macos")]
-fn locale_from_env() -> Option<String> {
+fn raw_locale_strings() -> Vec<String> {
     for key in ["LC_ALL", "LC_CTYPE", "LANG"] {
         if let Ok(value) = std::env::var(key) {
-            let trimmed = value.trim();
-            if trimmed.is_empty() {
-                continue;
-            }
-
-            let locale = trimmed
-                .split('.')
-                .next()
-                .unwrap_or(trimmed)
-                .split('@')
-                .next()
-                .unwrap_or(trimmed)
-                .trim();
-
-            if !locale.is_empty() {
-                return Some(locale.to_string());
+            if !value.trim().is_empty() {
+                return vec![value];
             }
         }
     }
 
-    None
-}
-
-#[cfg(target_os = "macos")]
-fn locale_get_string() -> String {
-    locale_from_env().unwrap_or_else(|| "en-US".to_string())
+    Vec::new()
 }
 
 #[cfg(not(target_os = "macos"))]
-fn locale_get_string() -> String {
-    sys_locale::get_locale().unwrap_or_else(|| "en-US".to_string())
+fn raw_locale_strings() -> Vec<String> {
+    sys_locale::get_locales().collect()
 }
 
-#[cfg(target_os = "macos")]
-fn locale_all_strings() -> Vec<String> {
-    vec![locale_get_string()]
-}
+fn normalize_locale(input: &str) -> Option<String> {
+    let trimmed = input.trim();
+    let base = trimmed.split(['.', '@']).next().unwrap_or("");
 
-#[cfg(not(target_os = "macos"))]
-fn locale_all_strings() -> Vec<String> {
-    let locales = sys_locale::get_locales().collect::<Vec<_>>();
-    if locales.is_empty() {
-        vec![locale_get_string()]
-    } else {
-        locales
+    if base.eq_ignore_ascii_case("C") || base.eq_ignore_ascii_case("POSIX") {
+        return None;
     }
+
+    let normalized = base.replace('_', "-");
+    if locale_is_valid(&normalized) {
+        Some(normalized)
+    } else {
+        None
+    }
+}
+
+fn locale_is_valid(locale: &str) -> bool {
+    let subtags = locale.split('-').collect::<Vec<_>>();
+    let Some(language) = subtags.first() else {
+        return false;
+    };
+
+    if language.is_empty()
+        || subtags
+            .iter()
+            .any(|subtag| subtag.is_empty() || subtag.len() > 8 || !subtag.is_ascii())
+        || subtags
+            .iter()
+            .any(|subtag| !subtag.bytes().all(|byte| byte.is_ascii_alphanumeric()))
+    {
+        return false;
+    }
+
+    let language_is_special = language.len() == 1
+        && (language.eq_ignore_ascii_case("x") || language.eq_ignore_ascii_case("i"));
+    if !language_is_special && !(2..=8).contains(&language.len())
+        || (!language_is_special && !language.bytes().all(|byte| byte.is_ascii_alphabetic()))
+    {
+        return false;
+    }
+
+    if language_is_special && subtags.len() == 1 {
+        return false;
+    }
+
+    for (index, subtag) in subtags.iter().enumerate().skip(1) {
+        if subtag.len() == 1 && index + 1 == subtags.len() {
+            return false;
+        }
+        if subtag.eq_ignore_ascii_case("x") {
+            return index + 1 < subtags.len();
+        }
+    }
+
+    true
+}
+
+fn locale_all_strings() -> Vec<String> {
+    normalize_locales(raw_locale_strings())
+}
+
+fn normalize_locales(locales: impl IntoIterator<Item = String>) -> Vec<String> {
+    let mut normalized = Vec::new();
+    for locale in locales {
+        if let Some(locale) = normalize_locale(&locale) {
+            if !normalized
+                .iter()
+                .any(|existing: &String| existing.eq_ignore_ascii_case(&locale))
+            {
+                normalized.push(locale);
+            }
+        }
+    }
+    normalized
 }
 
 #[no_mangle]
@@ -1827,7 +1876,10 @@ pub extern "C" fn hosted_locale_all() -> RocList<RocStr> {
 #[no_mangle]
 pub extern "C" fn hosted_locale_get() -> HostLocaleGetResult {
     let roc_host = roc_host();
-    try_locale_get_ok(RocStr::from_str(&locale_get_string(), roc_host))
+    match locale_all_strings().into_iter().next() {
+        Some(locale) => try_locale_get_ok(RocStr::from_str(&locale, roc_host)),
+        None => try_locale_get_err(),
+    }
 }
 
 #[no_mangle]
@@ -2172,6 +2224,60 @@ mod tests {
 
     fn classify(path: &Path) -> PathType {
         path_type_from_metadata(&path.symlink_metadata().unwrap())
+    }
+
+    fn strings(values: &[&str]) -> Vec<String> {
+        values.iter().map(|value| (*value).to_string()).collect()
+    }
+
+    #[test]
+    fn normalizes_posix_locale_forms() {
+        assert_eq!(normalize_locale("en_US"), Some("en-US".to_string()));
+        assert_eq!(normalize_locale("sr_RS.UTF-8"), Some("sr-RS".to_string()));
+        assert_eq!(normalize_locale("de_DE@euro"), Some("de-DE".to_string()));
+        assert_eq!(
+            normalize_locale("ca_ES.UTF-8@valencia"),
+            Some("ca-ES".to_string())
+        );
+    }
+
+    #[test]
+    fn rejects_non_language_and_malformed_host_locales() {
+        for input in [
+            "",
+            " ",
+            "C",
+            "C.UTF-8",
+            "POSIX",
+            "en--US",
+            "1-US",
+            "en_US!",
+            "en-abcdefghi",
+            "en-u",
+        ] {
+            assert_eq!(normalize_locale(input), None, "accepted {input:?}");
+        }
+    }
+
+    #[test]
+    fn accepts_representative_macos_and_windows_tags() {
+        for input in ["en-US", "zh-Hant-TW", "de-DE", "x-private"] {
+            assert_eq!(normalize_locale(input), Some(input.to_string()));
+        }
+    }
+
+    #[test]
+    fn filters_invalid_locales_and_deduplicates_normalized_values() {
+        assert_eq!(
+            normalize_locales(strings(&[
+                "C.UTF-8",
+                "en_US.UTF-8",
+                "EN-us",
+                "malformed!",
+                "fr_FR@euro",
+            ])),
+            strings(&["en-US", "fr-FR"])
+        );
     }
 
     #[test]

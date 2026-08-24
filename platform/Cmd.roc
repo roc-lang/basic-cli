@@ -1,6 +1,8 @@
 import IOErr exposing [IOErr]
 import Host
 import OsStr exposing [OsStr]
+import Env
+import Path exposing [Path]
 
 ## Build and run child processes with native-safe programs, arguments, and
 ## environment values.
@@ -240,6 +242,41 @@ Cmd :: {
 	clear_envs : Cmd -> Cmd
 	clear_envs = |cmd| { ..cmd, clear_envs: Bool.True }
 
+	## Report whether `command` can be found on the system as something runnable.
+	##
+	## A bare name (like `"git"`) is looked up across the `PATH` entries; a name
+	## containing a path separator is checked as-is. On Windows the candidate
+	## extensions come from `%PATHEXT%`.
+	##
+	## On Unix this checks for an executable bit; a directory is not reported even
+	## though it carries one, though a symbolic link to a directory is a rare
+	## exception.
+	check_available! : Str => Bool
+	check_available! = |command| {
+		is_windows = 
+			match Env.platform!().os {
+				WINDOWS => Bool.True
+				_ => Bool.False
+			}
+
+		if has_separator(command, is_windows) {
+			candidate_available!(Path.utf8(command), is_windows)
+		} else {
+			path_value = 
+				match Env.var!(OsStr.from_str("PATH")) {
+					Ok(value) => value
+					Err(_) => OsStr.from_str("")
+				}
+
+			# On Windows a name is tried as-is (so `git.exe` is found directly)
+			# and with each `%PATHEXT%` extension appended (so `git` finds
+			# `git.exe`). On Unix the name is used verbatim.
+			extensions = if is_windows [""].concat(path_extensions!()) else [""]
+
+			search_dirs!(path_dirs(path_value, is_windows), command, extensions, is_windows)
+		}
+	}
+
 	## Render a command configuration as a stable, escaped string.
 	to_str : Cmd -> Str
 	to_str = |cmd|
@@ -272,6 +309,101 @@ to_host_cmd = |cmd| {
 	program: OsStr.to_raw(cmd.program),
 }
 
+## A command name is a path, rather than a bare name, when it carries a separator.
+has_separator : Str, Bool -> Bool
+has_separator = |command, is_windows|
+	command.contains("/") or (is_windows and command.contains("\\"))
+
+## Split the raw `PATH` value into byte-preserving directory paths. Empty entries
+## are dropped so a stray separator does not resolve to the filesystem root.
+path_dirs : OsStr, Bool -> List(Path)
+path_dirs = |path_value, is_windows|
+	match OsStr.to_raw(path_value) {
+		Utf8(str) =>
+			Str.split_on(str, if is_windows ";" else ":")
+				.keep_if(|segment| !Str.is_empty(segment))
+				.map(Path.utf8)
+
+		UnixBytes(bytes) =>
+			split_on(bytes, if is_windows ';' else ':')
+				.keep_if(|segment| !List.is_empty(segment))
+				.map(Path.unix_bytes)
+
+		WindowsU16s(u16s) =>
+			split_on(u16s, if is_windows ';' else ':')
+				.keep_if(|segment| !List.is_empty(segment))
+				.map(Path.windows_u16s)
+		}
+
+## Split a list into segments on a separator element (segments may be empty).
+split_on : List(a), a -> List(List(a)) where [a.is_eq : a, a -> Bool]
+split_on = |items, sep| split_on_help(items, sep, [], [])
+
+split_on_help : List(a), a, List(a), List(List(a)) -> List(List(a)) where [a.is_eq : a, a -> Bool]
+split_on_help = |remaining, sep, current, acc|
+	match remaining {
+		[] => acc.append(current)
+		[x, .. as rest] if x == sep => split_on_help(rest, sep, [], acc.append(current))
+		[x, .. as rest] => split_on_help(rest, sep, current.append(x), acc)
+	}
+
+## The executable extensions to try on Windows, taken from `%PATHEXT%`.
+path_extensions! : () => List(Str)
+path_extensions! = ||
+	match Env.var!(OsStr.from_str("PATHEXT")) {
+		Ok(value) =>
+			Str.split_on(OsStr.display(value), ";")
+				.keep_if(|ext| !Str.is_empty(ext))
+		Err(_) => [".com", ".exe", ".bat", ".cmd"]
+	}
+
+## Search each directory for the command, returning on the first executable hit.
+search_dirs! : List(Path), Str, List(Str), Bool => Bool
+search_dirs! = |dirs, command, extensions, is_windows|
+	match dirs {
+		[] => Bool.False
+		[dir, .. as rest] =>
+			if search_extensions!(dir, command, extensions, is_windows) {
+				Bool.True
+			} else {
+				search_dirs!(rest, command, extensions, is_windows)
+			}
+		}
+
+search_extensions! : Path, Str, List(Str), Bool => Bool
+search_extensions! = |dir, command, extensions, is_windows|
+	match extensions {
+		[] => Bool.False
+		[ext, .. as rest] =>
+			if candidate_available!(dir.join(command.concat(ext)), is_windows) {
+				Bool.True
+			} else {
+				search_extensions!(dir, command, rest, is_windows)
+			}
+		}
+
+## Whether a specific candidate path is runnable: on Windows it must exist, on
+## Unix it must carry an executable bit. Either way a directory is rejected,
+## since a directory both exists and carries an executable bit.
+candidate_available! : Path, Bool => Bool
+candidate_available! = |candidate, is_windows| {
+	runnable = if is_windows Path.exists!(candidate) else Path.is_executable!(candidate)
+	match runnable {
+		Ok(Bool.True) => not_directory!(candidate)
+		Ok(Bool.False) => Bool.False
+		Err(_) => Bool.False
+	}
+}
+
+## `is_dir!` does not follow symlinks, so a symlink to an executable is kept while
+## a real directory is rejected. A symlink pointing at a directory is not caught.
+not_directory! : Path => Bool
+not_directory! = |candidate|
+	match Path.is_dir!(candidate) {
+		Ok(is_dir) => !is_dir
+		Err(_) => Bool.True
+	}
+
 ## Inspection is escaped and includes the full immutable command configuration.
 expect {
 	cmd = Cmd.new_str("echo\nnext")
@@ -280,4 +412,33 @@ expect {
 		.clear_envs()
 
 	Str.inspect(cmd) == "Cmd({ program: OsStr.utf8(\"echo\\nnext\"), args: [OsStr.utf8(\"hello world\")], envs: [(OsStr.utf8(\"NAME\"), OsStr.utf8(\"Roc\"))], clear_envs: True })"
+}
+
+## A name is a path only when it carries a separator for the current platform.
+expect has_separator("git", Bool.False) == Bool.False
+expect has_separator("./git", Bool.False) == Bool.True
+expect has_separator("a\\b", Bool.False) == Bool.False
+expect has_separator("a\\b", Bool.True) == Bool.True
+
+## Splitting keeps every segment, including a trailing empty one after a separator.
+expect split_on([1.U8, 2, 58, 3], 58) == [[1, 2], [3]]
+expect split_on([59.U16, 1, 59], 59) == [[], [1], []]
+
+## PATH splitting preserves raw bytes, including non-UTF-8 directory entries.
+expect {
+	# "/a" ++ ":" ++ "/<0xFF>b" — the 0xFF byte is not valid UTF-8.
+	path = OsStr.unix_bytes([0x2F, 0x61, 0x3A, 0x2F, 0xFF, 0x62])
+	path_dirs(path, Bool.False) == [Path.unix_bytes([0x2F, 0x61]), Path.unix_bytes([0x2F, 0xFF, 0x62])]
+}
+
+## The UTF-8 PATH representation splits the same way.
+expect path_dirs(OsStr.utf8("/a:/b"), Bool.False) == [Path.utf8("/a"), Path.utf8("/b")]
+
+## Empty PATH entries (a stray or trailing separator) are dropped, not resolved to root.
+expect path_dirs(OsStr.utf8("/a::/b:"), Bool.False) == [Path.utf8("/a"), Path.utf8("/b")]
+
+## Windows PATH splits on ';' and preserves UTF-16 units.
+expect {
+	path = OsStr.windows_u16s([0x43, 0x3B, 0x44])
+	path_dirs(path, Bool.True) == [Path.windows_u16s([0x43]), Path.windows_u16s([0x44])]
 }

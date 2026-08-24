@@ -1,5 +1,5 @@
 ## Read a file's accessed, modified, and creation timestamps.
-app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.21.0/4rAQg8kUYZ3Vksr4qMQHpaFYNiHSn9GgS7gVxghd1XYV.tar.zst" }
+app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.22.0/F1JVZPYfWP71s8vk6tHcV1Qx1Ef6CZkwswGoCn8VHZmL.tar.zst" }
 
 import pf.OsStr
 import pf.Stdout
@@ -18,7 +18,7 @@ main! = |args| {
 
 	created_line = match file.time_created!() {
 		Ok(time_created) => "    Created: ${Utc.to_millis_since_epoch(time_created).to_str()} ms since epoch"
-		Err(PathErr(Unsupported)) => "    Created: unsupported"
+		Err(PathErr(Unsupported, _path)) => "    Created: unsupported"
 		Err(err) => Err(err)?
 	}
 

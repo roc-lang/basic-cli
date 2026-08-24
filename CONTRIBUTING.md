@@ -2,7 +2,7 @@
 
 Thanks for helping improve `basic-cli`.
 
-CI uses the current Roc nightly from [`roc-lang/nightlies`](https://github.com/roc-lang/nightlies).
+CI uses a pinned Roc nightly from [`roc-lang/nightlies`](https://github.com/roc-lang/nightlies).
 For local work, use any recent `roc` on `PATH`, or download the latest archive
 for your operating system from the
 [`roc-lang/nightlies` releases](https://github.com/roc-lang/nightlies/releases/latest).
@@ -53,8 +53,8 @@ the directory containing the `roc` executable to your `PATH`.
 
 ## Updating Roc Glue
 
-CI intentionally tracks the current nightly, so compiler updates are adopted as
-soon as a new nightly is published. If a nightly changes the host ABI:
+CI pins a specific nightly so the compiler and committed host ABI glue cannot
+drift independently. When updating the nightly pin in the workflows:
 
 1. Run `./ci/regenerate_glue.sh` to refresh `src/roc_platform_abi.rs`.
 2. Reconcile `src/lib.rs` if generated names or layouts changed.

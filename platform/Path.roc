@@ -33,12 +33,12 @@ Path := [
 	## This function does not traverse symbolic links; symbolic links (including
 	## broken ones) return `Bool.False`.
 	## Sockets, FIFOs, devices, and other special filesystem objects also return `Bool.False`.
-	is_file! : Path => Try(Bool, [PathErr(IOErr), ..])
+	is_file! : Path => Try(Bool, [PathErr(IOErr, Path), ..])
 	is_file! = |path|
 		match type!(path) {
 			Ok(IsFile) => Ok(Bool.True)
 			Ok(_) => Ok(Bool.False)
-			Err(PathErr(NotFound)) => Ok(Bool.False)
+			Err(PathErr(NotFound, _)) => Ok(Bool.False)
 			Err(err) => Err(err)
 		}
 
@@ -47,12 +47,12 @@ Path := [
 	## This function does not traverse symbolic links; symbolic links (including
 	## broken ones) return `Bool.False`.
 	## Sockets, FIFOs, devices, and other special filesystem objects also return `Bool.False`.
-	is_dir! : Path => Try(Bool, [PathErr(IOErr), ..])
+	is_dir! : Path => Try(Bool, [PathErr(IOErr, Path), ..])
 	is_dir! = |path|
 		match type!(path) {
 			Ok(IsDir) => Ok(Bool.True)
 			Ok(_) => Ok(Bool.False)
-			Err(PathErr(NotFound)) => Ok(Bool.False)
+			Err(PathErr(NotFound, _)) => Ok(Bool.False)
 			Err(err) => Err(err)
 		}
 
@@ -61,21 +61,21 @@ Path := [
 	## This function will not traverse symbolic links - it checks whether the path
 	## itself is a symlink.
 	## Sockets, FIFOs, devices, and other special filesystem objects return `Bool.False`.
-	is_sym_link! : Path => Try(Bool, [PathErr(IOErr), ..])
+	is_sym_link! : Path => Try(Bool, [PathErr(IOErr, Path), ..])
 	is_sym_link! = |path|
 		match type!(path) {
 			Ok(IsSymLink) => Ok(Bool.True)
 			Ok(_) => Ok(Bool.False)
-			Err(PathErr(NotFound)) => Ok(Bool.False)
+			Err(PathErr(NotFound, _)) => Ok(Bool.False)
 			Err(err) => Err(err)
 		}
 
 	## Returns `True` if the path exists on disk.
-	exists! : Path => Try(Bool, [PathErr(IOErr), ..])
+	exists! : Path => Try(Bool, [PathErr(IOErr, Path), ..])
 	exists! = |path|
 		match type!(path) {
 			Ok(_) => Ok(Bool.True)
-			Err(PathErr(NotFound)) => Ok(Bool.False)
+			Err(PathErr(NotFound, _)) => Ok(Bool.False)
 			Err(err) => Err(err)
 		}
 
@@ -84,28 +84,28 @@ Path := [
 	## `IsOther` represents sockets, FIFOs, block and character devices, and any
 	## platform-specific object that is not a regular file, directory, or symbolic
 	## link. On Windows this includes unrecognized reparse-point types.
-	type! : Path => Try([IsFile, IsDir, IsSymLink, IsOther], [PathErr(IOErr), ..])
+	type! : Path => Try([IsFile, IsDir, IsSymLink, IsOther], [PathErr(IOErr, Path), ..])
 	type! = |path| {
 		Host.path_type!(to_raw(path))
-			.map_err(|err| PathErr(err))
+			.map_err(|err| PathErr(err, path))
 			.map_ok(path_type_from_host)
 	}
 
 	## Read all bytes from a file at this path.
-	read_bytes! : Path => Try(List(U8), [PathErr(IOErr), ..])
-	read_bytes! = |path| map_file_result(Host.file_read_bytes!(to_raw(path)))
+	read_bytes! : Path => Try(List(U8), [PathErr(IOErr, Path), ..])
+	read_bytes! = |path| map_file_result(Host.file_read_bytes!(to_raw(path)), path)
 
 	## Write bytes to a file at this path, replacing any existing contents.
-	write_bytes! : Path, List(U8) => Try({}, [PathErr(IOErr), ..])
-	write_bytes! = |path, bytes| map_file_result(Host.file_write_bytes!(to_raw(path), bytes))
+	write_bytes! : Path, List(U8) => Try({}, [PathErr(IOErr, Path), ..])
+	write_bytes! = |path, bytes| map_file_result(Host.file_write_bytes!(to_raw(path), bytes), path)
 
 	## Read a UTF-8 file at this path.
-	read_utf8! : Path => Try(Str, [PathErr(IOErr), ..])
-	read_utf8! = |path| map_file_result(Host.file_read_utf8!(to_raw(path)))
+	read_utf8! : Path => Try(Str, [PathErr(IOErr, Path), ..])
+	read_utf8! = |path| map_file_result(Host.file_read_utf8!(to_raw(path)), path)
 
 	## Write a UTF-8 file at this path, replacing any existing contents.
-	write_utf8! : Path, Str => Try({}, [PathErr(IOErr), ..])
-	write_utf8! = |path, content| map_file_result(Host.file_write_utf8!(to_raw(path), content))
+	write_utf8! : Path, Str => Try({}, [PathErr(IOErr, Path), ..])
+	write_utf8! = |path, content| map_file_result(Host.file_write_utf8!(to_raw(path), content), path)
 
 	## Replace every occurrence of `pattern` with `replacement` in the UTF-8 file
 	## at this path.
@@ -113,76 +113,82 @@ Path := [
 	## This reads the whole file, substitutes, and writes it back, so it is not
 	## atomic: a failure mid-write can leave the file partially written, exactly
 	## as a bare [write_utf8!] would.
-	replace_utf8! : Path, Str, Str => Try({}, [PathErr(IOErr), ..])
+	replace_utf8! : Path, Str, Str => Try({}, [PathErr(IOErr, Path), ..])
 	replace_utf8! = |path, pattern, replacement| {
 		content = read_utf8!(path)?
 		write_utf8!(path, Str.replace_each(content, pattern, replacement))
 	}
 
 	## Delete a file at this path.
-	delete! : Path => Try({}, [PathErr(IOErr), ..])
-	delete! = |path| map_file_result(Host.file_delete!(to_raw(path)))
+	delete! : Path => Try({}, [PathErr(IOErr, Path), ..])
+	delete! = |path| map_file_result(Host.file_delete!(to_raw(path)), path)
 
 	## Return the size of the file at this path in bytes.
-	size_in_bytes! : Path => Try(U64, [PathErr(IOErr), ..])
-	size_in_bytes! = |path| map_file_result(Host.file_size_in_bytes!(to_raw(path)))
+	size_in_bytes! : Path => Try(U64, [PathErr(IOErr, Path), ..])
+	size_in_bytes! = |path| map_file_result(Host.file_size_in_bytes!(to_raw(path)), path)
 
 	## Check whether the file at this path has any executable bit set.
-	is_executable! : Path => Try(Bool, [PathErr(IOErr), ..])
-	is_executable! = |path| map_file_result(Host.file_is_executable!(to_raw(path)))
+	is_executable! : Path => Try(Bool, [PathErr(IOErr, Path), ..])
+	is_executable! = |path| map_file_result(Host.file_is_executable!(to_raw(path)), path)
 
 	## Check whether the file at this path has a readable owner permission bit set.
-	is_readable! : Path => Try(Bool, [PathErr(IOErr), ..])
-	is_readable! = |path| map_file_result(Host.file_is_readable!(to_raw(path)))
+	is_readable! : Path => Try(Bool, [PathErr(IOErr, Path), ..])
+	is_readable! = |path| map_file_result(Host.file_is_readable!(to_raw(path)), path)
 
 	## Check whether the file at this path has a writable owner permission bit set.
-	is_writable! : Path => Try(Bool, [PathErr(IOErr), ..])
-	is_writable! = |path| map_file_result(Host.file_is_writable!(to_raw(path)))
+	is_writable! : Path => Try(Bool, [PathErr(IOErr, Path), ..])
+	is_writable! = |path| map_file_result(Host.file_is_writable!(to_raw(path)), path)
 
 	## Return the last accessed time as nanoseconds since the Unix epoch.
-	time_accessed! : Path => Try(U128, [PathErr(IOErr), ..])
-	time_accessed! = |path| map_file_result(Host.file_time_accessed!(to_raw(path)))
+	time_accessed! : Path => Try(U128, [PathErr(IOErr, Path), ..])
+	time_accessed! = |path| map_file_result(Host.file_time_accessed!(to_raw(path)), path)
 
 	## Return the last modified time as nanoseconds since the Unix epoch.
-	time_modified! : Path => Try(U128, [PathErr(IOErr), ..])
-	time_modified! = |path| map_file_result(Host.file_time_modified!(to_raw(path)))
+	time_modified! : Path => Try(U128, [PathErr(IOErr, Path), ..])
+	time_modified! = |path| map_file_result(Host.file_time_modified!(to_raw(path)), path)
 
 	## Return the creation time as nanoseconds since the Unix epoch.
-	time_created! : Path => Try(U128, [PathErr(IOErr), ..])
-	time_created! = |path| map_file_result(Host.file_time_created!(to_raw(path)))
+	time_created! : Path => Try(U128, [PathErr(IOErr, Path), ..])
+	time_created! = |path| map_file_result(Host.file_time_created!(to_raw(path)), path)
 
 	## Create a hard link at `link` pointing to `original`.
-	hard_link! : Path, Path => Try({}, [PathErr(IOErr), ..])
+	##
+	## Errors report `original`, which is what a missing-file failure refers to.
+	## Some failures concern `link` instead, such as `AlreadyExists`.
+	hard_link! : Path, Path => Try({}, [PathErr(IOErr, Path), ..])
 	hard_link! = |original, link|
-		map_file_result(Host.file_hard_link!(to_raw(original), to_raw(link)))
+		map_file_result(Host.file_hard_link!(to_raw(original), to_raw(link)), original)
 
 	## Rename a file from `from` to `to`.
-	rename! : Path, Path => Try({}, [PathErr(IOErr), ..])
+	##
+	## Errors report `from`; a failure may still concern `to`, such as its
+	## parent directory not existing.
+	rename! : Path, Path => Try({}, [PathErr(IOErr, Path), ..])
 	rename! = |from, to|
-		map_file_result(Host.file_rename!(to_raw(from), to_raw(to)))
+		map_file_result(Host.file_rename!(to_raw(from), to_raw(to)), from)
 
 	## Create a directory at this path.
-	create_dir! : Path => Try({}, [PathErr(IOErr), ..])
-	create_dir! = |path| map_dir_result(Host.dir_create!(to_raw(path)))
+	create_dir! : Path => Try({}, [PathErr(IOErr, Path), ..])
+	create_dir! = |path| map_dir_result(Host.dir_create!(to_raw(path)), path)
 
 	## Create a directory and any missing parent directories at this path.
-	create_all! : Path => Try({}, [PathErr(IOErr), ..])
-	create_all! = |path| map_dir_result(Host.dir_create_all!(to_raw(path)))
+	create_all! : Path => Try({}, [PathErr(IOErr, Path), ..])
+	create_all! = |path| map_dir_result(Host.dir_create_all!(to_raw(path)), path)
 
 	## Delete an empty directory at this path.
-	delete_empty! : Path => Try({}, [PathErr(IOErr), ..])
-	delete_empty! = |path| map_dir_result(Host.dir_delete_empty!(to_raw(path)))
+	delete_empty! : Path => Try({}, [PathErr(IOErr, Path), ..])
+	delete_empty! = |path| map_dir_result(Host.dir_delete_empty!(to_raw(path)), path)
 
 	## Delete a directory and all contents at this path.
-	delete_all! : Path => Try({}, [PathErr(IOErr), ..])
-	delete_all! = |path| map_dir_result(Host.dir_delete_all!(to_raw(path)))
+	delete_all! : Path => Try({}, [PathErr(IOErr, Path), ..])
+	delete_all! = |path| map_dir_result(Host.dir_delete_all!(to_raw(path)), path)
 
 	## List the entries in the directory at this path.
-	list! : Path => Try(List(Path), [PathErr(IOErr), ..])
+	list! : Path => Try(List(Path), [PathErr(IOErr, Path), ..])
 	list! = |path|
 		match Host.dir_list!(to_raw(path)) {
 			Ok(paths) => Ok(paths.map(from_raw))
-			Err(DirErr(err)) => Err(PathErr(err))
+			Err(DirErr(err)) => Err(PathErr(err, path))
 		}
 
 	## Create a UTF-8 text path.
@@ -356,18 +362,18 @@ Path := [
 		}
 }
 
-map_file_result : Try(a, [FileErr(IOErr)]) -> Try(a, [PathErr(IOErr), ..])
-map_file_result = |result|
+map_file_result : Try(a, [FileErr(IOErr)]), Path -> Try(a, [PathErr(IOErr, Path), ..])
+map_file_result = |result, path|
 	match result {
 		Ok(value) => Ok(value)
-		Err(FileErr(err)) => Err(PathErr(err))
+		Err(FileErr(err)) => Err(PathErr(err, path))
 	}
 
-map_dir_result : Try(a, [DirErr(IOErr)]) -> Try(a, [PathErr(IOErr), ..])
-map_dir_result = |result|
+map_dir_result : Try(a, [DirErr(IOErr)]), Path -> Try(a, [PathErr(IOErr, Path), ..])
+map_dir_result = |result, path|
 	match result {
 		Ok(value) => Ok(value)
-		Err(DirErr(err)) => Err(PathErr(err))
+		Err(DirErr(err)) => Err(PathErr(err, path))
 	}
 
 str_from_valid_utf8 : List(U8) -> Str
@@ -696,3 +702,32 @@ expect path_type_from_host(Other) == IsOther
 expect Path.join(Path.unix("foo"), "bar") == Path.unix("foo/bar")
 expect Path.join(Path.windows("foo"), "bar") == Path.windows("foo\\bar")
 expect Path.join(Path.utf8("foo"), "bar") == Path.utf8("foo/bar")
+
+## Errors carry the path they were about, and successes pass through untouched.
+expect {
+	result : Try({}, [PathErr(IOErr, Path)])
+	result = map_file_result(Err(FileErr(NotFound)), Path.utf8("a.txt"))
+	match result {
+		Err(PathErr(NotFound, path)) => path == Path.utf8("a.txt")
+		_ => Bool.False
+	}
+}
+
+expect {
+	result : Try({}, [PathErr(IOErr, Path)])
+	result = map_dir_result(Err(DirErr(NotADirectory)), Path.unix_bytes([0x2F, 0xFF]))
+	match result {
+		# Raw non-UTF-8 bytes survive the trip through the error.
+		Err(PathErr(NotADirectory, path)) => path == Path.unix_bytes([0x2F, 0xFF])
+		_ => Bool.False
+	}
+}
+
+expect {
+	result : Try(U64, [PathErr(IOErr, Path)])
+	result = map_file_result(Ok(42), Path.utf8("a.txt"))
+	match result {
+		Ok(value) => value == 42
+		Err(_) => Bool.False
+	}
+}

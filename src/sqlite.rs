@@ -637,9 +637,9 @@ pub extern "C" fn hosted_sqlite_bind(
         let stmt = unsafe { sqlite_stmt_ref(handle) };
         sqlite_bind_all(stmt, bindings.as_slice(), roc_host)
     };
-    for binding in bindings.as_slice() {
-        unsafe { binding.decref(roc_host) };
-    }
+    // Roc retains the refcounted fields of list elements across hosted calls.
+    // Only release the list reference transferred for this argument; recursively
+    // releasing each binding would also release fields still owned by the caller.
     unsafe { bindings.decref(roc_host) };
     release_sqlite_stmt(handle, roc_host);
     result
