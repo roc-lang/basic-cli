@@ -6,7 +6,7 @@
     # nixos-unstable no longer supports Intel macOS.
     nixpkgs-x86-darwin.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
     roc-overlay = {
-      url = "github:thebrandonlucas/roc-overlay";
+      url = "github:roc-lang/roc-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.nixpkgs-darwin.follows = "nixpkgs-x86-darwin";
     };
