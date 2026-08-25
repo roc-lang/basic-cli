@@ -6,6 +6,6 @@
 #     b) update `channel = "nightly-OLD_DATE"` below
 
 channel = "1.97.1" # check ^^^ when changing this
-components = ["rust-analyzer"]
+components = ["rust-analyzer", "llvm-tools-preview"]
 #
 # channel = "nightly-2024-04-28" # 1.79.0 nightly to be able to use unstable features

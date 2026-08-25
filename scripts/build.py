@@ -117,7 +117,31 @@ def musl_build_env(rust_target: str) -> dict[str, str]:
     return env
 
 
+def rust_target_is_installed(rust_target: str) -> bool:
+    result = subprocess.run(
+        ["rustc", "--print", "target-libdir", "--target", rust_target],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+    )
+    return result.returncode == 0 and Path(result.stdout.strip()).is_dir()
+
+
 def install_rust_target(rust_target: str, *, required: bool = False) -> None:
+    if rust_target_is_installed(rust_target):
+        return
+
+    if shutil.which("rustup") is None:
+        message = (
+            f"Rust target {rust_target} is not installed and rustup is unavailable; "
+            "enter `nix develop` or install the target manually"
+        )
+        if required:
+            raise SystemExit(message)
+        print(f"warning: {message}")
+        return
+
     run("rustup", "target", "add", rust_target, check=required)
 
 

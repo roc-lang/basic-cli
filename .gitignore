@@ -14,7 +14,6 @@ target
 generated-docs
 generated-docs-*
 .direnv
-.envrc
 *.rs.bk
 *.o
 *.so
