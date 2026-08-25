@@ -35,12 +35,21 @@
       ];
       forAllSystems = lib.genAttrs supportedSystems;
       rustToolchainConfig = (builtins.fromTOML (builtins.readFile ./rust-toolchain.toml)).toolchain;
-      rustTargets = [
-        "x86_64-apple-darwin"
-        "aarch64-apple-darwin"
+
+      # scripts/build.py cross-compiles the host with `zig cc` for the musl
+      # targets, so those work from any host. The macOS targets need an Apple
+      # SDK for the bundled C dependencies, so only ship their standard
+      # libraries where they can actually be built.
+      muslRustTargets = [
         "x86_64-unknown-linux-musl"
         "aarch64-unknown-linux-musl"
       ];
+      darwinRustTargets = [
+        "x86_64-apple-darwin"
+        "aarch64-apple-darwin"
+      ];
+      rustTargetsFor =
+        system: muslRustTargets ++ lib.optionals (lib.hasSuffix "-darwin" system) darwinRustTargets;
       pkgsFor =
         system:
         import (if system == "x86_64-darwin" then nixpkgs-x86-darwin else nixpkgs) {
@@ -59,18 +68,20 @@
         let
           pkgs = pkgsFor system;
           rustToolchain = pkgs.rust-bin.fromRustupToolchain (
-            rustToolchainConfig // { targets = rustTargets; }
+            rustToolchainConfig // { targets = rustTargetsFor system; }
           );
         in
         {
           default = pkgs.mkShell {
             packages = [
-              pkgs.rocpkgs.nightly
+              # Keep in sync with the nightly pinned in .github/workflows.
+              pkgs.rocpkgs."nightly-2026-08-23-fb208ba"
               pkgs.python3
               rustToolchain
               pkgs.simple-http-server
               pkgs.zig_0_16
-            ];
+            ]
+            ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.valgrind ];
           };
         }
       );

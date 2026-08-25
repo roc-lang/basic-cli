@@ -7,35 +7,6 @@ For local work, use any recent `roc` on `PATH`, or download the latest archive
 for your operating system from the
 [`roc-lang/nightlies` releases](https://github.com/roc-lang/nightlies/releases/latest).
 
-## Nix Development Environment
-
-With Nix's `nix-command` and `flakes` features enabled, the flake provides Roc
-nightly, the Rust toolchain and cross-compilation standard libraries, Zig,
-Python, and the documentation preview server on supported Linux and macOS
-systems. Enter it with:
-
-```sh
-nix develop
-```
-
-To load the shell automatically, install [`direnv`](https://direnv.net/) and
-hook it into your shell. The checked-in `.envrc` uses direnv's `use flake`;
-install [`nix-direnv`](https://github.com/nix-community/nix-direnv) as well if
-your direnv version does not provide it. Then simply approve `.envrc` once:
-
-```sh
-direnv allow
-```
-
-The lock file pins every flake input, including the Roc nightly supplied by
-[`roc-overlay`](https://github.com/thebrandonlucas/roc-overlay). CI deliberately
-tracks the current nightly, while local updates are explicit. Update the pinned
-compiler with:
-
-```sh
-nix flake update roc-overlay
-```
-
 ## Code of Conduct
 
 We are committed to providing a friendly, safe, and welcoming environment for all. See the [Code of Conduct](https://github.com/roc-lang/roc/blob/main/CODE_OF_CONDUCT.md) for details.
@@ -51,14 +22,58 @@ roc version
 To install the latest nightly locally, extract the downloaded archive and add
 the directory containing the `roc` executable to your `PATH`.
 
+## Nix Development Environment
+
+With Nix's `nix-command` and `flakes` features enabled, the flake provides the
+pinned Roc nightly, the Rust toolchain and cross-compilation standard
+libraries, Zig, Python, Valgrind (Linux only), and the documentation preview
+server on supported Linux and macOS systems. Enter it with:
+
+```sh
+nix develop
+```
+
+To load the shell automatically, install [`direnv`](https://direnv.net/) and
+hook it into your shell. The checked-in `.envrc` uses direnv's `use flake`;
+install [`nix-direnv`](https://github.com/nix-community/nix-direnv) as well if
+your direnv version does not provide it. Then simply approve `.envrc` once:
+
+```sh
+direnv allow
+```
+
+The lock file pins every flake input. The Roc nightly is pinned on top of that,
+by release tag in `flake.nix`, and must name the same nightly the workflows
+pin so the shell and CI cannot drift apart; see
+[Updating Roc Glue](#updating-roc-glue). The tags come from
+[`roc-overlay`](https://github.com/roc-lang/roc-overlay), which mirrors the
+official [`roc-lang/nightlies`](https://github.com/roc-lang/nightlies)
+binaries. After editing the tag, refresh that input so the new nightly is
+recorded:
+
+```sh
+nix flake update roc-overlay
+```
+
+Bumping `channel` in `rust-toolchain.toml` similarly needs
+
+```sh
+nix flake update rust-overlay
+```
+
+whenever the requested version is newer than the manifests in the locked
+[`rust-overlay`](https://github.com/oxalica/rust-overlay).
+
 ## Updating Roc Glue
 
 CI pins a specific nightly so the compiler and committed host ABI glue cannot
 drift independently. When updating the nightly pin in the workflows:
 
-1. Run `./ci/regenerate_glue.sh` to refresh `src/roc_platform_abi.rs`.
-2. Reconcile `src/lib.rs` if generated names or layouts changed.
-3. Run `cargo check` and `./scripts/test.py`.
+1. Update `flake.nix` to the same `rocpkgs` release tag, then run
+   `nix flake update roc-overlay`.
+2. Run `./ci/regenerate_glue.sh` to refresh `src/roc_platform_abi.rs`.
+3. Reconcile `src/lib.rs` if generated names or layouts changed.
+4. Run `cargo check` and `./scripts/test.py`.
 
 ## Verification
 
