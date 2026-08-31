@@ -34,6 +34,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SPEC_PATH = ROOT / "scripts" / "test_spec.json"
 STAGES = ("fmt", "check", "test", "build", "run")
 DEFAULT_ARTIFACT_DIR = ROOT / "dist" / "example-binaries"
+ROC = os.environ.get("ROC", "roc")
 VALGRIND_ARGS = (
     "valgrind",
     "--error-exitcode=99",
@@ -432,17 +433,17 @@ def run_stage(
             print(f"SKIP {stage}: {path}{reason}")
             continue
         if stage == "fmt":
-            command("roc", "fmt", "--check", source)
+            command(ROC, "fmt", "--check", source)
         elif stage == "check":
-            command("roc", "check", source, *roc_extra_args())
+            command(ROC, "check", source, *roc_extra_args())
         elif stage == "test":
-            command("roc", "test", source, *roc_extra_args())
+            command(ROC, "test", source, *roc_extra_args())
         elif stage == "build":
             suffix = ".exe" if target == "x64win" else ""
             binary = build_dir / target / f"{source.stem}{suffix}"
             binary.parent.mkdir(parents=True, exist_ok=True)
             command(
-                "roc", "build", source, f"--target={target}",
+                ROC, "build", source, f"--target={target}",
                 f"--output={binary}", *roc_extra_args(),
             )
             binaries[path] = binary
@@ -558,7 +559,7 @@ def run_suite(
             print("\n=== RUST TEST ===")
             command("cargo", "test", "--locked", "--lib")
             print("\n=== PLATFORM TEST ===")
-            command("roc", "test", ROOT / "platform" / "main.roc", *roc_extra_args())
+            command(ROC, "test", ROOT / "platform" / "main.roc", *roc_extra_args())
         for stage in ("fmt", "check", "test"):
             if "validate" in operations:
                 run_stage(stage, defaults, apps, binaries, artifact_dir, target)
@@ -613,9 +614,9 @@ def main() -> None:
         print("\n=== All native run cases passed! ===")
         return
 
-    if shutil.which("roc") is None:
-        raise SystemExit("'roc' was not found on PATH")
-    print(f"Using roc version: {subprocess.check_output(['roc', 'version'], text=True).strip()}")
+    if shutil.which(ROC) is None:
+        raise SystemExit(f"Roc executable '{ROC}' was not found")
+    print(f"Using roc version: {subprocess.check_output([ROC, 'version'], text=True).strip()}")
     if not args.no_build and not args.bundle_path:
         print("\n=== Building platform ===")
         command(sys.executable, ROOT / "scripts" / "build.py", "--target", target)

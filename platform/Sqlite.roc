@@ -395,7 +395,7 @@ decode_rows! = |stmt, gen_decode| {
 }
 
 lookup_value! = |cols, stmt, name|
-	match cols.find_first_index(|x| x == name) {
+	match List.find_first_index(cols, |x| x == name) {
 		Ok(index) => sqlite_column_value!(stmt, index)
 		Err(NotFound) => Err(NoSuchField(name))
 	}
