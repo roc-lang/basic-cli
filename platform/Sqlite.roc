@@ -395,7 +395,7 @@ decode_rows! = |stmt, gen_decode| {
 }
 
 lookup_value! = |cols, stmt, name|
-	match cols.find_first_index(|x| x == name) {
+	match List.find_first_index(cols, |x| x == name) {
 		Ok(index) => sqlite_column_value!(stmt, index)
 		Err(NotFound) => Err(NoSuchField(name))
 	}
@@ -499,3 +499,20 @@ code_from_i64 = |code|
 		101 => Done
 		other => Unknown(other)
 	}
+
+## A row decoder written the way an application writes one.
+## The compiler has to settle its type right here, before `query_many!`
+## ever gets to say what `cols` is. Each call infers the type of `cols` separately,
+## and since roc-lang/roc#10984 these types are no longer resolved together.
+##
+## The test is successful if this snippet compiles.
+expect {
+	_decode_row = |cols|
+		|stmt| {
+			id = Sqlite.i64("id")(cols)(stmt)?
+			task = Sqlite.str("task")(cols)(stmt)?
+			status = Sqlite.str("status")(cols)(stmt)?
+			Ok({ id, task, status })
+		}
+	Bool.True
+}
