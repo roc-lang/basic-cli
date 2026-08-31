@@ -500,10 +500,10 @@ code_from_i64 = |code|
 		other => Unknown(other)
 	}
 
-## A row decoder written the way an application writes one, with a name of its
-## own. The compiler has to settle its type right here, before `query_many!`
-## ever gets to say what `cols` is. Each column asks about `cols` separately,
-## and since roc-lang/roc#10984 those questions no longer share an answer.
+## A row decoder written the way an application writes one.
+## The compiler has to settle its type right here, before `query_many!`
+## ever gets to say what `cols` is. Each call infers the type of `cols` separately,
+## and since roc-lang/roc#10984 these types are no longer resolved together.
 ##
 ## The test is successful if this snippet compiles.
 expect {
