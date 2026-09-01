@@ -83,6 +83,12 @@ Run the full local check before opening release or CI-facing changes:
 ./scripts/test.py
 ```
 
+Set `ROC` to test with a specific compiler without changing `PATH`:
+
+```sh
+ROC=/path/to/roc ./scripts/test.py
+```
+
 The default command builds and bundles the native host, serves the bundle from
 localhost, then formats, checks, tests, builds, and runs every example. Process
 input, environment, fixtures, helper servers, exit codes, and separate stdout
