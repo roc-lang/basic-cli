@@ -226,7 +226,7 @@ Path := [
 	windows_u16s = |list| Windows(list)
 
 	## Convert a path to a string if its raw representation is valid text.
-	to_str : Path -> Try(Str, [InvalidStr(U64)])
+	to_str : Path -> Try(Str, [InvalidStr(U64), ..])
 	to_str = |path|
 		match path {
 			Utf8(str) => Ok(str)
@@ -432,7 +432,7 @@ utf8_to_utf16 = |remaining, out|
 		}
 	}
 
-utf16_to_str : List(U16) -> Try(Str, [InvalidStr(U64)])
+utf16_to_str : List(U16) -> Try(Str, [InvalidStr(U64), ..])
 utf16_to_str = |u16s|
 	match utf16_to_utf8(u16s, [], 0) {
 		Ok(bytes) =>
