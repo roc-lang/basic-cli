@@ -1,5 +1,5 @@
 ## Inspect a path's filename, extension, string representation, and type (file/dir/symlink).
-app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.22.1/HjwuwWAr7T9hqQXcb8VbxLJw1SzVhWQz5vvx4mnG3wDW.tar.zst" }
+app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.22.2/9zUBxb1LtXYVc4eR4hAtd1WQDwBYDhM6HQdZz1UFCm2m.tar.zst" }
 
 import pf.OsStr exposing [OsStr]
 import pf.Stdout
