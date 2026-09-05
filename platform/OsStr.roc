@@ -59,6 +59,21 @@ OsStr := [
 			WindowsU16s(u16s) => utf16_to_str(u16s)
 		}
 
+	## Convert an OS string to the bytes that represent it, for writing to a byte
+	## stream such as [Stdout.write_bytes!] or [Stderr.write_bytes!].
+	##
+	## UTF-8 text and Unix OS strings return their exact bytes, so non-Unicode Unix
+	## data is preserved. Windows OS strings are UTF-16 code units rather than bytes,
+	## so they are encoded as UTF-8 with unpaired surrogates replaced by U+FFFD;
+	## that conversion is lossy and must not be used for roundtripping.
+	to_bytes : OsStr -> List(U8)
+	to_bytes = |os_str|
+		match to_raw(os_str) {
+			Utf8(str) => Str.to_utf8(str)
+			UnixBytes(bytes) => bytes
+			WindowsU16s(u16s) => utf16_to_utf8_lossy(u16s)
+		}
+
 	## Convert an OS string to a best-effort display string, replacing invalid text
 	## with U+FFFD. This representation is lossy and must not be used for roundtripping.
 	display : OsStr -> Str
@@ -245,3 +260,10 @@ expect {
 ## Equality and hashing preserve representation identity.
 expect OsStr.utf8("abc") != OsStr.unix("abc")
 expect Dict.single(OsStr.unix_bytes([97, 255]), "found").get(OsStr.unix_bytes([97, 255])) == Ok("found")
+
+## `to_bytes` keeps raw Unix bytes and encodes other representations as UTF-8.
+expect OsStr.to_bytes(OsStr.utf8("abc")) == [97, 98, 99]
+expect OsStr.to_bytes(OsStr.unix("abc")) == [97, 98, 99]
+expect OsStr.to_bytes(OsStr.unix_bytes([97, 255, 98])) == [97, 255, 98]
+expect OsStr.to_bytes(OsStr.windows("abc")) == [97, 98, 99]
+expect OsStr.to_bytes(OsStr.windows_u16s([0xD800, 97])) == [0xEF, 0xBF, 0xBD, 97]
