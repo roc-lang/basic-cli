@@ -38,7 +38,11 @@
         {
           "name": "one-argument",
           "args": ["foo"],
-          "contains": ["received argument: foo", "back to OsStr: OsStr."],
+          "contains": [
+            "received argument: foo",
+            "back to OsStr: OsStr.",
+            "argument 1 is valid UTF-8: foo"
+          ],
           "regex": [
             "(?:Unix argument, bytes|Windows argument, UTF-16 code units): \\[102, 111, 111\\]"
           ]
