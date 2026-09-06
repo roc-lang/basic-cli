@@ -443,6 +443,68 @@
           ]
         }
       ]
+    },
+    {
+      "path": "examples/filesystem-tools.roc",
+      "cases": [
+        {
+          "name": "prepare-release",
+          "args": [
+            "{root}/tests/resource-lifetimes",
+            "release"
+          ],
+          "temp_cwd": true,
+          "stdout_contains": [
+            "Release prepared at "
+          ]
+        },
+        {
+          "name": "missing-paths",
+          "exit_code": 1,
+          "contains": [
+            "MissingPaths"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "examples/process-control.roc",
+      "cases": [
+        {
+          "name": "successful-build",
+          "args": [
+            "{python}",
+            "-c",
+            "import sys; print(\"compiling\"); print(\"warning: example\", file=sys.stderr)"
+          ],
+          "stdout_contains": [
+            "compiling",
+            "Build completed successfully"
+          ],
+          "stderr_contains": [
+            "warning: example"
+          ]
+        },
+        {
+          "name": "failed-build",
+          "args": [
+            "{python}",
+            "-c",
+            "raise SystemExit(7)"
+          ],
+          "exit_code": 1,
+          "contains": [
+            "BuildFailed(Exited(7))"
+          ]
+        },
+        {
+          "name": "missing-command",
+          "exit_code": 1,
+          "contains": [
+            "MissingCommand"
+          ]
+        }
+      ]
     }
   ]
 }

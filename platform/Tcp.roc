@@ -11,6 +11,35 @@ import Host
 ## `TcpReadErr(TimedOut)` and `TcpWriteErr(TimedOut)` respectively.
 Tcp :: [].{
 
+	## A listening socket. Final ARC release closes it; close! affects all aliases.
+	Listener :: { host : Host.TcpListener }.{
+		to_inspect : Listener -> Str
+		to_inspect = |_| "Tcp.Listener(<opaque>)"
+
+		## Read the reserved local port.
+		local_port! : Listener => Try(U16, _)
+		local_port! = |listener| Host.tcp_local_port!(listener.host).map_err(parse_listener_err)
+
+		## Accept a connection within the given whole-operation timeout.
+		accept! : Listener, U64 => Try(Stream, _)
+		accept! = |listener, timeout_ms|
+			Host.tcp_accept!(listener.host, timeout_ms)
+				.map_ok(|host| Stream.{ host })
+				.map_err(parse_listener_err)
+
+		## Close the listener. Repeated closes succeed.
+		close! : Listener => Try({}, _)
+		close! = |listener| Host.tcp_listener_close!(listener.host).map_err(parse_listener_err)
+	}
+
+	## Bind an address and listen. Port zero reserves an OS-assigned port until
+	## this listener is closed. The timeout includes hostname resolution.
+	listen! : Str, U16, U64 => Try(Listener, _)
+	listen! = |host, port, timeout_ms|
+		Host.tcp_listen!(host, port, timeout_ms)
+			.map_ok(|host_handle| Listener.{ host: host_handle })
+			.map_err(parse_listener_err)
+
 	## Represents a TCP stream.
 	##
 	## The connection is automatically closed when the last reference to the
@@ -172,3 +201,9 @@ parse_stream_err = |err|
 expect parse_connect_err("ErrorKind::TimedOut") == TimedOut
 
 expect parse_stream_err("ErrorKind::TimedOut") == TimedOut
+
+parse_listener_err = |err|
+	match err {
+		"ListenerClosed" => ListenerClosed
+		_ => TcpListenErr(parse_connect_err(err))
+	}

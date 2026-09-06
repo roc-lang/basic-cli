@@ -6,13 +6,9 @@ use std::rc::{Rc, Weak};
 use crate::roc_platform_abi::*;
 use crate::{roc_host, roc_u8_list_from_slice};
 
-// The generated glue represents the `Host.SqliteStmt` backing `Sqlite.Stmt` as
-// `*mut u64`: a boxed u64 whose value we use to stash a raw `*mut SqliteStatement`. The box is
-// allocated/refcounted with the generated `allocate_box`/`decref_box_with`
-// helpers; teardown (running `sqlite3_finalize`) happens in `drop_sqlite_stmt`
-// when the last reference is released. Each host fn that takes a handle calls
-// `release_sqlite_stmt` before returning to balance the incref Roc performs when
-// the value stays live.
+// The boxed native statement is finalized by the shared resource allocator on
+// final ARC release, whether that release happens in Roc or in a hosted effect.
+// Each effect balances the reference transferred across the ABI.
 
 // Generated value/error/state types (see src/roc_platform_abi.rs).
 type SqliteValue = BytesOrIntegerOrNullOrRealOrString;
@@ -23,7 +19,6 @@ type SqliteBindings = HostSqliteBindArg1;
 type NativePath = UnixBytesOrUtf8OrWindowsU16s;
 type NativePathTag = UnixBytesOrUtf8OrWindowsU16sTag;
 
-const SQLITE_STMT_BOX_ALIGN: usize = core::mem::align_of::<u64>();
 const MAX_CACHED_CONNECTIONS: usize = 16;
 
 #[cfg(test)]
@@ -164,48 +159,17 @@ thread_local! {
 }
 
 fn box_sqlite_stmt(stmt: SqliteStatement, roc_host: &RocHost) -> *mut u64 {
-    let raw: *mut SqliteStatement = Box::into_raw(Box::new(stmt));
-    let boxed = unsafe {
-        allocate_box(
-            core::mem::size_of::<u64>(),
-            SQLITE_STMT_BOX_ALIGN,
-            false,
-            roc_host,
-        )
-    };
-    unsafe {
-        *(boxed as *mut u64) = raw as u64;
-    }
-    boxed as *mut u64
+    crate::resources::box_resource(stmt, roc_host)
 }
 
 unsafe fn sqlite_stmt_ref<'a>(handle: *mut u64) -> &'a mut SqliteStatement {
-    &mut *(*handle as *mut SqliteStatement)
-}
-
-extern "C" fn drop_sqlite_stmt(data_ptr: *mut c_void, _roc_host: *mut RocHost) {
-    unsafe {
-        let raw = *(data_ptr as *mut u64) as *mut SqliteStatement;
-        if !raw.is_null() {
-            drop(Box::from_raw(raw));
-        }
-    }
+    unsafe { crate::resources::resource_ref(handle) }
 }
 
 fn release_sqlite_stmt(handle: *mut u64, roc_host: &RocHost) {
-    unsafe {
-        decref_box_with(
-            handle as RocBox,
-            SQLITE_STMT_BOX_ALIGN,
-            false,
-            Some(drop_sqlite_stmt),
-            roc_host,
-        )
-    };
+    crate::resources::release(handle, roc_host);
 }
 
-// SQLITE_TRANSIENT tells SQLite to make its own copy of bound text/blob data, so
-// we don't have to keep the Roc-owned bytes alive past the bind call.
 fn sqlite_transient() -> Option<unsafe extern "C" fn(*mut c_void)> {
     Some(unsafe {
         core::mem::transmute::<*const c_void, unsafe extern "C" fn(*mut c_void)>(

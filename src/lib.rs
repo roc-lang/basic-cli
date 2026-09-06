@@ -15,8 +15,12 @@ use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 mod cmd;
 mod http;
 mod roc_platform_abi;
+mod resources;
+mod filesystem;
+mod process_service;
 mod sqlite;
 mod tcp;
+mod listener;
 
 use crate::roc_platform_abi::*;
 
@@ -1209,9 +1213,10 @@ pub extern "C" fn hosted_dir_list(path: UnixBytesOrUtf8OrWindowsU16s) -> HostDir
     };
     match fs::read_dir(&path) {
         Ok(read_dir) => {
-            let entries: Vec<std::path::PathBuf> = read_dir
-                .filter_map(|entry| entry.ok().map(|entry| entry.path()))
-                .collect();
+            let entries = match collect_directory_entries(read_dir.map(|entry| entry.map(|entry| entry.path()))) {
+                Ok(entries) => entries,
+                Err(error) => return try_dir_list_err(dir_io_err_from_io(&error, roc_host)),
+            };
             let list = unsafe {
                 RocList::<UnixBytesOrUtf8OrWindowsU16s>::allocate(entries.len(), roc_host)
             };
@@ -1229,6 +1234,10 @@ pub extern "C" fn hosted_dir_list(path: UnixBytesOrUtf8OrWindowsU16s) -> HostDir
             roc_host,
         )),
     }
+}
+
+fn collect_directory_entries(entries: impl IntoIterator<Item = io::Result<std::path::PathBuf>>) -> io::Result<Vec<std::path::PathBuf>> {
+    entries.into_iter().collect()
 }
 
 #[no_mangle]
@@ -1411,51 +1420,20 @@ pub extern "C" fn hosted_file_read_utf8(path: UnixBytesOrUtf8OrWindowsU16s) -> F
 //
 // The `Host.FileReader` backing `File.Reader` is represented by the generated
 // glue as `*mut u64`: a boxed u64 holding a raw `*mut BufReader<fs::File>`. The box is refcounted
-// with `allocate_box`/`decref_box_with`; closing the file happens in
-// `drop_file_reader` when the last reference is released.
+// through resources::box_resource; allocator finalization closes the file on
+// the last release, including final releases performed by compiled Roc.
 // ----------------------------------------------------------------------------
 
-const FILE_READER_BOX_ALIGN: usize = core::mem::align_of::<u64>();
-
 fn box_file_reader(reader: BufReader<fs::File>, roc_host: &RocHost) -> *mut u64 {
-    let raw: *mut BufReader<fs::File> = Box::into_raw(Box::new(reader));
-    let boxed = unsafe {
-        allocate_box(
-            core::mem::size_of::<u64>(),
-            FILE_READER_BOX_ALIGN,
-            false,
-            roc_host,
-        )
-    };
-    unsafe {
-        *(boxed as *mut u64) = raw as u64;
-    }
-    boxed as *mut u64
+    resources::box_resource(reader, roc_host)
 }
 
 unsafe fn file_reader_ref<'a>(handle: *mut u64) -> &'a mut BufReader<fs::File> {
-    &mut *(*handle as *mut BufReader<fs::File>)
-}
-
-extern "C" fn drop_file_reader(data_ptr: *mut c_void, _roc_host: *mut RocHost) {
-    unsafe {
-        let raw = *(data_ptr as *mut u64) as *mut BufReader<fs::File>;
-        if !raw.is_null() {
-            drop(Box::from_raw(raw));
-        }
-    }
+    unsafe { resources::resource_ref(handle) }
 }
 
 fn release_file_reader(handle: *mut u64, roc_host: &RocHost) {
-    unsafe {
-        decref_box_with(
-            handle as RocBox,
-            FILE_READER_BOX_ALIGN,
-            false,
-            Some(drop_file_reader),
-            roc_host,
-        )
-    };
+    resources::release(handle, roc_host);
 }
 
 #[no_mangle]
@@ -2090,7 +2068,7 @@ pub extern "C" fn roc_alloc(length: usize, alignment: usize) -> *mut c_void {
 
 #[no_mangle]
 pub extern "C" fn roc_dealloc(ptr: *mut c_void, alignment: usize) {
-    DefaultAllocators::roc_dealloc(roc_host_ptr(), ptr, alignment);
+    resources::dealloc(roc_host_ptr(), ptr, alignment);
 }
 
 #[no_mangle]
@@ -2176,11 +2154,18 @@ pub extern "C" fn main(argc: i32, argv: *const *const c_char) -> i32 {
 }
 
 pub fn rust_main(argc: i32, argv: *const *const c_char) -> i32 {
-    let mut roc_host = make_roc_host(core::ptr::null_mut());
+    // Unlike a Rust executable, this C-ABI entrypoint does not pass through
+    // std::rt's signal initialization. Return BrokenPipe from our I/O effects.
+    // std::process restores SIGPIPE's default disposition in spawned children.
+    #[cfg(unix)]
+    unsafe { libc::signal(libc::SIGPIPE, libc::SIG_IGN); }
+    let mut roc_host = resources::make_host();
     set_roc_host(&mut roc_host);
 
     let args_list = build_args_list(argc, argv, &roc_host);
     let mut exit_code = unsafe { roc_main(args_list) };
+
+    process_service::shutdown();
 
     if DEBUG_OR_EXPECT_CALLED.load(Ordering::Acquire) && exit_code == 0 {
         exit_code = 1;
@@ -2190,6 +2175,13 @@ pub fn rust_main(argc: i32, argv: *const *const c_char) -> i32 {
     exit_code
 }
 
+#[no_mangle]
+pub extern "C" fn hosted_monotonic_now() -> u64 {
+    static ORIGIN: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    let elapsed = ORIGIN.get_or_init(std::time::Instant::now).elapsed().as_nanos();
+    u64::try_from(elapsed).unwrap_or(u64::MAX)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2197,6 +2189,12 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     static NEXT_TEST_DIR: AtomicUsize = AtomicUsize::new(0);
+
+    #[test]
+    fn directory_iteration_error_is_not_silently_dropped() {
+        let entries = [Ok(PathBuf::from("first")), Err(io::Error::from(io::ErrorKind::PermissionDenied)), Ok(PathBuf::from("last"))];
+        assert_eq!(collect_directory_entries(entries).unwrap_err().kind(), io::ErrorKind::PermissionDenied);
+    }
 
     struct TestDir(PathBuf);
 

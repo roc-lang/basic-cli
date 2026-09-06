@@ -4,7 +4,7 @@ platform ""
 	requires {
 		main! : List([Utf8(Str), UnixBytes(List(U8)), WindowsU16s(List(U16))]) => Try({}, [Exit(I32), ..])
 	}
-	exposes [Cmd, Env, File, Http, IOErr, Locale, OsStr, Path, Random, Sleep, Sqlite, Stdin, Stdout, Stderr, Tcp, Tty, Url, Utc]
+	exposes [Cmd, Env, File, Http, IOErr, Locale, Monotonic, OsStr, Path, Random, Sleep, Sqlite, Stdin, Stdout, Stderr, Tcp, Tty, Url, Utc]
 	packages {
 		# HTTP data types (Method, Request, Response) come from the shared
 		# roc-lang/http package so apps and other packages using it see the same
@@ -80,6 +80,26 @@ platform ""
 		"hosted_env_platform": Host.env_platform!,
 		"hosted_env_dict": Host.env_dict!,
 		"hosted_env_set_cwd": Host.env_set_cwd!,
+		"hosted_path_copy": Host.path_copy!,
+		"hosted_path_copy_dir": Host.path_copy_dir!,
+		"hosted_path_absolute": Host.path_absolute!,
+		"hosted_path_canonicalize": Host.path_canonicalize!,
+		"hosted_env_create_temp_dir": Host.env_create_temp_dir!,
+		"hosted_monotonic_now": Host.monotonic_now!,
+		"hosted_cmd_spawn": Host.cmd_spawn!,
+		"hosted_cmd_run": Host.cmd_run!,
+		"hosted_child_pid": Host.child_pid!,
+		"hosted_child_wait": Host.child_wait!,
+		"hosted_child_try_wait": Host.child_try_wait!,
+		"hosted_child_kill": Host.child_kill!,
+		"hosted_child_close": Host.child_close!,
+		"hosted_child_close_stdin": Host.child_close_stdin!,
+		"hosted_child_write": Host.child_write!,
+		"hosted_child_read": Host.child_read!,
+		"hosted_tcp_listen": Host.tcp_listen!,
+		"hosted_tcp_local_port": Host.tcp_local_port!,
+		"hosted_tcp_accept": Host.tcp_accept!,
+		"hosted_tcp_listener_close": Host.tcp_listener_close!,
 	}
 	targets: {
 		inputs_dir: "targets/",
@@ -98,6 +118,7 @@ import Http
 import IOErr
 import InternalSqlite
 import Locale
+import Monotonic
 import OsStr
 import Path
 import Random

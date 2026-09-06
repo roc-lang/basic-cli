@@ -10,6 +10,16 @@ Host :: [].{
 	Cmd : {
 		args : List(NativeOsStr),
 		clear_envs : Bool,
+		cwd : List(NativeOsStr),
+		stdin_mode : U8,
+		stdout_mode : U8,
+		stderr_mode : U8,
+		stdin_bytes : List(U8),
+		timeout_ms : U64,
+		output_limit : U64,
+		pending_limit : U64,
+		manage_tree : Bool,
+		merge_stderr : Bool,
 		envs : List(NativeOsStr),
 		program : NativeOsStr,
 	}
@@ -118,4 +128,33 @@ Host :: [].{
 	}
 	env_dict! : () => List((NativeOsStr, NativeOsStr))
 	env_set_cwd! : NativePath => Try({}, IOErr)
+
+	CopyOptions : { symlinks : [Follow, Preserve], destination : [RequireNew, Merge] }
+	CopyFailure : { operation : Str, source : NativePath, destination : NativePath, error : IOErr }
+	path_copy! : NativePath, NativePath => Try({}, CopyFailure)
+	path_copy_dir! : NativePath, NativePath, CopyOptions => Try({}, CopyFailure)
+	path_absolute! : NativePath => Try(NativePath, IOErr)
+	path_canonicalize! : NativePath => Try(NativePath, IOErr)
+	env_create_temp_dir! : NativePath, Str => Try(NativePath, IOErr)
+	monotonic_now! : () => U64
+
+	Child :: Box(U64)
+	CmdRunResult : { exit_code : I32, signal : I32, stdout_bytes : List(U8), stderr_bytes : List(U8), failure : U8 }
+	ChildEvent : { stream : U8, bytes : List(U8) }
+	cmd_spawn! : Cmd => Try(Child, IOErr)
+	cmd_run! : Cmd => Try(CmdRunResult, IOErr)
+	child_pid! : Child => Try(U32, IOErr)
+	child_wait! : Child => Try(CmdRunResult, IOErr)
+	child_try_wait! : Child => Try(List(CmdRunResult), IOErr)
+	child_kill! : Child => Try({}, IOErr)
+	child_close! : Child => Try({}, IOErr)
+	child_close_stdin! : Child => Try({}, IOErr)
+	child_write! : Child, List(U8), U64 => Try({}, IOErr)
+	child_read! : Child, U64, U64 => Try(ChildEvent, IOErr)
+
+	TcpListener :: Box(U64)
+	tcp_listen! : Str, U16, U64 => Try(TcpListener, Str)
+	tcp_local_port! : TcpListener => Try(U16, Str)
+	tcp_accept! : TcpListener, U64 => Try(TcpStream, Str)
+	tcp_listener_close! : TcpListener => Try({}, Str)
 }

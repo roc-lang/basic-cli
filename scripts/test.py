@@ -181,7 +181,7 @@ class BundleServer:
 
 
 def expand(value: str, source: Path) -> str:
-    return value.format(root=ROOT, source=source, source_dir=source.parent)
+    return value.format(root=ROOT, source=source, source_dir=source.parent, python=sys.executable)
 
 
 def wait_for_port(port: int, process: subprocess.Popen[bytes], timeout: float = 5) -> None:

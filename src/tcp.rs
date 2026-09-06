@@ -1,5 +1,4 @@
 use core::mem::ManuallyDrop;
-use std::ffi::c_void;
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::net::{IpAddr, SocketAddr, TcpStream, ToSocketAddrs};
 use std::sync::mpsc;
@@ -9,61 +8,27 @@ use std::time::{Duration, Instant};
 use crate::roc_platform_abi::*;
 use crate::{roc_host, roc_u8_list_from_slice};
 
-// The `Host.TcpStream` backing `Tcp.Stream` is represented by the generated glue
-// as `*mut u64`: a boxed u64 holding a raw `*mut BufReader<TcpStream>`. The box is refcounted
-// with `allocate_box`/`decref_box_with`; closing the socket happens in
-// `drop_tcp_stream` when the last reference is released. Each host fn that takes
-// a handle calls `release_tcp_stream` before returning to balance the incref Roc
-// performs when the stream stays live.
+// Tcp streams use the shared resource allocator so final release in either
+// compiled Roc or a hosted effect closes the native buffered socket.
+// Each effect balances its transferred handle reference before returning.
 //
 // Errors cross the boundary as a `RocStr` carrying either "ErrorKind::<Variant>"
 // (mapped back to a tag union in Tcp.roc), "UnexpectedEof", or "LimitExceeded";
 // the Roc side parses them into the public TCP error tags.
 
-const TCP_STREAM_BOX_ALIGN: usize = core::mem::align_of::<u64>();
-
-fn box_tcp_stream(stream: BufReader<TcpStream>, roc_host: &RocHost) -> *mut u64 {
-    let raw: *mut BufReader<TcpStream> = Box::into_raw(Box::new(stream));
-    let boxed = unsafe {
-        allocate_box(
-            core::mem::size_of::<u64>(),
-            TCP_STREAM_BOX_ALIGN,
-            false,
-            roc_host,
-        )
-    };
-    unsafe {
-        *(boxed as *mut u64) = raw as u64;
-    }
-    boxed as *mut u64
+pub(crate) fn box_tcp_stream(stream: BufReader<TcpStream>, roc_host: &RocHost) -> *mut u64 {
+    crate::resources::box_resource(stream, roc_host)
 }
 
 unsafe fn tcp_stream_ref<'a>(handle: *mut u64) -> &'a mut BufReader<TcpStream> {
-    &mut *(*handle as *mut BufReader<TcpStream>)
-}
-
-extern "C" fn drop_tcp_stream(data_ptr: *mut c_void, _roc_host: *mut RocHost) {
-    unsafe {
-        let raw = *(data_ptr as *mut u64) as *mut BufReader<TcpStream>;
-        if !raw.is_null() {
-            drop(Box::from_raw(raw));
-        }
-    }
+    unsafe { crate::resources::resource_ref(handle) }
 }
 
 fn release_tcp_stream(handle: *mut u64, roc_host: &RocHost) {
-    unsafe {
-        decref_box_with(
-            handle as RocBox,
-            TCP_STREAM_BOX_ALIGN,
-            false,
-            Some(drop_tcp_stream),
-            roc_host,
-        )
-    };
+    crate::resources::release(handle, roc_host);
 }
 
-fn to_tcp_connect_err(err: io::Error, roc_host: &RocHost) -> RocStr {
+pub(crate) fn to_tcp_connect_err(err: io::Error, roc_host: &RocHost) -> RocStr {
     let message = match err.kind() {
         io::ErrorKind::PermissionDenied => "ErrorKind::PermissionDenied".to_string(),
         io::ErrorKind::AddrInUse => "ErrorKind::AddrInUse".to_string(),
@@ -95,7 +60,7 @@ fn timed_out() -> io::Error {
     io::Error::new(io::ErrorKind::TimedOut, "TCP operation timed out")
 }
 
-fn deadline_from_timeout(timeout_ms: u64) -> io::Result<Instant> {
+pub(crate) fn deadline_from_timeout(timeout_ms: u64) -> io::Result<Instant> {
     if timeout_ms == 0 {
         return Err(timed_out());
     }
@@ -105,7 +70,7 @@ fn deadline_from_timeout(timeout_ms: u64) -> io::Result<Instant> {
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "TCP timeout is too large"))
 }
 
-fn remaining_time(deadline: Instant) -> io::Result<Duration> {
+pub(crate) fn remaining_time(deadline: Instant) -> io::Result<Duration> {
     let remaining = deadline
         .checked_duration_since(Instant::now())
         .ok_or_else(timed_out)?;
@@ -116,7 +81,7 @@ fn remaining_time(deadline: Instant) -> io::Result<Duration> {
     }
 }
 
-fn resolve_with_deadline(
+pub(crate) fn resolve_with_deadline(
     host: String,
     port: u16,
     deadline: Instant,
