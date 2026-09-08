@@ -18,6 +18,15 @@ import Path
 ## Database paths use basic-cli's byte-preserving `Path` type.
 ## See the [host runtime behavior](https://github.com/roc-lang/basic-cli#host-runtime-behavior)
 ## for connection caching and lifetime details.
+##
+## ```roc
+## names = Sqlite.query_many!({
+## 	path: "people.db",
+## 	query: "SELECT name FROM people WHERE active = :active",
+## 	bindings: [{ name: ":active", value: Integer(1) }],
+## 	rows: Sqlite.str("name"),
+## })?
+## ```
 Sqlite :: [].{
 
 	## A value accepted by a SQLite binding or returned from a column.

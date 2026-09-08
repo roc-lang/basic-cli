@@ -8,6 +8,11 @@ import Path
 ## Variable names and values use [`OsStr`](OsStr) because Unix environment data
 ## is not required to be UTF-8. Use [`var_str!`](#var_str!) when an application
 ## specifically requires text. Paths use basic-cli's byte-preserving `Path` type.
+##
+## ```roc
+## path_value = Env.var_str!("PATH")?
+## Stdout.line!("PATH: ${path_value}")?
+## ```
 Env :: [].{
 
 	## Report the architecture and operating system for which the host was built.
@@ -96,6 +101,14 @@ Env :: [].{
 
 	## Run a callback with a private directory and delete the directory afterward.
 	## Cleanup is attempted after callback success and failure. If both fail, both errors are returned.
+	##
+	## ```roc
+	## Env.with_temp_dir!(|directory| {
+	## 	file = Path.join(directory, "result.txt")
+	## 	Path.write_utf8!(file, "temporary data")?
+	## 	Path.read_utf8!(file)
+	## })?
+	## ```
 	with_temp_dir! : (Path.Path => Try(a, err)) => Try(a, [TempDirErr(IOErr), CallbackErr(err), CleanupErr(IOErr, Path.Path), CallbackAndCleanupErr(err, IOErr, Path.Path), ..])
 	with_temp_dir! = |callback!| {
 		path = create_temp_dir!()?

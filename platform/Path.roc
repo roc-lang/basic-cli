@@ -14,6 +14,16 @@ path_type_from_host = |path_type|
 ## Construct and operate on byte-preserving paths. Native Unix
 ## bytes and Windows UTF-16 units are preserved across host effects; use
 ## `display` only when a lossy human-readable representation is appropriate.
+##
+## Quoted literals create UTF-8 paths, and `join` appends one path component:
+##
+## ```roc
+## config_dir : Path
+## config_dir = "config"
+## Path.create_all!(config_dir)?
+## config_file = Path.join(config_dir, "app.json")
+## Path.write_utf8!(config_file, "{}")?
+## ```
 Path := [
 	Utf8(Str),
 	Unix(List(U8)),

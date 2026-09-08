@@ -9,6 +9,12 @@ import Host
 ## including every underlying read/write attempt. A zero timeout fails
 ## immediately. Read and write timeouts are returned as
 ## `TcpReadErr(TimedOut)` and `TcpWriteErr(TimedOut)` respectively.
+##
+## ```roc
+## stream = Tcp.connect!("example.com", 80, 5_000)?
+## stream.write_utf8!("GET / HTTP/1.0\r\nHost: example.com\r\n\r\n", 5_000)?
+## status_line = stream.read_line!(1_024, 5_000)?
+## ```
 Tcp :: [].{
 
 	## A listening socket. Final ARC release closes it; close! affects all aliases.

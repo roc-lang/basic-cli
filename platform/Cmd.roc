@@ -6,6 +6,21 @@ import Path exposing [Path]
 
 ## Build and run child processes with native-safe programs, arguments, and
 ## environment values.
+##
+## Use `run!` when exit status and output are data your application handles:
+##
+## ```roc
+## output = Cmd.new_str("roc")
+## 	.arg_str("version")
+## 	.timeout_ms(5_000)
+## 	.run!()?
+##
+## match output.status {
+## 	Exited(0) => Stdout.write_bytes!(output.stdout_bytes)
+## 	Exited(code) => Err(CommandFailed(code))
+## 	Signaled(signal) => Err(CommandSignaled(signal))
+## }
+## ```
 Cmd :: {
 	args : List(OsStr),
 	clear_envs : Bool,
@@ -53,7 +68,7 @@ Cmd :: {
 	##
 	## ```roc
 	## Cmd.new("cargo")
-	##     .arg(["build")
+	##     .arg("build")
 	##     .env("RUST_BACKTRACE", "1")
 	##     .exec_cmd!()?
 	## ```
@@ -119,7 +134,7 @@ Cmd :: {
 	##         .args(["Hi"])
 	##         .exec_output_bytes!()?
 	##
-	## Stdout.line!("${Str.inspect(cmd_output_bytes)}")? # {stderr_bytes: [], stdout_bytes: [72, 105, 10]}
+	## Stdout.line!("${Str.inspect(cmd_output)}")? # {stderr_bytes: [], stdout_bytes: [72, 105, 10]}
 	## ```
 	exec_output_bytes! : Cmd => Try({ stderr_bytes : List(U8), stdout_bytes : List(U8) }, [NonZeroExitCodeB({ exit_code : I32, stdout_bytes : List(U8), stderr_bytes : List(U8) }), FailedToGetExitCodeB(IOErr), ..])
 	exec_output_bytes! = |cmd| {
@@ -190,15 +205,18 @@ Cmd :: {
 	## executable against cwd is platform-specific.
 	cwd : Cmd, Path -> Cmd
 	cwd = |cmd, path| { ..cmd, cwd_value: [path] }
+
 	## Bytes supplies and closes stdin automatically. Pipe supports Child.write!.
 	## Default is Null for run!/exec_output!, Inherit for spawn!/exec_cmd!.
 	stdin : Cmd, [Default, Inherit, Null, Bytes(List(U8)), Pipe] -> Cmd
 	stdin = |cmd, mode| { ..cmd, stdin_value: mode }
+
 	## Capture retains bytes; Pipe queues tagged Child.read! events; Tee captures
 	## and forwards to the parent. Default captures for run!/exec_output!, and
 	## inherits for spawn!/exec_cmd!. Tee exposes a pipe, not a terminal, to the child.
 	stdout : Cmd, [Default, Inherit, Null, Capture, Pipe, Tee] -> Cmd
 	stdout = |cmd, mode| { ..cmd, stdout_value: mode }
+
 	## Configure stderr independently, with the same modes and defaults as stdout.
 	stderr : Cmd, [Default, Inherit, Null, Capture, Pipe, Tee] -> Cmd
 	stderr = |cmd, mode| { ..cmd, stderr_value: mode }
@@ -206,18 +224,22 @@ Cmd :: {
 	## Zero disables the execution deadline. It covers output draining too.
 	timeout_ms : Cmd, U64 -> Cmd
 	timeout_ms = |cmd, millis| { ..cmd, timeout_value: millis }
+
 	## Combined capture budget in bytes (default 16 MiB). Exceeding it cancels
 	## the command and returns OutputLimit with the retained partial output.
 	output_limit : Cmd, U64 -> Cmd
 	output_limit = |cmd, bytes| { ..cmd, output_limit_value: bytes }
+
 	## Combined unread Pipe event budget (default 1 MiB). Consume events with
 	## Child.read! while running; exceeding this budget cancels the child.
 	pending_limit : Cmd, U64 -> Cmd
 	pending_limit = |cmd, bytes| { ..cmd, pending_limit_value: bytes }
+
 	## Also terminate descendants on cancellation, using a Unix process group
 	## or Windows Job Object. Disabled by default; descendants must not escape it.
 	manage_tree : Cmd, Bool -> Cmd
 	manage_tree = |cmd, enabled| { ..cmd, manage_tree_value: enabled }
+
 	## Send both child streams into one OS pipe using stdout's mode and budget.
 	## This preserves kernel write order; separate streams have no total ordering.
 	merge_stderr : Cmd, Bool -> Cmd
@@ -228,6 +250,7 @@ Cmd :: {
 	## waits for output EOF; deadlines include draining and tee forwarding.
 	run! : Cmd => Try(RunOutput, RunErr)
 	run! = |cmd| decode_run(Host.cmd_run!(to_host_cmd(cmd)).map_err(|err| IO(err))?)
+
 	## Start a managed child immediately. Default streams are inherited.
 	spawn! : Cmd => Try(Child, IOErr)
 	spawn! = |cmd| Host.cmd_spawn!(to_host_cmd(cmd)).map_ok(|handle| Child.{ host: handle })
@@ -347,19 +370,29 @@ Cmd :: {
 	to_str = |cmd|
 		"Cmd({ program: ${Str.inspect(cmd.program)}, args: ${Str.inspect(cmd.args)}, envs: ${Str.inspect(cmd.envs)}, clear_envs: ${Str.inspect(cmd.clear_envs)}, cwd: ${Str.inspect(cmd.cwd_value)}, stdin: ${Str.inspect(cmd.stdin_value)}, stdout: ${Str.inspect(cmd.stdout_value)}, stderr: ${Str.inspect(cmd.stderr_value)}, timeout_ms: ${Str.inspect(cmd.timeout_value)}, output_limit: ${Str.inspect(cmd.output_limit_value)}, pending_limit: ${Str.inspect(cmd.pending_limit_value)}, manage_tree: ${Str.inspect(cmd.manage_tree_value)}, merge_stderr: ${Str.inspect(cmd.merge_stderr_value)} })"
 
+	## The completed child status and captured output. Output is empty for streams
+	## configured as `Inherit` or `Null`.
 	RunOutput : { status : [Exited(I32), Signaled(I32)], stdout_bytes : List(U8), stderr_bytes : List(U8) }
+
+	## Output retained before a timeout or capture limit stopped the command.
 	PartialOutput : { stdout_bytes : List(U8), stderr_bytes : List(U8) }
+
+	## A failure to start or supervise a command, an expired deadline, or a full
+	## capture budget. Nonzero exit codes are represented by `RunOutput.status`.
 	RunErr : [IO(IOErr), Timeout(PartialOutput), OutputLimit(PartialOutput)]
 
 	## A managed child. Final reference release terminates and reaps the process.
 	## Use close! for deterministic cleanup before the last reference is released.
 	Child :: { host : Host.Child }.{
+
+		## Return the operating-system process identifier while the child is open.
 		pid! : Child => Try(U32, IOErr)
 		pid! = |child| Host.child_pid!(child.host)
 
 		## Closes piped stdin before waiting; call read!/write! for an interactive exchange first.
 		wait! : Child => Try(RunOutput, RunErr)
 		wait! = |child| decode_run(Host.child_wait!(child.host).map_err(|err| IO(err))?)
+
 		## Returns [] while running, or one result after exit and output draining.
 		try_wait! : Child => Try(List(RunOutput), RunErr)
 		try_wait! = |child| {
@@ -369,14 +402,19 @@ Cmd :: {
 				[value, ..] => Ok([decode_run(value)?])
 			}
 		}
+
 		## Request forced termination. Use wait! to observe termination and reaping.
 		kill! : Child => Try({}, IOErr)
 		kill! = |child| Host.child_kill!(child.host)
+
 		## Terminate and reap, invalidating every alias. Repeated close! succeeds.
 		close! : Child => Try({}, IOErr)
 		close! = |child| Host.child_close!(child.host)
+
+		## Close piped stdin so the child observes EOF. Repeated closes succeed.
 		close_stdin! : Child => Try({}, IOErr)
 		close_stdin! = |child| Host.child_close_stdin!(child.host)
+
 		## Write piped stdin within timeout milliseconds. A timed-out write may
 		## have delivered a prefix; retrying the whole input can duplicate bytes.
 		write! : Child, List(U8), U64 => Try({}, IOErr)
@@ -386,11 +424,13 @@ Cmd :: {
 		read! : Child, U64, U64 => Try([Stdout(List(U8)), Stderr(List(U8)), End], IOErr)
 		read! = |child, max_bytes, timeout| {
 			event = Host.child_read!(child.host, max_bytes, timeout)?
-			Ok(match event.stream {
-				1 => Stdout(event.bytes)
-				2 => Stderr(event.bytes)
-				_ => End
-			})
+			Ok(
+				match event.stream {
+					1 => Stdout(event.bytes)
+					2 => Stderr(event.bytes)
+					_ => End
+				},
+			)
 		}
 	}
 
