@@ -656,8 +656,8 @@ mod tests {
         let child = Child::spawn(config).unwrap();
         let output = child.wait().unwrap();
         assert_eq!(
-            String::from_utf8(output.stdout).unwrap().trim(),
-            tmp.path().to_str().unwrap()
+            std::path::Path::new(String::from_utf8(output.stdout).unwrap().trim()),
+            std::fs::canonicalize(tmp.path()).unwrap()
         );
         assert_eq!(std::env::current_dir().unwrap(), original);
     }

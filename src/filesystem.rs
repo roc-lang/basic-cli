@@ -318,12 +318,17 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn links_cycles_and_native_names() {
-        use std::os::unix::{ffi::OsStrExt, fs::symlink};
+        #[cfg(not(target_vendor = "apple"))]
+        use std::os::unix::ffi::OsStrExt;
+        use std::os::unix::fs::symlink;
         let temp = tempfile::tempdir().unwrap();
         let src = temp.path().join("src");
         fs::create_dir(&src).unwrap();
-        let name = std::ffi::OsStr::from_bytes(b"raw\xff");
-        fs::write(src.join(name), b"hello").unwrap();
+        #[cfg(not(target_vendor = "apple"))]
+        {
+            let name = std::ffi::OsStr::from_bytes(b"raw\xff");
+            fs::write(src.join(name), b"hello").unwrap();
+        }
         symlink("missing", src.join("dangling")).unwrap();
         let dst = temp.path().join("preserved");
         copy_dir(
@@ -335,7 +340,11 @@ mod tests {
             },
         )
         .unwrap();
-        assert_eq!(fs::read(dst.join(name)).unwrap(), b"hello");
+        #[cfg(not(target_vendor = "apple"))]
+        assert_eq!(
+            fs::read(dst.join(std::ffi::OsStr::from_bytes(b"raw\xff"))).unwrap(),
+            b"hello"
+        );
         assert_eq!(
             fs::read_link(dst.join("dangling")).unwrap(),
             Path::new("missing")
