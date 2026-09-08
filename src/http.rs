@@ -1,4 +1,5 @@
 use core::mem::ManuallyDrop;
+use std::sync::LazyLock;
 
 use crate::roc_platform_abi::*;
 use crate::{roc_host, roc_u8_list_from_slice};
@@ -15,13 +16,13 @@ type HttpTransportErr = BadBodyOrNetworkErrorOrOtherOrTimeout;
 type HttpTransportErrPayload = BadBodyOrNetworkErrorOrOtherOrTimeoutPayload;
 type HttpTransportErrTag = BadBodyOrNetworkErrorOrOtherOrTimeoutTag;
 
-thread_local! {
-    static TOKIO_RUNTIME: tokio::runtime::Runtime = tokio::runtime::Builder::new_current_thread()
+static TOKIO_RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
+    tokio::runtime::Builder::new_current_thread()
         .enable_io()
         .enable_time()
         .build()
-        .expect("failed to build tokio runtime");
-}
+        .expect("failed to build tokio runtime")
+});
 
 // Numeric method tags must match `to_host_method` in platform/InternalHttp.roc.
 fn as_hyper_method(method: u8, method_ext: &str) -> Option<hyper::Method> {
@@ -194,21 +195,61 @@ pub extern "C" fn hosted_http_send_request(args: HostHttpSendRequestArgs) -> Htt
         Err(err) => return http_err(http_err_other(&err, roc_host)),
     };
 
-    TOKIO_RUNTIME.with(|rt| {
-        if timeout_ms > 0 {
-            rt.block_on(async {
-                match tokio::time::timeout(
-                    std::time::Duration::from_millis(timeout_ms),
-                    async_send_request(request, roc_host),
-                )
-                .await
-                {
-                    Ok(response) => response,
-                    Err(_) => http_err(http_err_timeout()),
-                }
-            })
-        } else {
-            rt.block_on(async_send_request(request, roc_host))
-        }
-    })
+    if timeout_ms > 0 {
+        TOKIO_RUNTIME.block_on(async {
+            match tokio::time::timeout(
+                std::time::Duration::from_millis(timeout_ms),
+                async_send_request(request, roc_host),
+            )
+            .await
+            {
+                Ok(response) => response,
+                Err(_) => http_err(http_err_timeout()),
+            }
+        })
+    } else {
+        TOKIO_RUNTIME.block_on(async_send_request(request, roc_host))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::mpsc;
+    use std::thread;
+    use std::time::Duration;
+
+    // hyper's default resolver runs getaddrinfo on tokio's blocking pool, so a
+    // request to a host name leaves a pool thread alive for up to ten seconds
+    // afterwards. Dropping a runtime waits for every pool thread to acknowledge
+    // the shutdown. A runtime owned by a thread local is dropped when its
+    // thread exits, and on Windows the main thread's thread locals are dropped
+    // during ExitProcess, after the OS has already terminated every other
+    // thread. Nothing was left to acknowledge, so a program that had sent a
+    // request in its last ten seconds never finished exiting.
+    //
+    // A blocking task held until after the join stands in for the terminated
+    // pool thread. Either way the pool cannot acknowledge, and a thread that
+    // used the runtime must still be able to exit.
+    #[test]
+    fn thread_exit_does_not_wait_for_the_blocking_pool() {
+        let (release_tx, release_rx) = mpsc::channel::<()>();
+        let user = thread::spawn(move || {
+            TOKIO_RUNTIME.spawn_blocking(move || {
+                let _ = release_rx.recv();
+            });
+        });
+
+        let (exited_tx, exited_rx) = mpsc::channel::<()>();
+        thread::spawn(move || {
+            let _ = user.join();
+            let _ = exited_tx.send(());
+        });
+        let exited = exited_rx.recv_timeout(Duration::from_secs(5)).is_ok();
+        drop(release_tx);
+        assert!(
+            exited,
+            "a thread that used the HTTP runtime hung on exit while a blocking task was running"
+        );
+    }
 }
