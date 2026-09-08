@@ -8,6 +8,11 @@ import Path
 ## Variable names and values use [`OsStr`](OsStr) because Unix environment data
 ## is not required to be UTF-8. Use [`var_str!`](#var_str!) when an application
 ## specifically requires text. Paths use basic-cli's byte-preserving `Path` type.
+##
+## ```roc
+## path_value = Env.var_str!("PATH")?
+## Stdout.line!("PATH: ${path_value}")?
+## ```
 Env :: [].{
 
 	## Report the architecture and operating system for which the host was built.
@@ -78,6 +83,44 @@ Env :: [].{
 			Ok(raw) => Ok(Path.from_raw(raw))
 			Err(ExePathUnavailable) => Err(ExePathUnavailable)
 		}
+
+	## Atomically create a private directory in the system temporary directory.
+	## The caller owns cleanup. Unix directories have mode 0700.
+	create_temp_dir! : () => Try(Path.Path, [TempDirErr(IOErr), ..])
+	create_temp_dir! = || create_temp_dir_with_prefix!("roc-")
+
+	## Create a private temporary directory with a filename prefix.
+	create_temp_dir_with_prefix! : Str => Try(Path.Path, [TempDirErr(IOErr), ..])
+	create_temp_dir_with_prefix! = |prefix| create_temp_dir_in!(temp_dir!(), prefix)
+
+	## Create a private temporary directory under an existing parent directory.
+	## Prefixes cannot contain separators, colons, NUL, or be `.` or `..`.
+	create_temp_dir_in! : Path.Path, Str => Try(Path.Path, [TempDirErr(IOErr), ..])
+	create_temp_dir_in! = |parent, prefix|
+		Host.env_create_temp_dir!(Path.to_raw(parent), prefix).map_ok(Path.from_raw).map_err(|err| TempDirErr(err))
+
+	## Run a callback with a private directory and delete the directory afterward.
+	## Cleanup is attempted after callback success and failure. If both fail, both errors are returned.
+	##
+	## ```roc
+	## Env.with_temp_dir!(|directory| {
+	## 	file = Path.join(directory, "result.txt")
+	## 	Path.write_utf8!(file, "temporary data")?
+	## 	Path.read_utf8!(file)
+	## })?
+	## ```
+	with_temp_dir! : (Path.Path => Try(a, err)) => Try(a, [TempDirErr(IOErr), CallbackErr(err), CleanupErr(IOErr, Path.Path), CallbackAndCleanupErr(err, IOErr, Path.Path), ..])
+	with_temp_dir! = |callback!| {
+		path = create_temp_dir!()?
+		result = callback!(path)
+		cleanup = Path.delete_all!(path)
+		match (result, cleanup) {
+			(Ok(value), Ok(_)) => Ok(value)
+			(Err(err), Ok(_)) => Err(CallbackErr(err))
+			(Ok(_), Err(PathErr(err, failed_path))) => Err(CleanupErr(err, failed_path))
+			(Err(callback_err), Err(PathErr(err, failed_path))) => Err(CallbackAndCleanupErr(callback_err, err, failed_path))
+		}
+	}
 
 	## Gets the default directory for temporary files.
 	temp_dir! : () => Path.Path

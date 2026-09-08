@@ -14,6 +14,14 @@ path_type_from_host = |path_type|
 ## Construct and operate on byte-preserving paths. Native Unix
 ## bytes and Windows UTF-16 units are preserved across host effects; use
 ## `display` only when a lossy human-readable representation is appropriate.
+##
+## Quoted literals create UTF-8 paths, and `join` appends one path component:
+##
+## ```roc
+## Path.create_all!("config")?
+## config_file = Path.join("config", "app.json")
+## Path.write_utf8!(config_file, "{}")?
+## ```
 Path := [
 	Utf8(Str),
 	Unix(List(U8)),
@@ -90,6 +98,33 @@ Path := [
 			.map_err(|err| PathErr(err, path))
 			.map_ok(path_type_from_host)
 	}
+
+	## Make a path absolute without requiring it to exist. This does not resolve symlinks.
+	absolute! : Path => Try(Path, [PathErr(IOErr, Path), ..])
+	absolute! = |path| Host.path_absolute!(to_raw(path)).map_ok(from_raw).map_err(|err| PathErr(err, path))
+
+	## Resolve an existing path, including symbolic links, to its absolute native path.
+	canonicalize! : Path => Try(Path, [PathErr(IOErr, Path), ..])
+	canonicalize! = |path| Host.path_canonicalize!(to_raw(path)).map_ok(from_raw).map_err(|err| PathErr(err, path))
+
+	## Copy a regular file and its permissions, replacing the destination file.
+	## Rejects same-file copies (including hard-link aliases) and special files.
+	copy! : Path, Path => Try({}, [CopyErr({ operation : Str, source : Path, destination : Path, error : IOErr }), ..])
+	copy! = |source, destination|
+		Host.path_copy!(to_raw(source), to_raw(destination)).map_err(copy_error)
+
+	## Copy a directory tree into a new destination, following symbolic links.
+	## Missing destination parent directories are created.
+	## Permissions are preserved; timestamps, ownership, ACLs and other metadata are not.
+	## Errors may leave a partial destination. Cycles and overlapping source/destination trees are rejected.
+	copy_dir! : Path, Path => Try({}, [CopyErr({ operation : Str, source : Path, destination : Path, error : IOErr }), ..])
+	copy_dir! = |source, destination| copy_dir_with!(source, destination, { symlinks: Follow, destination: RequireNew })
+
+	## Choose whether to preserve links and whether to merge an existing destination tree.
+	## Merge replaces regular files. Existing destination directory symlinks are rejected.
+	copy_dir_with! : Path, Path, { symlinks : [Follow, Preserve], destination : [RequireNew, Merge] } => Try({}, [CopyErr({ operation : Str, source : Path, destination : Path, error : IOErr }), ..])
+	copy_dir_with! = |source, destination, options|
+		Host.path_copy_dir!(to_raw(source), to_raw(destination), options).map_err(copy_error)
 
 	## Read all bytes from a file at this path.
 	read_bytes! : Path => Try(List(U8), [PathErr(IOErr, Path), ..])
@@ -191,7 +226,8 @@ Path := [
 			Err(DirErr(err)) => Err(PathErr(err, path))
 		}
 
-	## Create a UTF-8 text path.
+	## Create a UTF-8 path from a dynamic `Str`. String literals can be used
+	## directly wherever a `Path` is expected.
 	utf8 : Str -> Path
 	utf8 = |str| Utf8(str)
 
@@ -731,3 +767,6 @@ expect {
 		Err(_) => Bool.False
 	}
 }
+
+copy_error : Host.CopyFailure -> [CopyErr({ operation : Str, source : Path, destination : Path, error : IOErr }), ..]
+copy_error = |failure| CopyErr({ operation: failure.operation, source: Path.from_raw(failure.source), destination: Path.from_raw(failure.destination), error: failure.error })

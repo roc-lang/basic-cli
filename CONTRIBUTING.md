@@ -3,9 +3,9 @@
 Thanks for helping improve `basic-cli`.
 
 CI uses a pinned Roc nightly from [`roc-lang/nightlies`](https://github.com/roc-lang/nightlies).
-For local work, use any recent `roc` on `PATH`, or download the latest archive
-for your operating system from the
-[`roc-lang/nightlies` releases](https://github.com/roc-lang/nightlies/releases/latest).
+For local work, use the `nightly-tag` pinned in [the CI workflow](.github/workflows/ci.yml),
+matching the generated ABI. Download the archive for that tag and your operating
+system from [`roc-lang/nightlies` releases](https://github.com/roc-lang/nightlies/releases).
 
 ## Code of Conduct
 
@@ -19,7 +19,7 @@ Check the compiler available locally:
 roc version
 ```
 
-To install the latest nightly locally, extract the downloaded archive and add
+To install the pinned nightly locally, extract the downloaded archive and add
 the directory containing the `roc` executable to your `PATH`.
 
 ## Nix Development Environment
@@ -123,6 +123,21 @@ output assertions used by CI:
 ```sh
 ./scripts/test.py --operation run --target x64musl --artifact-dir dist/example-binaries --valgrind
 ```
+
+The static musl allocator is invisible to Valgrind's heap accounting: a report
+of zero heap allocations alone does not prove cleanup. On x86_64 glibc Linux,
+run the additional ownership check used by CI:
+
+```sh
+ROC=/path/to/pinned/roc python3 scripts/test_resource_lifetimes.py
+```
+
+It creates an isolated diagnostic platform under `target/`, uses glibc so
+Valgrind observes allocations, and rejects memory errors and definite/indirect
+leaks. It also tracks file descriptors. The fixtures in
+`tests/resource-lifetimes/` verify port release, stream EOF, shared aliases, command reuse, and early returns; Rust tests verify
+exactly-once native finalization and child reaping. Runtime reactor descriptors
+and reachable service state can remain until process exit.
 
 For faster local iterations when the platform host is already built:
 
