@@ -8,12 +8,13 @@ OsStr := [
 	WindowsU16s(List(U16)),
 ].{
 
-	## Create an OS string from UTF-8 text.
-	## The host lowers this text to the active OS representation.
+	## Create an OS string from a dynamic UTF-8 `Str`. String literals can be used
+	## directly wherever an `OsStr` is expected. The host lowers UTF-8 text to the
+	## active OS representation.
 	from_str : Str -> OsStr
 	from_str = |str| Utf8(str)
 
-	## Create a UTF-8 text OS string.
+	## Create a UTF-8 OS string from a dynamic `Str`.
 	utf8 : Str -> OsStr
 	utf8 = |str| Utf8(str)
 

@@ -18,10 +18,8 @@ path_type_from_host = |path_type|
 ## Quoted literals create UTF-8 paths, and `join` appends one path component:
 ##
 ## ```roc
-## config_dir : Path
-## config_dir = "config"
-## Path.create_all!(config_dir)?
-## config_file = Path.join(config_dir, "app.json")
+## Path.create_all!("config")?
+## config_file = Path.join("config", "app.json")
 ## Path.write_utf8!(config_file, "{}")?
 ## ```
 Path := [
@@ -228,7 +226,8 @@ Path := [
 			Err(DirErr(err)) => Err(PathErr(err, path))
 		}
 
-	## Create a UTF-8 text path.
+	## Create a UTF-8 path from a dynamic `Str`. String literals can be used
+	## directly wherever a `Path` is expected.
 	utf8 : Str -> Path
 	utf8 = |str| Utf8(str)
 

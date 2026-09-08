@@ -10,8 +10,8 @@ import Path exposing [Path]
 ## Use `run!` when exit status and output are data your application handles:
 ##
 ## ```roc
-## output = Cmd.new_str("roc")
-## 	.arg_str("version")
+## output = Cmd.new("roc")
+## 	.arg("version")
 ## 	.timeout_ms(5_000)
 ## 	.run!()?
 ##
@@ -196,7 +196,8 @@ Cmd :: {
 		merge_stderr_value: Bool.False,
 	}
 
-	## Create a new command from a Roc string.
+	## Create a new command from a dynamic `Str`. String literals can be passed
+	## directly to [new].
 	new_str : Str -> Cmd
 	new_str = |program| new(OsStr.from_str(program))
 
@@ -267,7 +268,7 @@ Cmd :: {
 		args: cmd.args.append(a),
 	}
 
-	## Add a single string argument to the command.
+	## Add a dynamic `Str` argument. String literals can be passed directly to [arg].
 	arg_str : Cmd, Str -> Cmd
 	arg_str = |cmd, a| arg(cmd, OsStr.from_str(a))
 
@@ -283,7 +284,8 @@ Cmd :: {
 		args: cmd.args.concat(new_args),
 	}
 
-	## Add multiple string arguments to the command.
+	## Add multiple dynamic `Str` arguments. Lists of string literals can be passed
+	## directly to [args].
 	args_str : Cmd, List(Str) -> Cmd
 	args_str = |cmd, new_args| args(cmd, new_args.map(OsStr.from_str))
 
@@ -298,7 +300,8 @@ Cmd :: {
 		{ ..cmd, envs: cmd.envs.append((key, value)) }
 	}
 
-	## Add a single string environment variable to the command.
+	## Add a dynamic `Str` environment variable. String literals can be passed
+	## directly to [env].
 	env_str : Cmd, Str, Str -> Cmd
 	env_str = |cmd, key, value| env(cmd, OsStr.from_str(key), OsStr.from_str(value))
 
@@ -310,7 +313,8 @@ Cmd :: {
 	envs : Cmd, List((OsStr, OsStr)) -> Cmd
 	envs = |cmd, pairs| { ..cmd, envs: cmd.envs.concat(pairs) }
 
-	## Add multiple string environment variables to the command.
+	## Add multiple dynamic `Str` environment variables. Lists of literal pairs can
+	## be passed directly to [envs].
 	envs_str : Cmd, List((Str, Str)) -> Cmd
 	envs_str = |cmd, pairs| {
 		arg_pairs = pairs.map(|(key, value)| (OsStr.from_str(key), OsStr.from_str(value)))
