@@ -157,4 +157,6 @@ Host :: [].{
 	tcp_local_port! : TcpListener => Try(U16, Str)
 	tcp_accept! : TcpListener, U64 => Try(TcpStream, Str)
 	tcp_listener_close! : TcpListener => Try({}, Str)
+
+	env_program_name! : () => Try(NativeOsStr, [ProgramNameUnavailable])
 }

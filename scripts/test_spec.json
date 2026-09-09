@@ -39,11 +39,13 @@
           "name": "one-argument",
           "args": ["foo"],
           "contains": [
+            "program name:",
             "received argument: foo",
             "back to OsStr: OsStr.",
             "argument 1 is valid UTF-8: foo"
           ],
           "regex": [
+            "program name: .*command-line-args(?:\\.exe)?",
             "(?:Unix argument, bytes|Windows argument, UTF-16 code units): \\[102, 111, 111\\]"
           ]
         },

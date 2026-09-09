@@ -24,7 +24,7 @@ main! = |args| {
 }
 
 path_argument = |args|
-	match args.drop_first(1) {
+	match args {
 		[first, ..] => Ok(Path.from_os_str(first))
 		[] => Err(MissingPathArgument)
 	}

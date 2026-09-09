@@ -9,7 +9,7 @@ import pf.Stdout
 
 main! : List(OsStr) => Try({}, _)
 main! = |args| {
-	(program, arguments) = match args.drop_first(1) {
+	(program, arguments) = match args {
 		[command, .. as rest] => (command, rest)
 		[] => return Err(MissingCommand)
 	}

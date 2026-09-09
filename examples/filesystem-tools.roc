@@ -9,7 +9,7 @@ import pf.Stdout
 
 main! : List(OsStr) => Try({}, _)
 main! = |args| {
-	(source_arg, destination_arg) = match args.drop_first(1) {
+	(source_arg, destination_arg) = match args {
 		[source, destination] => (source, destination)
 		_ => return Err(MissingPaths)
 	}

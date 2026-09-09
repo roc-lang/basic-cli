@@ -9,6 +9,7 @@ use std::ffi::{c_char, c_void, OsStr as StdOsStr, OsString};
 use std::fs;
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 
@@ -108,6 +109,7 @@ extern "C" {
 
 static DEBUG_OR_EXPECT_CALLED: AtomicBool = AtomicBool::new(false);
 static mut ROC_HOST: *mut RocHost = core::ptr::null_mut();
+static PROGRAM_NAME: Mutex<Option<OsString>> = Mutex::new(None);
 
 fn set_roc_host(roc_host: *mut RocHost) {
     unsafe {
@@ -123,6 +125,19 @@ fn roc_host_ptr() -> *mut RocHost {
         }
         ROC_HOST
     }
+}
+
+fn set_program_name(value: Option<OsString>) {
+    *PROGRAM_NAME
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner()) = value;
+}
+
+fn program_name() -> Option<OsString> {
+    PROGRAM_NAME
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .clone()
 }
 
 pub(crate) fn roc_host() -> &'static RocHost {
@@ -342,6 +357,22 @@ fn try_env_exe_path_err() -> HostEnvExePathResult {
     HostEnvExePathResult {
         payload: HostEnvExePathResultPayload { err: [] },
         tag: HostEnvExePathResultTag::Err,
+    }
+}
+
+fn try_env_program_name_ok(value: NativeOsStr) -> HostEnvProgramNameResult {
+    HostEnvProgramNameResult {
+        payload: HostEnvProgramNameResultPayload {
+            ok: ManuallyDrop::new(value),
+        },
+        tag: HostEnvProgramNameResultTag::Ok,
+    }
+}
+
+fn try_env_program_name_err() -> HostEnvProgramNameResult {
+    HostEnvProgramNameResult {
+        payload: HostEnvProgramNameResultPayload { err: [] },
+        tag: HostEnvProgramNameResultTag::Err,
     }
 }
 
@@ -1259,6 +1290,15 @@ pub extern "C" fn hosted_env_exe_path() -> HostEnvExePathResult {
 }
 
 #[no_mangle]
+pub extern "C" fn hosted_env_program_name() -> HostEnvProgramNameResult {
+    let roc_host = roc_host();
+    match program_name() {
+        Some(value) => try_env_program_name_ok(native_os_str_from_os_str(&value, roc_host)),
+        None => try_env_program_name_err(),
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn hosted_env_temp_dir() -> UnixBytesOrUtf8OrWindowsU16s {
     let roc_host = roc_host();
     native_path_from_path(std::env::temp_dir().as_path(), roc_host)
@@ -2098,53 +2138,81 @@ pub extern "C" fn roc_crashed(bytes: *const u8, len: usize) {
 }
 
 #[cfg(unix)]
-fn build_args_list(argc: i32, argv: *const *const c_char, roc_host: &RocHost) -> RocList<OsStr> {
+fn collect_process_args(argc: i32, argv: *const *const c_char) -> Vec<OsString> {
     if argc <= 0 || argv.is_null() {
-        return RocList::empty();
+        return Vec::new();
     }
 
-    let list = unsafe { RocList::<OsStr>::allocate(argc as usize, roc_host) };
-    for index in 0..argc as isize {
-        unsafe {
-            let arg_ptr = *argv.offset(index);
-            if arg_ptr.is_null() {
-                break;
-            }
-            let arg = CStr::from_ptr(arg_ptr).to_bytes();
-            list.elements.offset(index).write(OsStr {
-                payload: OsStrPayload {
-                    unix_bytes: ManuallyDrop::new(roc_u8_list_from_slice(arg, roc_host)),
-                },
-                tag: OsStrTag::UnixBytes,
-            });
-        }
-    }
-    list
+    use std::os::unix::ffi::OsStringExt;
+
+    let raw_args = unsafe { core::slice::from_raw_parts(argv, argc as usize) };
+    raw_args
+        .iter()
+        .take_while(|arg| !arg.is_null())
+        .map(|arg| unsafe { OsString::from_vec(CStr::from_ptr(*arg).to_bytes().to_vec()) })
+        .collect()
 }
 
 #[cfg(windows)]
-fn build_args_list(_argc: i32, _argv: *const *const c_char, roc_host: &RocHost) -> RocList<OsStr> {
-    use std::os::windows::ffi::OsStrExt;
+fn collect_process_args(_argc: i32, _argv: *const *const c_char) -> Vec<OsString> {
+    std::env::args_os().collect()
+}
 
-    let args = std::env::args_os().collect::<Vec<_>>();
+#[cfg(not(any(unix, windows)))]
+fn collect_process_args(_argc: i32, _argv: *const *const c_char) -> Vec<OsString> {
+    Vec::new()
+}
+
+fn split_program_name(mut process_args: Vec<OsString>) -> (Option<OsString>, Vec<OsString>) {
+    if process_args.is_empty() {
+        (None, process_args)
+    } else {
+        let args = process_args.split_off(1);
+        (process_args.pop(), args)
+    }
+}
+
+fn build_args_list(args: &[OsString], roc_host: &RocHost) -> RocList<OsStr> {
     let list = unsafe { RocList::<OsStr>::allocate(args.len(), roc_host) };
     for (index, arg) in args.iter().enumerate() {
-        let units = arg.encode_wide().collect::<Vec<_>>();
+        #[cfg(unix)]
+        use std::os::unix::ffi::OsStrExt;
+        #[cfg(windows)]
+        use std::os::windows::ffi::OsStrExt;
+
         unsafe {
+            #[cfg(unix)]
             list.elements.add(index).write(OsStr {
                 payload: OsStrPayload {
-                    windows_u16s: ManuallyDrop::new(roc_u16_list_from_slice(&units, roc_host)),
+                    unix_bytes: ManuallyDrop::new(roc_u8_list_from_slice(
+                        arg.as_os_str().as_bytes(),
+                        roc_host,
+                    )),
                 },
-                tag: OsStrTag::WindowsU16s,
+                tag: OsStrTag::UnixBytes,
+            });
+
+            #[cfg(windows)]
+            {
+                let units = arg.encode_wide().collect::<Vec<_>>();
+                list.elements.add(index).write(OsStr {
+                    payload: OsStrPayload {
+                        windows_u16s: ManuallyDrop::new(roc_u16_list_from_slice(&units, roc_host)),
+                    },
+                    tag: OsStrTag::WindowsU16s,
+                });
+            }
+
+            #[cfg(not(any(unix, windows)))]
+            list.elements.add(index).write(OsStr {
+                payload: OsStrPayload {
+                    utf8: ManuallyDrop::new(RocStr::empty()),
+                },
+                tag: OsStrTag::Utf8,
             });
         }
     }
     list
-}
-
-#[cfg(not(any(unix, windows)))]
-fn build_args_list(_argc: i32, _argv: *const *const c_char, _roc_host: &RocHost) -> RocList<OsStr> {
-    RocList::empty()
 }
 
 #[cfg(not(test))]
@@ -2162,7 +2230,10 @@ pub fn rust_main(argc: i32, argv: *const *const c_char) -> i32 {
     let mut roc_host = resources::make_host();
     set_roc_host(&mut roc_host);
 
-    let args_list = build_args_list(argc, argv, &roc_host);
+    let (program_name, args) = split_program_name(collect_process_args(argc, argv));
+    set_program_name(program_name);
+
+    let args_list = build_args_list(&args, &roc_host);
     let mut exit_code = unsafe { roc_main(args_list) };
 
     process_service::shutdown();
@@ -2171,6 +2242,7 @@ pub fn rust_main(argc: i32, argv: *const *const c_char) -> i32 {
         exit_code = 1;
     }
 
+    set_program_name(None);
     set_roc_host(core::ptr::null_mut());
     exit_code
 }
@@ -2226,6 +2298,50 @@ mod tests {
 
     fn strings(values: &[&str]) -> Vec<String> {
         values.iter().map(|value| (*value).to_string()).collect()
+    }
+
+    #[test]
+    fn separates_program_name_from_command_line_arguments() {
+        let (program_name, args) = split_program_name(vec![
+            OsString::from("roc-app"),
+            OsString::from("first"),
+            OsString::from("second"),
+        ]);
+
+        assert_eq!(program_name, Some(OsString::from("roc-app")));
+        assert_eq!(args, [OsString::from("first"), OsString::from("second")]);
+    }
+
+    #[test]
+    fn reports_an_unavailable_program_name_for_an_empty_process_argument_list() {
+        let (program_name, args) = split_program_name(Vec::new());
+
+        assert_eq!(program_name, None);
+        assert!(args.is_empty());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn collects_process_arguments_without_losing_non_utf8_bytes() {
+        use std::ffi::CString;
+        use std::os::unix::ffi::OsStringExt;
+
+        let values = [
+            CString::new(b"launcher-name".as_slice()).unwrap(),
+            CString::new(vec![b'a', 0xff, b'b']).unwrap(),
+        ];
+        let pointers = values
+            .iter()
+            .map(|value| value.as_ptr())
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            collect_process_args(pointers.len() as i32, pointers.as_ptr()),
+            [
+                OsString::from("launcher-name"),
+                OsString::from_vec(vec![b'a', 0xff, b'b']),
+            ]
+        );
     }
 
     #[test]
