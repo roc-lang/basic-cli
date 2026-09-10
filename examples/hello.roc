@@ -17,7 +17,7 @@ main! = |args| {
 
 greeting_name : List(OsStr) -> Str
 greeting_name = |args|
-	match args.drop_first(1) {
+	match args {
 		[first, ..] => OsStr.display(first)
 		[] => "friend"
 	}
