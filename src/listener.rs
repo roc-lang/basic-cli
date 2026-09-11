@@ -1,11 +1,19 @@
 //! Deadline-aware listeners using a host-thread reactor.
 use crate::{roc_host, resources, roc_platform_abi::*};
-use std::{io, mem::ManuallyDrop, net::{TcpListener, TcpStream}, time::Duration};
+use std::{io, mem::ManuallyDrop, net::{TcpListener, TcpStream}, sync::LazyLock, time::Duration};
 
-thread_local! {
-    static RUNTIME: tokio::runtime::Runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all().build().expect("TCP listener runtime");
-}
+// A `static` for the same reason as `TOKIO_RUNTIME` in http.rs: a runtime with an
+// owner is dropped when that owner goes away, and dropping a runtime waits for
+// tokio's blocking pool. On Windows a thread local's drop runs during
+// `ExitProcess`, after every other thread is already gone, so that wait never
+// ends. Nothing here reaches the pool today — binding goes through `socket2` and
+// name resolution through `crate::tcp` — but a `static` keeps it that way by
+// construction rather than by review, and lets listeners created on one thread be
+// accepted on another, since they all register with the one IO driver.
+static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all().build().expect("TCP listener runtime")
+});
 struct Listener { socket: Option<tokio::net::TcpListener> }
 
 fn listen(host: String, port: u16, timeout_ms: u64) -> io::Result<Listener> {
@@ -20,11 +28,9 @@ fn listen(host: String, port: u16, timeout_ms: u64) -> io::Result<Listener> {
             socket.bind(&address.into())?;
             socket.listen(128)?;
             socket.set_nonblocking(true)?;
-            RUNTIME.with(|runtime| {
-                let _entered = runtime.enter();
-                tokio::net::TcpListener::from_std(TcpListener::from(socket))
-                    .map(|socket| Listener { socket: Some(socket) })
-            })
+            let _entered = RUNTIME.enter();
+            tokio::net::TcpListener::from_std(TcpListener::from(socket))
+                .map(|socket| Listener { socket: Some(socket) })
         })();
         match result { Ok(listener) => return Ok(listener), Err(e) => error = e }
     }
@@ -47,13 +53,13 @@ impl Listener {
     fn accept(&self, timeout_ms: u64) -> io::Result<TcpStream> {
         crate::tcp::deadline_from_timeout(timeout_ms)?;
         let socket = self.socket()?;
-        RUNTIME.with(|runtime| runtime.block_on(async {
+        RUNTIME.block_on(async {
             let (stream, _) = tokio::time::timeout(Duration::from_millis(timeout_ms), socket.accept()).await
                 .map_err(|_| io::Error::from(io::ErrorKind::TimedOut))??;
             let stream = stream.into_std()?;
             stream.set_nonblocking(false)?;
             Ok(stream)
-        }))
+        })
     }
 }
 

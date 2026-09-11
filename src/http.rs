@@ -16,6 +16,22 @@ type HttpTransportErr = BadBodyOrNetworkErrorOrOtherOrTimeout;
 type HttpTransportErrPayload = BadBodyOrNetworkErrorOrOtherOrTimeoutPayload;
 type HttpTransportErrTag = BadBodyOrNetworkErrorOrOtherOrTimeoutTag;
 
+// Deliberately a `static`, so this runtime is never dropped.
+//
+// hyper resolves host names with `getaddrinfo` on tokio's blocking pool, whose
+// threads linger for ten seconds after their last job, and dropping a runtime
+// waits for each of them to acknowledge the shutdown. This used to be a thread
+// local, which is dropped when its thread exits. On Windows the main thread's
+// thread locals are dropped during `ExitProcess`, after the OS has already
+// terminated every other thread, so a program that had sent a request in its
+// last ten seconds waited forever for a pool thread that no longer existed.
+// Leaking the runtime at exit costs nothing, since the OS reclaims it either way.
+//
+// So: do not give this runtime an owner that drops it, and do not shut it down
+// from `lib.rs` alongside `process_service::shutdown`. Either reintroduces the
+// hang. `examples/http-client.roc` guards the exit path by reaching the test
+// server by host name; an IP literal skips the resolver, and with it the
+// blocking pool, so it cannot reproduce this.
 static TOKIO_RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
     tokio::runtime::Builder::new_current_thread()
         .enable_io()
@@ -219,20 +235,21 @@ mod tests {
     use std::thread;
     use std::time::Duration;
 
-    // hyper's default resolver runs getaddrinfo on tokio's blocking pool, so a
-    // request to a host name leaves a pool thread alive for up to ten seconds
-    // afterwards. Dropping a runtime waits for every pool thread to acknowledge
-    // the shutdown. A runtime owned by a thread local is dropped when its
-    // thread exits, and on Windows the main thread's thread locals are dropped
-    // during ExitProcess, after the OS has already terminated every other
-    // thread. Nothing was left to acknowledge, so a program that had sent a
-    // request in its last ten seconds never finished exiting.
+    // Guards the shape of `TOKIO_RUNTIME`: a thread that used it must be able to
+    // exit while the blocking pool still holds work. An owned runtime blocks in
+    // `Drop` until every pool thread acknowledges the shutdown, which is the
+    // Windows exit hang described above the static. A blocking task held until
+    // after the join stands in for a pool thread that cannot acknowledge.
     //
-    // A blocking task held until after the join stands in for the terminated
-    // pool thread. Either way the pool cannot acknowledge, and a thread that
-    // used the runtime must still be able to exit.
+    // This only covers the declaration; the exit path itself is covered by the
+    // `http-client` run cases in scripts/test_spec.json, which reach the test
+    // server by host name and so actually put work on the blocking pool.
     #[test]
     fn thread_exit_does_not_wait_for_the_blocking_pool() {
+        // Generous: the passing case finishes in microseconds. This only has to
+        // be shorter than a hang, which never ends.
+        const EXIT_BUDGET: Duration = Duration::from_secs(5);
+
         let (release_tx, release_rx) = mpsc::channel::<()>();
         let user = thread::spawn(move || {
             TOKIO_RUNTIME.spawn_blocking(move || {
@@ -241,12 +258,17 @@ mod tests {
         });
 
         let (exited_tx, exited_rx) = mpsc::channel::<()>();
-        thread::spawn(move || {
+        let watcher = thread::spawn(move || {
             let _ = user.join();
             let _ = exited_tx.send(());
         });
-        let exited = exited_rx.recv_timeout(Duration::from_secs(5)).is_ok();
+
+        let exited = exited_rx.recv_timeout(EXIT_BUDGET).is_ok();
+        // Release the pool before asserting, so a failure unwinds instead of
+        // leaving `user` parked in `Drop` and `watcher` joined to it forever.
         drop(release_tx);
+        watcher.join().expect("watcher thread panicked");
+
         assert!(
             exited,
             "a thread that used the HTTP runtime hung on exit while a blocking task was running"
