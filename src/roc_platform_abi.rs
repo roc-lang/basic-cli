@@ -7693,6 +7693,97 @@ const _: () = assert!(core::mem::align_of::<HostTcpLocalPortResult>() == 4, "Hos
 #[cfg(target_pointer_width = "32")]
 const _: () = assert!(core::mem::offset_of!(HostTcpLocalPortResult, tag) == 12, "HostTcpLocalPortResult tag offset mismatch");
 
+/// Tag discriminant for Try.
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HostEnvProgramNameResultTag {
+    Err = 0,
+    Ok = 1,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub union HostEnvProgramNameResultPayload {
+    pub err: [u8; 0],
+    pub ok: core::mem::ManuallyDrop<UnixBytesOrUtf8OrWindowsU16s>,
+}
+
+#[cfg(target_pointer_width = "32")]
+#[repr(align(4))]
+#[derive(Clone, Copy)]
+pub struct HostEnvProgramNameResultPayloadAlignment;
+
+/// Tag union: Try
+#[cfg(target_pointer_width = "32")]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostEnvProgramNameResult {
+    pub _payload_alignment: [HostEnvProgramNameResultPayloadAlignment; 0],
+    pub payload: [u8; 16],
+    pub tag: HostEnvProgramNameResultTag,
+}
+
+/// Tag union: Try
+#[cfg(not(target_pointer_width = "32"))]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostEnvProgramNameResult {
+    pub payload: HostEnvProgramNameResultPayload,
+    pub tag: HostEnvProgramNameResultTag,
+}
+
+impl HostEnvProgramNameResult {
+    /// Borrow the `Ok` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostEnvProgramNameResultTag::Ok` and the payload must still be initialized.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &UnixBytesOrUtf8OrWindowsU16s {
+        unsafe { &*(self.payload.as_ptr() as *const UnixBytesOrUtf8OrWindowsU16s) }
+    }
+
+    /// Borrow the `Ok` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostEnvProgramNameResultTag::Ok` and the payload must still be initialized.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &UnixBytesOrUtf8OrWindowsU16s {
+        unsafe { &*(&self.payload.ok as *const core::mem::ManuallyDrop<UnixBytesOrUtf8OrWindowsU16s> as *const UnixBytesOrUtf8OrWindowsU16s) }
+    }
+
+    /// Move the `Ok` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostEnvProgramNameResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn take_payload_ok_unchecked(&mut self) -> UnixBytesOrUtf8OrWindowsU16s {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const UnixBytesOrUtf8OrWindowsU16s) }
+    }
+
+    /// Move the `Ok` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostEnvProgramNameResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn take_payload_ok_unchecked(&mut self) -> UnixBytesOrUtf8OrWindowsU16s {
+        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.ok) }
+    }
+
+}
+
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::size_of::<HostEnvProgramNameResult>() == 40, "HostEnvProgramNameResult size mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::align_of::<HostEnvProgramNameResult>() == 8, "HostEnvProgramNameResult alignment mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::offset_of!(HostEnvProgramNameResult, tag) == 32, "HostEnvProgramNameResult tag offset mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::size_of::<HostEnvProgramNameResult>() == 20, "HostEnvProgramNameResult size mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::align_of::<HostEnvProgramNameResult>() == 4, "HostEnvProgramNameResult alignment mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::offset_of!(HostEnvProgramNameResult, tag) == 16, "HostEnvProgramNameResult tag offset mismatch");
+
 /// Tag discriminant for OsStr.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -7861,14 +7952,14 @@ const _: () = assert!(core::mem::offset_of!(OsStr, tag) == 12, "OsStr tag offset
 /// Tag discriminant for Try.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TryType259Tag {
+pub enum TryType267Tag {
     Err = 0,
     Ok = 1,
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub union TryType259Payload {
+pub union TryType267Payload {
     pub err: core::mem::ManuallyDrop<i32>,
     pub ok: [u8; 0],
 }
@@ -7876,32 +7967,32 @@ pub union TryType259Payload {
 #[cfg(target_pointer_width = "32")]
 #[repr(align(4))]
 #[derive(Clone, Copy)]
-pub struct TryType259PayloadAlignment;
+pub struct TryType267PayloadAlignment;
 
 /// Tag union: Try
 #[cfg(target_pointer_width = "32")]
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct TryType259 {
-    pub _payload_alignment: [TryType259PayloadAlignment; 0],
+pub struct TryType267 {
+    pub _payload_alignment: [TryType267PayloadAlignment; 0],
     pub payload: [u8; 4],
-    pub tag: TryType259Tag,
+    pub tag: TryType267Tag,
 }
 
 /// Tag union: Try
 #[cfg(not(target_pointer_width = "32"))]
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct TryType259 {
-    pub payload: TryType259Payload,
-    pub tag: TryType259Tag,
+pub struct TryType267 {
+    pub payload: TryType267Payload,
+    pub tag: TryType267Tag,
 }
 
-impl TryType259 {
+impl TryType267 {
     /// Borrow the `Err` payload without creating another owner.
     ///
     /// # Safety
-    /// `self.tag` must be `TryType259Tag::Err` and the payload must still be initialized.
+    /// `self.tag` must be `TryType267Tag::Err` and the payload must still be initialized.
     #[cfg(target_pointer_width = "32")]
     pub unsafe fn borrow_payload_err_unchecked(&self) -> &i32 {
         unsafe { &*(self.payload.as_ptr() as *const i32) }
@@ -7910,7 +8001,7 @@ impl TryType259 {
     /// Borrow the `Err` payload without creating another owner.
     ///
     /// # Safety
-    /// `self.tag` must be `TryType259Tag::Err` and the payload must still be initialized.
+    /// `self.tag` must be `TryType267Tag::Err` and the payload must still be initialized.
     #[cfg(not(target_pointer_width = "32"))]
     pub unsafe fn borrow_payload_err_unchecked(&self) -> &i32 {
         unsafe { &*(&self.payload.err as *const core::mem::ManuallyDrop<i32> as *const i32) }
@@ -7919,7 +8010,7 @@ impl TryType259 {
     /// Move the `Err` payload out of one owned tag-union shell.
     ///
     /// # Safety
-    /// `self.tag` must be `TryType259Tag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    /// `self.tag` must be `TryType267Tag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(target_pointer_width = "32")]
     pub unsafe fn take_payload_err_unchecked(&mut self) -> i32 {
         unsafe { core::ptr::read(self.payload.as_ptr() as *const i32) }
@@ -7928,7 +8019,7 @@ impl TryType259 {
     /// Move the `Err` payload out of one owned tag-union shell.
     ///
     /// # Safety
-    /// `self.tag` must be `TryType259Tag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    /// `self.tag` must be `TryType267Tag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(not(target_pointer_width = "32"))]
     pub unsafe fn take_payload_err_unchecked(&mut self) -> i32 {
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.err) }
@@ -7937,17 +8028,17 @@ impl TryType259 {
 }
 
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::size_of::<TryType259>() == 8, "TryType259 size mismatch");
+const _: () = assert!(core::mem::size_of::<TryType267>() == 8, "TryType267 size mismatch");
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::align_of::<TryType259>() == 4, "TryType259 alignment mismatch");
+const _: () = assert!(core::mem::align_of::<TryType267>() == 4, "TryType267 alignment mismatch");
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::offset_of!(TryType259, tag) == 4, "TryType259 tag offset mismatch");
+const _: () = assert!(core::mem::offset_of!(TryType267, tag) == 4, "TryType267 tag offset mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::size_of::<TryType259>() == 8, "TryType259 size mismatch");
+const _: () = assert!(core::mem::size_of::<TryType267>() == 8, "TryType267 size mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::align_of::<TryType259>() == 4, "TryType259 alignment mismatch");
+const _: () = assert!(core::mem::align_of::<TryType267>() == 4, "TryType267 alignment mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::offset_of!(TryType259, tag) == 4, "TryType259 tag offset mismatch");
+const _: () = assert!(core::mem::offset_of!(TryType267, tag) == 4, "TryType267 tag offset mismatch");
 
 /// Return type record for Host.env_platform!
 /// Fields ordered by compiler-emitted ABI offsets.
@@ -9178,6 +9269,9 @@ pub type HostTcpAcceptResultTag = HostTcpConnectResultTag;
 pub type HostTcpListenerCloseResult = HostTcpWriteResult;
 pub type HostTcpListenerCloseResultPayload = HostTcpWriteResultPayload;
 pub type HostTcpListenerCloseResultTag = HostTcpWriteResultTag;
+pub type HostEnvProgramNameOk = UnixBytesOrUtf8OrWindowsU16s;
+pub type HostEnvProgramNameOkPayload = UnixBytesOrUtf8OrWindowsU16sPayload;
+pub type HostEnvProgramNameOkTag = UnixBytesOrUtf8OrWindowsU16sTag;
 pub type MainForHostArg0 = OsStr;
 pub type MainForHostArg0Payload = OsStrPayload;
 pub type MainForHostArg0Tag = OsStrTag;
@@ -12155,6 +12249,49 @@ unsafe impl RocRelease<HostTcpLocalPortResult> for HostTcpLocalPortResultRelease
     }
 }
 
+impl HostEnvProgramNameResult {
+    /// Recursively decrement Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must own one live Roc reference for each refcounted payload.
+    pub unsafe fn decref(self, roc_host: &RocHost) {
+        let mut value = self;
+        let _ = roc_host;
+        match value.tag {
+            HostEnvProgramNameResultTag::Err => {},
+            HostEnvProgramNameResultTag::Ok => {
+                let payload = unsafe { value.take_payload_ok_unchecked() };
+                unsafe { payload.decref(roc_host); }
+            },
+        }
+    }
+
+    /// Increment Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must point at live Roc allocations. The retained references must
+    /// be balanced by later decrefs.
+    pub unsafe fn incref(self, amount: isize) {
+        let value = self;
+        let _ = amount;
+        match value.tag {
+            HostEnvProgramNameResultTag::Err => {},
+            HostEnvProgramNameResultTag::Ok => {
+                let payload = unsafe { core::ptr::read(value.borrow_payload_ok_unchecked()) };
+                unsafe { payload.incref(amount); }
+            },
+        }
+    }
+}
+
+pub struct HostEnvProgramNameResultRelease;
+
+unsafe impl RocRelease<HostEnvProgramNameResult> for HostEnvProgramNameResultRelease {
+    unsafe fn release(value: HostEnvProgramNameResult, roc_host: &RocHost) {
+        unsafe { value.decref(roc_host); }
+    }
+}
+
 impl OsStr {
     /// Recursively decrement Roc-owned payloads.
     ///
@@ -12212,7 +12349,7 @@ unsafe impl RocRelease<OsStr> for OsStrRelease {
     }
 }
 
-impl TryType259 {
+impl TryType267 {
     /// Recursively decrement Roc-owned payloads.
     ///
     /// # Safety
@@ -12221,8 +12358,8 @@ impl TryType259 {
         let value = self;
         let _ = roc_host;
         match value.tag {
-            TryType259Tag::Err => {},
-            TryType259Tag::Ok => {},
+            TryType267Tag::Err => {},
+            TryType267Tag::Ok => {},
         }
     }
 
@@ -12235,16 +12372,16 @@ impl TryType259 {
         let value = self;
         let _ = amount;
         match value.tag {
-            TryType259Tag::Err => {},
-            TryType259Tag::Ok => {},
+            TryType267Tag::Err => {},
+            TryType267Tag::Ok => {},
         }
     }
 }
 
-pub struct TryType259Release;
+pub struct TryType267Release;
 
-unsafe impl RocRelease<TryType259> for TryType259Release {
-    unsafe fn release(value: TryType259, roc_host: &RocHost) {
+unsafe impl RocRelease<TryType267> for TryType267Release {
+    unsafe fn release(value: TryType267, roc_host: &RocHost) {
         unsafe { value.decref(roc_host); }
     }
 }
@@ -12979,6 +13116,11 @@ unsafe extern "C" {
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
     /// The result is owned by Roc: return exactly one owned reference.
     pub fn hosted_tcp_listener_close(arg0: *mut u64) -> HostTcpWriteResult;
+
+    /// Hosted symbol for Host.env_program_name!
+    /// Roc signature: {} => Try([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], [ProgramNameUnavailable])
+    /// The result is owned by Roc: return exactly one owned reference.
+    pub fn hosted_env_program_name() -> HostEnvProgramNameResult;
 
 }
 

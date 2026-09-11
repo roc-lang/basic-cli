@@ -1,6 +1,6 @@
 ## Prepare a distributable directory without changing its source files.
 ## Usage: roc filesystem-tools.roc -- path/to/site path/to/new-release
-app [main!] { pf: platform "../platform/main.roc" }
+app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.23.0-rc1/3hT3SoHZ6qbEsa9qVFLUW3547U5LeoNd1KbpqLpz4r1i.tar.zst" }
 
 import pf.Env
 import pf.OsStr
@@ -9,7 +9,7 @@ import pf.Stdout
 
 main! : List(OsStr) => Try({}, _)
 main! = |args| {
-	(source_arg, destination_arg) = match args.drop_first(1) {
+	(source_arg, destination_arg) = match args {
 		[source, destination] => (source, destination)
 		_ => return Err(MissingPaths)
 	}

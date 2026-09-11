@@ -10,7 +10,7 @@ import pf.Stdout
 
 main! : List(OsStr) => Try({}, _)
 main! = |args| {
-	if args.drop_first(1).map(OsStr.display) == ["--echo-helper"] {
+	if args.map(OsStr.display) == ["--echo-helper"] {
 		bytes = Stdin.read_to_end!()?
 		Stdout.write_bytes!(bytes)?
 		Ok({})

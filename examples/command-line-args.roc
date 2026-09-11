@@ -1,14 +1,17 @@
 ## Read native command-line arguments without losing non-Unicode data.
-app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.22.2/9zUBxb1LtXYVc4eR4hAtd1WQDwBYDhM6HQdZz1UFCm2m.tar.zst" }
+app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.23.0-rc1/3hT3SoHZ6qbEsa9qVFLUW3547U5LeoNd1KbpqLpz4r1i.tar.zst" }
 
 import pf.OsStr
+import pf.Env
 import pf.Stdout
 import pf.Stderr
 
 main! : List(OsStr) => Try({}, _)
 main! = |args| {
-	# Skip first arg (executable path), get the remaining args
-	match args.drop_first(1) {
+	program_name = Env.program_name!()?
+	Stdout.line!("program name: ${OsStr.display(program_name)}")?
+
+	match args {
 		[first_arg, ..] => {
 
 			Stdout.line!("received argument: ${OsStr.display(first_arg)}")?

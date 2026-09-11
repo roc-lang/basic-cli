@@ -1,6 +1,6 @@
 [![Roc-Lang][roc_badge]][roc_link]
 
-[roc_badge]: https://img.shields.io/endpoint?url=https%3A%2F%2Fpastebin.com%2Fraw%2FcFzuCCd7
+[roc_badge]: https://img.shields.io/endpoint?url=https%3A%2F%2Froc-lang.org%2Fbadge%2Froc.json
 [roc_link]: https://github.com/roc-lang/roc
 
 # basic-cli

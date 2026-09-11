@@ -84,6 +84,19 @@ Env :: [].{
 			Err(ExePathUnavailable) => Err(ExePathUnavailable)
 		}
 
+	## Gets the program name supplied by the process launcher as its first argument.
+	##
+	## This is conventionally the executable name or path, but launchers may supply
+	## another value. Unlike [`exe_path!`](#exe_path!), it is returned as an
+	## [`OsStr`](OsStr), preserving the value exactly without treating it as a path.
+	## Returns `Err(ProgramNameUnavailable)` if the launcher supplied no first argument.
+	program_name! : () => Try(OsStr, [ProgramNameUnavailable, ..])
+	program_name! = ||
+		match Host.env_program_name!() {
+			Ok(raw) => Ok(OsStr.from_raw(raw))
+			Err(ProgramNameUnavailable) => Err(ProgramNameUnavailable)
+		}
+
 	## Atomically create a private directory in the system temporary directory.
 	## The caller owns cleanup. Unix directories have mode 0700.
 	create_temp_dir! : () => Try(Path.Path, [TempDirErr(IOErr), ..])

@@ -1,5 +1,5 @@
 ## Inspect a path's filename, extension, string representation, and type (file/dir/symlink).
-app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.22.2/9zUBxb1LtXYVc4eR4hAtd1WQDwBYDhM6HQdZz1UFCm2m.tar.zst" }
+app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.23.0-rc1/3hT3SoHZ6qbEsa9qVFLUW3547U5LeoNd1KbpqLpz4r1i.tar.zst" }
 
 import pf.OsStr exposing [OsStr]
 import pf.Stdout
@@ -24,7 +24,7 @@ main! = |args| {
 }
 
 path_argument = |args|
-	match args.drop_first(1) {
+	match args {
 		[first, ..] => Ok(Path.from_os_str(first))
 		[] => Err(MissingPathArgument)
 	}
