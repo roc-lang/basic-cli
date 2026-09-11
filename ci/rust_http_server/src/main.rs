@@ -8,7 +8,7 @@ use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Method, Request, Response, StatusCode};
 use hyper_util::rt::TokioTimer;
-use std::net::SocketAddr;
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr};
 use tokio::net::TcpListener;
 
 type GenericError = Box<dyn std::error::Error + Send + Sync>;
@@ -71,13 +71,41 @@ async fn handle_request(req: Request<Incoming>) -> Result<Response<BoxBody>, Gen
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    // Address to bind the server to
-    let addr: SocketAddr = ([127, 0, 0, 1], 9000).into();
+async fn main() -> Result<(), GenericError> {
+    // `examples/http-client.roc` reaches this server by host name so the platform
+    // actually resolves it, and Windows answers `localhost` with ::1 ahead of
+    // 127.0.0.1. Bind both loopback families so either answer connects. IPv6 is
+    // best effort: hosts without it fall back to the IPv4 listener.
+    //
+    // Bind ::1 first. `wait_for_port` in scripts/test.py polls 127.0.0.1 for
+    // readiness, so the IPv4 listener has to be the last one to come up.
+    let mut listeners = Vec::new();
+    for addr in [
+        SocketAddr::from((Ipv6Addr::LOCALHOST, 9000)),
+        SocketAddr::from((Ipv4Addr::LOCALHOST, 9000)),
+    ] {
+        match TcpListener::bind(addr).await {
+            Ok(listener) => {
+                println!("Listening on http://{}", addr);
+                listeners.push(listener);
+            }
+            Err(err) if addr.is_ipv6() => println!("Skipping IPv6 loopback: {}", err),
+            Err(err) => return Err(err.into()),
+        }
+    }
 
-    // Bind to the port and listen for incoming TCP connections
-    let listener = TcpListener::bind(addr).await?;
-    println!("Listening on http://{}", addr);
+    let accepting: Vec<_> = listeners
+        .into_iter()
+        .map(|l| tokio::spawn(accept(l)))
+        .collect();
+    for task in accepting {
+        task.await??;
+    }
+
+    Ok(())
+}
+
+async fn accept(listener: TcpListener) -> Result<(), GenericError> {
     loop {
         // When an incoming TCP connection is received grab a TCP stream for
         // client<->server communication.

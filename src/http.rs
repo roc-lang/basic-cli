@@ -1,4 +1,5 @@
 use core::mem::ManuallyDrop;
+use std::sync::LazyLock;
 
 use crate::roc_platform_abi::*;
 use crate::{roc_host, roc_u8_list_from_slice};
@@ -15,13 +16,29 @@ type HttpTransportErr = BadBodyOrNetworkErrorOrOtherOrTimeout;
 type HttpTransportErrPayload = BadBodyOrNetworkErrorOrOtherOrTimeoutPayload;
 type HttpTransportErrTag = BadBodyOrNetworkErrorOrOtherOrTimeoutTag;
 
-thread_local! {
-    static TOKIO_RUNTIME: tokio::runtime::Runtime = tokio::runtime::Builder::new_current_thread()
+// Deliberately a `static`, so this runtime is never dropped.
+//
+// hyper resolves host names with `getaddrinfo` on tokio's blocking pool, whose
+// threads linger for ten seconds after their last job, and dropping a runtime
+// waits for each of them to acknowledge the shutdown. This used to be a thread
+// local, which is dropped when its thread exits. On Windows the main thread's
+// thread locals are dropped during `ExitProcess`, after the OS has already
+// terminated every other thread, so a program that had sent a request in its
+// last ten seconds waited forever for a pool thread that no longer existed.
+// Leaking the runtime at exit costs nothing, since the OS reclaims it either way.
+//
+// So: do not give this runtime an owner that drops it, and do not shut it down
+// from `lib.rs` alongside `process_service::shutdown`. Either reintroduces the
+// hang. `examples/http-client.roc` guards the exit path by reaching the test
+// server by host name; an IP literal skips the resolver, and with it the
+// blocking pool, so it cannot reproduce this.
+static TOKIO_RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
+    tokio::runtime::Builder::new_current_thread()
         .enable_io()
         .enable_time()
         .build()
-        .expect("failed to build tokio runtime");
-}
+        .expect("failed to build tokio runtime")
+});
 
 // Numeric method tags must match `to_host_method` in platform/InternalHttp.roc.
 fn as_hyper_method(method: u8, method_ext: &str) -> Option<hyper::Method> {
@@ -194,21 +211,67 @@ pub extern "C" fn hosted_http_send_request(args: HostHttpSendRequestArgs) -> Htt
         Err(err) => return http_err(http_err_other(&err, roc_host)),
     };
 
-    TOKIO_RUNTIME.with(|rt| {
-        if timeout_ms > 0 {
-            rt.block_on(async {
-                match tokio::time::timeout(
-                    std::time::Duration::from_millis(timeout_ms),
-                    async_send_request(request, roc_host),
-                )
-                .await
-                {
-                    Ok(response) => response,
-                    Err(_) => http_err(http_err_timeout()),
-                }
-            })
-        } else {
-            rt.block_on(async_send_request(request, roc_host))
-        }
-    })
+    if timeout_ms > 0 {
+        TOKIO_RUNTIME.block_on(async {
+            match tokio::time::timeout(
+                std::time::Duration::from_millis(timeout_ms),
+                async_send_request(request, roc_host),
+            )
+            .await
+            {
+                Ok(response) => response,
+                Err(_) => http_err(http_err_timeout()),
+            }
+        })
+    } else {
+        TOKIO_RUNTIME.block_on(async_send_request(request, roc_host))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::mpsc;
+    use std::thread;
+    use std::time::Duration;
+
+    // Guards the shape of `TOKIO_RUNTIME`: a thread that used it must be able to
+    // exit while the blocking pool still holds work. An owned runtime blocks in
+    // `Drop` until every pool thread acknowledges the shutdown, which is the
+    // Windows exit hang described above the static. A blocking task held until
+    // after the join stands in for a pool thread that cannot acknowledge.
+    //
+    // This only covers the declaration; the exit path itself is covered by the
+    // `http-client` run cases in scripts/test_spec.json, which reach the test
+    // server by host name and so actually put work on the blocking pool.
+    #[test]
+    fn thread_exit_does_not_wait_for_the_blocking_pool() {
+        // Generous: the passing case finishes in microseconds. This only has to
+        // be shorter than a hang, which never ends.
+        const EXIT_BUDGET: Duration = Duration::from_secs(5);
+
+        let (release_tx, release_rx) = mpsc::channel::<()>();
+        let user = thread::spawn(move || {
+            TOKIO_RUNTIME.spawn_blocking(move || {
+                let _ = release_rx.recv();
+            });
+        });
+
+        let (exited_tx, exited_rx) = mpsc::channel::<()>();
+        let watcher = thread::spawn(move || {
+            let _ = user.join();
+            let _ = exited_tx.send(());
+        });
+
+        let exited = exited_rx.recv_timeout(EXIT_BUDGET).is_ok();
+        // Release the pool before asserting, so a failure unwinds instead of
+        // leaving `user` parked in `Drop` and `watcher` joined to it forever.
+        drop(release_tx);
+        watcher.join().expect("watcher thread panicked");
+
+        assert!(
+            exited,
+            "a thread that used the HTTP runtime hung on exit while a blocking task was running"
+        );
+    }
 }
