@@ -53,7 +53,7 @@ Sqlite :: [].{
 		to_inspect = |_| "Sqlite.Stmt(<opaque>)"
 
 		## Execute this prepared statement without returning rows.
-		execute! : Stmt, List(Binding) => Try({}, [RowsReturnedUseQueryInstead, SqliteErr(ErrCode, Str), ..])
+		execute! : Stmt, List(Binding) => Try({}, [RowsReturnedUseQueryInstead, SqliteErr(ErrCode, Str)])
 		execute! = |stmt, bindings| {
 			host_stmt = stmt_to_host(stmt)
 			sqlite_bind!(host_stmt, bindings)?
@@ -137,12 +137,12 @@ Sqlite :: [].{
 	DecodeErr : [NoSuchField(Str), SqliteErr(ErrCode, Str)]
 
 	## Prepare a `Stmt` for reuse by the prepared execute and query operations.
-	prepare! : { path : Path.Path, query : Str } => Try(Stmt, [SqliteErr(ErrCode, Str), ..])
+	prepare! : { path : Path.Path, query : Str } => Try(Stmt, [SqliteErr(ErrCode, Str)])
 	prepare! = |{ path, query: q }|
 		sqlite_prepare!(Path.to_raw(path), q).map_ok(|stmt| Stmt.{ host: stmt })
 
 	## Execute a SQL statement that **doesn't return any rows** (INSERT/UPDATE/DELETE).
-	execute! : { path : Path.Path, query : Str, bindings : List(Binding) } => Try({}, [RowsReturnedUseQueryInstead, SqliteErr(ErrCode, Str), ..])
+	execute! : { path : Path.Path, query : Str, bindings : List(Binding) } => Try({}, [RowsReturnedUseQueryInstead, SqliteErr(ErrCode, Str)])
 	execute! = |{ path, query: q, bindings }| {
 		stmt = prepare!({ path, query: q })?
 		stmt.execute!(bindings)
@@ -347,7 +347,7 @@ sqlite_prepare! = |raw_path, query|
 	Host.sqlite_prepare!(raw_path, query)
 		.map_err(|{ code, message }| SqliteErr(code_from_i64(code), message))
 
-sqlite_bind! : Host.SqliteStmt, List({ name : Str, value : [Null, Real(F64), Integer(I64), String(Str), Bytes(List(U8))] }) => Try({}, [SqliteErr(Sqlite.ErrCode, Str), ..])
+sqlite_bind! : Host.SqliteStmt, List({ name : Str, value : [Null, Real(F64), Integer(I64), String(Str), Bytes(List(U8))] }) => Try({}, [SqliteErr(Sqlite.ErrCode, Str)])
 sqlite_bind! = |stmt, bindings|
 	Host.sqlite_bind!(stmt, bindings)
 		.map_err(|{ code, message }| SqliteErr(code_from_i64(code), message))
@@ -358,7 +358,7 @@ sqlite_column_value! = |stmt, index|
 	Host.sqlite_column_value!(stmt, index)
 		.map_err(|{ code, message }| SqliteErr(code_from_i64(code), message))
 
-sqlite_step! : Host.SqliteStmt => Try([Row, Done], [SqliteErr(Sqlite.ErrCode, Str), ..])
+sqlite_step! : Host.SqliteStmt => Try([Row, Done], [SqliteErr(Sqlite.ErrCode, Str)])
 sqlite_step! = |stmt|
 	match Host.sqlite_step!(stmt) {
 		Ok(has_row) => if has_row {
@@ -369,7 +369,7 @@ sqlite_step! = |stmt|
 		Err({ code, message }) => Err(SqliteErr(code_from_i64(code), message))
 	}
 
-sqlite_reset! : Host.SqliteStmt => Try({}, [SqliteErr(Sqlite.ErrCode, Str), ..])
+sqlite_reset! : Host.SqliteStmt => Try({}, [SqliteErr(Sqlite.ErrCode, Str)])
 sqlite_reset! = |stmt|
 	Host.sqlite_reset!(stmt)
 		.map_err(|{ code, message }| SqliteErr(code_from_i64(code), message))

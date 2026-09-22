@@ -19,7 +19,7 @@ main! = |args| {
 	Ok({})
 }
 
-path_argument : List(OsStr) -> Try(Path, [MissingPathArgument, ..])
+path_argument : List(OsStr) -> Try(Path, [MissingPathArgument])
 path_argument = |args|
 	match args {
 		[first, ..] => Ok(Path.from_os_str(first))

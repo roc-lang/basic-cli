@@ -91,9 +91,9 @@ Locale :: { raw : Str }.{
 	## `POSIX` locales are not language tags and are ignored.
 	##
 	## Returns `Err(NotAvailable)` if the locale cannot be determined.
-	get! : () => Try(Locale, [NotAvailable, ..])
+	get! : () => Try(Locale, [NotAvailable])
 	get! = || {
-		raw = widen_locale_err(Host.locale_get!())?
+		raw = Host.locale_get!()?
 		Ok(Locale.{ raw })
 	}
 
@@ -211,13 +211,6 @@ parse_err_to_str = |err|
 		InvalidLanguage => "Locale must start with a 2-8 letter language subtag"
 		MissingExtensionValue => "Locale extension or private-use marker must be followed by a subtag"
 		SubtagTooLong => "Locale subtags must be at most 8 characters"
-	}
-
-widen_locale_err : Try(a, [NotAvailable]) -> Try(a, [NotAvailable, ..])
-widen_locale_err = |result|
-	match result {
-		Ok(value) => Ok(value)
-		Err(NotAvailable) => Err(NotAvailable)
 	}
 
 expect

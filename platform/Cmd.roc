@@ -45,7 +45,7 @@ Cmd :: {
 	## ```roc
 	## Cmd.exec!("echo", ["hello world"])?
 	## ```
-	exec! : OsStr, List(OsStr) => Try({}, [ExecFailed({ command : Str, exit_code : I32 }), FailedToGetExitCode({ command : Str, err : IOErr }), ..])
+	exec! : OsStr, List(OsStr) => Try({}, [ExecFailed({ command : Str, exit_code : I32 }), FailedToGetExitCode({ command : Str, err : IOErr })])
 	exec! = |program, arguments| {
 		command = "${OsStr.display(program)} ${Str.join_with(arguments.map(OsStr.display), " ")}"
 
@@ -72,7 +72,7 @@ Cmd :: {
 	##     .env("RUST_BACKTRACE", "1")
 	##     .exec_cmd!()?
 	## ```
-	exec_cmd! : Cmd => Try({}, [ExecCmdFailed({ command : Str, exit_code : I32 }), FailedToGetExitCode({ command : Str, err : IOErr }), ..])
+	exec_cmd! : Cmd => Try({}, [ExecCmdFailed({ command : Str, exit_code : I32 }), FailedToGetExitCode({ command : Str, err : IOErr })])
 	exec_cmd! = |cmd| {
 		command = to_str(cmd)
 		exit_code = exec_exit_code!(cmd)?
@@ -98,7 +98,7 @@ Cmd :: {
 	##
 	## Stdout.line!("Echo output: ${cmd_output.stdout_utf8}")?
 	## ```
-	exec_output! : Cmd => Try({ stdout_utf8 : Str, stderr_utf8_lossy : Str }, [StdoutContainsInvalidUtf8({ cmd_str : Str, err : [BadUtf8({ problem : _, index : U64 })] }), NonZeroExitCode({ command : Str, exit_code : I32, stdout_utf8_lossy : Str, stderr_utf8_lossy : Str }), FailedToGetExitCode({ command : Str, err : IOErr }), ..])
+	exec_output! : Cmd => Try({ stdout_utf8 : Str, stderr_utf8_lossy : Str }, [StdoutContainsInvalidUtf8({ cmd_str : Str, err : [BadUtf8({ problem : _, index : U64 })] }), NonZeroExitCode({ command : Str, exit_code : I32, stdout_utf8_lossy : Str, stderr_utf8_lossy : Str }), FailedToGetExitCode({ command : Str, err : IOErr })])
 	exec_output! = |cmd| {
 		cmd_str = to_str(cmd)
 		exec_try = Host.cmd_exec_output!(to_host_cmd(cmd))
@@ -136,7 +136,7 @@ Cmd :: {
 	##
 	## Stdout.line!("${Str.inspect(cmd_output)}")? # {stderr_bytes: [], stdout_bytes: [72, 105, 10]}
 	## ```
-	exec_output_bytes! : Cmd => Try({ stderr_bytes : List(U8), stdout_bytes : List(U8) }, [NonZeroExitCodeB({ exit_code : I32, stdout_bytes : List(U8), stderr_bytes : List(U8) }), FailedToGetExitCodeB(IOErr), ..])
+	exec_output_bytes! : Cmd => Try({ stderr_bytes : List(U8), stdout_bytes : List(U8) }, [NonZeroExitCodeB({ exit_code : I32, stdout_bytes : List(U8), stderr_bytes : List(U8) }), FailedToGetExitCodeB(IOErr)])
 	exec_output_bytes! = |cmd| {
 		exec_try = Host.cmd_exec_output!(to_host_cmd(cmd))
 
@@ -164,7 +164,7 @@ Cmd :: {
 	## ```roc
 	## exit_code = Cmd.new("cat").arg("non_existent.txt").exec_exit_code!()?
 	## ```
-	exec_exit_code! : Cmd => Try(I32, [FailedToGetExitCode({ command : Str, err : IOErr }), ..])
+	exec_exit_code! : Cmd => Try(I32, [FailedToGetExitCode({ command : Str, err : IOErr })])
 	exec_exit_code! = |cmd| {
 		command = to_str(cmd)
 
