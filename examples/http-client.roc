@@ -87,4 +87,8 @@ reject_invalid_utf8! = || {
 }
 
 write_line! : Str => Try({}, _)
-write_line! = |message| Stdout.line!(message)
+write_line! = |message|
+	match Stdout.line!(message) {
+		Ok(value) => Ok(value)
+		Err(StdoutErr(err)) => Err(StdoutErr(err))
+	}
