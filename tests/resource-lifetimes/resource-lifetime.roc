@@ -52,11 +52,11 @@ read_aliases! = |path, early| {
 	if early {
 		return Err(ExpectedEarlyReturn)
 	}
-	var lines = []
+	var $lines = []
 	for alias in aliases {
-		lines = List.append(lines, File.Reader.read_line!(alias)?)
+		$lines = List.append($lines, File.Reader.read_line!(alias)?)
 	}
-	expect lines == [Str.to_utf8("first\n"), Str.to_utf8("second\n")]
+	expect $lines == [Str.to_utf8("first\n"), Str.to_utf8("second\n")]
 	Ok({})
 }
 

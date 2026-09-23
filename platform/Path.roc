@@ -41,7 +41,7 @@ Path := [
 	## This function does not traverse symbolic links; symbolic links (including
 	## broken ones) return `Bool.False`.
 	## Sockets, FIFOs, devices, and other special filesystem objects also return `Bool.False`.
-	is_file! : Path => Try(Bool, [PathErr(IOErr, Path), ..])
+	is_file! : Path => Try(Bool, [PathErr(IOErr, Path)])
 	is_file! = |path|
 		match type!(path) {
 			Ok(IsFile) => Ok(Bool.True)
@@ -55,7 +55,7 @@ Path := [
 	## This function does not traverse symbolic links; symbolic links (including
 	## broken ones) return `Bool.False`.
 	## Sockets, FIFOs, devices, and other special filesystem objects also return `Bool.False`.
-	is_dir! : Path => Try(Bool, [PathErr(IOErr, Path), ..])
+	is_dir! : Path => Try(Bool, [PathErr(IOErr, Path)])
 	is_dir! = |path|
 		match type!(path) {
 			Ok(IsDir) => Ok(Bool.True)
@@ -69,7 +69,7 @@ Path := [
 	## This function will not traverse symbolic links - it checks whether the path
 	## itself is a symlink.
 	## Sockets, FIFOs, devices, and other special filesystem objects return `Bool.False`.
-	is_sym_link! : Path => Try(Bool, [PathErr(IOErr, Path), ..])
+	is_sym_link! : Path => Try(Bool, [PathErr(IOErr, Path)])
 	is_sym_link! = |path|
 		match type!(path) {
 			Ok(IsSymLink) => Ok(Bool.True)
@@ -79,7 +79,7 @@ Path := [
 		}
 
 	## Returns `True` if the path exists on disk.
-	exists! : Path => Try(Bool, [PathErr(IOErr, Path), ..])
+	exists! : Path => Try(Bool, [PathErr(IOErr, Path)])
 	exists! = |path|
 		match type!(path) {
 			Ok(_) => Ok(Bool.True)
@@ -92,7 +92,7 @@ Path := [
 	## `IsOther` represents sockets, FIFOs, block and character devices, and any
 	## platform-specific object that is not a regular file, directory, or symbolic
 	## link. On Windows this includes unrecognized reparse-point types.
-	type! : Path => Try([IsFile, IsDir, IsSymLink, IsOther], [PathErr(IOErr, Path), ..])
+	type! : Path => Try([IsFile, IsDir, IsSymLink, IsOther], [PathErr(IOErr, Path)])
 	type! = |path| {
 		Host.path_type!(to_raw(path))
 			.map_err(|err| PathErr(err, path))
@@ -100,16 +100,16 @@ Path := [
 	}
 
 	## Make a path absolute without requiring it to exist. This does not resolve symlinks.
-	absolute! : Path => Try(Path, [PathErr(IOErr, Path), ..])
+	absolute! : Path => Try(Path, [PathErr(IOErr, Path)])
 	absolute! = |path| Host.path_absolute!(to_raw(path)).map_ok(from_raw).map_err(|err| PathErr(err, path))
 
 	## Resolve an existing path, including symbolic links, to its absolute native path.
-	canonicalize! : Path => Try(Path, [PathErr(IOErr, Path), ..])
+	canonicalize! : Path => Try(Path, [PathErr(IOErr, Path)])
 	canonicalize! = |path| Host.path_canonicalize!(to_raw(path)).map_ok(from_raw).map_err(|err| PathErr(err, path))
 
 	## Copy a regular file and its permissions, replacing the destination file.
 	## Rejects same-file copies (including hard-link aliases) and special files.
-	copy! : Path, Path => Try({}, [CopyErr({ operation : Str, source : Path, destination : Path, error : IOErr }), ..])
+	copy! : Path, Path => Try({}, [CopyErr({ operation : Str, source : Path, destination : Path, error : IOErr })])
 	copy! = |source, destination|
 		Host.path_copy!(to_raw(source), to_raw(destination)).map_err(copy_error)
 
@@ -117,29 +117,29 @@ Path := [
 	## Missing destination parent directories are created.
 	## Permissions are preserved; timestamps, ownership, ACLs and other metadata are not.
 	## Errors may leave a partial destination. Cycles and overlapping source/destination trees are rejected.
-	copy_dir! : Path, Path => Try({}, [CopyErr({ operation : Str, source : Path, destination : Path, error : IOErr }), ..])
+	copy_dir! : Path, Path => Try({}, [CopyErr({ operation : Str, source : Path, destination : Path, error : IOErr })])
 	copy_dir! = |source, destination| copy_dir_with!(source, destination, { symlinks: Follow, destination: RequireNew })
 
 	## Choose whether to preserve links and whether to merge an existing destination tree.
 	## Merge replaces regular files. Existing destination directory symlinks are rejected.
-	copy_dir_with! : Path, Path, { symlinks : [Follow, Preserve], destination : [RequireNew, Merge] } => Try({}, [CopyErr({ operation : Str, source : Path, destination : Path, error : IOErr }), ..])
+	copy_dir_with! : Path, Path, { symlinks : [Follow, Preserve], destination : [RequireNew, Merge] } => Try({}, [CopyErr({ operation : Str, source : Path, destination : Path, error : IOErr })])
 	copy_dir_with! = |source, destination, options|
 		Host.path_copy_dir!(to_raw(source), to_raw(destination), options).map_err(copy_error)
 
 	## Read all bytes from a file at this path.
-	read_bytes! : Path => Try(List(U8), [PathErr(IOErr, Path), ..])
+	read_bytes! : Path => Try(List(U8), [PathErr(IOErr, Path)])
 	read_bytes! = |path| map_file_result(Host.file_read_bytes!(to_raw(path)), path)
 
 	## Write bytes to a file at this path, replacing any existing contents.
-	write_bytes! : Path, List(U8) => Try({}, [PathErr(IOErr, Path), ..])
+	write_bytes! : Path, List(U8) => Try({}, [PathErr(IOErr, Path)])
 	write_bytes! = |path, bytes| map_file_result(Host.file_write_bytes!(to_raw(path), bytes), path)
 
 	## Read a UTF-8 file at this path.
-	read_utf8! : Path => Try(Str, [PathErr(IOErr, Path), ..])
+	read_utf8! : Path => Try(Str, [PathErr(IOErr, Path)])
 	read_utf8! = |path| map_file_result(Host.file_read_utf8!(to_raw(path)), path)
 
 	## Write a UTF-8 file at this path, replacing any existing contents.
-	write_utf8! : Path, Str => Try({}, [PathErr(IOErr, Path), ..])
+	write_utf8! : Path, Str => Try({}, [PathErr(IOErr, Path)])
 	write_utf8! = |path, content| map_file_result(Host.file_write_utf8!(to_raw(path), content), path)
 
 	## Replace every occurrence of `pattern` with `replacement` in the UTF-8 file
@@ -148,49 +148,49 @@ Path := [
 	## This reads the whole file, substitutes, and writes it back, so it is not
 	## atomic: a failure mid-write can leave the file partially written, exactly
 	## as a bare [write_utf8!] would.
-	replace_utf8! : Path, Str, Str => Try({}, [PathErr(IOErr, Path), ..])
+	replace_utf8! : Path, Str, Str => Try({}, [PathErr(IOErr, Path)])
 	replace_utf8! = |path, pattern, replacement| {
 		content = read_utf8!(path)?
 		write_utf8!(path, Str.replace_each(content, pattern, replacement))
 	}
 
 	## Delete a file at this path.
-	delete! : Path => Try({}, [PathErr(IOErr, Path), ..])
+	delete! : Path => Try({}, [PathErr(IOErr, Path)])
 	delete! = |path| map_file_result(Host.file_delete!(to_raw(path)), path)
 
 	## Return the size of the file at this path in bytes.
-	size_in_bytes! : Path => Try(U64, [PathErr(IOErr, Path), ..])
+	size_in_bytes! : Path => Try(U64, [PathErr(IOErr, Path)])
 	size_in_bytes! = |path| map_file_result(Host.file_size_in_bytes!(to_raw(path)), path)
 
 	## Check whether the file at this path has any executable bit set.
-	is_executable! : Path => Try(Bool, [PathErr(IOErr, Path), ..])
+	is_executable! : Path => Try(Bool, [PathErr(IOErr, Path)])
 	is_executable! = |path| map_file_result(Host.file_is_executable!(to_raw(path)), path)
 
 	## Check whether the file at this path has a readable owner permission bit set.
-	is_readable! : Path => Try(Bool, [PathErr(IOErr, Path), ..])
+	is_readable! : Path => Try(Bool, [PathErr(IOErr, Path)])
 	is_readable! = |path| map_file_result(Host.file_is_readable!(to_raw(path)), path)
 
 	## Check whether the file at this path has a writable owner permission bit set.
-	is_writable! : Path => Try(Bool, [PathErr(IOErr, Path), ..])
+	is_writable! : Path => Try(Bool, [PathErr(IOErr, Path)])
 	is_writable! = |path| map_file_result(Host.file_is_writable!(to_raw(path)), path)
 
 	## Return the last accessed time as nanoseconds since the Unix epoch.
-	time_accessed! : Path => Try(U128, [PathErr(IOErr, Path), ..])
+	time_accessed! : Path => Try(U128, [PathErr(IOErr, Path)])
 	time_accessed! = |path| map_file_result(Host.file_time_accessed!(to_raw(path)), path)
 
 	## Return the last modified time as nanoseconds since the Unix epoch.
-	time_modified! : Path => Try(U128, [PathErr(IOErr, Path), ..])
+	time_modified! : Path => Try(U128, [PathErr(IOErr, Path)])
 	time_modified! = |path| map_file_result(Host.file_time_modified!(to_raw(path)), path)
 
 	## Return the creation time as nanoseconds since the Unix epoch.
-	time_created! : Path => Try(U128, [PathErr(IOErr, Path), ..])
+	time_created! : Path => Try(U128, [PathErr(IOErr, Path)])
 	time_created! = |path| map_file_result(Host.file_time_created!(to_raw(path)), path)
 
 	## Create a hard link at `link` pointing to `original`.
 	##
 	## Errors report `original`, which is what a missing-file failure refers to.
 	## Some failures concern `link` instead, such as `AlreadyExists`.
-	hard_link! : Path, Path => Try({}, [PathErr(IOErr, Path), ..])
+	hard_link! : Path, Path => Try({}, [PathErr(IOErr, Path)])
 	hard_link! = |original, link|
 		map_file_result(Host.file_hard_link!(to_raw(original), to_raw(link)), original)
 
@@ -198,28 +198,28 @@ Path := [
 	##
 	## Errors report `from`; a failure may still concern `to`, such as its
 	## parent directory not existing.
-	rename! : Path, Path => Try({}, [PathErr(IOErr, Path), ..])
+	rename! : Path, Path => Try({}, [PathErr(IOErr, Path)])
 	rename! = |from, to|
 		map_file_result(Host.file_rename!(to_raw(from), to_raw(to)), from)
 
 	## Create a directory at this path.
-	create_dir! : Path => Try({}, [PathErr(IOErr, Path), ..])
+	create_dir! : Path => Try({}, [PathErr(IOErr, Path)])
 	create_dir! = |path| map_dir_result(Host.dir_create!(to_raw(path)), path)
 
 	## Create a directory and any missing parent directories at this path.
-	create_all! : Path => Try({}, [PathErr(IOErr, Path), ..])
+	create_all! : Path => Try({}, [PathErr(IOErr, Path)])
 	create_all! = |path| map_dir_result(Host.dir_create_all!(to_raw(path)), path)
 
 	## Delete an empty directory at this path.
-	delete_empty! : Path => Try({}, [PathErr(IOErr, Path), ..])
+	delete_empty! : Path => Try({}, [PathErr(IOErr, Path)])
 	delete_empty! = |path| map_dir_result(Host.dir_delete_empty!(to_raw(path)), path)
 
 	## Delete a directory and all contents at this path.
-	delete_all! : Path => Try({}, [PathErr(IOErr, Path), ..])
+	delete_all! : Path => Try({}, [PathErr(IOErr, Path)])
 	delete_all! = |path| map_dir_result(Host.dir_delete_all!(to_raw(path)), path)
 
 	## List the entries in the directory at this path.
-	list! : Path => Try(List(Path), [PathErr(IOErr, Path), ..])
+	list! : Path => Try(List(Path), [PathErr(IOErr, Path)])
 	list! = |path|
 		match Host.dir_list!(to_raw(path)) {
 			Ok(paths) => Ok(paths.map(from_raw))
@@ -262,7 +262,7 @@ Path := [
 	windows_u16s = |list| Windows(list)
 
 	## Convert a path to a string if its raw representation is valid text.
-	to_str : Path -> Try(Str, [InvalidStr(U64), ..])
+	to_str : Path -> Try(Str, [InvalidStr(U64)])
 	to_str = |path|
 		match path {
 			Utf8(str) => Ok(str)
@@ -398,14 +398,14 @@ Path := [
 		}
 }
 
-map_file_result : Try(a, [FileErr(IOErr)]), Path -> Try(a, [PathErr(IOErr, Path), ..])
+map_file_result : Try(a, [FileErr(IOErr)]), Path -> Try(a, [PathErr(IOErr, Path)])
 map_file_result = |result, path|
 	match result {
 		Ok(value) => Ok(value)
 		Err(FileErr(err)) => Err(PathErr(err, path))
 	}
 
-map_dir_result : Try(a, [DirErr(IOErr)]), Path -> Try(a, [PathErr(IOErr, Path), ..])
+map_dir_result : Try(a, [DirErr(IOErr)]), Path -> Try(a, [PathErr(IOErr, Path)])
 map_dir_result = |result, path|
 	match result {
 		Ok(value) => Ok(value)
@@ -468,7 +468,7 @@ utf8_to_utf16 = |remaining, out|
 		}
 	}
 
-utf16_to_str : List(U16) -> Try(Str, [InvalidStr(U64), ..])
+utf16_to_str : List(U16) -> Try(Str, [InvalidStr(U64)])
 utf16_to_str = |u16s|
 	match utf16_to_utf8(u16s, [], 0) {
 		Ok(bytes) =>
@@ -768,5 +768,5 @@ expect {
 	}
 }
 
-copy_error : Host.CopyFailure -> [CopyErr({ operation : Str, source : Path, destination : Path, error : IOErr }), ..]
+copy_error : Host.CopyFailure -> [CopyErr({ operation : Str, source : Path, destination : Path, error : IOErr })]
 copy_error = |failure| CopyErr({ operation: failure.operation, source: Path.from_raw(failure.source), destination: Path.from_raw(failure.destination), error: failure.error })
