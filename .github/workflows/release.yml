@@ -365,7 +365,31 @@ jobs:
         with:
           name: platform-docs
 
-      - name: Make release notes
+      - name: Select release notes
+        id: release-notes
+        env:
+          RELEASE_VERSION: ${{ needs.build.outputs.release_version }}
+        run: |
+          if [[ -f "docs/releases/${RELEASE_VERSION}.md" ]]; then
+            echo "custom=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "custom=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Use repository release notes
+        if: steps.release-notes.outputs.custom == 'true'
+        uses: roc-lang/release-package/actions/make-release-notes@af2f0cd8662874b825ff3917f4286e793ba18c55
+        with:
+          release_version: ${{ needs.build.outputs.release_version }}
+          release_notes_command: >-
+            python3 scripts/render_release_notes.py
+            "docs/releases/${RELEASE_VERSION}.md" "$RELEASE_NOTES_PATH"
+            --repo "$GITHUB_REPOSITORY"
+            --version "$RELEASE_VERSION"
+            --bundles "$RELEASE_BUNDLES_PATH"
+
+      - name: Generate release notes
+        if: steps.release-notes.outputs.custom != 'true'
         uses: roc-lang/release-package/actions/make-release-notes@af2f0cd8662874b825ff3917f4286e793ba18c55
         with:
           release_version: ${{ needs.build.outputs.release_version }}
