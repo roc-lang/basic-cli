@@ -151,15 +151,19 @@ Sqlite :: [].{
 	## Execute a SQL query and decode exactly one row into a value. `bindings`
 	## is a `List(Binding)` and `row` is a decoder built from the functions below.
 	query! = |{ path, query: q, bindings, row }| {
-		stmt = prepare!({ path, query: q })?
-		stmt.query!(bindings, row)
+		match prepare!({ path, query: q }) {
+			Err(e) => Err(e)
+			Ok(stmt) => stmt.query!(bindings, row)
+		}
 	}
 
 	## Execute a SQL query and decode multiple rows into a list of values.
 	## `bindings` is a `List(Binding)` and `rows` is a row decoder.
 	query_many! = |{ path, query: q, bindings, rows }| {
-		stmt = prepare!({ path, query: q })?
-		stmt.query_many!(bindings, rows)
+		match prepare!({ path, query: q }) {
+			Err(e) => Err(e)
+			Ok(stmt) => stmt.query_many!(bindings, rows)
+		}
 	}
 
 	# ---- Row decoding combinators ----------------------------------------------
@@ -393,13 +397,15 @@ decode_rows! = |stmt, gen_decode| {
 	cols = sqlite_columns!(stmt)
 	decode_row! = gen_decode(cols)
 	helper! = |out|
-		match sqlite_step!(stmt)? {
-			Done => Ok(out)
-			Row => {
-				row = decode_row!(stmt)?
-				helper!(out.append(row))
+		match sqlite_step!(stmt) {
+			Err(e) => Err(e)
+			Ok(Done) => Ok(out)
+			Ok(Row) =>
+				match decode_row!(stmt) {
+					Err(e) => Err(e)
+					Ok(row) => helper!(out.append(row))
+				}
 			}
-		}
 	helper!([])
 }
 
