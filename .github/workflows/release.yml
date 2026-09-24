@@ -114,7 +114,7 @@ jobs:
         uses: roc-lang/setup-roc@bd311e2fb815a3d2255f7ee14a922f0b736e020b
         with:
           version: nightly-new-compiler
-          nightly-tag: nightly-2026-09-22-e494788
+          nightly-tag: nightly-2026-09-23-c7852fd
 
       - name: Install Zig
         uses: mlugg/setup-zig@8d6198c65fb0feaa111df26e6b467fea8345e46f
@@ -215,7 +215,7 @@ jobs:
         uses: roc-lang/setup-roc@bd311e2fb815a3d2255f7ee14a922f0b736e020b
         with:
           version: nightly-new-compiler
-          nightly-tag: nightly-2026-09-22-e494788
+          nightly-tag: nightly-2026-09-23-c7852fd
 
       - name: Install Rust
         shell: bash
@@ -260,7 +260,7 @@ jobs:
         uses: roc-lang/setup-roc@bd311e2fb815a3d2255f7ee14a922f0b736e020b
         with:
           version: nightly-new-compiler
-          nightly-tag: nightly-2026-09-22-e494788
+          nightly-tag: nightly-2026-09-23-c7852fd
 
       - name: Create docs staging tree
         run: mkdir -p docs-site
@@ -432,7 +432,7 @@ jobs:
         uses: roc-lang/setup-roc@bd311e2fb815a3d2255f7ee14a922f0b736e020b
         with:
           version: nightly-new-compiler
-          nightly-tag: nightly-2026-09-22-e494788
+          nightly-tag: nightly-2026-09-23-c7852fd
 
       - name: Download release metadata
         uses: actions/download-artifact@v8
