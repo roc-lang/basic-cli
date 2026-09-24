@@ -42,11 +42,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1788608813,
-        "narHash": "sha256-ycPYsax6QTQIisQGZHZ+i6mJm6pav35mccWA7MuwGnc=",
+        "lastModified": 1790217927,
+        "narHash": "sha256-fhatlsqelliHOfoT723TYQb8DzxSn698DpobgiARHIM=",
         "owner": "roc-lang",
         "repo": "roc-overlay",
-        "rev": "686a4300d9a5e302582aa105de1335010ad1340d",
+        "rev": "06198bdac7c2a171c93d0a6f0ddeea562867ee1e",
         "type": "github"
       },
       "original": {
