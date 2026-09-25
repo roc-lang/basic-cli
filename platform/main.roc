@@ -103,6 +103,10 @@ platform ""
 		"hosted_tcp_accept": Host.tcp_accept!,
 		"hosted_tcp_listener_close": Host.tcp_listener_close!,
 		"hosted_env_program_name": Host.env_program_name!,
+		"hosted_file_read_up_to": Host.file_read_up_to!,
+		"hosted_file_read_exactly": Host.file_read_exactly!,
+		"hosted_file_reader_position": Host.file_reader_position!,
+		"hosted_file_reader_seek": Host.file_reader_seek!,
 	}
 	targets: {
 		inputs_dir: "targets/",
