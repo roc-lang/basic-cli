@@ -48,7 +48,7 @@ def main() -> None:
         shutil.copy2(source, inputs / name)
     run("cargo", "build", "--locked", "--lib", "--target", "x86_64-unknown-linux-gnu")
     shutil.copy2(ROOT / "target/x86_64-unknown-linux-gnu/debug/libhost.a", inputs / "libhost.a")
-    for name in ("filesystem-tools", "resource-lifetime", "process-control", "binary-file-reader"):
+    for name in ("filesystem-tools", "resource-lifetime", "process-control", "binary-file-reader", "binary-file-chunks"):
         source = (ROOT / "tests" / "resource-lifetimes" / f"{name}.roc").read_text()
         source, replacements = re.subn(r'platform "[^"]+"', 'platform "platform/main.roc"', source, count=1)
         if replacements != 1:

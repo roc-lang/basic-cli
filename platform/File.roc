@@ -62,6 +62,42 @@ File :: [].{
 		seek! = |reader, from|
 			Host.file_reader_seek!(reader.host, from)
 				.map_err(|FileErr(err)| FileErr(err))
+
+		## Lazily read nonempty chunks of at most `max_bytes` from this reader.
+		## Zero is rejected immediately with InvalidChunkSize. Construction does
+		## no I/O; each pull reads from the current shared cursor. Chunk boundaries
+		## do not correspond to records, newlines, or text encoding boundaries.
+		## EOF ends the stream; a read error yields one Err item, then ends.
+		## Follow the returned continuation when pulling. To resume after EOF
+		## and a seek, create a new stream. Retained chunks remain valid.
+		## The stream keeps the file open while it retains a reader. Its terminal
+		## continuation holds no reader. Process chunks individually to bound memory;
+		## Stream.collect! accumulates every chunk and does not propagate Err items.
+		chunks : Reader, U64 -> Try(Stream(Try(List(U8), [FileErr(IOErr)])), [InvalidChunkSize])
+		chunks = |reader, max_bytes|
+			if max_bytes == 0 {
+				Err(InvalidChunkSize)
+			} else {
+				# TODO(https://github.com/roc-lang/roc/issues/11691): requires Stream.custom.
+				# Keep the reader in the state, not the callback capture, so Finished
+				# can release it even when the terminal continuation is retained.
+				Ok(
+					Stream.custom(
+						Reading(reader),
+						Unknown,
+						|state|
+							match state {
+								Finished => Err(NoMore)
+								Reading(current) =>
+									match read_up_to!(current, max_bytes) {
+										Ok(bytes) if bytes.is_empty() => Err(NoMore)
+										Ok(bytes) => Ok((Ok(bytes), Reading(current)))
+										Err(FileErr(err)) => Ok((Err(FileErr(err)), Finished))
+									}
+								},
+					),
+				)
+			}
 	}
 
 	## Open a file for buffered reading using the default buffer capacity.
