@@ -159,4 +159,9 @@ Host :: [].{
 	tcp_listener_close! : TcpListener => Try({}, Str)
 
 	env_program_name! : () => Try(NativeOsStr, [ProgramNameUnavailable])
+
+	file_read_up_to! : FileReader, U64 => Try(List(U8), [FileErr(IOErr)])
+	file_read_exactly! : FileReader, U64 => Try(List(U8), [FileErr(IOErr), FileUnexpectedEOF])
+	file_reader_position! : FileReader => Try(U64, [FileErr(IOErr)])
+	file_reader_seek! : FileReader, [Start(U64), Current(I64), End(I64)] => Try(U64, [FileErr(IOErr)])
 }
