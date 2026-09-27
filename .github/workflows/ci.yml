@@ -39,13 +39,13 @@ jobs:
       - uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
-          nightly-tag: nightly-2026-09-23-c7852fd
+          nightly-tag: nightly-2026-09-26-d6267b4
       - name: Install Rust toolchain
         run: |
           rustup toolchain install "${{ needs.rust-version.outputs.version }}" --profile minimal --target x86_64-unknown-linux-musl --component llvm-tools-preview
           rustup default "${{ needs.rust-version.outputs.version }}"
-      - name: Test release version validation
-        run: python3 -m unittest scripts/test_check_release_version.py
+      - name: Test release tooling
+        run: python3 -m unittest scripts/test_check_release_version.py scripts/test_check_version_bump.py scripts/test_update_nix_release.py
       - name: Format, check, and test examples
         run: ./scripts/test.py --operation validate
       - name: Check native resource ownership with glibc and Valgrind
@@ -53,6 +53,20 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes valgrind
           python3 scripts/test_resource_lifetimes.py
+
+  nix:
+    name: Nix release consumer (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-26]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+      - name: Build and run an application against the pinned release
+        run: nix flake check --print-build-logs
 
   validate-windows:
     name: validate sources (windows)
@@ -63,7 +77,7 @@ jobs:
       - uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
-          nightly-tag: nightly-2026-09-23-c7852fd
+          nightly-tag: nightly-2026-09-26-d6267b4
       - name: Install Rust toolchain
         shell: bash
         run: |
@@ -108,7 +122,7 @@ jobs:
       - uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
-          nightly-tag: nightly-2026-09-23-c7852fd
+          nightly-tag: nightly-2026-09-26-d6267b4
       - name: Install Rust toolchain
         shell: bash
         run: |

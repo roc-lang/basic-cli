@@ -1,5 +1,5 @@
 {
-  description = "basic-cli development environment";
+  description = "basic-cli release platform and development environment";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -59,9 +59,13 @@
             rust-overlay.overlays.default
           ];
         };
+      releaseFor = system: import ./nix/release.nix { pkgs = pkgsFor system; };
     in
     {
       formatter = forAllSystems (system: (pkgsFor system).nixfmt);
+
+      packages = forAllSystems (system: (releaseFor system).packages);
+      checks = forAllSystems (system: (releaseFor system).checks);
 
       devShells = forAllSystems (
         system:
@@ -75,7 +79,7 @@
           default = pkgs.mkShell {
             packages = [
               # Keep in sync with the nightly pinned in .github/workflows.
-              pkgs.rocpkgs."nightly-2026-09-23-c7852fd"
+              pkgs.rocpkgs."nightly-2026-09-26-d6267b4"
               pkgs.python3
               rustToolchain
               pkgs.simple-http-server

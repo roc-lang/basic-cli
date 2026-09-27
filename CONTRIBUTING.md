@@ -77,6 +77,21 @@ drift independently. When updating the nightly pin in the workflows:
 
 ## Verification
 
+For changes to the Nix release outputs, run `nix flake check`. This builds and
+runs an application against the pinned published platform inside the Nix sandbox;
+see [the Nix consumer documentation](nix/README.md).
+
+Release-tooling regression tests run with:
+
+```sh
+python3 -m unittest scripts/test_check_release_version.py scripts/test_check_version_bump.py scripts/test_update_nix_release.py
+```
+
+The release workflow bounds `roc bump` to 120 seconds and saves its output in
+`.release/bump-output.txt`. It currently warns on comparison errors and timeouts:
+the compiler still rejects the public `InternalHttp.TransportErr` alias in the
+0.22.2 predecessor. Switch to `--mode require` once that comparison works.
+
 Run the full local check before opening release or CI-facing changes:
 
 ```sh

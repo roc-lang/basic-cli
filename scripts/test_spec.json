@@ -145,6 +145,59 @@
       ]
     },
     {
+      "path": "examples/file-read-binary.roc",
+      "cases": [
+        {
+          "name": "empty",
+          "args": [
+            "{root}/tests/fixtures/binary-reader/empty.bin"
+          ],
+          "stdout_contains": [
+            "Header bytes: []",
+            "Read 0 bytes"
+          ]
+        },
+        {
+          "name": "short",
+          "args": [
+            "{root}/tests/fixtures/binary-reader/short.bin"
+          ],
+          "stdout_contains": [
+            "Header bytes: [0, 255, 128, 10, 1, 2, 3, 4]",
+            "Read 8 bytes"
+          ]
+        },
+        {
+          "name": "multi-chunk",
+          "args": [
+            "{root}/tests/fixtures/binary-reader/multi-chunk.bin"
+          ],
+          "stdout_contains": [
+            "Header bytes: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]",
+            "Read 65543 bytes"
+          ]
+        },
+        {
+          "name": "missing-argument",
+          "exit_code": 1,
+          "contains": [
+            "MissingPathArgument"
+          ]
+        },
+        {
+          "name": "missing-file",
+          "args": [
+            "missing.bin"
+          ],
+          "temp_cwd": true,
+          "exit_code": 1,
+          "contains": [
+            "PathErr(NotFound, Path."
+          ]
+        }
+      ]
+    },
+    {
       "path": "examples/file-read-buffered.roc",
       "cases": [
         {

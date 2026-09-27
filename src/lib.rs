@@ -18,6 +18,7 @@ mod http;
 mod roc_platform_abi;
 mod resources;
 mod filesystem;
+mod file_reader;
 mod process_service;
 mod sqlite;
 mod tcp;
@@ -1514,6 +1515,83 @@ pub extern "C" fn hosted_file_read_line(handle: *mut u64) -> FileReaderLineResul
         }
     };
     release_file_reader(handle, roc_host);
+    result
+}
+
+#[no_mangle]
+pub extern "C" fn hosted_file_read_up_to(handle: *mut u64, count: u64) -> HostFileReadUpToResult {
+    let host = roc_host();
+    let result = match file_reader::read_up_to(unsafe { file_reader_ref(handle) }, count) {
+        Ok(bytes) => try_file_bytes_ok(roc_u8_list_from_slice(&bytes, host)),
+        Err(error) => try_file_bytes_err(file_io_err_from_io(&error, host)),
+    };
+    release_file_reader(handle, host);
+    result
+}
+
+#[no_mangle]
+pub extern "C" fn hosted_file_read_exactly(handle: *mut u64, count: u64) -> HostFileReadExactlyResult {
+    let host = roc_host();
+    let result = match file_reader::read_exactly(unsafe { file_reader_ref(handle) }, count) {
+        Ok(bytes) => HostFileReadExactlyResult {
+            tag: HostFileReadExactlyResultTag::Ok,
+            payload: HostFileReadExactlyResultPayload {
+                ok: ManuallyDrop::new(roc_u8_list_from_slice(&bytes, host)),
+            },
+        },
+        Err(error) => {
+            let error = if error.kind() == io::ErrorKind::UnexpectedEof {
+                FileErrOrFileUnexpectedEOF {
+                    tag: FileErrOrFileUnexpectedEOFTag::FileUnexpectedEOF,
+                    payload: FileErrOrFileUnexpectedEOFPayload { file_unexpected_eof: [] },
+                }
+            } else {
+                FileErrOrFileUnexpectedEOF {
+                    tag: FileErrOrFileUnexpectedEOFTag::FileErr,
+                    payload: FileErrOrFileUnexpectedEOFPayload {
+                        file_err: ManuallyDrop::new(file_io_err_from_io(&error, host)),
+                    },
+                }
+            };
+            HostFileReadExactlyResult {
+                tag: HostFileReadExactlyResultTag::Err,
+                payload: HostFileReadExactlyResultPayload { err: ManuallyDrop::new(error) },
+            }
+        }
+    };
+    release_file_reader(handle, host);
+    result
+}
+
+#[no_mangle]
+pub extern "C" fn hosted_file_reader_position(handle: *mut u64) -> HostFileReaderPositionResult {
+    let host = roc_host();
+    let result = match file_reader::position(unsafe { file_reader_ref(handle) }) {
+        Ok(position) => try_file_size_ok(position),
+        Err(error) => try_file_size_err(file_io_err_from_io(&error, host)),
+    };
+    release_file_reader(handle, host);
+    result
+}
+
+#[no_mangle]
+pub extern "C" fn hosted_file_reader_seek(
+    handle: *mut u64,
+    from: CurrentOrEndOrStart,
+) -> HostFileReaderSeekResult {
+    let host = roc_host();
+    let from = unsafe {
+        match from.tag {
+            CurrentOrEndOrStartTag::Start => io::SeekFrom::Start(*from.payload.start),
+            CurrentOrEndOrStartTag::Current => io::SeekFrom::Current(*from.payload.current),
+            CurrentOrEndOrStartTag::End => io::SeekFrom::End(*from.payload.end),
+        }
+    };
+    let result = match file_reader::seek(unsafe { file_reader_ref(handle) }, from) {
+        Ok(position) => try_file_size_ok(position),
+        Err(error) => try_file_size_err(file_io_err_from_io(&error, host)),
+    };
+    release_file_reader(handle, host);
     result
 }
 

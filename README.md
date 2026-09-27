@@ -71,6 +71,20 @@ HTTP examples use Roc's builtin `Json` parser and encoder directly through
 - [`0.21.0-rc4` release documentation](https://roc-lang.github.io/basic-cli/0.21.0-rc4/)
 - [latest main branch](https://roc-lang.github.io/basic-cli/main/)
 
+## Nix
+
+Fetch the pinned published platform without rebuilding its Rust hosts:
+
+```sh
+nix build github:roc-lang/basic-cli#platform  # result/main.roc and result/targets/
+nix build github:roc-lang/basic-cli#bundle    # result is the original release archive
+```
+
+The default package is `platform`. These outputs provide the release recorded in
+[`nix/release.json`](nix/release.json), rather than the current checkout's platform
+sources. The flake also provides the compiler and dependency pins needed to build
+applications offline; see the [downstream application example](nix/README.md).
+
 ## Help
 
 Ask questions on [Roc Zulip](https://roc.zulipchat.com), especially in the `#beginners` stream.
