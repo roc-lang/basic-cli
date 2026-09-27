@@ -1,4 +1,3 @@
-## TODO(https://github.com/roc-lang/roc/issues/11691): requires Stream.custom.
 ## Check lazy pulls, terminal errors, shared cursors, and stream-owned handles.
 app [main!] { pf: platform "../../platform/main.roc" }
 

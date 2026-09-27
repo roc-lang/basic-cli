@@ -78,7 +78,6 @@ File :: [].{
 			if max_bytes == 0 {
 				Err(InvalidChunkSize)
 			} else {
-				# TODO(https://github.com/roc-lang/roc/issues/11691): requires Stream.custom.
 				# Keep the reader in the state, not the callback capture, so Finished
 				# can release it even when the terminal continuation is retained.
 				Ok(

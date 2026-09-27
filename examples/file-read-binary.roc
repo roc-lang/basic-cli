@@ -1,5 +1,4 @@
 ## Count binary file bytes in bounded chunks after inspecting its header.
-## TODO(https://github.com/roc-lang/roc/issues/11691): enable when Stream.custom is available.
 app [main!] { pf: platform "../platform/main.roc" }
 
 import pf.File

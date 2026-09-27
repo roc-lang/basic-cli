@@ -75,7 +75,7 @@
           default = pkgs.mkShell {
             packages = [
               # Keep in sync with the nightly pinned in .github/workflows.
-              pkgs.rocpkgs."nightly-2026-09-23-c7852fd"
+              pkgs.rocpkgs."nightly-2026-09-26-d6267b4"
               pkgs.python3
               rustToolchain
               pkgs.simple-http-server
