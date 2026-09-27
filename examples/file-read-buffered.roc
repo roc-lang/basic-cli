@@ -3,7 +3,7 @@
 ## This can be useful to process large files without using a lot of RAM or
 ## requiring the user to wait until the complete file is processed when they
 ## only wanted to look at the first page.
-app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.23.0-rc1/3hT3SoHZ6qbEsa9qVFLUW3547U5LeoNd1KbpqLpz4r1i.tar.zst" }
+app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.23.0/GNN5tt2gKdX4dhawg4915C4YB193woHFdcCkz31fhGxv.tar.zst" }
 
 import pf.OsStr
 import pf.Stdout
