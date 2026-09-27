@@ -1,0 +1,11 @@
+{
+  "version": "0.22.2",
+  "url": "https://github.com/roc-lang/basic-cli/releases/download/0.22.2/9zUBxb1LtXYVc4eR4hAtd1WQDwBYDhM6HQdZz1UFCm2m.tar.zst",
+  "hash": "sha256-5WQ6EAPmGN1R3Y0NSZC1S670PWv5vt22jSQDfsLvEtg=",
+  "dependencies": {
+    "http": {
+      "url": "https://github.com/roc-lang/http/releases/download/1.0.0/6ZUwqYhCS8PU9Mo6MF7oV82ET2o7KYb57CLKDq4cq4sS.tar.zst",
+      "hash": "sha256-6e+qlQ5y9vds326vAEJFcvppsEumEnMjV6wEU2ePArQ="
+    }
+  }
+}
