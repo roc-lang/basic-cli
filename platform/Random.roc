@@ -1,4 +1,4 @@
-import IOErr exposing [IOErr]
+import IOErr
 import Host
 
 ## Obtain random seed values from the operating system's entropy source.

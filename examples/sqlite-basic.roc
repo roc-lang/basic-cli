@@ -50,7 +50,7 @@ print_line! : Str => Try({}, _)
 print_line! = |line| Stdout.line!(line)
 
 query_todos_by_status! = |db_path, status|
-# `many` when you expect multiple rows to be returned.
+	# `many` when you expect multiple rows to be returned.
 	Sqlite.query_many!({
 		path: db_path,
 		query: "SELECT id, task, status FROM todos WHERE status = :status;",

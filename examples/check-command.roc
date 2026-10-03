@@ -13,7 +13,6 @@ report! = |name| {
 
 main! : List(OsStr) => Try({}, _)
 main! = |_args| {
-
 	# A command found on the PATH.
 	report!("sh")?
 

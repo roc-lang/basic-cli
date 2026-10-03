@@ -13,7 +13,6 @@ main! = |args| {
 
 	match args {
 		[first_arg, ..] => {
-
 			Stdout.line!("received argument: ${OsStr.display(first_arg)}")?
 
 			match OsStr.to_raw(first_arg) {

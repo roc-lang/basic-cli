@@ -12,7 +12,6 @@ import pf.Path
 
 main! : List(OsStr) => Try({}, _)
 main! = |_args| {
-
 	reader : File.Reader
 	reader = File.open_reader!("LICENSE")?
 

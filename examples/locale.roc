@@ -7,7 +7,6 @@ import pf.Locale
 
 main! : List(OsStr) => Try({}, _)
 main! = |_args| {
-
 	example_locale : Locale
 	example_locale = "en-US"
 

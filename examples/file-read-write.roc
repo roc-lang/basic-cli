@@ -7,7 +7,6 @@ import pf.Path
 
 main! : List(OsStr) => Try({}, _)
 main! = |_args| {
-
 	out_file : Path
 	out_file = "out.txt"
 

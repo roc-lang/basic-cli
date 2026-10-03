@@ -8,7 +8,6 @@ import pf.Path
 
 main! : List(OsStr) => Try({}, _)
 main! = |_args| {
-
 	file_name : Path
 	file_name = "test-file.txt"
 

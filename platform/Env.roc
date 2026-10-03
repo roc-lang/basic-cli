@@ -1,6 +1,6 @@
 import Host
-import IOErr exposing [IOErr]
-import OsStr exposing [OsStr]
+import IOErr
+import OsStr
 import Path
 
 ## Read and modify the process environment without losing native OS strings.

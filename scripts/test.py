@@ -140,7 +140,7 @@ def stage_enabled(defaults: dict[str, bool], app: dict[str, object], stage: str)
 
 def create_bundle() -> Path:
     result = subprocess.run(
-        [sys.executable, str(ROOT / "scripts" / "bundle.py")],
+        [sys.executable, str(ROOT / "scripts" / "bundle.py"), "--stub-missing-targets"],
         cwd=ROOT,
         text=True,
         stdout=subprocess.PIPE,
