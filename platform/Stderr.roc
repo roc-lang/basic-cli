@@ -1,4 +1,4 @@
-import IOErr exposing [IOErr]
+import IOErr
 import Host
 
 ## Write text or raw bytes to the process's standard error stream.

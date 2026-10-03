@@ -6,7 +6,6 @@ import pf.Stdout
 
 main! : List(OsStr) => Try({}, _)
 main! = |args| {
-
 	name : Str
 	name = greeting_name(args)
 

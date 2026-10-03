@@ -1,7 +1,7 @@
 ## Fetch UTF-8, JSON, and HTML responses from a local HTTP server.
 app [main!] {
-	pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.23.0/GNN5tt2gKdX4dhawg4915C4YB193woHFdcCkz31fhGxv.tar.zst",
 	http: "https://github.com/roc-lang/http/releases/download/1.0.0/6ZUwqYhCS8PU9Mo6MF7oV82ET2o7KYb57CLKDq4cq4sS.tar.zst",
+	pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.23.0/GNN5tt2gKdX4dhawg4915C4YB193woHFdcCkz31fhGxv.tar.zst",
 }
 
 import pf.OsStr
@@ -11,7 +11,6 @@ import http.Request
 
 main! : List(OsStr) => Try({}, _)
 main! = |_args| {
-
 	hello_str = Http.get_utf8!("http://127.0.0.1:9000/utf8test") ? |err| GetUtf8Failed(err)
 	Stdout.line!("I received '${hello_str}' from the server.")?
 

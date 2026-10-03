@@ -13,7 +13,6 @@ import pf.Stdin
 # then run this example.
 main! : List(OsStr) => Try({}, _)
 main! = |_args| {
-
 	stream : Tcp.Stream
 	stream = Tcp.connect!("127.0.0.1", 8085, 1_000) ? |err| ConnectFailed(err)
 

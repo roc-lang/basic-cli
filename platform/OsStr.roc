@@ -100,7 +100,7 @@ OsStr := [
 					Ok(str) => "OsStr.windows(${Json.to_str(str)})"
 					Err(_) => "OsStr.windows_u16s(${Str.inspect(u16s)})"
 				}
-			}
+		}
 
 	## Compare OS strings by their exact tagged representation.
 	is_eq : OsStr, OsStr -> Bool
@@ -195,7 +195,7 @@ utf16_to_utf8 = |remaining, out, index|
 		[unit, ..] if is_surrogate(unit) => Err(InvalidUtf16(index))
 		[unit, .. as rest] =>
 			utf16_to_utf8(rest, append_code_point_utf8(out, U16.to_u32(unit)), index + 1)
-		}
+	}
 
 utf16_to_utf8_lossy : List(U16) -> List(U8)
 utf16_to_utf8_lossy = |u16s| utf16_to_utf8_lossy_help(u16s, [])
@@ -214,7 +214,7 @@ utf16_to_utf8_lossy_help = |remaining, out|
 			utf16_to_utf8_lossy_help(rest, append_code_point_utf8(out, 0xFFFD))
 		[unit, .. as rest] =>
 			utf16_to_utf8_lossy_help(rest, append_code_point_utf8(out, U16.to_u32(unit)))
-		}
+	}
 
 append_code_point_utf8 : List(U8), U32 -> List(U8)
 append_code_point_utf8 = |out, code_point|

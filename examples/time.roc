@@ -8,7 +8,6 @@ import pf.Sleep
 
 main! : List(OsStr) => Try({}, _)
 main! = |_args| {
-
 	start : U128
 	start = Utc.now!()
 

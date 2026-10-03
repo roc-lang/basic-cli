@@ -23,7 +23,6 @@ main! = |_args| run!()
 
 run! : () => Try({}, _)
 run! = || {
-
 	# Read from environment variable, or use default
 	db_path = match Env.var!("DB_PATH") {
 		Ok(p) => Path.from_os_str(p)
