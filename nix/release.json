@@ -1,6 +1,6 @@
 {
   "version": "0.23.0",
-  "url": "../platform/main.roc",
+  "url": "https://github.com/roc-lang/basic-cli/releases/download/0.23.0/GNN5tt2gKdX4dhawg4915C4YB193woHFdcCkz31fhGxv.tar.zst",
   "hash": "sha256-4VgiMf8RF0N2DQSZemn+7CHqJ+F9dVS01Fuheh0kezY=",
   "dependencies": {
     "http": {
