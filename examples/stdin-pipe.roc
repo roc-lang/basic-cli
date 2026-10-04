@@ -1,5 +1,5 @@
 ## Read piped bytes to end-of-input and validate them as UTF-8.
-app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.23.0/GNN5tt2gKdX4dhawg4915C4YB193woHFdcCkz31fhGxv.tar.zst" }
+app [main!] { pf: platform "../platform/main.roc" }
 
 import pf.OsStr
 import pf.Stdin

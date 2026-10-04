@@ -1,5 +1,5 @@
 ## Parse, encode, and inspect the system's preferred locales.
-app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.23.0/GNN5tt2gKdX4dhawg4915C4YB193woHFdcCkz31fhGxv.tar.zst" }
+app [main!] { pf: platform "../platform/main.roc" }
 
 import pf.OsStr
 import pf.Stdout
@@ -7,7 +7,6 @@ import pf.Locale
 
 main! : List(OsStr) => Try({}, _)
 main! = |_args| {
-
 	example_locale : Locale
 	example_locale = "en-US"
 
