@@ -1,5 +1,5 @@
 ## Shows SQLite queries, decoders, nullable values, and prepared writes.
-app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.23.0/GNN5tt2gKdX4dhawg4915C4YB193woHFdcCkz31fhGxv.tar.zst" }
+app [main!] { pf: platform "../platform/main.roc" }
 
 import pf.OsStr
 import pf.Env
@@ -23,7 +23,6 @@ main! = |_args| run!()
 
 run! : () => Try({}, _)
 run! = || {
-
 	# Read from environment variable, or use default
 	db_path = match Env.var!("DB_PATH") {
 		Ok(p) => Path.from_os_str(p)

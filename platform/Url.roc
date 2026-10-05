@@ -165,7 +165,7 @@ Url :: {
 	append_path_segments : Url, List(Str) -> Url
 	append_path_segments = |url, segments| {
 		suffix = Str.join_with(segments.map(percent_encode), "/")
-		next_path = 
+		next_path =
 			if Str.is_empty(suffix) {
 				url.path
 			} else if url.path == "/" {
@@ -192,7 +192,7 @@ Url :: {
 	append_query_param : Url, Str, Str -> Url
 	append_query_param = |url, key, value| {
 		pair = Str.concat(Str.concat(form_encode(key), "="), form_encode(value))
-		next_query = 
+		next_query =
 			match url.query {
 				None => pair
 				Some("") => pair
@@ -225,7 +225,7 @@ Url :: {
 							NotFound => (form_decode(pair), "")
 						},
 				)
-			}
+		}
 
 	## Replace or remove the query.
 	##
@@ -233,7 +233,7 @@ Url :: {
 	## Unicode but must otherwise already obey URL query syntax.
 	with_query : Url, [None, Some(Str)] -> Try(Url, ParseErr)
 	with_query = |url, option| {
-		next_query_option = 
+		next_query_option =
 			match option {
 				None => Ok(None)
 				Some(raw) =>
@@ -241,7 +241,7 @@ Url :: {
 						Ok(value) => Ok(Some(value))
 						Err(err) => Err(err)
 					}
-				}?
+			}?
 		Ok(
 			Url.{
 				scheme: url.scheme,
@@ -259,7 +259,7 @@ Url :: {
 	## Some("") produces a present empty fragment. Unicode is percent-encoded.
 	with_fragment : Url, [None, Some(Str)] -> Try(Url, ParseErr)
 	with_fragment = |url, option| {
-		next_fragment_option = 
+		next_fragment_option =
 			match option {
 				None => Ok(None)
 				Some(raw) =>
@@ -267,7 +267,7 @@ Url :: {
 						Ok(value) => Ok(Some(value))
 						Err(err) => Err(err)
 					}
-				}?
+			}?
 		Ok(
 			Url.{
 				scheme: url.scheme,
@@ -285,7 +285,7 @@ Url :: {
 
 parse_absolute : Str -> Try(Url, Url.ParseErr)
 parse_absolute = |input| {
-	scheme_parts = 
+	scheme_parts =
 		match split_first(input, "://") {
 			Found(parts) => Ok(parts)
 			NotFound =>
@@ -294,8 +294,8 @@ parse_absolute = |input| {
 				} else {
 					Err(MissingScheme)
 				}
-			}?
-	scheme = 
+		}?
+	scheme =
 		match ascii_lower(scheme_parts.before) {
 			"http" => Ok(Http)
 			"https" => Ok(Https)
@@ -330,7 +330,7 @@ parse_authority = |authority, scheme| {
 			Found({ before, after }) => {
 				raw_ipv6 = drop_prefix(before, "[")
 				host = validate_ipv6(raw_ipv6)?
-				port = 
+				port =
 					if Str.is_empty(after) {
 						Ok(None)
 					} else if starts_with(after, ":") {
@@ -342,13 +342,13 @@ parse_authority = |authority, scheme| {
 			}
 		}
 	} else {
-		{ raw_host, raw_port } = 
+		{ raw_host, raw_port } =
 			match split_last(authority, ":") {
 				Found({ before, after }) => { raw_host: before, raw_port: Some(after) }
 				NotFound => { raw_host: authority, raw_port: None }
 			}
 		host = validate_host(raw_host)?
-		port = 
+		port =
 			match raw_port {
 				None => Ok(None)
 				Some(raw) => parse_port(raw, scheme)
@@ -374,7 +374,7 @@ validate_dns_name : Str -> Try(Str, [InvalidHost(Str)])
 validate_dns_name = |raw_host| {
 	host = ascii_lower(raw_host)
 	labels = Str.split_on(host, ".")
-	valid = 
+	valid =
 		List.len(Str.to_utf8(host)) <= 253 and
 			List.all(
 				labels,
@@ -421,7 +421,7 @@ parse_ipv4_parts = |parts, out|
 					}
 				Err(_) => Err(BadIpv4Part)
 			}
-		}
+	}
 
 parse_port : Str, [Http, Https] -> Try([None, Some(U16)], [InvalidPort(Str), PortOutOfRange(U64)])
 parse_port = |raw, scheme|
@@ -432,7 +432,7 @@ parse_port = |raw, scheme|
 				Err(PortOutOfRange(value))
 			} else {
 				port = U64.to_u16_wrap(value)
-				is_default = 
+				is_default =
 					match scheme {
 						Http => port == 80
 						Https => port == 443
@@ -445,7 +445,7 @@ parse_port = |raw, scheme|
 					},
 				)
 			}
-		}
+	}
 
 parse_decimal : Str -> Try(U64, [NotDecimal])
 parse_decimal = |raw| {
@@ -534,12 +534,12 @@ u16_to_hex_help = |value, digits| {
 
 parse_suffix : Str -> Try({ fragment : [None, Some(Str)], path : Str, query : [None, Some(Str)] }, Url.ParseErr)
 parse_suffix = |suffix| {
-	{ before_fragment, fragment } = 
+	{ before_fragment, fragment } =
 		match split_first(suffix, "#") {
 			Found({ before, after }) => { before_fragment: before, fragment: Some(after) }
 			NotFound => { before_fragment: suffix, fragment: None }
 		}
-	{ raw_path, query } = 
+	{ raw_path, query } =
 		match split_first(before_fragment, "?") {
 			Found({ before, after }) => { raw_path: before, query: Some(after) }
 			NotFound => { raw_path: before_fragment, query: None }
@@ -568,7 +568,7 @@ validate_optional = |option, kind|
 				Ok(value) => Ok(Some(value))
 				Err(err) => Err(err)
 			}
-		}
+	}
 
 validate_component : Str, [Fragment, Path, Query] -> Try(Str, Url.ParseErr)
 validate_component = |raw, kind|
@@ -627,7 +627,7 @@ resolve_reference = |base, reference| {
 		Err(MissingScheme)
 	} else {
 		relative = parse_relative(reference)?
-		next_path = 
+		next_path =
 			if Str.is_empty(relative.path) {
 				base.path
 			} else if starts_with(relative.path, "/") {
@@ -635,7 +635,7 @@ resolve_reference = |base, reference| {
 			} else {
 				normalize_path(Str.concat(path_directory(base.path), relative.path))
 			}
-		next_query = 
+		next_query =
 			match relative.query {
 				Some(value) => Some(value)
 				None => if Str.is_empty(relative.path) {
@@ -659,12 +659,12 @@ resolve_reference = |base, reference| {
 
 parse_relative : Str -> Try({ fragment : [None, Some(Str)], path : Str, query : [None, Some(Str)] }, Url.ParseErr)
 parse_relative = |reference| {
-	{ before_fragment, fragment } = 
+	{ before_fragment, fragment } =
 		match split_first(reference, "#") {
 			Found({ before, after }) => { before_fragment: before, fragment: Some(after) }
 			NotFound => { before_fragment: reference, fragment: None }
 		}
-	{ raw_path, query } = 
+	{ raw_path, query } =
 		match split_first(before_fragment, "?") {
 			Found({ before, after }) => { raw_path: before, query: Some(after) }
 			NotFound => { raw_path: before_fragment, query: None }
@@ -714,22 +714,22 @@ path_directory = |path_str| {
 
 serialize : Url, Bool -> Str
 serialize = |url, include_fragment| {
-	scheme_str = 
+	scheme_str =
 		match url.scheme {
 			Http => "http"
 			Https => "https"
 		}
-	port_str = 
+	port_str =
 		match url.port {
 			None => ""
 			Some(value) => Str.concat(":", U16.to_str(value))
 		}
-	query_str = 
+	query_str =
 		match url.query {
 			None => ""
 			Some(value) => Str.concat("?", value)
 		}
-	fragment_str = 
+	fragment_str =
 		if include_fragment {
 			match url.fragment {
 				None => ""
@@ -1110,7 +1110,7 @@ expect
 				Ok(resolved) => Url.to_str(resolved) == "https://example.com/c?new=2#fresh"
 				Err(_) => False
 			}
-		}
+	}
 
 expect
 	match Url.parse("https://example.com/a/b?old=1#old") {
@@ -1120,7 +1120,7 @@ expect
 				Ok(resolved) => Url.to_str(resolved) == "https://example.com/a/b?new=2"
 				Err(_) => False
 			}
-		}
+	}
 
 expect
 	match Url.parse("https://example.com/a/b?old=1") {
@@ -1130,7 +1130,7 @@ expect
 				Ok(resolved) => Url.to_str(resolved) == "https://example.com/a/b?old=1#fresh"
 				Err(_) => False
 			}
-		}
+	}
 
 expect
 	match Url.parse("https://example.com/a/b") {
@@ -1140,7 +1140,7 @@ expect
 				Ok(resolved) => Url.to_str(resolved) == "https://example.com/root/y"
 				Err(_) => False
 			}
-		}
+	}
 
 expect
 	match Url.parse("https://example.com/a?x=1#frag") {
@@ -1260,7 +1260,7 @@ expect
 				Ok(changed) => Url.to_str(changed) == "https://example.com/path#frag"
 				Err(_) => False
 			}
-		}
+	}
 
 expect
 	match Url.parse("https://example.com/path") {
@@ -1270,7 +1270,7 @@ expect
 				Ok(changed) => Url.to_str(changed) == "https://example.com/path?term=caf%C3%A9&empty="
 				Err(_) => False
 			}
-		}
+	}
 
 expect
 	match Url.parse("https://example.com/path") {
@@ -1286,7 +1286,7 @@ expect
 				Ok(changed) => Url.to_str(changed) == "https://example.com/path"
 				Err(_) => False
 			}
-		}
+	}
 
 expect
 	match Url.parse("https://example.com/path") {
@@ -1296,7 +1296,7 @@ expect
 				Ok(changed) => Url.to_str(changed) == "https://example.com/path#r%C3%A9sum%C3%A9/?"
 				Err(_) => False
 			}
-		}
+	}
 
 expect
 	match Url.parse("https://example.com/path") {
@@ -1312,7 +1312,7 @@ expect
 				Ok(resolved) => Url.to_str(resolved) == "https://example.com/a/b?old=1"
 				Err(_) => False
 			}
-		}
+	}
 
 expect
 	match Url.parse("https://example.com/a/b") {
@@ -1322,7 +1322,7 @@ expect
 				Ok(resolved) => Url.to_str(resolved) == "https://example.com/root"
 				Err(_) => False
 			}
-		}
+	}
 
 expect
 	match Url.parse("https://example.com/a/b") {
@@ -1332,7 +1332,7 @@ expect
 				Ok(resolved) => Url.to_str(resolved) == "http://other.example/x"
 				Err(_) => False
 			}
-		}
+	}
 
 expect
 	match Url.parse("https://example.com/a/b") {

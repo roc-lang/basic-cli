@@ -1,4 +1,4 @@
-import IOErr exposing [IOErr]
+import IOErr
 import Host
 
 ## Read lines, chunks, or all remaining bytes from standard input.

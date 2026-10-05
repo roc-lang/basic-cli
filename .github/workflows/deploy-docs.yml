@@ -40,7 +40,7 @@ jobs:
         uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
-          nightly-tag: nightly-2026-09-26-d6267b4
+          nightly-tag: nightly-2026-10-04-130536d
 
       - name: Restore released docs
         env:

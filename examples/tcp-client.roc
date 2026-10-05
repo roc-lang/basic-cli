@@ -1,5 +1,5 @@
 ## Exchange lines with a local TCP echo server using buffered stream operations.
-app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.23.0/GNN5tt2gKdX4dhawg4915C4YB193woHFdcCkz31fhGxv.tar.zst" }
+app [main!] { pf: platform "../platform/main.roc" }
 
 import pf.OsStr
 import pf.Tcp
@@ -13,7 +13,6 @@ import pf.Stdin
 # then run this example.
 main! : List(OsStr) => Try({}, _)
 main! = |_args| {
-
 	stream : Tcp.Stream
 	stream = Tcp.connect!("127.0.0.1", 8085, 1_000) ? |err| ConnectFailed(err)
 

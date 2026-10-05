@@ -1,5 +1,5 @@
 ## Query a SQLite database and decode rows into records.
-app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.23.0/GNN5tt2gKdX4dhawg4915C4YB193woHFdcCkz31fhGxv.tar.zst" }
+app [main!] { pf: platform "../platform/main.roc" }
 
 import pf.OsStr
 import pf.Env
@@ -50,7 +50,7 @@ print_line! : Str => Try({}, _)
 print_line! = |line| Stdout.line!(line)
 
 query_todos_by_status! = |db_path, status|
-# `many` when you expect multiple rows to be returned.
+	# `many` when you expect multiple rows to be returned.
 	Sqlite.query_many!({
 		path: db_path,
 		query: "SELECT id, task, status FROM todos WHERE status = :status;",

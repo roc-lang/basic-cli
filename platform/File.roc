@@ -1,6 +1,6 @@
 import Host
 import Path
-import IOErr exposing [IOErr]
+import IOErr
 
 ## Read file bytes incrementally and seek within files.
 ##
@@ -93,7 +93,7 @@ File :: [].{
 										Ok(bytes) => Ok((Ok(bytes), Reading(current)))
 										Err(FileErr(err)) => Ok((Err(FileErr(err)), Finished))
 									}
-								},
+							},
 					),
 				)
 			}
