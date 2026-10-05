@@ -1,5 +1,5 @@
 ## Enable terminal raw mode, read one key, and restore normal behavior.
-app [main!] { pf: platform "../platform/main.roc" }
+app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.24.0/AEjfyaMFFbh8FJrkkHJy68riVNPr3Qp6c6PawWQjBwMH.tar.zst" }
 
 import pf.OsStr
 import pf.Stdout
