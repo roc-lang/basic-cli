@@ -92,10 +92,12 @@ Locale :: { raw : Str }.{
 	##
 	## Returns `Err(NotAvailable)` if the locale cannot be determined.
 	get! : () => Try(Locale, [NotAvailable])
-	get! = || {
-		raw = Host.locale_get!()?
-		Ok(Locale.{ raw })
-	}
+	# Reconstruct the hosted error so callers can combine it with other errors.
+	get! = ||
+		match Host.locale_get!() {
+			Ok(raw) => Ok(Locale.{ raw })
+			Err(NotAvailable) => Err(NotAvailable)
+		}
 
 	## Returns the preferred locales for the system or application.
 	##
