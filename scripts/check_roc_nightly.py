@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Check that every pinned Roc nightly (workflows and Nix) is the same."""
+"""Check that the Roc nightly pinned in the workflows and the Nix devshell is the same.
+
+nix/release.nix is excluded: its compiler must match the pinned release.
+"""
 
 import re
 import sys
@@ -11,7 +14,6 @@ ROOT = Path(__file__).resolve().parents[1]
 PATTERNS = {
     ".github/workflows/*.yml": re.compile(r"^\s*nightly-tag:\s*(\S+)\s*$", re.MULTILINE),
     "flake.nix": re.compile(r'rocpkgs\."(nightly-[^"]+)"'),
-    "nix/release.nix": re.compile(r'rocpkgs\."(nightly-[^"]+)"'),
 }
 
 

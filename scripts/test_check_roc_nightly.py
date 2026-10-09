@@ -14,30 +14,29 @@ def write(root: Path, name: str, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def fixture(root: Path, workflow: str, flake: str, release: str) -> None:
+def fixture(root: Path, workflow: str, flake: str) -> None:
     write(root, ".github/workflows/ci.yml", f"          nightly-tag: {workflow}\n")
     write(root, "flake.nix", f'pkgs.rocpkgs."{flake}"\n')
-    write(root, "nix/release.nix", f'compiler = pkgs.rocpkgs."{release}";\n')
 
 
 class CheckRocNightlyTests(unittest.TestCase):
-    def problems(self, workflow: str, flake: str, release: str) -> list[str]:
+    def problems(self, workflow: str, flake: str) -> list[str]:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            fixture(root, workflow, flake, release)
+            fixture(root, workflow, flake)
             return check(root)
 
     def test_matching_pins_pass(self) -> None:
         tag = "nightly-2026-10-09-258ab27"
-        self.assertEqual(self.problems(tag, tag, tag), [])
+        self.assertEqual(self.problems(tag, tag), [])
 
     def test_workflow_mismatch_fails(self) -> None:
         tag = "nightly-2026-10-09-258ab27"
-        self.assertTrue(self.problems("nightly-2026-10-04-130536d", tag, tag))
+        self.assertTrue(self.problems("nightly-2026-10-04-130536d", tag))
 
-    def test_nix_mismatch_fails(self) -> None:
+    def test_flake_mismatch_fails(self) -> None:
         tag = "nightly-2026-10-09-258ab27"
-        self.assertTrue(self.problems(tag, tag, "nightly-2026-09-26-d6267b4"))
+        self.assertTrue(self.problems(tag, "nightly-2026-09-26-d6267b4"))
 
     def test_missing_pin_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
