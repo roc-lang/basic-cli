@@ -315,5 +315,5 @@ expect {
 expect {
 	decoded : Try(Locale, [InvalidJson(Str)])
 	decoded = Json.parse("\"en_US\"")
-	decoded == Err(Json.invalid_json)
+	decoded == Err(Json.invalid_json({}))
 }

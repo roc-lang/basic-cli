@@ -39,13 +39,15 @@ jobs:
       - uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
-          nightly-tag: nightly-2026-10-04-130536d
+          nightly-tag: nightly-2026-10-09-258ab27
       - name: Install Rust toolchain
         run: |
           rustup toolchain install "${{ needs.rust-version.outputs.version }}" --profile minimal --target x86_64-unknown-linux-musl --component llvm-tools-preview
           rustup default "${{ needs.rust-version.outputs.version }}"
       - name: Test release tooling
-        run: python3 -m unittest scripts/test_check_release_version.py scripts/test_check_version_bump.py scripts/test_update_nix_release.py
+        run: python3 -m unittest scripts/test_check_release_version.py scripts/test_check_version_bump.py scripts/test_update_nix_release.py scripts/test_check_roc_nightly.py
+      - name: Check Roc nightly pins are in sync
+        run: python3 scripts/check_roc_nightly.py
       - name: Format, check, and test examples
         run: ./scripts/test.py --operation validate
       - name: Check native resource ownership with glibc and Valgrind
@@ -77,7 +79,7 @@ jobs:
       - uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
-          nightly-tag: nightly-2026-10-04-130536d
+          nightly-tag: nightly-2026-10-09-258ab27
       - name: Install Rust toolchain
         shell: bash
         run: |
@@ -122,7 +124,7 @@ jobs:
       - uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
-          nightly-tag: nightly-2026-10-04-130536d
+          nightly-tag: nightly-2026-10-09-258ab27
       - name: Install Rust toolchain
         shell: bash
         run: |
