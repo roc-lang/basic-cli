@@ -1,7 +1,7 @@
 { pkgs }:
 let
   release = builtins.fromJSON (builtins.readFile ./release.json);
-  compiler = pkgs.rocpkgs."nightly-2026-09-26-d6267b4";
+  compiler = pkgs.rocpkgs."nightly-2026-10-09-258ab27";
   bundle = pkgs.fetchurl { inherit (release) url hash; };
   unpack =
     name: archive:

@@ -145,9 +145,9 @@ def create_bundle() -> Path:
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        check=True,
     )
     print(result.stdout, end="")
+    result.check_returncode()
     matches = re.findall(r"^Created:\s+(.+\.tar\.zst)\s*$", result.stdout, re.MULTILINE)
     if not matches:
         raise SystemExit("Bundle creation did not report a created archive")
