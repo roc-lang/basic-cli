@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check that the Roc nightly pinned in the workflows and the Nix devshell is the same.
 
-nix/release.nix is excluded: its compiler must match the pinned release.
+nix/release.json is excluded: its compiler must match the pinned release.
 """
 
 import re
