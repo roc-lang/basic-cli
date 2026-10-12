@@ -116,6 +116,13 @@ Release-tooling regression tests run with:
 python3 -m unittest scripts/test_check_release_version.py scripts/test_check_version_bump.py scripts/test_update_nix_release.py
 ```
 
+Stable releases must be dispatched from the default branch. To publish a branch
+candidate, dispatch the Release workflow on that branch with an `X.Y.Z-rcN`
+version. Branch candidates run the same build and bundle tests, publish a GitHub
+prerelease with its docs archive, and skip default-branch follow-up PRs and Pages
+publication. Commit the matching Cargo version on the candidate branch before
+dispatching so the release tag records the versioned sources.
+
 The release workflow bounds `roc bump` to 120 seconds and saves its output in
 `.release/bump-output.txt`. It currently warns on comparison errors and timeouts:
 the compiler still rejects the public `InternalHttp.TransportErr` alias in the
