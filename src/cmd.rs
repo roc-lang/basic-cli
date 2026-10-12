@@ -191,7 +191,7 @@ fn try_cmd_exit_ok(value: i32) -> CmdExitResult {
     }
 }
 
-fn try_cmd_exit_err(error: HostIOErr) -> CmdExitResult {
+fn try_cmd_exit_err(error: IOErr) -> CmdExitResult {
     CmdExitResult {
         payload: CmdExitResultPayload {
             err: ManuallyDrop::new(error),
@@ -243,7 +243,7 @@ pub extern "C" fn hosted_cmd_host_exec_exit_code(cmd: Cmd) -> CmdExitResult {
         Ok(cmd) => cmd,
         Err(error) => {
             unsafe { cmd.stdin_bytes.decref(roc_host) };
-            return try_cmd_exit_err(cmd_io_err_from_io(&error, roc_host));
+            return try_cmd_exit_err(cmd_output_io_err_from_io(&error, roc_host));
         }
     };
 
@@ -255,12 +255,12 @@ pub extern "C" fn hosted_cmd_host_exec_exit_code(cmd: Cmd) -> CmdExitResult {
             None
         } {
             Some(code) => try_cmd_exit_ok(code),
-            None => try_cmd_exit_err(cmd_io_err_other(
+            None => try_cmd_exit_err(cmd_output_io_err_other(
                 incomplete_reason(status.failure),
                 roc_host,
             )),
         },
-        Err(error) => try_cmd_exit_err(cmd_io_err_from_io(&error, roc_host)),
+        Err(error) => try_cmd_exit_err(cmd_output_io_err_from_io(&error, roc_host)),
     }
 }
 
@@ -423,7 +423,7 @@ fn unit_result(result: io::Result<()>) -> HostChildCloseResult {
         Err(err) => HostChildCloseResult {
             tag: HostChildCloseResultTag::Err,
             payload: HostChildCloseResultPayload {
-                err: ManuallyDrop::new(cmd_output_io_err_from_io(&err, roc_host())),
+                err: ManuallyDrop::new(cmd_io_err_from_io(&err, roc_host())),
             },
         },
     }

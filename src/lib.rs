@@ -3,6 +3,7 @@
 #![allow(improper_ctypes_definitions)]
 
 use core::mem::ManuallyDrop;
+use core::ptr::NonNull;
 #[cfg(unix)]
 use std::ffi::CStr;
 use std::ffi::{c_char, c_void, OsStr as StdOsStr, OsString};
@@ -217,6 +218,13 @@ define_common_io_err!(
     IOErrPayload
 );
 define_common_io_err!(
+    env_set_cwd_io_err_from_io,
+    env_set_cwd_io_err_other,
+    HostIOErr,
+    HostIOErrTag,
+    HostIOErrPayload
+);
+define_common_io_err!(
     file_io_err_from_io,
     file_io_err_other,
     IOErr,
@@ -384,7 +392,7 @@ fn try_env_set_cwd_ok() -> HostEnvSetCwdResult {
     }
 }
 
-fn try_env_set_cwd_err(error: IOErr) -> HostEnvSetCwdResult {
+fn try_env_set_cwd_err(error: HostIOErr) -> HostEnvSetCwdResult {
     HostEnvSetCwdResult {
         payload: HostEnvSetCwdResultPayload {
             err: ManuallyDrop::new(error),
@@ -1360,12 +1368,12 @@ pub extern "C" fn hosted_env_set_cwd(path: UnixBytesOrUtf8OrWindowsU16s) -> Host
     let roc_host = roc_host();
     let path = match path_from_native(path, roc_host) {
         Ok(path) => path,
-        Err(error) => return try_env_set_cwd_err(env_io_err_from_io(&error, roc_host)),
+        Err(error) => return try_env_set_cwd_err(env_set_cwd_io_err_from_io(&error, roc_host)),
     };
 
     match std::env::set_current_dir(path) {
         Ok(()) => try_env_set_cwd_ok(),
-        Err(error) => try_env_set_cwd_err(env_io_err_from_io(&error, roc_host)),
+        Err(error) => try_env_set_cwd_err(env_set_cwd_io_err_from_io(&error, roc_host)),
     }
 }
 
@@ -2230,7 +2238,7 @@ pub extern "C" fn hosted_utc_now() -> HostUtcNowResult {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_alloc(length: usize, alignment: usize) -> *mut c_void {
+pub extern "C" fn roc_alloc(length: usize, alignment: usize) -> NonNull<c_void> {
     DefaultAllocators::roc_alloc(roc_host_ptr(), length, alignment)
 }
 
@@ -2244,7 +2252,7 @@ pub extern "C" fn roc_realloc(
     ptr: *mut c_void,
     new_length: usize,
     alignment: usize,
-) -> *mut c_void {
+) -> NonNull<c_void> {
     DefaultAllocators::roc_realloc(roc_host_ptr(), ptr, new_length, alignment)
 }
 
