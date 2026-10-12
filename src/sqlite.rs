@@ -298,7 +298,7 @@ fn sqlite_open_native(path: &SqlitePath) -> Result<*mut libsqlite3_sys::sqlite3,
         SqlitePath::Windows(u16s) => {
             #[cfg(windows)]
             {
-                if u16s.iter().any(|unit| *unit == 0) {
+                if u16s.contains(&0) {
                     return Err((
                         libsqlite3_sys::SQLITE_ERROR,
                         "database path contained an interior nul code unit".to_string(),

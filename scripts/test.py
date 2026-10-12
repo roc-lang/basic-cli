@@ -11,6 +11,7 @@ import platform
 import re
 import select
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -33,6 +34,7 @@ if hasattr(sys.stderr, "reconfigure"):
 ROOT = Path(__file__).resolve().parents[1]
 SPEC_PATH = ROOT / "scripts" / "test_spec.json"
 STAGES = ("fmt", "check", "test", "build", "run")
+APP_DIRS = (ROOT / "examples", ROOT / "tests")
 DEFAULT_ARTIFACT_DIR = ROOT / "dist" / "example-binaries"
 ROC = os.environ.get("ROC", "roc")
 VALGRIND_ARGS = (
@@ -97,7 +99,7 @@ def load_spec() -> tuple[dict[str, bool], list[dict[str, object]]]:
         raise SystemExit(f"{SPEC_PATH}: every app needs a unique string path")
     discovered = {
         str(path.relative_to(ROOT).as_posix())
-        for directory in (ROOT / "examples",)
+        for directory in APP_DIRS
         for path in directory.glob("*.roc")
     }
     specified = set(paths)
@@ -226,11 +228,19 @@ def helper_server(name: str | None) -> Iterator[None]:
 
 def pipe_process(
     args: list[str], cwd: Path, env: dict[str, str] | dict[bytes, bytes],
-    stdin: bytes, timeout: float,
+    stdin: bytes, timeout: float, *, detach_terminal: bool = False,
 ) -> tuple[int, str, str]:
+    detach: dict[str, object] = {}
+    if detach_terminal:
+        # A process can reach its terminal without using the standard streams,
+        # so leave it with no controlling terminal or console at all.
+        if os.name == "posix":
+            detach["start_new_session"] = True
+        else:
+            detach["creationflags"] = subprocess.DETACHED_PROCESS
     result = subprocess.run(
         args, cwd=cwd, env=env, input=stdin, stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE, timeout=timeout,
+        stderr=subprocess.PIPE, timeout=timeout, **detach,
     )
     return (
         result.returncode,
@@ -241,22 +251,37 @@ def pipe_process(
 
 def pty_process(
     args: list[str], cwd: Path, env: dict[str, str], stdin: bytes, timeout: float,
-    input_delay: float,
+    input_delay: float, *, await_raw_mode: bool = False, send_signal: str | None = None,
 ) -> tuple[int, str]:
-    if os.name != "posix":
-        raise SystemExit("PTY execution is only available on POSIX hosts")
     import pty
+    import termios
+
+    def terminal_mode() -> list[object]:
+        mode = termios.tcgetattr(slave)
+        # BSD kernels set PENDIN themselves when a terminal returns to line mode,
+        # and only clear it on the next read. It is not part of the requested mode.
+        mode[3] &= ~getattr(termios, "PENDIN", 0)
+        return mode
 
     master, slave = pty.openpty()
+    # The slave stays open so the terminal mode can be read after the child exits.
+    initial_mode = terminal_mode()
     process = subprocess.Popen(args, cwd=cwd, env=env, stdin=slave, stdout=slave, stderr=slave)
-    os.close(slave)
     output = bytearray()
     deadline = time.monotonic() + timeout
     try:
-        time.sleep(0.25)
+        if await_raw_mode:
+            while terminal_mode() == initial_mode:
+                if process.poll() is not None or time.monotonic() >= deadline:
+                    raise SystemExit(f"Terminal never changed mode: {' '.join(args)}")
+                time.sleep(0.01)
+        else:
+            time.sleep(0.25)
         for byte in stdin:
             os.write(master, bytes([byte]))
             time.sleep(input_delay)
+        if send_signal is not None:
+            process.send_signal(getattr(signal, send_signal))
         while process.poll() is None:
             if time.monotonic() >= deadline:
                 process.kill()
@@ -281,12 +306,53 @@ def pty_process(
                 output.extend(chunk)
             except OSError:
                 break
-        return process.wait(), output.decode("utf-8", errors="replace")
+        exit_code = process.wait()
+        final_mode = terminal_mode()
+        if final_mode != initial_mode:
+            raise SystemExit(
+                f"Terminal mode was not restored: {' '.join(args)}"
+                f"\n  before: {initial_mode}\n  after:  {final_mode}"
+            )
+        return exit_code, output.decode("utf-8", errors="replace")
     finally:
+        os.close(slave)
         os.close(master)
         if process.poll() is None:
             process.kill()
             process.wait()
+
+
+def console_process(
+    args: list[str], cwd: Path, env: dict[str, str], stdin: bytes, timeout: float,
+    input_delay: float, *, await_raw_mode: bool = False, send_signal: str | None = None,
+) -> tuple[int, str]:
+    """Windows counterpart of pty_process; see scripts/windows_console.py."""
+    request = {
+        "args": args, "stdin": stdin.decode(), "timeout": timeout, "input_delay": input_delay,
+        "await_raw_mode": await_raw_mode, "send_signal": send_signal,
+    }
+    hidden = subprocess.STARTUPINFO()
+    hidden.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    hidden.wShowWindow = subprocess.SW_HIDE
+    runner = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "windows_console.py"), json.dumps(request)],
+        cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE, text=True, encoding="utf-8", timeout=timeout + 10,
+        creationflags=subprocess.CREATE_NEW_CONSOLE, startupinfo=hidden,
+    )
+    if runner.returncode != 0 or not runner.stdout.strip():
+        raise SystemExit(f"Console runner failed: {' '.join(args)}\n{runner.stderr}")
+    result = json.loads(runner.stdout)
+    if "error" in result:
+        raise SystemExit(f"{result['error']}: {' '.join(args)}")
+    return int(result["exit_code"]), str(result["output"])
+
+
+def signal_exit_code(name: str) -> int:
+    # Windows has no signals; the console runner sends Ctrl+Break in their place.
+    if os.name != "posix":
+        return 0xC000013A  # STATUS_CONTROL_C_EXIT
+    return -int(getattr(signal, name))
 
 
 def make_environment(run_spec: dict[str, object], source: Path) -> dict[str, str] | dict[bytes, bytes]:
@@ -308,9 +374,9 @@ def make_environment(run_spec: dict[str, object], source: Path) -> dict[str, str
 
 
 def verify_text(source: Path, case_name: str, stream: str, output: str,
-                contains: object, regexes: object) -> None:
+                contains: object, regexes: object, *, expect_crash: bool = False) -> None:
     normalized = output.replace("\r\n", "\n").replace("\r", "\n")
-    if "[ROC CRASHED]" in normalized:
+    if "[ROC CRASHED]" in normalized and not expect_crash:
         raise SystemExit(f"{source}: runtime crash\n{normalized}")
     if not isinstance(contains, list) or not isinstance(regexes, list):
         raise SystemExit(f"{source} [{case_name}]: {stream} assertions must be arrays")
@@ -331,17 +397,21 @@ def verify_text(source: Path, case_name: str, stream: str, output: str,
 def verify_output(source: Path, case_name: str, stdout: str, stderr: str,
                   run_spec: dict[str, object], *, pty: bool) -> None:
     combined = stdout if pty else stdout + stderr
+    expect_crash = bool(run_spec.get("expect_crash"))
     verify_text(source, case_name, "combined output", combined,
-                run_spec.get("contains", []), run_spec.get("regex", []))
+                run_spec.get("contains", []), run_spec.get("regex", []),
+                expect_crash=expect_crash)
     if pty and any(name in run_spec for name in (
         "stdout_contains", "stdout_regex", "stderr_contains", "stderr_regex"
     )):
         raise SystemExit(f"{source} [{case_name}]: PTY cases cannot assert separate streams")
     if not pty:
         verify_text(source, case_name, "stdout", stdout,
-                    run_spec.get("stdout_contains", []), run_spec.get("stdout_regex", []))
+                    run_spec.get("stdout_contains", []), run_spec.get("stdout_regex", []),
+                    expect_crash=expect_crash)
         verify_text(source, case_name, "stderr", stderr,
-                    run_spec.get("stderr_contains", []), run_spec.get("stderr_regex", []))
+                    run_spec.get("stderr_contains", []), run_spec.get("stderr_regex", []),
+                    expect_crash=expect_crash)
 
 
 def run_cases(app: dict[str, object]) -> list[dict[str, object]]:
@@ -386,6 +456,9 @@ def run_binary(
     else:
         stdin = str(run_spec.get("stdin", "")).encode()
     timeout = float(run_spec.get("timeout", 7)) * (4 if valgrind else 1)
+    send_signal = run_spec.get("send_signal")
+    if send_signal is not None and not (isinstance(send_signal, str) and run_spec.get("pty")):
+        raise SystemExit(f"{source} [{case_name}]: send_signal needs a signal name and a PTY case")
     fixtures = run_spec.get("fixtures", [])
     fixture_targets: list[Path] = []
     for fixture in fixtures:
@@ -398,18 +471,26 @@ def run_binary(
             if run_spec.get("pty"):
                 if not isinstance(env, dict) or any(isinstance(key, bytes) for key in env):
                     raise SystemExit(f"{source}: PTY tests require a text environment")
-                exit_code, stdout = pty_process(
+                terminal_process = pty_process if os.name == "posix" else console_process
+                exit_code, stdout = terminal_process(
                     args, cwd, env, stdin, timeout,
                     float(run_spec.get("input_delay", 0.08)),
+                    await_raw_mode=bool(run_spec.get("await_raw_mode")),
+                    send_signal=send_signal,
                 )
                 stderr = ""
             else:
-                exit_code, stdout, stderr = pipe_process(args, cwd, env, stdin, timeout)
+                exit_code, stdout, stderr = pipe_process(
+                    args, cwd, env, stdin, timeout,
+                    detach_terminal=bool(run_spec.get("detach_terminal")),
+                )
         if stdout:
             print(stdout, end="" if stdout.endswith("\n") else "\n")
         if stderr:
             print(stderr, end="" if stderr.endswith("\n") else "\n", file=sys.stderr)
-        expected_exit = int(run_spec.get("exit_code", 0))
+        expected_exit = int(run_spec.get(
+            "exit_code", 0 if send_signal is None else signal_exit_code(send_signal)
+        ))
         if exit_code != expected_exit:
             raise SystemExit(f"{source} [{case_name}]: exited with {exit_code}, expected {expected_exit}")
         verify_output(source, case_name, stdout, stderr, run_spec, pty=bool(run_spec.get("pty")))
@@ -452,7 +533,9 @@ def run_stage(
             if binary is None:
                 raise SystemExit(f"{path}: run is enabled but build is disabled")
             for run_spec in run_cases(app):
-                if case_enabled(run_spec):
+                if valgrind and run_spec.get("valgrind") is False:
+                    print(f"SKIP run case under Valgrind: {path} [{run_spec['name']}]")
+                elif case_enabled(run_spec):
                     run_binary(app, binary, run_spec, valgrind=valgrind)
                 else:
                     print(f"SKIP run case: {path} [{run_spec['name']}]")
@@ -547,7 +630,7 @@ def run_suite(
         [str(path.relative_to(ROOT).as_posix()) for path in sources], backups
     )
     try:
-        update_apps([ROOT / "examples"], bundle_url)
+        update_apps(list(APP_DIRS), bundle_url)
         if "run" in operations and any(
             stage_enabled(defaults, app, "run")
             and any(case_enabled(case) and case.get("helper") == "http" for case in run_cases(app))
@@ -577,7 +660,7 @@ def run_suite(
 
 
 def cleanup_test_files() -> None:
-    for directory in (ROOT / "examples",):
+    for directory in APP_DIRS:
         for pattern in ("*.e2e.db", "*.bak"):
             for path in directory.glob(pattern):
                 path.unlink(missing_ok=True)

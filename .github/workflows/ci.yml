@@ -27,6 +27,29 @@ jobs:
           version=$(sed -n 's/^channel = "\(.*\)".*/\1/p' rust-toolchain.toml)
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+  # The host has substantial per-OS code, so lint and test it on each one.
+  rust:
+    name: Rust format, lint, and test (${{ matrix.os }})
+    needs: rust-version
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-26, windows-2025]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Rust toolchain
+        shell: bash
+        run: |
+          rustup toolchain install "${{ needs.rust-version.outputs.version }}" --profile minimal --component rustfmt --component clippy
+          rustup default "${{ needs.rust-version.outputs.version }}"
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Lint with Clippy
+        run: cargo clippy --locked --all-targets -- -D warnings
+      - name: Run host unit tests
+        run: cargo test --locked --all-targets
+
   validate:
     name: validate sources
     needs: rust-version

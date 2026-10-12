@@ -47,11 +47,12 @@ init_snake_len = snake_len(initial_state.snake)
 
 main! : List(OsStr) => Try({}, _)
 main! = |args| {
-	Tty.enable_raw_mode!()
-	game_result = game_loop!(initial_state_from_os_strs(args))
-	Tty.disable_raw_mode!()
+	Tty.enable_raw_mode!()?
 
-	game_result?
+	# If the game fails, the platform restores the terminal when the app exits.
+	game_loop!(initial_state_from_os_strs(args))?
+
+	Tty.disable_raw_mode!()?
 	Stdout.line!("\n--- Game Over ---")?
 	Ok({})
 }

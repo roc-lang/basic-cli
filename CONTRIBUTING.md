@@ -73,7 +73,7 @@ drift independently. When updating the nightly pin in the workflows:
    `nix flake update roc-overlay`.
 2. Run `./ci/regenerate_glue.sh` to refresh `src/roc_platform_abi.rs`.
 3. Reconcile `src/lib.rs` if generated names or layouts changed.
-4. Run `cargo check` and `./scripts/test.py`.
+4. Run the Rust checks under [Verification](#verification) and `./scripts/test.py`.
 
 ## Verification
 
@@ -109,6 +109,20 @@ producer's accepted set.
 For changes to the Nix release outputs, run `nix flake check`. This builds and
 runs an application against the pinned published platform inside the Nix sandbox;
 see [the Nix consumer documentation](nix/README.md).
+
+CI formats, lints, and unit-tests the Rust host on Linux, macOS, and Windows.
+Run the same commands before pushing host changes:
+
+```sh
+cargo fmt --all -- --check
+cargo clippy --locked --all-targets -- -D warnings
+cargo test --locked --all-targets
+```
+
+Clippy runs with warnings denied. `src/roc_platform_abi.rs` is generated, so
+any Clippy lint it needs relaxed is allowed on its `mod` declaration in
+`src/lib.rs` with a comment saying why, not by hand-editing the generated file
+or crate-wide.
 
 Release-tooling regression tests run with:
 

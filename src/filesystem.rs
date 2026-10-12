@@ -237,157 +237,6 @@ fn copy_link(source: &Path, destination: &Path) -> io::Result<()> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    const DEFAULT: CopyOptions = CopyOptions {
-        preserve_links: false,
-        merge: false,
-    };
-    #[test]
-    fn append_creates_then_extends_without_truncating() {
-        let temp = tempfile::tempdir().unwrap();
-        let file = temp.path().join("log");
-        append(&file, b"").unwrap();
-        assert_eq!(fs::read(&file).unwrap(), b"");
-        append(&file, b"first\n").unwrap();
-        append(&file, &[0, 255]).unwrap();
-        assert_eq!(fs::read(&file).unwrap(), b"first\n\x00\xff");
-        fs::write(&file, b"replaced").unwrap();
-        append(&file, b"!").unwrap();
-        assert_eq!(fs::read(&file).unwrap(), b"replaced!");
-        assert_eq!(
-            append(&temp.path().join("missing").join("log"), b"x")
-                .unwrap_err()
-                .kind(),
-            io::ErrorKind::NotFound
-        );
-    }
-    #[test]
-    fn copy_bytes_modes_and_merge() {
-        let temp = tempfile::tempdir().unwrap();
-        let src = temp.path().join("src");
-        let dst = temp.path().join("dst");
-        fs::create_dir(&src).unwrap();
-        fs::write(src.join("file"), vec![255; 131073]).unwrap();
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            fs::set_permissions(src.join("file"), fs::Permissions::from_mode(0o751)).unwrap();
-        }
-        copy_dir(&src, &dst, DEFAULT).unwrap();
-        assert_eq!(fs::read(dst.join("file")).unwrap(), vec![255; 131073]);
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            assert_eq!(
-                fs::metadata(dst.join("file")).unwrap().permissions().mode() & 0o777,
-                0o751
-            );
-        }
-        assert!(copy_dir(&src, &dst, DEFAULT).is_err());
-        copy_dir(
-            &src,
-            &dst,
-            CopyOptions {
-                merge: true,
-                ..DEFAULT
-            },
-        )
-        .unwrap();
-        assert!(copy_dir(&src, &src.join("nested"), DEFAULT).is_err());
-        fs::hard_link(src.join("file"), temp.path().join("alias")).unwrap();
-        assert!(copy_file(&src.join("file"), &temp.path().join("alias")).is_err());
-        assert_eq!(fs::metadata(src.join("file")).unwrap().len(), 131073);
-    }
-    #[test]
-    fn merge_cannot_write_back_into_source() {
-        let root = tempfile::tempdir().unwrap();
-        let source = root.path().join("source");
-        fs::create_dir_all(source.join("source")).unwrap();
-        fs::write(source.join("source/file"), b"original").unwrap();
-        assert!(copy_dir(
-            &source,
-            root.path(),
-            CopyOptions {
-                merge: true,
-                ..DEFAULT
-            }
-        )
-        .is_err());
-        assert_eq!(fs::read(source.join("source/file")).unwrap(), b"original");
-    }
-    #[test]
-    fn copy_tree_creates_missing_destination_parents() {
-        let root = tempfile::tempdir().unwrap();
-        let source = root.path().join("source");
-        fs::create_dir(&source).unwrap();
-        fs::write(source.join("file"), b"data").unwrap();
-        let destination = root.path().join("missing/parents/copy");
-        copy_dir(&source, &destination, DEFAULT).unwrap();
-        assert_eq!(fs::read(destination.join("file")).unwrap(), b"data");
-    }
-    #[test]
-    fn temporary_names_permissions_and_cleanup() {
-        let parent = tempfile::tempdir().unwrap();
-        let a = create_temp_dir(parent.path(), "roc-").unwrap();
-        let b = create_temp_dir(parent.path(), "roc-").unwrap();
-        assert_ne!(a, b);
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            assert_eq!(
-                fs::metadata(&a).unwrap().permissions().mode() & 0o777,
-                0o700
-            );
-        }
-        for bad in ["../escape", "a/b", "a\\b", "C:escape", "..", "\0"] {
-            assert!(create_temp_dir(parent.path(), bad).is_err());
-        }
-    }
-    #[cfg(unix)]
-    #[test]
-    fn links_cycles_and_native_names() {
-        #[cfg(not(target_vendor = "apple"))]
-        use std::os::unix::ffi::OsStrExt;
-        use std::os::unix::fs::symlink;
-        let temp = tempfile::tempdir().unwrap();
-        let src = temp.path().join("src");
-        fs::create_dir(&src).unwrap();
-        #[cfg(not(target_vendor = "apple"))]
-        {
-            let name = std::ffi::OsStr::from_bytes(b"raw\xff");
-            fs::write(src.join(name), b"hello").unwrap();
-        }
-        symlink("missing", src.join("dangling")).unwrap();
-        let dst = temp.path().join("preserved");
-        copy_dir(
-            &src,
-            &dst,
-            CopyOptions {
-                preserve_links: true,
-                ..DEFAULT
-            },
-        )
-        .unwrap();
-        #[cfg(not(target_vendor = "apple"))]
-        assert_eq!(
-            fs::read(dst.join(std::ffi::OsStr::from_bytes(b"raw\xff"))).unwrap(),
-            b"hello"
-        );
-        assert_eq!(
-            fs::read_link(dst.join("dangling")).unwrap(),
-            Path::new("missing")
-        );
-        assert!(copy_dir(&src, &temp.path().join("follow"), DEFAULT).is_err());
-        fs::remove_file(src.join("dangling")).unwrap();
-        symlink(".", src.join("cycle")).unwrap();
-        assert!(copy_dir(&src, &temp.path().join("cycle"), DEFAULT).is_err());
-        symlink(&src, temp.path().join("alias")).unwrap();
-        assert!(copy_dir(&src, &temp.path().join("alias/new"), DEFAULT).is_err());
-    }
-}
-
 #[cfg(all(test, unix))]
 mod unix_tests {
     use super::*;
@@ -632,4 +481,155 @@ pub extern "C" fn hosted_env_create_temp_dir(
         prefix.decref(roc_host());
     }
     native_path_result(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    const DEFAULT: CopyOptions = CopyOptions {
+        preserve_links: false,
+        merge: false,
+    };
+    #[test]
+    fn append_creates_then_extends_without_truncating() {
+        let temp = tempfile::tempdir().unwrap();
+        let file = temp.path().join("log");
+        append(&file, b"").unwrap();
+        assert_eq!(fs::read(&file).unwrap(), b"");
+        append(&file, b"first\n").unwrap();
+        append(&file, &[0, 255]).unwrap();
+        assert_eq!(fs::read(&file).unwrap(), b"first\n\x00\xff");
+        fs::write(&file, b"replaced").unwrap();
+        append(&file, b"!").unwrap();
+        assert_eq!(fs::read(&file).unwrap(), b"replaced!");
+        assert_eq!(
+            append(&temp.path().join("missing").join("log"), b"x")
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::NotFound
+        );
+    }
+    #[test]
+    fn copy_bytes_modes_and_merge() {
+        let temp = tempfile::tempdir().unwrap();
+        let src = temp.path().join("src");
+        let dst = temp.path().join("dst");
+        fs::create_dir(&src).unwrap();
+        fs::write(src.join("file"), vec![255; 131073]).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(src.join("file"), fs::Permissions::from_mode(0o751)).unwrap();
+        }
+        copy_dir(&src, &dst, DEFAULT).unwrap();
+        assert_eq!(fs::read(dst.join("file")).unwrap(), vec![255; 131073]);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(
+                fs::metadata(dst.join("file")).unwrap().permissions().mode() & 0o777,
+                0o751
+            );
+        }
+        assert!(copy_dir(&src, &dst, DEFAULT).is_err());
+        copy_dir(
+            &src,
+            &dst,
+            CopyOptions {
+                merge: true,
+                ..DEFAULT
+            },
+        )
+        .unwrap();
+        assert!(copy_dir(&src, &src.join("nested"), DEFAULT).is_err());
+        fs::hard_link(src.join("file"), temp.path().join("alias")).unwrap();
+        assert!(copy_file(&src.join("file"), &temp.path().join("alias")).is_err());
+        assert_eq!(fs::metadata(src.join("file")).unwrap().len(), 131073);
+    }
+    #[test]
+    fn merge_cannot_write_back_into_source() {
+        let root = tempfile::tempdir().unwrap();
+        let source = root.path().join("source");
+        fs::create_dir_all(source.join("source")).unwrap();
+        fs::write(source.join("source/file"), b"original").unwrap();
+        assert!(copy_dir(
+            &source,
+            root.path(),
+            CopyOptions {
+                merge: true,
+                ..DEFAULT
+            }
+        )
+        .is_err());
+        assert_eq!(fs::read(source.join("source/file")).unwrap(), b"original");
+    }
+    #[test]
+    fn copy_tree_creates_missing_destination_parents() {
+        let root = tempfile::tempdir().unwrap();
+        let source = root.path().join("source");
+        fs::create_dir(&source).unwrap();
+        fs::write(source.join("file"), b"data").unwrap();
+        let destination = root.path().join("missing/parents/copy");
+        copy_dir(&source, &destination, DEFAULT).unwrap();
+        assert_eq!(fs::read(destination.join("file")).unwrap(), b"data");
+    }
+    #[test]
+    fn temporary_names_permissions_and_cleanup() {
+        let parent = tempfile::tempdir().unwrap();
+        let a = create_temp_dir(parent.path(), "roc-").unwrap();
+        let b = create_temp_dir(parent.path(), "roc-").unwrap();
+        assert_ne!(a, b);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(
+                fs::metadata(&a).unwrap().permissions().mode() & 0o777,
+                0o700
+            );
+        }
+        for bad in ["../escape", "a/b", "a\\b", "C:escape", "..", "\0"] {
+            assert!(create_temp_dir(parent.path(), bad).is_err());
+        }
+    }
+    #[cfg(unix)]
+    #[test]
+    fn links_cycles_and_native_names() {
+        #[cfg(not(target_vendor = "apple"))]
+        use std::os::unix::ffi::OsStrExt;
+        use std::os::unix::fs::symlink;
+        let temp = tempfile::tempdir().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir(&src).unwrap();
+        #[cfg(not(target_vendor = "apple"))]
+        {
+            let name = std::ffi::OsStr::from_bytes(b"raw\xff");
+            fs::write(src.join(name), b"hello").unwrap();
+        }
+        symlink("missing", src.join("dangling")).unwrap();
+        let dst = temp.path().join("preserved");
+        copy_dir(
+            &src,
+            &dst,
+            CopyOptions {
+                preserve_links: true,
+                ..DEFAULT
+            },
+        )
+        .unwrap();
+        #[cfg(not(target_vendor = "apple"))]
+        assert_eq!(
+            fs::read(dst.join(std::ffi::OsStr::from_bytes(b"raw\xff"))).unwrap(),
+            b"hello"
+        );
+        assert_eq!(
+            fs::read_link(dst.join("dangling")).unwrap(),
+            Path::new("missing")
+        );
+        assert!(copy_dir(&src, &temp.path().join("follow"), DEFAULT).is_err());
+        fs::remove_file(src.join("dangling")).unwrap();
+        symlink(".", src.join("cycle")).unwrap();
+        assert!(copy_dir(&src, &temp.path().join("cycle"), DEFAULT).is_err());
+        symlink(&src, temp.path().join("alias")).unwrap();
+        assert!(copy_dir(&src, &temp.path().join("alias/new"), DEFAULT).is_err());
+    }
 }

@@ -20,11 +20,22 @@ thread_local! {
 }
 
 pub fn box_resource<T>(value: T, host: &RocHost) -> *mut u64 {
-    let payload = unsafe { allocate_box(size_of::<u64>(), align_of::<u64>(), false, host) } as *mut u64;
+    let payload =
+        unsafe { allocate_box(size_of::<u64>(), align_of::<u64>(), false, host) } as *mut u64;
     unsafe { payload.write(Box::into_raw(Box::new(value)) as u64) };
-    let base = unsafe { payload.cast::<u8>().sub(size_of::<usize>().max(align_of::<u64>())) };
+    let base = unsafe {
+        payload
+            .cast::<u8>()
+            .sub(size_of::<usize>().max(align_of::<u64>()))
+    };
     RESOURCES.with(|resources| {
-        let old = resources.borrow_mut().insert(base as usize, Finalizer { payload, drop: drop_resource::<T> });
+        let old = resources.borrow_mut().insert(
+            base as usize,
+            Finalizer {
+                payload,
+                drop: drop_resource::<T>,
+            },
+        );
         assert!(old.is_none(), "resource allocation registered twice");
     });
     payload
@@ -33,7 +44,10 @@ pub fn box_resource<T>(value: T, host: &RocHost) -> *mut u64 {
 unsafe fn drop_resource<T>(payload: *mut u64) {
     let raw = unsafe { payload.read() } as *mut T;
     if !raw.is_null() {
-        unsafe { payload.write(0); drop(Box::from_raw(raw)); }
+        unsafe {
+            payload.write(0);
+            drop(Box::from_raw(raw));
+        }
     }
 }
 
@@ -64,12 +78,14 @@ pub fn make_host() -> RocHost {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::rc::Rc;
     use std::cell::Cell;
+    use std::rc::Rc;
 
     struct CountDrop(Rc<Cell<usize>>);
     impl Drop for CountDrop {
-        fn drop(&mut self) { self.0.set(self.0.get() + 1); }
+        fn drop(&mut self) {
+            self.0.set(self.0.get() + 1);
+        }
     }
 
     #[test]
@@ -90,21 +106,36 @@ mod tests {
         let count = Rc::new(Cell::new(0));
         let handle = box_resource(CountDrop(count.clone()), &host);
         // Compiled Roc frees the allocation directly after decrementing to zero.
-        let base = unsafe { handle.cast::<u8>().sub(size_of::<usize>().max(align_of::<u64>())) };
+        let base = unsafe {
+            handle
+                .cast::<u8>()
+                .sub(size_of::<usize>().max(align_of::<u64>()))
+        };
         dealloc(&mut host, base.cast(), align_of::<u64>());
         assert_eq!(count.get(), 1);
     }
 
     #[test]
     fn destructor_can_release_another_registered_resource() {
-        struct Nested { handle: *mut u64, host: RocHost }
+        struct Nested {
+            handle: *mut u64,
+            host: RocHost,
+        }
         impl Drop for Nested {
-            fn drop(&mut self) { release(self.handle, &self.host); }
+            fn drop(&mut self) {
+                release(self.handle, &self.host);
+            }
         }
         let host = make_host();
         let count = Rc::new(Cell::new(0));
         let inner = box_resource(CountDrop(count.clone()), &host);
-        let outer = box_resource(Nested { handle: inner, host: make_host() }, &host);
+        let outer = box_resource(
+            Nested {
+                handle: inner,
+                host: make_host(),
+            },
+            &host,
+        );
         release(outer, &host);
         assert_eq!(count.get(), 1);
     }
