@@ -109,8 +109,8 @@ Host :: [].{
 	tcp_read_until! : TcpStream, U8, U64, U64 => Try(List(U8), Str)
 	tcp_write! : TcpStream, List(U8), U64 => Try({}, Str)
 
-	tty_enable_raw_mode! : () => {}
-	tty_disable_raw_mode! : () => {}
+	tty_enable_raw_mode! : () => Try({}, IOErr)
+	tty_disable_raw_mode! : () => Try({}, IOErr)
 
 	# TODO(https://github.com/roc-lang/roc/issues/10163): revert to a bare U128
 	# return once the compiler emits the clang/Rust u128 return convention on

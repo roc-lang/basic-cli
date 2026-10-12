@@ -3,6 +3,7 @@
 #![allow(improper_ctypes_definitions)]
 
 use core::mem::ManuallyDrop;
+use core::ptr::NonNull;
 #[cfg(unix)]
 use std::ffi::CStr;
 use std::ffi::{c_char, c_void, OsStr as StdOsStr, OsString};
@@ -10,8 +11,6 @@ use std::fs;
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
-
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 
 mod cmd;
 mod file_reader;
@@ -27,6 +26,7 @@ mod resources;
 mod roc_platform_abi;
 mod sqlite;
 mod tcp;
+mod tty;
 
 use crate::roc_platform_abi::*;
 
@@ -91,6 +91,10 @@ type StdoutUnitResultTag = HostStdoutLineResultTag;
 type StdoutBytesResult = HostStdoutWriteBytesResult;
 type StdoutBytesResultPayload = HostStdoutWriteBytesResultPayload;
 type StdoutBytesResultTag = HostStdoutWriteBytesResultTag;
+
+type TtyUnitResult = HostTtyEnableRawModeResult;
+type TtyUnitResultPayload = HostTtyEnableRawModeResultPayload;
+type TtyUnitResultTag = HostTtyEnableRawModeResultTag;
 
 pub(crate) type NativeOsStr = UnixBytesOrUtf8OrWindowsU16s;
 type NativeOsStrPayload = UnixBytesOrUtf8OrWindowsU16sPayload;
@@ -262,6 +266,13 @@ define_common_io_err!(
     IOErrTag,
     IOErrPayload
 );
+define_common_io_err!(
+    host_io_err_from_io,
+    host_io_err_other,
+    HostIOErr,
+    HostIOErrTag,
+    HostIOErrPayload
+);
 
 fn try_dir_unit_ok() -> DirUnitResult {
     DirUnitResult {
@@ -388,7 +399,7 @@ fn try_env_set_cwd_ok() -> HostEnvSetCwdResult {
     }
 }
 
-fn try_env_set_cwd_err(error: IOErr) -> HostEnvSetCwdResult {
+fn try_env_set_cwd_err(error: HostIOErr) -> HostEnvSetCwdResult {
     HostEnvSetCwdResult {
         payload: HostEnvSetCwdResultPayload {
             err: ManuallyDrop::new(error),
@@ -924,6 +935,21 @@ fn try_stdout_unit_err(error: IOErr) -> StdoutUnitResult {
     }
 }
 
+fn try_tty_unit(result: io::Result<()>) -> TtyUnitResult {
+    match result {
+        Ok(()) => TtyUnitResult {
+            payload: TtyUnitResultPayload { ok: [] },
+            tag: TtyUnitResultTag::Ok,
+        },
+        Err(error) => TtyUnitResult {
+            payload: TtyUnitResultPayload {
+                err: ManuallyDrop::new(host_io_err_from_io(&error, roc_host())),
+            },
+            tag: TtyUnitResultTag::Err,
+        },
+    }
+}
+
 fn try_stdout_bytes_ok() -> StdoutBytesResult {
     StdoutBytesResult {
         payload: StdoutBytesResultPayload { ok: [] },
@@ -1367,12 +1393,12 @@ pub extern "C" fn hosted_env_set_cwd(path: UnixBytesOrUtf8OrWindowsU16s) -> Host
     let roc_host = roc_host();
     let path = match path_from_native(path, roc_host) {
         Ok(path) => path,
-        Err(error) => return try_env_set_cwd_err(env_io_err_from_io(&error, roc_host)),
+        Err(error) => return try_env_set_cwd_err(host_io_err_from_io(&error, roc_host)),
     };
 
     match std::env::set_current_dir(path) {
         Ok(()) => try_env_set_cwd_ok(),
-        Err(error) => try_env_set_cwd_err(env_io_err_from_io(&error, roc_host)),
+        Err(error) => try_env_set_cwd_err(host_io_err_from_io(&error, roc_host)),
     }
 }
 
@@ -2193,13 +2219,13 @@ pub extern "C" fn hosted_stdout_write_bytes(bytes: RocListWith<u8, false>) -> St
 }
 
 #[no_mangle]
-pub extern "C" fn hosted_tty_disable_raw_mode() {
-    let _ = disable_raw_mode();
+pub extern "C" fn hosted_tty_disable_raw_mode() -> TtyUnitResult {
+    try_tty_unit(tty::disable_raw_mode())
 }
 
 #[no_mangle]
-pub extern "C" fn hosted_tty_enable_raw_mode() {
-    let _ = enable_raw_mode();
+pub extern "C" fn hosted_tty_enable_raw_mode() -> TtyUnitResult {
+    try_tty_unit(tty::enable_raw_mode())
 }
 
 // TODO(https://github.com/roc-lang/roc/issues/10163): revert to a bare u128
@@ -2214,7 +2240,7 @@ pub extern "C" fn hosted_utc_now() -> HostUtcNowResult {
 }
 
 #[no_mangle]
-pub extern "C" fn roc_alloc(length: usize, alignment: usize) -> *mut c_void {
+pub extern "C" fn roc_alloc(length: usize, alignment: usize) -> NonNull<c_void> {
     DefaultAllocators::roc_alloc(roc_host_ptr(), length, alignment)
 }
 
@@ -2228,7 +2254,7 @@ pub extern "C" fn roc_realloc(
     ptr: *mut c_void,
     new_length: usize,
     alignment: usize,
-) -> *mut c_void {
+) -> NonNull<c_void> {
     DefaultAllocators::roc_realloc(roc_host_ptr(), ptr, new_length, alignment)
 }
 
@@ -2246,6 +2272,9 @@ pub extern "C" fn roc_expect_failed(bytes: *const u8, len: usize) {
 
 #[no_mangle]
 pub extern "C" fn roc_crashed(bytes: *const u8, len: usize) {
+    // The default handler exits the process, so control never returns to
+    // rust_main. Restore first so the crash message is not printed in raw mode.
+    tty::restore();
     DefaultHandlers::roc_crashed(roc_host_ptr(), bytes, len);
 }
 
@@ -2348,7 +2377,18 @@ pub fn rust_main(argc: i32, argv: *const *const c_char) -> i32 {
     set_program_name(program_name);
 
     let args_list = build_args_list(&args, &roc_host);
+    // A host panic aborts the process in release builds, skipping the cleanup
+    // below, so the hook is the only chance to hand the terminal back.
+    let default_panic_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        tty::restore();
+        default_panic_hook(info);
+    }));
+
     let mut exit_code = unsafe { roc_main(args_list) };
+
+    // Covers a normal return, an application error, and an explicit exit code.
+    tty::restore();
 
     process_service::shutdown();
 
