@@ -6,7 +6,7 @@
     # nixos-unstable no longer supports Intel macOS.
     nixpkgs-x86-darwin.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
     roc-overlay = {
-      url = "github:roc-lang/roc-overlay";
+      url = "github:roc-lang/roc-overlay/1cfad3691aea079393c26ee273443f486867f331";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.nixpkgs-darwin.follows = "nixpkgs-x86-darwin";
     };
@@ -79,11 +79,11 @@
           default = pkgs.mkShell {
             packages = [
               # Keep in sync with the nightly pinned in .github/workflows.
-              pkgs.rocpkgs."nightly-2026-10-09-258ab27"
+              pkgs.rocpkgs."nightly-2026-10-11-7d256b9"
               pkgs.python3
               rustToolchain
               pkgs.simple-http-server
-              pkgs.zig_0_16
+              pkgs.zig_0_17
             ]
             ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.valgrind ];
           };

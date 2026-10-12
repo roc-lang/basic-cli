@@ -77,6 +77,28 @@ drift independently. When updating the nightly pin in the workflows:
 
 ## Verification
 
+### Windows host inputs
+
+Build the host on Windows x64 with the pinned Rust toolchain, Zig 0.17.0 and
+LLVM's `clang-cl` on `PATH`. Install Rust's notices and LLVM tools with
+`rustup component add rust-docs llvm-tools-preview`. The Rust target remains
+`x86_64-pc-windows-msvc`; clang-cl builds ring and SQLite using that ABI.
+
+Run `python scripts/build.py --target x64win`, followed by
+`python -m unittest scripts/test_windows_runtime.py`. The build generates the
+startup archive and UCRT/Win32 import libraries, then collects the actual Cargo
+and Rust notices. `python scripts/windows_runtime.py --check` verifies the
+library and notice inventories before bundling. Release artifacts must transfer
+the entire `platform/targets/x64win/` directory, including `PROVENANCE.json` and
+`licenses/`. Empty target placeholders are permitted only by the explicit local
+test-bundle option.
+
+The runtime uses the UCRT supplied with Windows 10 and 11. Vendored Roc sources
+are checked against `native/windows/UPSTREAM.json`; update the recorded source
+revision, hashes and original license together when changing them. New native
+dependencies or license expressions need review before adding them to the
+producer's accepted set.
+
 For changes to the Nix release outputs, run `nix flake check`. This builds and
 runs an application against the pinned published platform inside the Nix sandbox;
 see [the Nix consumer documentation](nix/README.md).

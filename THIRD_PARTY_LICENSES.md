@@ -1,6 +1,34 @@
 # Third-Party Licenses
 
-This project bundles third-party libraries for static linking on Linux (musl) targets.
+This project bundles third-party libraries and notices for its native targets.
+
+## Windows MSVC inputs
+
+`platform/targets/x64win/PROVENANCE.json` records every shipped Windows library's
+SHA-256, source revision or source-package checksum, build commands, toolchain,
+license and redistribution basis. Its `documents` inventory hashes the original
+license and copyright notices in `platform/targets/x64win/licenses/`. These files
+are included in release bundles; retain them when redistributing the libraries.
+
+The startup, initializer and TLS sources come from Roc commit
+`7d256b954603e1170ee0d6df229c795aba6dc70d` under UPL-1.0. The additional stack-cookie
+and type-info support is original basic-cli code under UPL-1.0. Zig 0.17.0 supplies
+compiler-rt under MIT and mingw-w64 import definitions under ZPL-2.1. Original
+license texts and source hashes accompany the generated archives. The import
+libraries refer to Windows DLLs supplied by the operating system.
+
+The MSVC Rust host embeds Rust, ring, SQLite and its other Cargo dependencies.
+The Windows producer collects the resolved dependencies' original license files,
+source copyright headers, crate checksums and Rust's `COPYRIGHT-library.html`.
+This includes ring's component notices, SQLite's public-domain dedication and
+the CDLA-Permissive-2.0 agreement for the webpki root-certificate data. An unknown
+license expression or missing notice stops the build. The list later in this
+document describes the scripting subset; the generated inventory covers the
+whole Windows host.
+
+The Windows producer uses the dynamic CRT configuration and clang-cl for native
+C dependencies. It generates import archives from open-source definitions and
+does not copy Microsoft SDK or CRT archives into the platform.
 
 ## musl libc
 
