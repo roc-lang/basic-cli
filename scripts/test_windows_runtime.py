@@ -50,6 +50,11 @@ class ProvenanceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "inventory mismatch"):
             runtime.validate(self.output)
 
+    def test_empty_unrecorded_archive_rejected(self):
+        (self.output / "libcmt.lib").touch()
+        with self.assertRaisesRegex(ValueError, "inventory mismatch"):
+            runtime.validate(self.output)
+
     def test_license_path_escape_rejected(self):
         path = self.output / runtime.MANIFEST_NAME
         manifest = json.loads(path.read_text())

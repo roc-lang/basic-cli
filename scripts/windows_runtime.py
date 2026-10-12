@@ -168,9 +168,11 @@ def validate(output: Path, *, require_host: bool = True) -> list[Path]:
         raise ValueError("Unsupported Windows provenance format")
     records = manifest.get("libraries", {})
     expected = set(LIBRARIES) | ({"host.lib"} if require_host else set())
+    inventory = {p.name for p in output.glob("*.lib") if p.is_file()
+                 and (require_host or p.name != "host.lib")}
     actual = {p.name for p in output.glob("*.lib") if p.stat().st_size
               and (require_host or p.name != "host.lib")}
-    if actual != expected or set(records) != expected:
+    if inventory != expected or actual != expected or set(records) != expected:
         raise ValueError(f"Windows library inventory mismatch: expected={sorted(expected)}, actual={sorted(actual)}")
     documents = {manifest_path}
     for name, record in records.items():

@@ -255,10 +255,25 @@ mod tests {
             .with_single_cert(vec![cert.clone()], key)
             .unwrap();
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.set_nonblocking(true).unwrap();
         let address = listener.local_addr().unwrap();
         let server = thread::spawn(move || {
             for accepted in [true, false] {
-                let (socket, _) = listener.accept().unwrap();
+                let deadline = std::time::Instant::now() + Duration::from_secs(5);
+                let socket = loop {
+                    match listener.accept() {
+                        Ok((socket, _)) => break socket,
+                        Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                            assert!(
+                                std::time::Instant::now() < deadline,
+                                "TLS client did not connect"
+                            );
+                            thread::sleep(Duration::from_millis(5));
+                        }
+                        Err(error) => panic!("TLS listener failed: {error}"),
+                    }
+                };
+                socket.set_nonblocking(false).unwrap();
                 socket
                     .set_read_timeout(Some(Duration::from_secs(5)))
                     .unwrap();
@@ -293,9 +308,13 @@ mod tests {
             ServerName::try_from("localhost").unwrap(),
         )
         .unwrap();
-        let socket = std::net::TcpStream::connect(address).unwrap();
+        let socket =
+            std::net::TcpStream::connect_timeout(&address, Duration::from_secs(5)).unwrap();
         socket
             .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        socket
+            .set_write_timeout(Some(Duration::from_secs(5)))
             .unwrap();
         let mut tls = rustls::StreamOwned::new(connection, socket);
         tls.write_all(&[42]).unwrap();
