@@ -83,6 +83,9 @@ build
 # Platform host libraries (we manually add things to track like crt1.o, libc.a, libunwind.a)
 platform/targets/*/libhost.a
 
+# Generated Windows host libraries, provenance, and license notices
+platform/targets/x64win/
+
 # Cargo lock for reproducible builds
 !Cargo.lock
 

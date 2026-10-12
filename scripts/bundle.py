@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import shutil
 import subprocess
@@ -17,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PLATFORM_DIR = ROOT / "platform"
 LIBRARY_EXTENSIONS = windows_runtime.BINARY_EXTENSIONS
 MAX_PLATFORM_BYTES = 100 * 1024 * 1024
+ROC = os.environ.get("ROC", "roc")
 
 
 def relative_platform_path(path: Path) -> str:
@@ -119,7 +121,7 @@ def bundle(args: argparse.Namespace, roc_args: list[str]) -> None:
             shutil.copy2(source, destination)
         subprocess.run(
             [
-                "roc",
+                ROC,
                 "bundle",
                 *bundle_files,
                 *(path.name for path in license_sources),
