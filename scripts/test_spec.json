@@ -477,10 +477,11 @@
         {
           "name": "raw-mode",
           "pty": true,
+          "await_raw_mode": true,
           "stdin": "q",
           "contains": [
             "Tty: enabling raw mode",
-            "Tty: disabling raw mode",
+            "Tty: disabled raw mode",
             "Read 1 byte(s)."
           ]
         }
@@ -557,6 +558,60 @@
           "exit_code": 1,
           "contains": [
             "MissingCommand"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "tests/tty-restore.roc",
+      "cases": [
+        {
+          "name": "repeated-calls",
+          "platforms": { "windows": { "enabled": false } },
+          "args": ["repeat"],
+          "pty": true,
+          "await_raw_mode": true,
+          "stdin": "q",
+          "contains": ["repeat: ok"]
+        },
+        {
+          "name": "error-return",
+          "platforms": { "windows": { "enabled": false } },
+          "args": ["error"],
+          "pty": true,
+          "await_raw_mode": true,
+          "stdin": "q",
+          "exit_code": 1,
+          "contains": ["Program exited with error: LeftInRawMode\n"]
+        },
+        {
+          "name": "exit-code",
+          "platforms": { "windows": { "enabled": false } },
+          "args": ["exit-code"],
+          "pty": true,
+          "await_raw_mode": true,
+          "stdin": "q",
+          "exit_code": 3
+        },
+        {
+          "name": "crash",
+          "platforms": { "windows": { "enabled": false } },
+          "valgrind": false,
+          "args": ["crash"],
+          "pty": true,
+          "await_raw_mode": true,
+          "stdin": "q",
+          "exit_code": 1,
+          "expect_crash": true,
+          "contains": ["left in raw mode\n"]
+        },
+        {
+          "name": "no-terminal",
+          "args": ["detached"],
+          "detach_terminal": true,
+          "stdout_contains": [
+            "enable failed: ",
+            "disable without enable: ok"
           ]
         }
       ]

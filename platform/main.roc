@@ -147,6 +147,8 @@ main_for_host! = |args|
 		Ok({}) => 0
 		Err(Exit(code)) => code
 		Err(other) => {
+			# Leave raw mode first, so the message is not printed without line breaks.
+			Tty.disable_raw_mode!() ?? {}
 			Stderr.line!("Program exited with error: ${Str.inspect(other)}") ?? {}
 			1
 		}
