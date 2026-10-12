@@ -3,6 +3,7 @@ import json
 import argparse
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -29,6 +30,19 @@ class ProvenanceTests(unittest.TestCase):
 
     def test_complete_inventory_returns_notices(self):
         self.assertEqual(len(runtime.validate(self.output)), 2)
+
+    def test_consumers_import_without_python_311_tomllib(self):
+        script = '''import builtins
+original_import = builtins.__import__
+def without_tomllib(name, *args, **kwargs):
+    if name == "tomllib":
+        raise ModuleNotFoundError("Python 3.10 has no tomllib")
+    return original_import(name, *args, **kwargs)
+builtins.__import__ = without_tomllib
+from scripts import build, bundle
+assert "x64win" in build.ROC_TARGETS
+'''
+        subprocess.run([sys.executable, "-c", script], cwd=runtime.ROOT, check=True)
 
     def test_tampered_library_rejected(self):
         (self.output / "host.lib").write_bytes(b"changed")

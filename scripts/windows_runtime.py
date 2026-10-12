@@ -12,7 +12,6 @@ import hashlib
 import json
 import re
 import subprocess
-import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -211,6 +210,12 @@ def record_host(output: Path, build_commands: list[list[str]], toolchain: dict[s
     rights by itself. The original license/notice files and source checksums are
     recorded together, and components without notices stop the build.
     """
+    # Consumers and Unix producers still support Python 3.10. Only Windows
+    # notice collection needs TOML parsing, which entered the stdlib in 3.11.
+    try:
+        import tomllib
+    except ModuleNotFoundError:
+        raise SystemExit("Windows host notice collection requires Python 3.11 or newer") from None
     metadata = json.loads(subprocess.check_output([
         "cargo", "metadata", "--locked", "--format-version=1", "--filter-platform",
         "x86_64-pc-windows-msvc"], cwd=ROOT, text=True))

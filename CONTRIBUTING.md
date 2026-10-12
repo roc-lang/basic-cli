@@ -79,7 +79,7 @@ drift independently. When updating the nightly pin in the workflows:
 
 ### Windows host inputs
 
-Build the host on Windows x64 with the pinned Rust toolchain, Zig 0.17.0 and
+Build the host on Windows x64 with Python 3.11 or newer, the pinned Rust toolchain, Zig 0.17.0 and
 LLVM's `clang-cl` on `PATH`. Install Rust's notices and LLVM tools with
 `rustup component add rust-docs llvm-tools-preview`. The Rust target remains
 `x86_64-pc-windows-msvc`; clang-cl builds ring and SQLite using that ABI.
