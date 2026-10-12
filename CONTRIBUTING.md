@@ -73,19 +73,69 @@ drift independently. When updating the nightly pin in the workflows:
    `nix flake update roc-overlay`.
 2. Run `./ci/regenerate_glue.sh` to refresh `src/roc_platform_abi.rs`.
 3. Reconcile `src/lib.rs` if generated names or layouts changed.
-4. Run `cargo check` and `./scripts/test.py`.
+4. Run the Rust checks under [Verification](#verification) and `./scripts/test.py`.
 
 ## Verification
+
+### Windows host inputs
+
+Build the host on Windows x64 with Python 3.11 or newer, the pinned Rust toolchain,
+Zig 0.17.0 on `PATH` (or selected with `ZIG`), and the Windows SDK/MSVC build tools used by Rust's MSVC
+target. Install Rust's notices and LLVM tools with
+`rustup component add rust-docs llvm-tools-preview`. The Rust target remains
+`x86_64-pc-windows-msvc`; `zig cc` builds ring and SQLite using that ABI and
+the SDK headers. A small adapter translates the target flags from Cargo's C
+build tooling; a separate LLVM/clang-cl installation is unnecessary. All Windows
+build steps use the same version-checked executable. The adapter is copied to a
+path derived from the compiler's path and SHA-256 and both adapter files' hashes,
+so changing these inputs invalidates Cargo's cached native builds.
+
+Run `python scripts/build.py --target x64win`, followed by
+`python -m unittest scripts/test_windows_runtime.py`. The build generates the
+startup archive and UCRT/Win32 import libraries, combines them into
+`windows_support.lib`, then collects the actual Cargo
+and Rust notices. `python scripts/windows_runtime.py --check` verifies the
+library and notice inventories before bundling. Release artifacts must transfer
+the entire `platform/targets/x64win/` directory, including `PROVENANCE.json` and
+`licenses/`. Empty target placeholders are permitted only by the explicit local
+test-bundle option.
+
+The runtime uses the UCRT supplied with Windows 10 and 11. Vendored Roc sources
+are checked against `native/windows/UPSTREAM.json`; update the recorded source
+revision, hashes and original license together when changing them. New native
+dependencies or license expressions need review before adding them to the
+producer's accepted set.
 
 For changes to the Nix release outputs, run `nix flake check`. This builds and
 runs an application against the pinned published platform inside the Nix sandbox;
 see [the Nix consumer documentation](nix/README.md).
+
+CI formats, lints, and unit-tests the Rust host on Linux, macOS, and Windows.
+Run the same commands before pushing host changes:
+
+```sh
+cargo fmt --all -- --check
+cargo clippy --locked --all-targets -- -D warnings
+cargo test --locked --all-targets
+```
+
+Clippy runs with warnings denied. `src/roc_platform_abi.rs` is generated, so
+any Clippy lint it needs relaxed is allowed on its `mod` declaration in
+`src/lib.rs` with a comment saying why, not by hand-editing the generated file
+or crate-wide.
 
 Release-tooling regression tests run with:
 
 ```sh
 python3 -m unittest scripts/test_check_release_version.py scripts/test_check_version_bump.py scripts/test_update_nix_release.py
 ```
+
+Stable releases must be dispatched from the default branch. To publish a branch
+candidate, dispatch the Release workflow on that branch with an `X.Y.Z-rcN`
+version. Branch candidates run the same build and bundle tests, publish a GitHub
+prerelease with its docs archive, and skip default-branch follow-up PRs and Pages
+publication. Commit the matching Cargo version on the candidate branch before
+dispatching so the release tag records the versioned sources.
 
 The release workflow bounds `roc bump` to 120 seconds and saves its output in
 `.release/bump-output.txt`. It currently warns on comparison errors and timeouts:

@@ -201,7 +201,9 @@ impl Child {
         sync_task(async move {
             let deadline = tokio::time::Instant::now()
                 .checked_add(Duration::from_millis(timeout_ms))
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Timeout is too large"))?;
+                .ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::InvalidInput, "Timeout is too large")
+                })?;
             tokio::time::timeout_at(deadline, async {
                 let mut input = stdin.lock().await;
                 input
@@ -365,9 +367,13 @@ async fn spawn(mut config: Config) -> io::Result<Child> {
     let deadline = if config.timeout_ms == 0 {
         None
     } else {
-        Some(tokio::time::Instant::now()
-            .checked_add(Duration::from_millis(config.timeout_ms))
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Timeout is too large"))?)
+        Some(
+            tokio::time::Instant::now()
+                .checked_add(Duration::from_millis(config.timeout_ms))
+                .ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::InvalidInput, "Timeout is too large")
+                })?,
+        )
     };
     config.command.stdin(match config.stdin_mode {
         2 => Stdio::null(),

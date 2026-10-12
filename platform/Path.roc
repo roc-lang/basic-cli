@@ -219,6 +219,9 @@ Path := [
 	delete_all! = |path| map_dir_result(Host.dir_delete_all!(to_raw(path)), path)
 
 	## List the entries in the directory at this path.
+	##
+	## The result is all-or-nothing: if any entry cannot be read while the
+	## directory is being listed, an error is returned instead of a partial list.
 	list! : Path => Try(List(Path), [PathErr(IOErr, Path)])
 	list! = |path|
 		match Host.dir_list!(to_raw(path)) {
