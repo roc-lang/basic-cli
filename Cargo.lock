@@ -616,6 +616,7 @@ dependencies = [
  "libc",
  "libsqlite3-sys",
  "process-wrap",
+ "rustls",
  "same-file",
  "socket2",
  "sys-locale",
