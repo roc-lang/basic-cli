@@ -256,15 +256,22 @@ def pty_process(
     import pty
     import termios
 
+    def terminal_mode() -> list[object]:
+        mode = termios.tcgetattr(slave)
+        # BSD kernels set PENDIN themselves when a terminal returns to line mode,
+        # and only clear it on the next read. It is not part of the requested mode.
+        mode[3] &= ~getattr(termios, "PENDIN", 0)
+        return mode
+
     master, slave = pty.openpty()
     # The slave stays open so the terminal mode can be read after the child exits.
-    initial_mode = termios.tcgetattr(slave)
+    initial_mode = terminal_mode()
     process = subprocess.Popen(args, cwd=cwd, env=env, stdin=slave, stdout=slave, stderr=slave)
     output = bytearray()
     deadline = time.monotonic() + timeout
     try:
         if await_raw_mode:
-            while termios.tcgetattr(slave) == initial_mode:
+            while terminal_mode() == initial_mode:
                 if process.poll() is not None or time.monotonic() >= deadline:
                     raise SystemExit(f"Terminal never changed mode: {' '.join(args)}")
                 time.sleep(0.01)
@@ -300,8 +307,12 @@ def pty_process(
             except OSError:
                 break
         exit_code = process.wait()
-        if termios.tcgetattr(slave) != initial_mode:
-            raise SystemExit(f"Terminal mode was not restored: {' '.join(args)}")
+        final_mode = terminal_mode()
+        if final_mode != initial_mode:
+            raise SystemExit(
+                f"Terminal mode was not restored: {' '.join(args)}"
+                f"\n  before: {initial_mode}\n  after:  {final_mode}"
+            )
         return exit_code, output.decode("utf-8", errors="replace")
     finally:
         os.close(slave)
