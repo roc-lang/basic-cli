@@ -2,7 +2,9 @@
 import json
 import argparse
 import os
+import re
 import runpy
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -70,6 +72,39 @@ assert "x64win" in build.ROC_TARGETS
         with self.assertRaisesRegex(ValueError, "inventory mismatch"):
             runtime.validate(self.output)
 
+    def test_unrecorded_binary_inputs_rejected_recursively(self):
+        for relative in ("startup.obj", "startup.o", "extra.a", "EXTRA.LIB",
+                         "nested/startup.OBJ", "licenses/extra.a"):
+            for contents in (b"", b"unrecorded"):
+                with self.subTest(relative=relative, contents=contents):
+                    path = self.output / relative
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(contents)
+                    with self.assertRaisesRegex(ValueError, "inventory mismatch"):
+                        runtime.validate(self.output)
+                    path.unlink()
+
+    def test_selected_zig_is_resolved_and_version_checked(self):
+        with patch.dict(os.environ, {"ZIG": "selected-zig"}), \
+             patch.object(runtime.shutil, "which", return_value=str(self.output / "zig")) as which, \
+             patch.object(runtime.subprocess, "check_output", return_value=runtime.ZIG_VERSION) as output:
+            zig = runtime.resolve_zig()
+            which.assert_called_once_with("selected-zig")
+            output.assert_called_once_with([zig, "version"], text=True)
+        with patch.object(runtime.shutil, "which", return_value="zig"), \
+             patch.object(runtime.subprocess, "check_output", return_value="0.16.0"), \
+             patch.object(build, "run") as cargo:
+            with self.assertRaisesRegex(SystemExit, "require Zig"):
+                build.windows_build_env()
+            cargo.assert_not_called()
+
+    def test_runtime_commands_use_selected_zig_without_path_lookup(self):
+        zig = runtime.resolve_zig()
+        # Only ZIG supplies the compiler; no bare zig can be found on PATH.
+        with patch.dict(os.environ, {"ZIG": zig, "PATH": ""}):
+            self.assertEqual(runtime.resolve_zig(), zig)
+            self.assertTrue(runtime.zig_lib_dir(zig).is_dir())
+
     def test_license_path_escape_rejected(self):
         path = self.output / runtime.MANIFEST_NAME
         manifest = json.loads(path.read_text())
@@ -111,7 +146,8 @@ assert "x64win" in build.ROC_TARGETS
 
     def test_inherited_rust_flags_preserved_and_dynamic_crt_selected(self):
         with patch.dict(os.environ, {"CARGO_ENCODED_RUSTFLAGS": "-Ctarget-feature=+crt-static\x1f-Cdebuginfo=1"}), \
-             patch.object(build.shutil, "which", return_value="zig"):
+             patch.object(runtime, "resolve_zig", return_value="zig"), \
+             patch.object(build, "windows_compiler", return_value="adapter.cmd"):
             env, _ = build.windows_build_env()
         self.assertEqual(env["CARGO_ENCODED_RUSTFLAGS"].split("\x1f"),
                          ["-Ctarget-feature=+crt-static", "-Cdebuginfo=1", "-Ctarget-feature=-crt-static"])
@@ -139,10 +175,71 @@ assert "x64win" in build.ROC_TARGETS
         self.assertIn("THIRD_PARTY_LICENSES.md", arguments)
         self.assertEqual((platform / "LICENSE").read_text(), "existing local license")
         self.assertFalse((platform / "THIRD_PARTY_LICENSES.md").exists())
+        (windows / "licenses/unrecorded.OBJ").write_bytes(b"unrecorded")
+        with patch.object(bundle, "ROOT", root), patch.object(bundle, "PLATFORM_DIR", platform), \
+             patch.object(bundle.subprocess, "run") as run:
+            with self.assertRaisesRegex(ValueError, "inventory mismatch"):
+                bundle.bundle(argparse.Namespace(output_dir=root / "dist", stub_missing_targets=False), [])
+            run.assert_not_called()
 
     def test_declared_windows_inputs_match_producer_inventory(self):
         declared = {p.name for p in bundle.declared_target_inputs() if p.parent.name == "x64win"}
         self.assertEqual(declared, set(runtime.LIBRARIES) | {"host.lib"})
+
+
+class CompilerCacheTests(unittest.TestCase):
+    def test_cargo_rebuilds_when_compiler_or_adapter_changes(self):
+        zig = runtime.resolve_zig()
+        cc_version = re.search(r'name = "cc"\nversion = "([^"]+)"',
+                               (runtime.ROOT / "Cargo.lock").read_text())[1]
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "ci").mkdir()
+            (root / "src").mkdir()
+            (root / "Cargo.toml").write_text(
+                '[package]\nname="compiler_cache_regression"\nversion="0.1.0"\nedition="2021"\n'
+                f'[build-dependencies]\ncc="={cc_version}"\n')
+            (root / "build.rs").write_text(
+                'fn main() { cc::Build::new().file("sentinel.c").compile("sentinel"); }\n')
+            (root / "sentinel.c").write_text('int sentinel(void) { return VALUE; }\n')
+            (root / "src/main.rs").write_text(
+                'extern "C" { fn sentinel() -> i32; }\n'
+                'fn main() { assert_eq!(unsafe { sentinel() }, '
+                'std::env::args().nth(1).unwrap().parse::<i32>().unwrap()); }\n')
+            # Hidden compiler state and mutable wrapper contents were the two
+            # inputs cc-rs did not track in the original fixed-path adapter.
+            selected = root / "selected-compiler"
+            selected.write_text("1")
+            adapter = root / "ci/zig-msvc-cc.py"
+            adapter.write_text(
+                'import os, pathlib, subprocess, sys\n'
+                'value = pathlib.Path(os.environ["ZIG"]).read_text().strip()\n'
+                'args = [a for a in sys.argv[1:] if not a.startswith("--target=")]\n'
+                f'raise SystemExit(subprocess.call([{zig!r}, "cc", *{(["-target", "x86_64-windows-msvc", "-fms-runtime-lib=dll"] if os.name == "nt" else [])!r}, "-DVALUE=" + value, *args]))\n')
+            launcher = root / "ci/zig-msvc-cc.cmd"
+            if os.name == "nt":
+                launcher.write_text('@echo off\npython "%~dp0zig-msvc-cc.py" %*\n')
+            else:
+                launcher.write_text('#!/bin/sh\nexec ' + shutil.which("python3")
+                                    + ' "$(dirname "$0")/zig-msvc-cc.py" "$@"\n')
+                launcher.chmod(0o755)
+            env = os.environ.copy()
+            env.pop("RUSTFLAGS", None)
+            env.pop("CARGO_ENCODED_RUSTFLAGS", None)
+            env["CARGO_TARGET_DIR"] = str(root / "target")
+            env["ZIG"] = str(selected)
+            for expected in (1, 2, 3):
+                if expected == 2:
+                    selected.write_text("2")
+                elif expected == 3:
+                    adapter.write_text(adapter.read_text().replace('value, *args', '"3", *args'))
+                with patch.object(build, "ROOT", root):
+                    env["CC"] = build.windows_compiler(str(selected))
+                subprocess.run(["cargo", "run", "--quiet", "--", str(expected)],
+                               cwd=root, env=env, check=True, timeout=180)
+                # A repeat build keeps exactly the same compiler identity.
+                with patch.object(build, "ROOT", root):
+                    self.assertEqual(env["CC"], build.windows_compiler(str(selected)))
 
 
 @unittest.skipUnless(os.name == "nt", "native Windows ABI execution")
@@ -157,14 +254,15 @@ class WindowsRuntimeTests(unittest.TestCase):
     def test_actual_host_links_without_sdk_or_vc_runtime_archives(self):
         inputs = runtime.ROOT / "platform/targets/x64win"
         runtime.validate(inputs)
+        zig = runtime.resolve_zig()
         scratch = runtime.ROOT / "target/windows-host-fixture"
         scratch.mkdir(parents=True, exist_ok=True)
         source = scratch / "app.c"
         # MSVC passes this RocList argument indirectly; the smoke app ignores it.
         source.write_text("int roc_main(void *args) { (void)args; return 37; }\n")
         obj, exe = scratch / "app.obj", scratch / "app.exe"
-        subprocess.run(["zig", "cc", "-target", "x86_64-windows-msvc", "-c", str(source), "-o", str(obj)], check=True)
-        subprocess.run(["zig", "lld-link", "/nodefaultlib", "/subsystem:console",
+        subprocess.run([zig, "cc", "-target", "x86_64-windows-msvc", "-c", str(source), "-o", str(obj)], check=True)
+        subprocess.run([zig, "lld-link", "/nodefaultlib", "/subsystem:console",
                         "/entry:mainCRTStartup", "/machine:x64", "/opt:ref", f"/out:{exe}",
                         str(obj), str(inputs / "host.lib"),
                         *(str(inputs / name) for name in runtime.LIBRARIES)], check=True)
@@ -177,18 +275,19 @@ class WindowsRuntimeTests(unittest.TestCase):
     def test_startup_tls_initializers_cookie_and_metadata(self):
         inputs = runtime.ROOT / "platform/targets/x64win"
         runtime.validate(inputs)
+        zig = runtime.resolve_zig()
         scratch = runtime.ROOT / "target/windows-runtime-fixture"
         scratch.mkdir(parents=True, exist_ok=True)
         for fail_initializer in (False, True):
             obj = scratch / "fixture.obj"
             exe = scratch / "fixture.exe"
-            compile_args = ["zig", "cc", "-target", "x86_64-windows-msvc", "-O2",
+            compile_args = [zig, "cc", "-target", "x86_64-windows-msvc", "-O2",
                             "-fstack-protector-strong", "-c",
                             str(runtime.SOURCE_DIR / "runtime_fixture.c"), "-o", str(obj)]
             if fail_initializer:
                 compile_args.append("-DFAIL_INITIALIZER")
             subprocess.run(compile_args, check=True)
-            subprocess.run(["zig", "lld-link", "/nodefaultlib", "/subsystem:console",
+            subprocess.run([zig, "lld-link", "/nodefaultlib", "/subsystem:console",
                             "/entry:mainCRTStartup", "/machine:x64", "/opt:ref",
                             f"/out:{exe}", str(obj),
                             *(str(inputs / name) for name in runtime.LIBRARIES)], check=True)

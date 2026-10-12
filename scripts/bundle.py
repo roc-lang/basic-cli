@@ -15,7 +15,7 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parents[1]
 PLATFORM_DIR = ROOT / "platform"
-LIBRARY_EXTENSIONS = {".a", ".o", ".lib", ".obj"}
+LIBRARY_EXTENSIONS = windows_runtime.BINARY_EXTENSIONS
 MAX_PLATFORM_BYTES = 100 * 1024 * 1024
 
 
@@ -73,7 +73,7 @@ def bundle(args: argparse.Namespace, roc_args: list[str]) -> None:
     library_files = sorted(
         path
         for path in (PLATFORM_DIR / "targets").rglob("*")
-        if path.is_file() and path.suffix in LIBRARY_EXTENSIONS
+        if path.is_file() and path.suffix.lower() in LIBRARY_EXTENSIONS
     )
     declared = declared_target_inputs()
     if not args.stub_missing_targets:

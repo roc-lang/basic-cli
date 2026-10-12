@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 import platform
 import shutil
@@ -168,11 +169,28 @@ def build_unix_target(target_name: str, *, native: bool = False) -> None:
     strip_linux_host(target_name)
 
 
+def windows_compiler(zig: str) -> str:
+    # cc-rs tracks CC's value, but not the contents of a wrapper or its hidden
+    # environment. Snapshot both adapters under an identity that changes with
+    # the selected compiler. Cached ring/SQLite builds then rerun automatically.
+    adapters = [ROOT / "ci" / name for name in ("zig-msvc-cc.cmd", "zig-msvc-cc.py")]
+    identity = "\n".join([zig, windows_runtime.digest(Path(zig)),
+                          *(windows_runtime.digest(p) for p in adapters)])
+    fingerprint = hashlib.sha256(identity.encode()).hexdigest()
+    directory = ROOT / "target" / "windows-compiler" / fingerprint
+    directory.mkdir(parents=True, exist_ok=True)
+    for source in adapters:
+        destination = directory / source.name
+        if not destination.exists():
+            shutil.copy2(source, destination)
+        elif destination.read_bytes() != source.read_bytes():
+            raise SystemExit(f"Compiler adapter snapshot was modified: {destination}")
+    return str(directory / adapters[0].name)
+
+
 def windows_build_env() -> tuple[dict[str, str], str]:
-    zig = shutil.which(os.environ.get("ZIG", "zig"))
-    if zig is None:
-        raise SystemExit("Zig was not found; install Zig 0.17.0 and add it to PATH")
-    compiler = str(ROOT / "ci" / "zig-msvc-cc.cmd")
+    zig = windows_runtime.resolve_zig()
+    compiler = windows_compiler(zig)
     env = os.environ.copy()
     env["ZIG"] = zig
     env["CC_x86_64_pc_windows_msvc"] = compiler
@@ -194,7 +212,7 @@ def build_windows() -> None:
     run(*build_command, env=env)
 
     output_dir = ROOT / "platform" / "targets" / "x64win"
-    windows_runtime.build(output_dir)
+    windows_runtime.build(output_dir, zig=env["ZIG"])
     host_destination = output_dir / "host.lib"
     shutil.copy2(
         ROOT / "target" / WINDOWS_TARGET / "release" / "host.lib",
@@ -205,6 +223,7 @@ def build_windows() -> None:
     windows_runtime.record_host(output_dir, [build_command], {
         "c_compiler": "zig cc\n" + subprocess.check_output(
             [env["ZIG"], "cc", "-target", "x86_64-windows-msvc", "--version"], text=True).strip(),
+        "zig_executable_sha256": windows_runtime.digest(Path(env["ZIG"])),
         "c_runtime_flags": "-fms-runtime-lib=dll",
         "rust_flags": env["CARGO_ENCODED_RUSTFLAGS"],
         "c_compiler_env": "CC_x86_64_pc_windows_msvc=" + compiler,

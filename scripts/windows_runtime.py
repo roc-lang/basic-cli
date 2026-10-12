@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -33,6 +34,7 @@ IMPORT_LIBRARIES = UCRT_LIBRARIES + SYSTEM_LIBRARIES
 RUNTIME_LIBRARIES = ("msvc_runtime.lib",)
 BUILD_LIBRARIES = RUNTIME_LIBRARIES + tuple(name + ".lib" for name in IMPORT_LIBRARIES)
 LIBRARIES = ("windows_support.lib",)
+BINARY_EXTENSIONS = {".a", ".o", ".lib", ".obj"}
 MANIFEST_NAME = "PROVENANCE.json"
 PERMISSIVE_LICENSES = {"MIT", "Apache-2.0", "ISC", "BSD-2-Clause", "BSD-3-Clause",
                        "Zlib", "CC0-1.0", "Unlicense", "Unicode-3.0", "UPL-1.0",
@@ -40,19 +42,31 @@ PERMISSIVE_LICENSES = {"MIT", "Apache-2.0", "ISC", "BSD-2-Clause", "BSD-3-Clause
 
 
 def digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    checksum = hashlib.sha256()
+    with path.open("rb") as source:
+        for block in iter(lambda: source.read(1024 * 1024), b""):
+            checksum.update(block)
+    return checksum.hexdigest()
 
 
 def command(args: list[str], *, cwd: Path | None = None) -> None:
     subprocess.run(args, cwd=cwd or ROOT, check=True)
 
 
-def zig_lib_dir() -> Path:
-    version = subprocess.check_output(["zig", "version"], text=True).strip()
+def resolve_zig() -> str:
+    executable = shutil.which(os.environ.get("ZIG", "zig"))
+    if executable is None:
+        raise SystemExit(f"Zig was not found; install Zig {ZIG_VERSION} or set ZIG to its executable")
+    executable = str(Path(executable).resolve())
+    version = subprocess.check_output([executable, "version"], text=True).strip()
     if version != ZIG_VERSION:
         raise SystemExit(f"Windows runtime inputs require Zig {ZIG_VERSION}, found {version}")
+    return executable
+
+
+def zig_lib_dir(zig: str) -> Path:
     # Zig 0.17 prints its environment as ZON, including on Windows.
-    output = subprocess.check_output(["zig", "env"], text=True)
+    output = subprocess.check_output([zig, "env"], text=True)
     match = re.search(r'\.lib_dir\s*=\s*("(?:[^"\\]|\\.)*")', output)
     if match is None:
         raise SystemExit("zig env did not report lib_dir")
@@ -77,7 +91,7 @@ def notice(output: Path, name: str, contents: bytes) -> str:
     return path.relative_to(output).as_posix()
 
 
-def build_runtime(output: Path, scratch: Path, zig_lib: Path) -> dict[str, object]:
+def build_runtime(output: Path, scratch: Path, zig_lib: Path, zig: str) -> dict[str, object]:
     upstream = json.loads((SOURCE_DIR / "UPSTREAM.json").read_text())
     for name, expected in upstream["files"].items():
         if digest(SOURCE_DIR / name) != expected:
@@ -95,12 +109,12 @@ def build_runtime(output: Path, scratch: Path, zig_lib: Path) -> dict[str, objec
     security = scratch / "security.obj"
     type_info = scratch / "type_info.obj"
     commands = [
-        ["zig", "build-obj", str(SOURCE_DIR / "tls.zig"), *common, f"-femit-bin={tls}"],
-        ["zig", "build-obj", str(SOURCE_DIR / "security.zig"), *common, f"-femit-bin={security}"],
-        ["zig", "c++", "-target", "x86_64-windows-msvc", "-O2", "-g0", "-fno-exceptions",
+        [zig, "build-obj", str(SOURCE_DIR / "tls.zig"), *common, f"-femit-bin={tls}"],
+        [zig, "build-obj", str(SOURCE_DIR / "security.zig"), *common, f"-femit-bin={security}"],
+        [zig, "c++", "-target", "x86_64-windows-msvc", "-O2", "-g0", "-fno-exceptions",
          "-fno-rtti", "-fno-sized-deallocation",
          "-nostdinc", "-c", str(SOURCE_DIR / "type_info.cpp"), "-o", str(type_info)],
-        ["zig", "build-lib", str(SOURCE_DIR / "exe_startup.zig"), str(tls), str(security), str(type_info), *common,
+        [zig, "build-lib", str(SOURCE_DIR / "exe_startup.zig"), str(tls), str(security), str(type_info), *common,
          "-fcompiler-rt", f"-femit-bin={output / 'msvc_runtime.lib'}"],
     ]
     for args in commands:
@@ -123,7 +137,7 @@ def build_runtime(output: Path, scratch: Path, zig_lib: Path) -> dict[str, objec
     }
 
 
-def build_imports(output: Path, scratch: Path, zig_lib: Path) -> dict[str, object]:
+def build_imports(output: Path, scratch: Path, zig_lib: Path, zig: str) -> dict[str, object]:
     mingw = zig_lib / "libc" / "mingw"
     license_file = notice(output, "mingw-w64-ZPL-2.1.txt", (mingw / "COPYING").read_bytes())
     # Record the complete input definition/include set, not only the entry .def.
@@ -137,14 +151,14 @@ def build_imports(output: Path, scratch: Path, zig_lib: Path) -> dict[str, objec
         if source is None:
             raise SystemExit(f"Zig {ZIG_VERSION} has no mingw-w64 definition for {name}")
         definition = scratch / (name + ".def")
-        args = ["zig", "cc", "-E", "-P", "-x", "c", "-target", "x86_64-windows-msvc",
+        args = [zig, "cc", "-E", "-P", "-x", "c", "-target", "x86_64-windows-msvc",
                 "-Wno-extra-tokens", "-Wno-invalid-pp-token",
                 "-I", str(mingw / "def-include"), "-I", str(mingw / "lib-common"),
                 str(source), "-o", str(definition)]
         command(args)
         commands.append(args)
         definition.write_text(normalize_definition(definition.read_text()), encoding="utf-8")
-        args = ["zig", "dlltool", "-m", "i386:x86-64", "-d", str(definition),
+        args = [zig, "dlltool", "-m", "i386:x86-64", "-d", str(definition),
                 "-l", str(output / (name + ".lib"))]
         command(args)
         commands.append(args)
@@ -169,10 +183,11 @@ def validate(output: Path, *, require_host: bool = True) -> list[Path]:
         raise ValueError("Unsupported Windows provenance format")
     records = manifest.get("libraries", {})
     expected = set(LIBRARIES) | ({"host.lib"} if require_host else set())
-    inventory = {p.name for p in output.glob("*.lib") if p.is_file()
-                 and (require_host or p.name != "host.lib")}
-    actual = {p.name for p in output.glob("*.lib") if p.stat().st_size
-              and (require_host or p.name != "host.lib")}
+    binaries = [p for p in output.rglob("*") if p.is_file()
+                and p.suffix.lower() in BINARY_EXTENSIONS
+                and (require_host or p.relative_to(output).as_posix() != "host.lib")]
+    inventory = {p.relative_to(output).as_posix() for p in binaries}
+    actual = {p.relative_to(output).as_posix() for p in binaries if p.stat().st_size}
     if inventory != expected or actual != expected or set(records) != expected:
         raise ValueError(f"Windows library inventory mismatch: expected={sorted(expected)}, "
                          f"actual={sorted(inventory)}, empty={sorted(inventory - actual)}")
@@ -320,16 +335,17 @@ def record_host(output: Path, build_commands: list[list[str]], toolchain: dict[s
     validate(output)
 
 
-def build(output: Path) -> None:
+def build(output: Path, *, zig: str | None = None) -> None:
+    zig = zig or resolve_zig()
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=True)
     scratch = ROOT / "target" / "windows-runtime"
     scratch.mkdir(parents=True, exist_ok=True)
-    zig_lib = zig_lib_dir()
+    zig_lib = zig_lib_dir(zig)
     parts = scratch / "parts"
     parts.mkdir(parents=True, exist_ok=True)
-    components = {"runtime": build_runtime(parts, scratch, zig_lib),
-                  "imports": build_imports(parts, scratch, zig_lib)}
+    components = {"runtime": build_runtime(parts, scratch, zig_lib, zig),
+                  "imports": build_imports(parts, scratch, zig_lib, zig)}
     license_files = sorted({relative for component in components.values()
                             for relative in component["license_files"]})
     for relative in license_files:
@@ -342,7 +358,7 @@ def build(output: Path) -> None:
     script = f'CREATE "{archive.as_posix()}"\n' + "".join(
         f'ADDLIB "{(parts / name).as_posix()}"\n' for name in BUILD_LIBRARIES
     ) + "SAVE\nEND\n"
-    merge_command = ["zig", "ar", "--format=coff", "-M"]
+    merge_command = [zig, "ar", "--format=coff", "-M"]
     subprocess.run(merge_command, input=script, text=True, check=True, cwd=ROOT)
     components["support"] = {
         "component": "Combined MSVC startup/runtime and Windows import archive",

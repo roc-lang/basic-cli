@@ -80,12 +80,15 @@ drift independently. When updating the nightly pin in the workflows:
 ### Windows host inputs
 
 Build the host on Windows x64 with Python 3.11 or newer, the pinned Rust toolchain,
-Zig 0.17.0 on `PATH`, and the Windows SDK/MSVC build tools used by Rust's MSVC
+Zig 0.17.0 on `PATH` (or selected with `ZIG`), and the Windows SDK/MSVC build tools used by Rust's MSVC
 target. Install Rust's notices and LLVM tools with
 `rustup component add rust-docs llvm-tools-preview`. The Rust target remains
 `x86_64-pc-windows-msvc`; `zig cc` builds ring and SQLite using that ABI and
 the SDK headers. A small adapter translates the target flags from Cargo's C
-build tooling; a separate LLVM/clang-cl installation is unnecessary.
+build tooling; a separate LLVM/clang-cl installation is unnecessary. All Windows
+build steps use the same version-checked executable. The adapter is copied to a
+path derived from the compiler's path and SHA-256 and both adapter files' hashes,
+so changing these inputs invalidates Cargo's cached native builds.
 
 Run `python scripts/build.py --target x64win`, followed by
 `python -m unittest scripts/test_windows_runtime.py`. The build generates the
