@@ -15,7 +15,6 @@ crate-type = ["staticlib"]
 unexpected_cfgs = { level = "warn", check-cfg = ["cfg(no_roc_std_helpers)"] }
 
 [dependencies]
-crossterm = "=0.29.0"
 getrandom = "=0.2.16"
 libc = "=0.2.180"
 tempfile = "=3.23.0"
@@ -37,7 +36,7 @@ bytes = "=1.12.1"
 sys-locale = "=0.3.2"
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "=0.59.0", features = ["Win32_Networking_WinSock"] }
+windows-sys = { version = "=0.59.0", features = ["Win32_Foundation", "Win32_Networking_WinSock", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console"] }
 
 [profile.release]
 lto = true

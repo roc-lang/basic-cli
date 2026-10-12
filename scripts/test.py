@@ -11,6 +11,7 @@ import platform
 import re
 import select
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -250,10 +251,8 @@ def pipe_process(
 
 def pty_process(
     args: list[str], cwd: Path, env: dict[str, str], stdin: bytes, timeout: float,
-    input_delay: float, *, await_raw_mode: bool = False,
+    input_delay: float, *, await_raw_mode: bool = False, send_signal: str | None = None,
 ) -> tuple[int, str]:
-    if os.name != "posix":
-        raise SystemExit("PTY execution is only available on POSIX hosts")
     import pty
     import termios
 
@@ -274,6 +273,8 @@ def pty_process(
         for byte in stdin:
             os.write(master, bytes([byte]))
             time.sleep(input_delay)
+        if send_signal is not None:
+            process.send_signal(getattr(signal, send_signal))
         while process.poll() is None:
             if time.monotonic() >= deadline:
                 process.kill()
@@ -308,6 +309,39 @@ def pty_process(
         if process.poll() is None:
             process.kill()
             process.wait()
+
+
+def console_process(
+    args: list[str], cwd: Path, env: dict[str, str], stdin: bytes, timeout: float,
+    input_delay: float, *, await_raw_mode: bool = False, send_signal: str | None = None,
+) -> tuple[int, str]:
+    """Windows counterpart of pty_process; see scripts/windows_console.py."""
+    request = {
+        "args": args, "stdin": stdin.decode(), "timeout": timeout, "input_delay": input_delay,
+        "await_raw_mode": await_raw_mode, "send_signal": send_signal,
+    }
+    hidden = subprocess.STARTUPINFO()
+    hidden.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    hidden.wShowWindow = subprocess.SW_HIDE
+    runner = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "windows_console.py"), json.dumps(request)],
+        cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE, text=True, encoding="utf-8", timeout=timeout + 10,
+        creationflags=subprocess.CREATE_NEW_CONSOLE, startupinfo=hidden,
+    )
+    if runner.returncode != 0 or not runner.stdout.strip():
+        raise SystemExit(f"Console runner failed: {' '.join(args)}\n{runner.stderr}")
+    result = json.loads(runner.stdout)
+    if "error" in result:
+        raise SystemExit(f"{result['error']}: {' '.join(args)}")
+    return int(result["exit_code"]), str(result["output"])
+
+
+def signal_exit_code(name: str) -> int:
+    # Windows has no signals; the console runner sends Ctrl+Break in their place.
+    if os.name != "posix":
+        return 0xC000013A  # STATUS_CONTROL_C_EXIT
+    return -int(getattr(signal, name))
 
 
 def make_environment(run_spec: dict[str, object], source: Path) -> dict[str, str] | dict[bytes, bytes]:
@@ -411,6 +445,9 @@ def run_binary(
     else:
         stdin = str(run_spec.get("stdin", "")).encode()
     timeout = float(run_spec.get("timeout", 7)) * (4 if valgrind else 1)
+    send_signal = run_spec.get("send_signal")
+    if send_signal is not None and not (isinstance(send_signal, str) and run_spec.get("pty")):
+        raise SystemExit(f"{source} [{case_name}]: send_signal needs a signal name and a PTY case")
     fixtures = run_spec.get("fixtures", [])
     fixture_targets: list[Path] = []
     for fixture in fixtures:
@@ -423,10 +460,12 @@ def run_binary(
             if run_spec.get("pty"):
                 if not isinstance(env, dict) or any(isinstance(key, bytes) for key in env):
                     raise SystemExit(f"{source}: PTY tests require a text environment")
-                exit_code, stdout = pty_process(
+                terminal_process = pty_process if os.name == "posix" else console_process
+                exit_code, stdout = terminal_process(
                     args, cwd, env, stdin, timeout,
                     float(run_spec.get("input_delay", 0.08)),
                     await_raw_mode=bool(run_spec.get("await_raw_mode")),
+                    send_signal=send_signal,
                 )
                 stderr = ""
             else:
@@ -438,7 +477,9 @@ def run_binary(
             print(stdout, end="" if stdout.endswith("\n") else "\n")
         if stderr:
             print(stderr, end="" if stderr.endswith("\n") else "\n", file=sys.stderr)
-        expected_exit = int(run_spec.get("exit_code", 0))
+        expected_exit = int(run_spec.get(
+            "exit_code", 0 if send_signal is None else signal_exit_code(send_signal)
+        ))
         if exit_code != expected_exit:
             raise SystemExit(f"{source} [{case_name}]: exited with {exit_code}, expected {expected_exit}")
         verify_output(source, case_name, stdout, stderr, run_spec, pty=bool(run_spec.get("pty")))

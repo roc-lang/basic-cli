@@ -445,8 +445,6 @@
     },
     {
       "path": "examples/terminal-app-snake.roc",
-      "platforms": { "windows": { "run": false } },
-      "reason": "Python standard library has no Windows ConPTY support",
       "cases": [
         {
           "name": "quit-command",
@@ -471,8 +469,6 @@
     },
     {
       "path": "examples/tty.roc",
-      "platforms": { "windows": { "run": false } },
-      "reason": "Python standard library has no Windows ConPTY support",
       "cases": [
         {
           "name": "raw-mode",
@@ -567,7 +563,6 @@
       "cases": [
         {
           "name": "repeated-calls",
-          "platforms": { "windows": { "enabled": false } },
           "args": ["repeat"],
           "pty": true,
           "await_raw_mode": true,
@@ -576,7 +571,6 @@
         },
         {
           "name": "error-return",
-          "platforms": { "windows": { "enabled": false } },
           "args": ["error"],
           "pty": true,
           "await_raw_mode": true,
@@ -586,7 +580,6 @@
         },
         {
           "name": "exit-code",
-          "platforms": { "windows": { "enabled": false } },
           "args": ["exit-code"],
           "pty": true,
           "await_raw_mode": true,
@@ -595,7 +588,6 @@
         },
         {
           "name": "crash",
-          "platforms": { "windows": { "enabled": false } },
           "valgrind": false,
           "args": ["crash"],
           "pty": true,
@@ -604,6 +596,23 @@
           "exit_code": 1,
           "expect_crash": true,
           "contains": ["left in raw mode\n"]
+        },
+        {
+          "name": "terminated",
+          "valgrind": false,
+          "args": ["error"],
+          "pty": true,
+          "await_raw_mode": true,
+          "send_signal": "SIGTERM"
+        },
+        {
+          "name": "hangup",
+          "platforms": { "windows": { "enabled": false } },
+          "valgrind": false,
+          "args": ["error"],
+          "pty": true,
+          "await_raw_mode": true,
+          "send_signal": "SIGHUP"
         },
         {
           "name": "no-terminal",

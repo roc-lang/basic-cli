@@ -10,12 +10,20 @@ import Host
 ## `crash`. The terminal is always put back into the mode it was in when
 ## [Tty.enable_raw_mode!] was called.
 ##
-## The platform cannot restore the terminal when the process is stopped from
-## the outside before it gets the chance to run that cleanup. This includes
-## termination signals such as `SIGTERM`, `SIGHUP`, and `SIGKILL` on Unix, and a
-## closed console window or `TerminateProcess` on Windows. If that happens, run
-## `reset` or `stty sane` to recover the terminal. Note that Ctrl+C does not
-## send a signal while raw mode is enabled; it is delivered to the app as input.
+## While raw mode is enabled, the platform also restores the terminal when the
+## process is asked to terminate from the outside:
+## - On Unix, by `SIGHUP`, `SIGINT`, `SIGQUIT`, or `SIGTERM`. The process still
+##   terminates from that signal. A signal that was already being ignored when
+##   raw mode was enabled stays ignored.
+## - On Windows, by Ctrl+C, Ctrl+Break, or the console window closing.
+##
+## The platform cannot restore the terminal when the process is stopped without
+## being given the chance to run any code. This includes `SIGKILL` and `SIGSTOP`
+## on Unix, and `TerminateProcess` (for example "End task") on Windows. If that
+## happens, run `reset` or `stty sane` to recover the terminal.
+##
+## Note that pressing Ctrl+C does not interrupt the app while raw mode is
+## enabled; the key press is delivered to the app as input.
 Tty :: [].{
 
 	## Enable terminal [raw mode](https://en.wikipedia.org/wiki/Terminal_mode) to disable some default terminal behaviour.
