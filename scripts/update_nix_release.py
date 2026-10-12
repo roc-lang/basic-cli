@@ -13,6 +13,7 @@ import tempfile
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
+COMPILER_PIN = re.compile(r'rocpkgs\."(nightly-[^"]+)"')
 
 
 def download(url: str, destination: Path) -> str:
@@ -36,7 +37,15 @@ def package_urls(source: str) -> dict[str, str]:
     return urls
 
 
-def release_metadata(version: str, url: str) -> dict[str, object]:
+def devshell_compiler(flake: Path) -> str:
+    """The nightly the release workflow builds with, as pinned in the devshell."""
+    match = COMPILER_PIN.search(flake.read_text(encoding="utf-8"))
+    if match is None:
+        raise ValueError(f"No Roc nightly pin found in {flake}")
+    return match[1]
+
+
+def release_metadata(version: str, url: str, compiler: str) -> dict[str, object]:
     with tempfile.TemporaryDirectory(prefix="basic-cli-nix-release-") as directory:
         archive = Path(directory) / "platform.tar.zst"
         archive_hash = download(url, archive)
@@ -49,16 +58,27 @@ def release_metadata(version: str, url: str) -> dict[str, object]:
                 "url": dependency_url,
                 "hash": download(dependency_url, Path(directory) / f"{name}.tar.zst"),
             }
-        return {"version": version, "url": url, "hash": archive_hash, "dependencies": dependencies}
+        return {
+            "version": version,
+            "compiler": compiler,
+            "url": url,
+            "hash": archive_hash,
+            "dependencies": dependencies,
+        }
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--version", required=True)
     parser.add_argument("--url", required=True)
+    parser.add_argument(
+        "--compiler",
+        help="rocpkgs attribute that built the release (default: the flake.nix devshell nightly)",
+    )
     parser.add_argument("--output", type=Path, default=ROOT / "nix/release.json")
     args = parser.parse_args()
-    metadata = release_metadata(args.version, args.url)
+    compiler = args.compiler or devshell_compiler(ROOT / "flake.nix")
+    metadata = release_metadata(args.version, args.url, compiler)
     args.output.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
     print(f"Pinned basic-cli {args.version} and its package downloads in {args.output}")
 

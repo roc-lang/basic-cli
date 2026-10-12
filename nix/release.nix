@@ -1,9 +1,9 @@
 { pkgs }:
 let
   release = builtins.fromJSON (builtins.readFile ./release.json);
-  # Must compile the pinned release, so bump it with release.json, not with the
-  # nightly used for development.
-  compiler = pkgs.rocpkgs."nightly-2026-09-26-d6267b4";
+  # Must compile the pinned release, so it comes from release.json, not from
+  # the nightly used for development.
+  compiler = pkgs.rocpkgs.${release.compiler};
   bundle = pkgs.fetchurl { inherit (release) url hash; };
   unpack =
     name: archive:
