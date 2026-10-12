@@ -3,6 +3,7 @@
 typedef unsigned long long size_t;
 extern size_t __security_cookie, __security_cookie_complement;
 extern void __security_check_cookie(size_t);
+extern void __security_init_cookie(void);
 extern void basic_cli_construct_type_info(void *);
 __declspec(dllimport) unsigned long __stdcall SetErrorMode(unsigned long);
 __declspec(dllimport) void *__stdcall CreateThread(void *, size_t,
@@ -51,13 +52,17 @@ int main(int argc, char **argv) {
     if (argc != 2 || argv[1][0] != 'a' || argv[1][1] != ' ' || argv[1][2] != 'b') return 1;
     if (initialized != 2 || tls_callbacks != 1 || thread_value != 42) return 2;
     __security_check_cookie(__security_cookie);
+    size_t saved_cookie = __security_cookie;
+    __security_cookie_complement = 0;
+    __security_init_cookie();
+    if (__security_cookie != saved_cookie || __security_cookie_complement != ~saved_cookie) return 7;
     void *thread = CreateThread(0, 0, worker, 0, 0, 0);
     if (!thread || WaitForSingleObject(thread, 10000) != 0) return 3;
     unsigned long thread_result;
     if (!GetExitCodeThread(thread, &thread_result) || thread_result != 0) return 6;
     CloseHandle(thread);
     if (tls_callbacks != 2 || thread_value != 42) return 4;
-    size_t descriptor[3];
+    size_t descriptor[3] = {0};
     basic_cli_construct_type_info(descriptor);
     if (!descriptor[0] || descriptor[1] || descriptor[2]) return 5;
     /* MSVC's first vtable slot is the deleting destructor; flag zero keeps storage. */

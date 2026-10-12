@@ -19,7 +19,10 @@ fn fail_fast(code: u32) noreturn {
 }
 
 export fn __security_init_cookie() callconv(.c) void {
-    if (__security_cookie != default_cookie) return;
+    if (__security_cookie != default_cookie and __security_cookie != 0) {
+        __security_cookie_complement = ~__security_cookie;
+        return;
+    }
     var cookie: usize = 0;
     while (cookie == 0 or cookie == default_cookie) {
         if (BCryptGenRandom(null, @ptrCast(&cookie), @sizeOf(usize), 2) != 0) {

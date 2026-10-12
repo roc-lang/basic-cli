@@ -86,7 +86,9 @@ def build_runtime(output: Path, scratch: Path, zig_lib: Path) -> dict[str, objec
         raise SystemExit("Vendored Roc license does not match UPSTREAM.json")
     license_file = notice(output, "roc-UPL-1.0.txt", license_path.read_bytes())
     zig_license = notice(output, "zig-MIT.txt", (zig_lib.parent / "LICENSE").read_bytes())
-    basic_cli_license = notice(output, "basic-cli-UPL-1.0.txt", (ROOT / "LICENSE").read_bytes())
+    basic_cli_license = notice(output, "basic-cli-UPL-1.0.txt",
+                               b"Original runtime support: Copyright 2026 basic-cli contributors.\n\n"
+                               + (ROOT / "LICENSE").read_bytes())
     common = ["-target", "x86_64-windows-msvc", "-O", "ReleaseFast", "-fno-stack-check"]
     tls = scratch / "tls.obj"
     security = scratch / "security.obj"

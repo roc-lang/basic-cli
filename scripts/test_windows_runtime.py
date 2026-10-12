@@ -109,6 +109,26 @@ class ProvenanceTests(unittest.TestCase):
 
 @unittest.skipUnless(os.name == "nt", "native Windows ABI execution")
 class WindowsRuntimeTests(unittest.TestCase):
+    def test_actual_host_links_without_sdk_or_vc_runtime_archives(self):
+        inputs = runtime.ROOT / "platform/targets/x64win"
+        runtime.validate(inputs)
+        scratch = runtime.ROOT / "target/windows-host-fixture"
+        scratch.mkdir(parents=True, exist_ok=True)
+        source = scratch / "app.c"
+        # MSVC passes this RocList argument indirectly; the smoke app ignores it.
+        source.write_text("int roc_main(void *args) { (void)args; return 37; }\n")
+        obj, exe = scratch / "app.obj", scratch / "app.exe"
+        subprocess.run(["zig", "cc", "-target", "x86_64-windows-msvc", "-c", str(source), "-o", str(obj)], check=True)
+        subprocess.run(["zig", "lld-link", "/nodefaultlib", "/subsystem:console",
+                        "/entry:mainCRTStartup", "/machine:x64", "/opt:ref", f"/out:{exe}",
+                        str(obj), str(inputs / "host.lib"),
+                        *(str(inputs / name) for name in runtime.LIBRARIES)], check=True)
+        imports = subprocess.check_output([
+            str(build.find_llvm_strip().with_name("llvm-readobj.exe")), "--coff-imports", str(exe)], text=True)
+        self.assertNotIn("vcruntime", imports.lower())
+        self.assertNotIn("msvcp", imports.lower())
+        self.assertEqual(subprocess.run([str(exe)], timeout=20).returncode, 37)
+
     def test_startup_tls_initializers_cookie_and_metadata(self):
         inputs = runtime.ROOT / "platform/targets/x64win"
         runtime.validate(inputs)
@@ -127,6 +147,10 @@ class WindowsRuntimeTests(unittest.TestCase):
                             "/entry:mainCRTStartup", "/machine:x64", "/opt:ref",
                             f"/out:{exe}", str(obj),
                             *(str(inputs / name) for name in runtime.LIBRARIES)], check=True)
+            readobj = build.find_llvm_strip().with_name("llvm-readobj.exe")
+            imports = subprocess.check_output([str(readobj), "--coff-imports", str(exe)], text=True)
+            self.assertNotIn("vcruntime", imports.lower())
+            self.assertNotIn("msvcp", imports.lower())
             result = subprocess.run([str(exe), "a b"], timeout=20)
             self.assertEqual(result.returncode, 255 if fail_initializer else 37)
             if not fail_initializer:
