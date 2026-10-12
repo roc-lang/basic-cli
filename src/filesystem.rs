@@ -50,6 +50,17 @@ pub(crate) fn create_temp_dir(parent: &Path, prefix: &str) -> io::Result<PathBuf
     Ok(builder.tempdir_in(parent)?.keep())
 }
 
+// Append mode makes the OS seek to the end for every write, so concurrent
+// appenders cannot overwrite each other.
+pub(crate) fn append(path: &Path, bytes: &[u8]) -> io::Result<()> {
+    use io::Write;
+    fs::OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(path)?
+        .write_all(bytes)
+}
+
 // Resolve existing ancestors, including links, without requiring the leaf to exist.
 fn prospective_canonical(path: &Path) -> io::Result<PathBuf> {
     match fs::canonicalize(path) {
@@ -233,6 +244,25 @@ mod tests {
         preserve_links: false,
         merge: false,
     };
+    #[test]
+    fn append_creates_then_extends_without_truncating() {
+        let temp = tempfile::tempdir().unwrap();
+        let file = temp.path().join("log");
+        append(&file, b"").unwrap();
+        assert_eq!(fs::read(&file).unwrap(), b"");
+        append(&file, b"first\n").unwrap();
+        append(&file, &[0, 255]).unwrap();
+        assert_eq!(fs::read(&file).unwrap(), b"first\n\x00\xff");
+        fs::write(&file, b"replaced").unwrap();
+        append(&file, b"!").unwrap();
+        assert_eq!(fs::read(&file).unwrap(), b"replaced!");
+        assert_eq!(
+            append(&temp.path().join("missing").join("log"), b"x")
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::NotFound
+        );
+    }
     #[test]
     fn copy_bytes_modes_and_merge() {
         let temp = tempfile::tempdir().unwrap();

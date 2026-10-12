@@ -8728,6 +8728,26 @@ pub struct HostFileWriteUtf8Args {
     pub arg1: RocStr,
 }
 
+/// Arguments for Host.file_append_bytes!
+/// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], List(U8) => Try({}, [FileErr(IOErr)])
+/// Refcounted fields are owned by the hosted function.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostFileAppendBytesArgs {
+    pub arg0: UnixBytesOrUtf8OrWindowsU16s,
+    pub arg1: RocListWith<u8, false>,
+}
+
+/// Arguments for Host.file_append_utf8!
+/// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], Str => Try({}, [FileErr(IOErr)])
+/// Refcounted fields are owned by the hosted function.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostFileAppendUtf8Args {
+    pub arg0: UnixBytesOrUtf8OrWindowsU16s,
+    pub arg1: RocStr,
+}
+
 /// Arguments for Host.path_type!
 /// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))] => Try([Dir, File, Other, SymLink], IOErr)
 /// Refcounted fields are owned by the hosted function.
@@ -9482,6 +9502,12 @@ pub type HostFileWriteBytesResultTag = HostFileDeleteResultTag;
 pub type HostFileWriteUtf8Result = HostFileDeleteResult;
 pub type HostFileWriteUtf8ResultPayload = HostFileDeleteResultPayload;
 pub type HostFileWriteUtf8ResultTag = HostFileDeleteResultTag;
+pub type HostFileAppendBytesResult = HostFileDeleteResult;
+pub type HostFileAppendBytesResultPayload = HostFileDeleteResultPayload;
+pub type HostFileAppendBytesResultTag = HostFileDeleteResultTag;
+pub type HostFileAppendUtf8Result = HostFileDeleteResult;
+pub type HostFileAppendUtf8ResultPayload = HostFileDeleteResultPayload;
+pub type HostFileAppendUtf8ResultTag = HostFileDeleteResultTag;
 pub type HostPathTypeOk = DirOrFileOrOtherOrSymLink;
 pub type HostStderrWriteResult = HostStderrLineResult;
 pub type HostStderrWriteResultPayload = HostStderrLineResultPayload;
@@ -13150,6 +13176,24 @@ unsafe extern "C" {
     ///     unsafe { arg1.decref(roc_host); }
     /// The result is owned by Roc: return exactly one owned reference.
     pub fn hosted_file_write_utf8(arg0: UnixBytesOrUtf8OrWindowsU16s, arg1: RocStr) -> HostFileDeleteResult;
+
+    /// Hosted symbol for Host.file_append_bytes!
+    /// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], List(U8) => Try({}, [FileErr(IOErr)])
+    /// Owned arguments. Release each exactly once before returning, unless it is
+    /// moved into storage or into the result:
+    ///     unsafe { arg0.decref(roc_host); }
+    ///     unsafe { arg1.decref(roc_host); }
+    /// The result is owned by Roc: return exactly one owned reference.
+    pub fn hosted_file_append_bytes(arg0: UnixBytesOrUtf8OrWindowsU16s, arg1: RocListWith<u8, false>) -> HostFileDeleteResult;
+
+    /// Hosted symbol for Host.file_append_utf8!
+    /// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], Str => Try({}, [FileErr(IOErr)])
+    /// Owned arguments. Release each exactly once before returning, unless it is
+    /// moved into storage or into the result:
+    ///     unsafe { arg0.decref(roc_host); }
+    ///     unsafe { arg1.decref(roc_host); }
+    /// The result is owned by Roc: return exactly one owned reference.
+    pub fn hosted_file_append_utf8(arg0: UnixBytesOrUtf8OrWindowsU16s, arg1: RocStr) -> HostFileDeleteResult;
 
     /// Hosted symbol for Host.locale_all!
     /// Roc signature: {} => List(Str)

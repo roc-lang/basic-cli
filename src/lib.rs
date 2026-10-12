@@ -1858,6 +1858,56 @@ pub extern "C" fn hosted_file_write_utf8(
     }
 }
 
+#[no_mangle]
+pub extern "C" fn hosted_file_append_bytes(
+    path: UnixBytesOrUtf8OrWindowsU16s,
+    bytes: RocListWith<u8, false>,
+) -> HostFileAppendBytesResult {
+    let roc_host = roc_host();
+    let path = match path_from_native(path, roc_host) {
+        Ok(path) => path,
+        Err(error) => {
+            unsafe { bytes.decref(roc_host) };
+            return try_file_write_bytes_err(file_io_err_from_io(&error, roc_host));
+        }
+    };
+    let result = filesystem::append(&path, bytes.as_slice());
+    unsafe { bytes.decref(roc_host) };
+
+    match result {
+        Ok(()) => try_file_write_bytes_ok(),
+        Err(error) => try_file_write_bytes_err(file_io_err_from_io(
+            &normalize_file_kind_err(&path, error),
+            roc_host,
+        )),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn hosted_file_append_utf8(
+    path: UnixBytesOrUtf8OrWindowsU16s,
+    content: RocStr,
+) -> HostFileAppendUtf8Result {
+    let roc_host = roc_host();
+    let path = match path_from_native(path, roc_host) {
+        Ok(path) => path,
+        Err(error) => {
+            unsafe { content.decref(roc_host) };
+            return try_file_write_utf8_err(file_io_err_from_io(&error, roc_host));
+        }
+    };
+    let result = filesystem::append(&path, content.as_str().as_bytes());
+    unsafe { content.decref(roc_host) };
+
+    match result {
+        Ok(()) => try_file_write_utf8_ok(),
+        Err(error) => try_file_write_utf8_err(file_io_err_from_io(
+            &normalize_file_kind_err(&path, error),
+            roc_host,
+        )),
+    }
+}
+
 #[cfg(target_os = "macos")]
 fn raw_locale_strings() -> Vec<String> {
     for key in ["LC_ALL", "LC_CTYPE", "LANG"] {

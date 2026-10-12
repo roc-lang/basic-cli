@@ -64,6 +64,10 @@ platform ""
 		"hosted_file_time_modified": Host.file_time_modified!,
 		"hosted_file_write_bytes": Host.file_write_bytes!,
 		"hosted_file_write_utf8": Host.file_write_utf8!,
+		# Appends follow the writes, not alphabetical order, so the shared result
+		# type keeps its HostFileDeleteResult name in the generated glue.
+		"hosted_file_append_bytes": Host.file_append_bytes!,
+		"hosted_file_append_utf8": Host.file_append_utf8!,
 		# HTTP is likewise kept at the end to avoid renumbering glue types.
 		"hosted_http_send_request": Host.http_send_request!,
 		"hosted_locale_all": Host.locale_all!,

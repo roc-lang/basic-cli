@@ -130,6 +130,18 @@
       ]
     },
     {
+      "path": "examples/file-append.roc",
+      "cases": [
+        {
+          "name": "happy",
+          "temp_cwd": true,
+          "stdout_contains": [
+            "The log contains:\nstarted\nworking\nfinished\n"
+          ]
+        }
+      ]
+    },
+    {
       "path": "examples/file-permissions.roc",
       "cases": [
         {
