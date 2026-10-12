@@ -128,6 +128,13 @@ assert "x64win" in build.ROC_TARGETS
 
 @unittest.skipUnless(os.name == "nt", "native Windows ABI execution")
 class WindowsRuntimeTests(unittest.TestCase):
+    def test_tls_with_the_production_native_compiler_and_profile(self):
+        env, _ = build.windows_build_env()
+        subprocess.run([
+            "cargo", "test", "--locked", "--release", "--lib", "--target", build.WINDOWS_TARGET,
+            "http::tests::ring_tls_handshake_and_untrusted_certificate_rejection"],
+            cwd=runtime.ROOT, env=env, check=True, timeout=180)
+
     def test_actual_host_links_without_sdk_or_vc_runtime_archives(self):
         inputs = runtime.ROOT / "platform/targets/x64win"
         runtime.validate(inputs)
