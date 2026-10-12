@@ -1243,12 +1243,8 @@ pub extern "C" fn hosted_dir_list(path: UnixBytesOrUtf8OrWindowsU16s) -> HostDir
         Ok(path) => path,
         Err(error) => return try_dir_list_err(dir_io_err_from_io(&error, roc_host)),
     };
-    match fs::read_dir(&path) {
-        Ok(read_dir) => {
-            let entries = match collect_directory_entries(read_dir.map(|entry| entry.map(|entry| entry.path()))) {
-                Ok(entries) => entries,
-                Err(error) => return try_dir_list_err(dir_io_err_from_io(&error, roc_host)),
-            };
+    match list_directory(&path) {
+        Ok(entries) => {
             let list = unsafe {
                 RocList::<UnixBytesOrUtf8OrWindowsU16s>::allocate(entries.len(), roc_host)
             };
@@ -1261,11 +1257,16 @@ pub extern "C" fn hosted_dir_list(path: UnixBytesOrUtf8OrWindowsU16s) -> HostDir
             }
             try_dir_list_ok(list)
         }
-        Err(error) => try_dir_list_err(dir_io_err_from_io(
-            &normalize_dir_list_err(&path, error),
-            roc_host,
-        )),
+        Err(error) => try_dir_list_err(dir_io_err_from_io(&error, roc_host)),
     }
+}
+
+// Lists every entry of a directory, or fails: an error while opening the
+// directory or while reading any single entry fails the whole listing, so
+// callers never see a partial list reported as success.
+fn list_directory(path: &std::path::Path) -> io::Result<Vec<std::path::PathBuf>> {
+    let read_dir = fs::read_dir(path).map_err(|error| normalize_dir_list_err(path, error))?;
+    collect_directory_entries(read_dir.map(|entry| entry.map(|entry| entry.path())))
 }
 
 fn collect_directory_entries(entries: impl IntoIterator<Item = io::Result<std::path::PathBuf>>) -> io::Result<Vec<std::path::PathBuf>> {
@@ -2376,6 +2377,41 @@ mod tests {
 
     fn strings(values: &[&str]) -> Vec<String> {
         values.iter().map(|value| (*value).to_string()).collect()
+    }
+
+    #[test]
+    fn lists_every_directory_entry() {
+        let directory = TestDir::new();
+        fs::write(directory.join("file"), b"contents").unwrap();
+        fs::create_dir(directory.join("child")).unwrap();
+
+        let mut entries = list_directory(&directory.0).unwrap();
+        entries.sort();
+
+        assert_eq!(entries, [directory.join("child"), directory.join("file")]);
+    }
+
+    #[test]
+    fn lists_an_empty_directory() {
+        let directory = TestDir::new();
+
+        assert!(list_directory(&directory.0).unwrap().is_empty());
+    }
+
+    #[test]
+    fn listing_a_regular_file_reports_not_a_directory() {
+        let directory = TestDir::new();
+        let file = directory.join("file");
+        fs::write(&file, b"contents").unwrap();
+
+        assert_eq!(list_directory(&file).unwrap_err().kind(), io::ErrorKind::NotADirectory);
+    }
+
+    #[test]
+    fn listing_a_missing_directory_reports_not_found() {
+        let directory = TestDir::new();
+
+        assert_eq!(list_directory(&directory.join("missing")).unwrap_err().kind(), io::ErrorKind::NotFound);
     }
 
     #[test]
