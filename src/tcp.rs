@@ -103,8 +103,7 @@ pub(crate) fn resolve_with_deadline(
     match receiver.recv_timeout(remaining_time(deadline)?) {
         Ok(result) => result,
         Err(mpsc::RecvTimeoutError::Timeout) => Err(timed_out()),
-        Err(mpsc::RecvTimeoutError::Disconnected) => Err(io::Error::new(
-            io::ErrorKind::Other,
+        Err(mpsc::RecvTimeoutError::Disconnected) => Err(io::Error::other(
             "TCP address resolution worker stopped unexpectedly",
         )),
     }
