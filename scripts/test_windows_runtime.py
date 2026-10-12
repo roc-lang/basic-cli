@@ -1,5 +1,6 @@
 """Manifest rejection tests, plus executable ABI checks on Windows."""
 import json
+import argparse
 import os
 import subprocess
 import tempfile
@@ -7,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from scripts import build, windows_runtime as runtime
+from scripts import build, bundle, windows_runtime as runtime
 
 
 class ProvenanceTests(unittest.TestCase):
@@ -76,6 +77,34 @@ class ProvenanceTests(unittest.TestCase):
             env, _ = build.windows_build_env()
         self.assertEqual(env["CARGO_ENCODED_RUSTFLAGS"].split("\x1f"),
                          ["-Ctarget-feature=+crt-static", "-Cdebuginfo=1", "-Ctarget-feature=-crt-static"])
+
+    def test_bundle_transfers_every_hashed_notice_and_restores_local_license(self):
+        root = self.output / "repo"
+        platform = root / "platform"
+        windows = platform / "targets/x64win"
+        windows.parent.mkdir(parents=True)
+        import shutil
+        shutil.copytree(self.output / "licenses", windows / "licenses")
+        for name in (*runtime.LIBRARIES, "host.lib", runtime.MANIFEST_NAME):
+            shutil.copy2(self.output / name, windows / name)
+        (platform / "main.roc").write_text('x64win: { inputs: ["host.lib", app, "msvc_runtime.lib"] }\n')
+        (root / "LICENSE").write_text("root license")
+        (root / "THIRD_PARTY_LICENSES.md").write_text("root notices")
+        (platform / "LICENSE").write_text("existing local license")
+        with patch.object(bundle, "ROOT", root), patch.object(bundle, "PLATFORM_DIR", platform), \
+             patch.object(bundle.subprocess, "run") as run:
+            bundle.bundle(argparse.Namespace(output_dir=root / "dist", stub_missing_targets=False), [])
+        arguments = run.call_args.args[0]
+        self.assertIn("targets/x64win/licenses/license.txt", arguments)
+        self.assertIn("targets/x64win/PROVENANCE.json", arguments)
+        self.assertIn("LICENSE", arguments)
+        self.assertIn("THIRD_PARTY_LICENSES.md", arguments)
+        self.assertEqual((platform / "LICENSE").read_text(), "existing local license")
+        self.assertFalse((platform / "THIRD_PARTY_LICENSES.md").exists())
+
+    def test_declared_windows_inputs_match_producer_inventory(self):
+        declared = {p.name for p in bundle.declared_target_inputs() if p.parent.name == "x64win"}
+        self.assertEqual(declared, set(runtime.LIBRARIES) | {"host.lib"})
 
 
 @unittest.skipUnless(os.name == "nt", "native Windows ABI execution")

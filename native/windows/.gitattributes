@@ -1,0 +1,6 @@
+# Vendored source hashes describe exact upstream bytes, also on Windows clones.
+*.zig text eol=lf
+*.cpp text eol=lf
+*.c text eol=lf
+*.json text eol=lf
+*.txt text eol=lf

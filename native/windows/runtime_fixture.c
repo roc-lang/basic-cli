@@ -9,6 +9,7 @@ __declspec(dllimport) void *__stdcall CreateThread(void *, size_t,
     unsigned long (__stdcall *)(void *), void *, unsigned long, unsigned long *);
 __declspec(dllimport) unsigned long __stdcall WaitForSingleObject(void *, unsigned long);
 __declspec(dllimport) int __stdcall CloseHandle(void *);
+__declspec(dllimport) int __stdcall GetExitCodeThread(void *, unsigned long *);
 
 static int initialized;
 static int tls_callbacks;
@@ -52,6 +53,8 @@ int main(int argc, char **argv) {
     __security_check_cookie(__security_cookie);
     void *thread = CreateThread(0, 0, worker, 0, 0, 0);
     if (!thread || WaitForSingleObject(thread, 10000) != 0) return 3;
+    unsigned long thread_result;
+    if (!GetExitCodeThread(thread, &thread_result) || thread_result != 0) return 6;
     CloseHandle(thread);
     if (tls_callbacks != 2 || thread_value != 42) return 4;
     size_t descriptor[3];

@@ -137,23 +137,25 @@ fn build_roc_headers(pairs: &[(String, String)], roc_host: &RocHost) -> RocList<
     list
 }
 
+fn https_connector(
+) -> hyper_rustls::HttpsConnector<hyper_util::client::legacy::connect::HttpConnector> {
+    hyper_rustls::HttpsConnectorBuilder::new()
+        .with_webpki_roots()
+        .https_or_http()
+        .enable_http1()
+        .build()
+}
+
 async fn async_send_request(
     request: hyper::Request<http_body_util::Full<bytes::Bytes>>,
     roc_host: &RocHost,
 ) -> HttpResult {
     use http_body_util::BodyExt;
-    use hyper_rustls::HttpsConnectorBuilder;
     use hyper_util::client::legacy::Client;
     use hyper_util::rt::TokioExecutor;
 
-    let https = HttpsConnectorBuilder::new()
-        .with_webpki_roots()
-        .https_or_http()
-        .enable_http1()
-        .build();
-
     let client: Client<_, http_body_util::Full<bytes::Bytes>> =
-        Client::builder(TokioExecutor::new()).build(https);
+        Client::builder(TokioExecutor::new()).build(https_connector());
 
     match client.request(request).await {
         Ok(response) => {
@@ -234,6 +236,94 @@ mod tests {
     use std::sync::mpsc;
     use std::thread;
     use std::time::Duration;
+
+    #[test]
+    fn ring_tls_handshake_and_untrusted_certificate_rejection() {
+        use rustls::pki_types::{CertificateDer, PrivateKeyDer, ServerName};
+        use std::io::{Read, Write};
+        use std::sync::Arc;
+
+        let cert = CertificateDer::from(include_bytes!("../tests/tls/localhost-cert.der").to_vec());
+        let key =
+            PrivateKeyDer::try_from(include_bytes!("../tests/tls/localhost-key.der").to_vec())
+                .unwrap();
+        let provider = Arc::new(rustls::crypto::ring::default_provider());
+        let config = rustls::ServerConfig::builder_with_provider(provider.clone())
+            .with_safe_default_protocol_versions()
+            .unwrap()
+            .with_no_client_auth()
+            .with_single_cert(vec![cert.clone()], key)
+            .unwrap();
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            for accepted in [true, false] {
+                let (socket, _) = listener.accept().unwrap();
+                socket
+                    .set_read_timeout(Some(Duration::from_secs(5)))
+                    .unwrap();
+                socket
+                    .set_write_timeout(Some(Duration::from_secs(5)))
+                    .unwrap();
+                let connection = rustls::ServerConnection::new(Arc::new(config.clone())).unwrap();
+                let mut tls = rustls::StreamOwned::new(connection, socket);
+                let mut byte = [0];
+                if accepted {
+                    tls.read_exact(&mut byte).unwrap();
+                    assert_eq!(byte, [42]);
+                    tls.write_all(&[43]).unwrap();
+                    tls.flush().unwrap();
+                } else {
+                    assert!(
+                        tls.read(&mut byte).is_err(),
+                        "untrusted certificate was accepted"
+                    );
+                }
+            }
+        });
+        let mut roots = rustls::RootCertStore::empty();
+        roots.add(cert).unwrap();
+        let config = rustls::ClientConfig::builder_with_provider(provider)
+            .with_safe_default_protocol_versions()
+            .unwrap()
+            .with_root_certificates(roots)
+            .with_no_client_auth();
+        let connection = rustls::ClientConnection::new(
+            Arc::new(config),
+            ServerName::try_from("localhost").unwrap(),
+        )
+        .unwrap();
+        let socket = std::net::TcpStream::connect(address).unwrap();
+        socket
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        let mut tls = rustls::StreamOwned::new(connection, socket);
+        tls.write_all(&[42]).unwrap();
+        tls.flush().unwrap();
+        let mut byte = [0];
+        tls.read_exact(&mut byte).unwrap();
+        assert_eq!(byte, [43]);
+        drop(tls);
+
+        // The actual HTTP connector trusts WebPKI roots, so our test certificate
+        // must fail even though the same ring implementation completed TLS above.
+        TOKIO_RUNTIME.block_on(async {
+            let client: hyper_util::client::legacy::Client<_, http_body_util::Full<bytes::Bytes>> =
+                hyper_util::client::legacy::Client::builder(hyper_util::rt::TokioExecutor::new())
+                    .build(https_connector());
+            let request = hyper::Request::builder()
+                .uri(format!("https://localhost:{}/", address.port()))
+                .body(http_body_util::Full::new(bytes::Bytes::new()))
+                .unwrap();
+            assert!(
+                tokio::time::timeout(Duration::from_secs(5), client.request(request))
+                    .await
+                    .unwrap()
+                    .is_err()
+            );
+        });
+        server.join().unwrap();
+    }
 
     // Guards the shape of `TOKIO_RUNTIME`: a thread that used it must be able to
     // exit while the blocking pool still holds work. An owned runtime blocks in
