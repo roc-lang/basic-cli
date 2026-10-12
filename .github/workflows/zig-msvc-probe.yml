@@ -1,0 +1,39 @@
+name: Zig MSVC compiler probe
+on:
+  push:
+    branches: [investigate/zig-msvc-driver]
+permissions: {}
+jobs:
+  probe:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v7
+      - uses: mlugg/setup-zig@8d6198c65fb0feaa111df26e6b467fea8345e46f
+        with:
+          version: 0.17.0
+      - name: Install pinned Rust
+        shell: pwsh
+        run: |
+          $version = (Get-Content rust-toolchain.toml | Select-String '^channel = "(.*)"').Matches.Groups[1].Value
+          rustup toolchain install $version --profile minimal --component rust-docs,llvm-tools-preview --target x86_64-pc-windows-msvc
+          rustup default $version
+      - name: Compile host and exercise TLS with Zig
+        shell: pwsh
+        run: |
+          $env:CC_x86_64_pc_windows_msvc = "$pwd/ci/zig-msvc-cc.cmd"
+          $env:CARGO_ENCODED_RUSTFLAGS = '-Ctarget-feature=-crt-static'
+          cargo build --locked --release --lib --target x86_64-pc-windows-msvc
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          cargo test --locked --release --lib --target x86_64-pc-windows-msvc http::tests::ring_tls_handshake_and_untrusted_certificate_rejection
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python scripts/windows_runtime.py
+          Copy-Item target/x86_64-pc-windows-msvc/release/host.lib platform/targets/x64win/host.lib
+          python -c "from pathlib import Path; from scripts.windows_runtime import record_host; record_host(Path('platform/targets/x64win').resolve(), [['cargo','build','--locked','--release','--lib','--target','x86_64-pc-windows-msvc']], {'c_compiler':'zig cc 0.17.0 experimental MSVC ABI probe'})"
+          python -m unittest scripts.test_windows_runtime.WindowsRuntimeTests.test_actual_host_links_without_sdk_or_vc_runtime_archives scripts.test_windows_runtime.WindowsRuntimeTests.test_startup_tls_initializers_cookie_and_metadata
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: zig-msvc-probe-inputs
+          path: platform/targets/x64win/
+          if-no-files-found: ignore
