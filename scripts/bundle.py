@@ -2,16 +2,23 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import shutil
 import subprocess
 from pathlib import Path
 
+try:
+    from . import windows_runtime
+except ImportError:
+    import windows_runtime
+
 
 ROOT = Path(__file__).resolve().parents[1]
 PLATFORM_DIR = ROOT / "platform"
-LIBRARY_EXTENSIONS = {".a", ".o", ".lib", ".obj"}
+LIBRARY_EXTENSIONS = windows_runtime.BINARY_EXTENSIONS
 MAX_PLATFORM_BYTES = 100 * 1024 * 1024
+ROC = os.environ.get("ROC", "roc")
 
 
 def relative_platform_path(path: Path) -> str:
@@ -68,15 +75,26 @@ def bundle(args: argparse.Namespace, roc_args: list[str]) -> None:
     library_files = sorted(
         path
         for path in (PLATFORM_DIR / "targets").rglob("*")
-        if path.is_file() and path.suffix in LIBRARY_EXTENSIONS
+        if path.is_file() and path.suffix.lower() in LIBRARY_EXTENSIONS
     )
+    declared = declared_target_inputs()
+    if not args.stub_missing_targets:
+        missing = [relative_platform_path(p) for p in declared if not p.is_file() or not p.stat().st_size]
+        if missing:
+            raise SystemExit(f"Missing or empty platform inputs: {', '.join(missing)}")
+    windows_dir = PLATFORM_DIR / "targets" / "x64win"
+    windows_inputs = [windows_dir / name for name in (*windows_runtime.LIBRARIES, "host.lib")]
+    stubbed_windows = args.stub_missing_targets and any(
+        not p.is_file() or not p.stat().st_size for p in windows_inputs
+    )
+    metadata_files = [] if stubbed_windows else windows_runtime.validate(windows_dir)
     bundle_files = [
         *(relative_platform_path(path) for path in roc_files),
         *(relative_platform_path(path) for path in library_files),
+        *(relative_platform_path(path) for path in metadata_files),
     ]
-    license_source = ROOT / "THIRD_PARTY_LICENSES.md"
-    unpacked_size = sum(path.stat().st_size for path in (*roc_files, *library_files))
-    unpacked_size += license_source.stat().st_size
+    license_sources = [ROOT / "THIRD_PARTY_LICENSES.md", ROOT / "LICENSE"]
+    unpacked_size = sum(path.stat().st_size for path in (*roc_files, *library_files, *metadata_files, *license_sources))
     if unpacked_size > MAX_PLATFORM_BYTES:
         raise SystemExit(
             "Platform inputs exceed Roc's default 100 MiB transitive dependency limit: "
@@ -90,19 +108,23 @@ def bundle(args: argparse.Namespace, roc_args: list[str]) -> None:
     print("Files to bundle:")
     for path in bundle_files:
         print(f"  {path}")
-    print("  THIRD_PARTY_LICENSES.md\n", flush=True)
+    for path in license_sources:
+        print(f"  {path.name}", flush=True)
 
     print(f"Unpacked platform size: {unpacked_size} bytes\n")
 
-    license_target = PLATFORM_DIR / "THIRD_PARTY_LICENSES.md"
-    shutil.copy2(license_source, license_target)
+    backups = {}
     try:
+        for source in license_sources:
+            destination = PLATFORM_DIR / source.name
+            backups[destination] = destination.read_bytes() if destination.exists() else None
+            shutil.copy2(source, destination)
         subprocess.run(
             [
-                "roc",
+                ROC,
                 "bundle",
                 *bundle_files,
-                "THIRD_PARTY_LICENSES.md",
+                *(path.name for path in license_sources),
                 "--output-dir",
                 str(output_dir),
                 *roc_args,
@@ -111,7 +133,11 @@ def bundle(args: argparse.Namespace, roc_args: list[str]) -> None:
             check=True,
         )
     finally:
-        license_target.unlink(missing_ok=True)
+        for destination, contents in backups.items():
+            if contents is None:
+                destination.unlink(missing_ok=True)
+            else:
+                destination.write_bytes(contents)
 
 
 if __name__ == "__main__":

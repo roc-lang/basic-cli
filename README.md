@@ -22,7 +22,10 @@ The platform builds and runs on these targets in CI:
 | `x64win` | Windows | x86-64 |
 
 Other targets are not currently supported. In particular, Windows support is
-x86-64 only.
+x86-64 only and uses the UCRT supplied with Windows 10 and 11. Applications do
+not require a separate Visual C++ runtime installation. Windows library sources,
+build commands, hashes and licenses accompany the platform bundle in
+`targets/x64win/PROVENANCE.json` and `targets/x64win/licenses/`.
 
 ## Host runtime behavior
 

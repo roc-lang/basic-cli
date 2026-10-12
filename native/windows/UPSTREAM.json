@@ -1,0 +1,11 @@
+{
+  "project": "roc-lang/roc",
+  "commit": "7d256b954603e1170ee0d6df229c795aba6dc70d",
+  "files": {
+    "exe_startup.zig": "7c49b436a6c146be31669308db15c42d6f612f8cd5b63712f42d1fadc9dc7f35",
+    "initializers.zig": "25aafa5ac349d1a47ab2965a5221f9651a701d27ff21a5f8d211c93cbc35456a",
+    "tls.zig": "1d541a2c44d7ac4437fc37396548b3b16cba5c363b7c87572fb29a495e8af683"
+  },
+  "license": "UPL-1.0",
+  "license_sha256": "a71f5f17762cc8ac7a5435fe9810e029dc937d379d216fa7630a2775d42eb833"
+}

@@ -53,11 +53,13 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          RELEASE_VERSION: ${{ steps.validate.outputs.release_version }}
         run: |
-          if [ "${GITHUB_REF_TYPE:-}" != "branch" ] || [ "$GITHUB_REF_NAME" != "$DEFAULT_BRANCH" ]; then
-            echo "Releases must be dispatched from the default branch: $DEFAULT_BRANCH" >&2
-            exit 1
-          fi
+          python3 scripts/check_release_branch.py \
+            --version "$RELEASE_VERSION" \
+            --ref-type "$GITHUB_REF_TYPE" \
+            --ref-name "$GITHUB_REF_NAME" \
+            --default-branch "$DEFAULT_BRANCH"
 
   build-windows-host:
     name: Build Windows x64 host
@@ -68,10 +70,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Install Zig
+        uses: mlugg/setup-zig@8d6198c65fb0feaa111df26e6b467fea8345e46f
+        with:
+          version: 0.17.0
+
       - name: Install Rust
         shell: bash
         run: |
-          rustup toolchain install "${{ needs.rust-version.outputs.version }}" --profile minimal --target x86_64-pc-windows-msvc
+          rustup toolchain install "${{ needs.rust-version.outputs.version }}" --profile minimal --target x86_64-pc-windows-msvc --component rust-docs,llvm-tools-preview
           rustup default "${{ needs.rust-version.outputs.version }}"
 
       - name: Prepare Cargo package version
@@ -85,11 +92,15 @@ jobs:
         shell: pwsh
         run: python scripts/build.py
 
+      - name: Verify Windows runtime ABI and redistribution evidence
+        shell: pwsh
+        run: python -m unittest scripts/test_windows_runtime.py
+
       - name: Upload Windows host
         uses: actions/upload-artifact@v7
         with:
           name: windows-x64-host
-          path: platform/targets/x64win/*.lib
+          path: platform/targets/x64win/
           if-no-files-found: error
           retention-days: 7
 
@@ -114,12 +125,12 @@ jobs:
         uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
-          nightly-tag: nightly-2026-10-09-258ab27
+          nightly-tag: nightly-2026-10-11-7d256b9
 
       - name: Install Zig
         uses: mlugg/setup-zig@8d6198c65fb0feaa111df26e6b467fea8345e46f
         with:
-          version: 0.16.0
+          version: 0.17.0
 
       - name: Install Rust with cross-compilation targets
         run: |
@@ -218,7 +229,7 @@ jobs:
         uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
-          nightly-tag: nightly-2026-10-09-258ab27
+          nightly-tag: nightly-2026-10-11-7d256b9
 
       - name: Install Rust
         shell: bash
@@ -263,7 +274,7 @@ jobs:
         uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
-          nightly-tag: nightly-2026-10-09-258ab27
+          nightly-tag: nightly-2026-10-11-7d256b9
 
       - name: Create docs staging tree
         run: mkdir -p docs-site
@@ -333,6 +344,7 @@ jobs:
         run: python3 scripts/check_release_version.py "$RELEASE_VERSION" --update
 
       - name: Open release source follow-up PR
+        if: github.ref_name == github.event.repository.default_branch
         id: release-source
         uses: roc-lang/release-package/actions/create-followup-pr@af2f0cd8662874b825ff3917f4286e793ba18c55
         with:
@@ -397,7 +409,7 @@ jobs:
         with:
           release_version: ${{ needs.build.outputs.release_version }}
           target: ${{ steps.release-source.outputs.commit_sha || github.sha }}
-          docs_url: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ needs.build.outputs.docs_version }}/
+          docs_url: ${{ github.ref_name == github.event.repository.default_branch && format('https://{0}.github.io/{1}/{2}/', github.repository_owner, github.event.repository.name, needs.build.outputs.docs_version) || '' }}
           github_token: ${{ github.token }}
 
       - name: Publish release
@@ -413,7 +425,7 @@ jobs:
     needs:
       - build
       - publish-release
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -435,7 +447,7 @@ jobs:
         uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
         with:
           version: nightly-new-compiler
-          nightly-tag: nightly-2026-10-09-258ab27
+          nightly-tag: nightly-2026-10-11-7d256b9
 
       - name: Download release metadata
         uses: actions/download-artifact@v8
