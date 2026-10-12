@@ -78,5 +78,7 @@ nix flake check
 
 The updater hashes the published archive and the direct package downloads named
 in its `main.roc`, rather than using the current checkout's package declarations.
+It also records the Roc nightly that built the release (`compiler` in `release.json`),
+defaulting to the devshell nightly in `flake.nix`; pass `--compiler` to override it.
 If a future dependency introduces its own package imports, extend the pins and
 replacement arguments before publishing it through this flake.
