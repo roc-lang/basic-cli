@@ -11,20 +11,25 @@ millis_from_seconds = |seconds|
 		Err(OutOfRange) => if seconds > 0 U64.highest else 0
 	}
 
+## Convert whole milliseconds into the nanoseconds the host sleeps for,
+## saturating at [U64.highest] nanoseconds (about 584 years).
+nanos_from_millis : U64 -> U64
+nanos_from_millis = |milliseconds| milliseconds.times_saturated(1_000_000)
+
 ## Pause the current process for a requested duration.
 Sleep :: [].{
 
 	## Sleep for the specified number of milliseconds.
 	millis! : U64 => {}
-	millis! = |milliseconds| Host.sleep_millis!(milliseconds)
+	millis! = |milliseconds| Host.sleep_nanos!(nanos_from_millis(milliseconds))
 
 	## Sleep for the specified number of seconds.
 	##
 	## The duration is truncated to whole milliseconds, so `Sleep.seconds!(1.5)`
 	## sleeps for 1500 ms. Negative and `NaN` durations return immediately, and
-	## durations past [U64.highest] milliseconds saturate there.
+	## durations too long for the host to count saturate at about 584 years.
 	seconds! : F64 => {}
-	seconds! = |seconds| Host.sleep_millis!(millis_from_seconds(seconds))
+	seconds! = |seconds| Host.sleep_nanos!(nanos_from_millis(millis_from_seconds(seconds)))
 }
 
 expect millis_from_seconds(1) == 1000
@@ -42,3 +47,10 @@ expect millis_from_seconds(F64.nan) == 0
 # Durations beyond the host's millisecond counter saturate.
 expect millis_from_seconds(F64.infinity) == U64.highest
 expect millis_from_seconds(1.0e30) == U64.highest
+
+# Milliseconds become nanoseconds for the host, saturating instead of wrapping.
+expect nanos_from_millis(0) == 0
+expect nanos_from_millis(250) == 250_000_000
+expect nanos_from_millis(U64.highest) == U64.highest
+expect nanos_from_millis(millis_from_seconds(1.5)) == 1_500_000_000
+expect nanos_from_millis(millis_from_seconds(F64.infinity)) == U64.highest

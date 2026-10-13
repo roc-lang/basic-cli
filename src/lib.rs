@@ -2155,8 +2155,8 @@ pub extern "C" fn hosted_random_seed_u64() -> RandomU64Result {
 }
 
 #[no_mangle]
-pub extern "C" fn hosted_sleep_millis(millis: u64) {
-    std::thread::sleep(std::time::Duration::from_millis(millis));
+pub extern "C" fn hosted_sleep_nanos(nanos: u64) {
+    std::thread::sleep(std::time::Duration::from_nanos(nanos));
 }
 
 #[no_mangle]

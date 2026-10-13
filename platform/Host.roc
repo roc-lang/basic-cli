@@ -84,7 +84,7 @@ Host :: [].{
 	random_seed_u64! : () => Try(U64, [RandomErr(IOErr)])
 	random_seed_u32! : () => Try(U32, [RandomErr(IOErr)])
 
-	sleep_millis! : U64 => {}
+	sleep_nanos! : U64 => {}
 
 	sqlite_prepare! : NativePath, Str => Try(SqliteStmt, InternalSqlite.SqliteError)
 	sqlite_bind! : SqliteStmt, List(InternalSqlite.SqliteBindings) => Try({}, InternalSqlite.SqliteError)

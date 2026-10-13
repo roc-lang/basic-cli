@@ -9231,12 +9231,12 @@ pub struct HostPathTypeArgs {
     pub arg0: UnixBytesOrUtf8OrWindowsU16s,
 }
 
-/// Arguments for Host.sleep_millis!
+/// Arguments for Host.sleep_nanos!
 /// Roc signature: U64 => {}
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct HostSleepMillisArgs {
+pub struct HostSleepNanosArgs {
     pub arg0: u64,
 }
 
@@ -13489,9 +13489,9 @@ unsafe extern "C" {
     /// The result is owned by Roc: return exactly one owned reference.
     pub fn hosted_random_seed_u64() -> HostRandomSeedU64Result;
 
-    /// Hosted symbol for Host.sleep_millis!
+    /// Hosted symbol for Host.sleep_nanos!
     /// Roc signature: U64 => {}
-    pub fn hosted_sleep_millis(arg0: u64);
+    pub fn hosted_sleep_nanos(arg0: u64);
 
     /// Hosted symbol for Host.sqlite_bind!
     /// Roc signature: Host.SqliteStmt, List({ name : Str, value : [Bytes(List(U8)), Integer(I64), Null, Real(F64), String(Str)] }) => Try({}, { code : I64, message : Str })

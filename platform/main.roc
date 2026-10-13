@@ -6,7 +6,7 @@ platform ""
 		## launcher-supplied program name is available from Env.program_name!.
 		main! : List([Utf8(Str), UnixBytes(List(U8)), WindowsU16s(List(U16))]) => Try({}, [Exit(I32), ..])
 	}
-	exposes [Cmd, Env, File, Http, IOErr, Locale, Monotonic, OsStr, Path, Random, Sleep, Sqlite, Stderr, Stdin, Stdout, Tcp, Tty, Url, Utc]
+	exposes [Cmd, Duration, Env, File, Http, IOErr, Locale, Monotonic, OsStr, Path, Random, Sleep, Sqlite, Stderr, Stdin, Stdout, Tcp, Tty, Url, Utc]
 	packages {
 		# HTTP data types (Method, Request, Response) come from the shared
 		# roc-lang/http package so apps and other packages using it see the same
@@ -80,7 +80,7 @@ platform ""
 		"hosted_path_type": Host.path_type!,
 		"hosted_random_seed_u32": Host.random_seed_u32!,
 		"hosted_random_seed_u64": Host.random_seed_u64!,
-		"hosted_sleep_millis": Host.sleep_millis!,
+		"hosted_sleep_nanos": Host.sleep_nanos!,
 		"hosted_sqlite_bind": Host.sqlite_bind!,
 		"hosted_sqlite_column_value": Host.sqlite_column_value!,
 		"hosted_sqlite_columns": Host.sqlite_columns!,
@@ -122,6 +122,7 @@ platform ""
 	}
 
 import Cmd
+import Duration
 import Env
 import File
 import Host
