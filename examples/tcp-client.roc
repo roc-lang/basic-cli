@@ -15,8 +15,9 @@ import pf.Stdin
 main! : List(OsStr) => Try({}, _)
 main! = |_args| {
 	# The wait to connect is separate from the timeout the connection holds
-	# for each of its reads and writes.
-	conn = Tcp.connect!("127.0.0.1", 8085, { connect_timeout: Duration.seconds(1), io_timeout: Duration.seconds(5) })?
+	# for each of its reads and writes. Windows takes about two seconds to
+	# report a refused connection, so a shorter wait would time out first.
+	conn = Tcp.connect!("127.0.0.1", 8085, { connect_timeout: Duration.seconds(5), io_timeout: Duration.seconds(5) })?
 
 	verify_connection_methods!(conn)?
 

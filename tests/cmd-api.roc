@@ -122,7 +122,9 @@ running! = || {
 	failed = helper!(["exit", "3"]).run!()?
 	check!("run! returns a non-zero status", failed.status == Exited(3))?
 	check!("require_success rejects it", failed.require_success() == Err(BadExitStatus(failed)))?
-	Stdout.line!("bad exit: ${show(failed.require_success()).replace_each(failed.command, "<command>")}")?
+	# The command is masked in its inspected form: a Windows path has
+	# backslashes, which `Str.inspect` escapes.
+	Stdout.line!("bad exit: ${show(failed.require_success()).replace_each(show(failed.command), show("<command>"))}")?
 
 	match helper!(["exit", "4"]).stdout(Capture).stderr(Capture).exec!() {
 		Err(BadExitStatus(bad)) => Stdout.line!("exec: ${show(bad.status)} ${show(bad.stdout_utf8_lossy())}")?
@@ -144,7 +146,7 @@ running! = || {
 	bytes = helper!(["bytes"]).run!()?.require_success()?.stdout_bytes
 	check!("output bytes are exact", bytes == [72, 255, 10])?
 	Stdout.line!("bad utf8: ${show(helper!(["bytes"]).capture!())}")?
-	Stdout.line!("lossy: ${show(helper!(["bytes"]).run!()?)}".replace_each(helper!(["bytes"]).to_str(), "<command>"))?
+	Stdout.line!("lossy: ${show(helper!(["bytes"]).run!()?)}".replace_each(show(helper!(["bytes"]).to_str()), show("<command>")))?
 
 	# Two runs of one command give equal outputs.
 	first = helper!(["print", "same"]).run!()?

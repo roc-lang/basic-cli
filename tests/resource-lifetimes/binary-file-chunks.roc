@@ -22,11 +22,17 @@ main! = |_args| Env.with_temp_dir!(
 		}
 		# This continuation must not keep the handle alive. Reading a directory
 		# fails, which makes the error item that ends the stream.
-		terminal = error_tail!(workspace)?
+		tail = error_tail!(workspace)
 		Path.delete!(path)?
-		match Stream.next!(terminal) {
-			Done => {}
-			_ => return Err(ExpectedTerminalError)
+		match tail {
+			Ok(terminal) =>
+				match Stream.next!(terminal) {
+					Done => {}
+					_ => return Err(ExpectedTerminalError)
+				}
+			# Windows refuses to open a directory, so there is no stream to end.
+			Err(PathErr(IsADirectory, _)) => {}
+			Err(err) => return Err(err)
 		}
 		Path.write_bytes!(path, [])?
 		check_empty!(path)?

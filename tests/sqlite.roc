@@ -68,19 +68,11 @@ drain! = |stream, label| {
 	Stdout.line!("${label}: end")
 }
 
-rows! : () => Try({}, _)
-rows! = || {
-	db = events_db!()?
-	events = db.rows("SELECT id, payload FROM events ORDER BY id", decode_event)
-
-	# A row that does not decode is an item, and the stream goes on.
-	drain!(events, "all")?
-	# A stream value can be run again: each run is a new query.
-	db.execute!("DELETE FROM events WHERE id = ${Integer(2)}")?
-	drain!(events, "again")?
-
-	# Leaving the loop early releases the statement: a table cannot be
-	# dropped while a statement is reading it.
+## Stop reading the events at the third. The loop has a function of its own
+## so the stream is gone when it returns: an optimized build may keep a
+## stream that a loop was left with `break` until the end of the function.
+leave_early! : Sqlite.Db => Try({}, _)
+leave_early! = |db| {
 	for! item in db.rows("SELECT id, payload FROM events ORDER BY id", decode_event) {
 		match item {
 			Ok(event) if event.id >= 3 => break
@@ -94,6 +86,23 @@ rows! = || {
 			}
 		}
 	}
+	Ok({})
+}
+
+rows! : () => Try({}, _)
+rows! = || {
+	db = events_db!()?
+	events = db.rows("SELECT id, payload FROM events ORDER BY id", decode_event)
+
+	# A row that does not decode is an item, and the stream goes on.
+	drain!(events, "all")?
+	# A stream value can be run again: each run is a new query.
+	db.execute!("DELETE FROM events WHERE id = ${Integer(2)}")?
+	drain!(events, "again")?
+
+	# Leaving the loop early releases the statement: a table cannot be
+	# dropped while a statement is reading it.
+	leave_early!(db)?
 	show!("drop after break", db.execute!("DROP TABLE events"))?
 
 	# A column the decoder names but the query does not return: the only item.
