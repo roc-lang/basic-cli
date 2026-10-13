@@ -34,9 +34,12 @@ if hasattr(sys.stderr, "reconfigure"):
 ROOT = Path(__file__).resolve().parents[1]
 SPEC_PATH = ROOT / "scripts" / "test_spec.json"
 STAGES = ("fmt", "check", "test", "build", "run")
-APP_DIRS = (ROOT / "examples", ROOT / "tests")
+APP_DIRS = (ROOT / "examples", ROOT / "tests", ROOT / "tests" / "resource-lifetimes")
 DEFAULT_ARTIFACT_DIR = ROOT / "dist" / "example-binaries"
 ROC = os.environ.get("ROC", "roc")
+# A case with "live_handles": N sets this, making the host report at exit how
+# many native resource handles are still open, and requires the total to be N.
+LIVE_HANDLES_ENV = "BASIC_CLI_LIVE_HANDLES"
 VALGRIND_ARGS = (
     "valgrind",
     "--error-exitcode=99",
@@ -76,6 +79,12 @@ def command(*args: str | Path, cwd: Path = ROOT) -> None:
     values = [str(arg) for arg in args]
     print(f"+ {' '.join(values)}", flush=True)
     subprocess.run(values, cwd=cwd, check=True)
+
+
+def binary_stem(source: Path) -> str:
+    """Name an app's binary; apps in nested directories are prefixed to stay unique."""
+    parts = source.relative_to(ROOT).with_suffix("").parts
+    return "-".join(parts[1:])
 
 
 def roc_extra_args() -> tuple[str, ...]:
@@ -364,6 +373,8 @@ def make_environment(run_spec: dict[str, object], source: Path) -> dict[str, str
         raise SystemExit(f"{source}: run.env must be an object")
     for name, value in values.items():
         env[str(name)] = expand(str(value), source)
+    if "live_handles" in run_spec:
+        env[LIVE_HANDLES_ENV] = "1"
     non_utf8 = run_spec.get("non_utf8_env", {})
     if non_utf8 and os.name == "posix":
         byte_env = {name.encode(): value.encode() for name, value in env.items()}
@@ -405,6 +416,13 @@ def verify_output(source: Path, case_name: str, stdout: str, stderr: str,
         "stdout_contains", "stdout_regex", "stderr_contains", "stderr_regex"
     )):
         raise SystemExit(f"{source} [{case_name}]: PTY cases cannot assert separate streams")
+    if "live_handles" in run_spec:
+        expected = run_spec["live_handles"]
+        if isinstance(expected, bool) or not isinstance(expected, int):
+            raise SystemExit(f"{source} [{case_name}]: live_handles must be an integer")
+        # The host writes the report to stderr, which a PTY merges into stdout.
+        verify_text(source, case_name, "live-handle report", stdout if pty else stderr,
+                    [], [rf"^live handles: {expected}$"], expect_crash=expect_crash)
     if not pty:
         verify_text(source, case_name, "stdout", stdout,
                     run_spec.get("stdout_contains", []), run_spec.get("stdout_regex", []),
@@ -521,7 +539,7 @@ def run_stage(
             command(ROC, "test", source, *roc_extra_args())
         elif stage == "build":
             suffix = ".exe" if target == "x64win" else ""
-            binary = build_dir / target / f"{source.stem}{suffix}"
+            binary = build_dir / target / f"{binary_stem(source)}{suffix}"
             binary.parent.mkdir(parents=True, exist_ok=True)
             command(
                 ROC, "build", source, f"--target={target}",

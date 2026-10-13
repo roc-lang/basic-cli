@@ -189,20 +189,46 @@ output assertions used by CI:
 ./scripts/test.py --operation run --target x64musl --artifact-dir dist/example-binaries --valgrind
 ```
 
-The static musl allocator is invisible to Valgrind's heap accounting: a report
-of zero heap allocations alone does not prove cleanup. On x86_64 glibc Linux,
-run the additional ownership check used by CI:
+Native resource handles (file readers, sockets, listeners, child processes,
+SQLite statements) are checked on every OS by the suite itself. A run case with
+`"live_handles": 0` in `scripts/test_spec.json` sets `BASIC_CLI_LIVE_HANDLES`,
+which makes the host print how many handles are still open after `main!`
+returns, and requires the total to be zero:
+
+```text
+live handles: 0
+live handles[Child]: 0
+live handles[FileReader]: 0
+...
+```
+
+The report goes to stderr, covers normal returns, errors and exit codes, and is
+not printed when the program crashes. Every example that opens a handle carries
+the assertion, as do the fixtures in `tests/resource-lifetimes/`, which verify
+port release, stream EOF, shared aliases, command reuse, and early returns. Add
+it to the cases of any new app that opens a handle. Rust tests in
+`src/resources.rs` verify exactly-once native finalization, and others verify
+child reaping.
+
+The counters are the only check that sees a leaked handle. Handle boxes live in
+the host's own address ranges rather than on the heap (see `src/resources.rs`),
+so they are invisible to Valgrind, and the native value behind a leaked handle
+stays reachable from its slot instead of being reported as lost.
+
+Valgrind still checks everything else, but the static musl allocator is
+invisible to its heap accounting: a report of zero heap allocations alone does
+not prove cleanup. On x86_64 glibc Linux, run the additional ownership check
+used by CI:
 
 ```sh
 ROC=/path/to/pinned/roc python3 scripts/test_resource_lifetimes.py
 ```
 
 It creates an isolated diagnostic platform under `target/`, uses glibc so
-Valgrind observes allocations, and rejects memory errors and definite/indirect
-leaks. It also tracks file descriptors. The fixtures in
-`tests/resource-lifetimes/` verify port release, stream EOF, shared aliases, command reuse, and early returns; Rust tests verify
-exactly-once native finalization and child reaping. Runtime reactor descriptors
-and reachable service state can remain until process exit.
+Valgrind observes allocations, and runs the `tests/resource-lifetimes/` fixtures
+against a debug host. It rejects memory errors, definite/indirect leaks and a
+non-zero live-handle total, and tracks file descriptors. Runtime reactor
+descriptors and reachable service state can remain until process exit.
 
 For faster local iterations when the platform host is already built:
 

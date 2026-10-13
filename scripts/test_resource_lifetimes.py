@@ -4,6 +4,14 @@
 The published Linux platform remains static musl. Its allocator is invisible to
 Memcheck, so zero reported allocations cannot validate reference-count cleanup.
 This Linux x86_64-only check builds an isolated glibc copy under ignored target/.
+
+Memcheck cannot see a leaked resource handle. Handle boxes live in the host's
+own typed heaps (src/resources.rs), which are mapped rather than malloc'd, and
+the native value behind a leaked handle stays reachable from its slot. Each run
+therefore also sets BASIC_CLI_LIVE_HANDLES and requires the host to report zero
+live handles; scripts/test_spec.json makes the same assertion on every OS.
+Valgrind still covers everything else: memory errors, ordinary Roc allocations,
+and native values that are destroyed without being freed.
 """
 from __future__ import annotations
 
@@ -61,9 +69,19 @@ def main() -> None:
         binary = work / name
         run(roc, "build", str(app), "--target=x64glibc", "--debug", "--no-cache", f"--output={binary}")
         log = work / f"{name}.valgrind.log"
-        run("valgrind", "--error-exitcode=99", "--leak-check=full",
+        command = (
+            "valgrind", "--error-exitcode=99", "--leak-check=full",
             "--errors-for-leak-kinds=definite,indirect", "--track-fds=yes",
-            f"--log-file={log}", str(binary), cwd=work)
+            f"--log-file={log}", str(binary),
+        )
+        print("+", *command, flush=True)
+        result = subprocess.run(
+            command, cwd=work, text=True, check=True, stderr=subprocess.PIPE,
+            env={**os.environ, "BASIC_CLI_LIVE_HANDLES": "1"},
+        )
+        print(result.stderr, end="", flush=True)
+        if not re.search(r"^live handles: 0$", result.stderr, re.MULTILINE):
+            raise SystemExit(f"{name}: resource handles were still live at exit")
         text = log.read_text()
         if not re.search(r"total heap usage: [1-9][0-9,]* allocs", text):
             raise SystemExit(f"Valgrind did not observe heap allocations: {log}")
