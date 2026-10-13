@@ -166,6 +166,32 @@ macro_rules! define_common_io_err {
 
         fn $from_io(error: &io::Error, roc_host: &RocHost) -> $ty {
             match error.kind() {
+                io::ErrorKind::AddrInUse => $ty {
+                    payload: $payload { addr_in_use: [] },
+                    tag: $tag::AddrInUse,
+                },
+                io::ErrorKind::AddrNotAvailable => $ty {
+                    payload: $payload {
+                        addr_not_available: [],
+                    },
+                    tag: $tag::AddrNotAvailable,
+                },
+                io::ErrorKind::ConnectionRefused => $ty {
+                    payload: $payload {
+                        connection_refused: [],
+                    },
+                    tag: $tag::ConnectionRefused,
+                },
+                io::ErrorKind::ConnectionReset => $ty {
+                    payload: $payload {
+                        connection_reset: [],
+                    },
+                    tag: $tag::ConnectionReset,
+                },
+                io::ErrorKind::TimedOut => $ty {
+                    payload: $payload { timed_out: [] },
+                    tag: $tag::TimedOut,
+                },
                 io::ErrorKind::AlreadyExists => $ty {
                     payload: $payload { already_exists: [] },
                     tag: $tag::AlreadyExists,

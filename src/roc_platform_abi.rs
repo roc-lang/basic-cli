@@ -1656,23 +1656,32 @@ const _: () = assert!(core::mem::offset_of!(HostCmdExecExitCodeResult, tag) == 1
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IOErrTag {
-    AlreadyExists = 0,
-    BrokenPipe = 1,
-    Interrupted = 2,
-    IsADirectory = 3,
-    NotADirectory = 4,
-    NotFound = 5,
-    Other = 6,
-    OutOfMemory = 7,
-    PermissionDenied = 8,
-    Unsupported = 9,
+    AddrInUse = 0,
+    AddrNotAvailable = 1,
+    AlreadyExists = 2,
+    BrokenPipe = 3,
+    ConnectionRefused = 4,
+    ConnectionReset = 5,
+    Interrupted = 6,
+    IsADirectory = 7,
+    NotADirectory = 8,
+    NotFound = 9,
+    Other = 10,
+    OutOfMemory = 11,
+    PermissionDenied = 12,
+    TimedOut = 13,
+    Unsupported = 14,
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub union IOErrPayload {
+    pub addr_in_use: [u8; 0],
+    pub addr_not_available: [u8; 0],
     pub already_exists: [u8; 0],
     pub broken_pipe: [u8; 0],
+    pub connection_refused: [u8; 0],
+    pub connection_reset: [u8; 0],
     pub interrupted: [u8; 0],
     pub is_adirectory: [u8; 0],
     pub not_adirectory: [u8; 0],
@@ -1680,6 +1689,7 @@ pub union IOErrPayload {
     pub other: core::mem::ManuallyDrop<RocStr>,
     pub out_of_memory: [u8; 0],
     pub permission_denied: [u8; 0],
+    pub timed_out: [u8; 0],
     pub unsupported: [u8; 0],
 }
 
@@ -6169,23 +6179,32 @@ const _: () = assert!(core::mem::offset_of!(HostChildCloseResult, tag) == 16, "H
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HostIOErrTag {
-    AlreadyExists = 0,
-    BrokenPipe = 1,
-    Interrupted = 2,
-    IsADirectory = 3,
-    NotADirectory = 4,
-    NotFound = 5,
-    Other = 6,
-    OutOfMemory = 7,
-    PermissionDenied = 8,
-    Unsupported = 9,
+    AddrInUse = 0,
+    AddrNotAvailable = 1,
+    AlreadyExists = 2,
+    BrokenPipe = 3,
+    ConnectionRefused = 4,
+    ConnectionReset = 5,
+    Interrupted = 6,
+    IsADirectory = 7,
+    NotADirectory = 8,
+    NotFound = 9,
+    Other = 10,
+    OutOfMemory = 11,
+    PermissionDenied = 12,
+    TimedOut = 13,
+    Unsupported = 14,
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub union HostIOErrPayload {
+    pub addr_in_use: [u8; 0],
+    pub addr_not_available: [u8; 0],
     pub already_exists: [u8; 0],
     pub broken_pipe: [u8; 0],
+    pub connection_refused: [u8; 0],
+    pub connection_reset: [u8; 0],
     pub interrupted: [u8; 0],
     pub is_adirectory: [u8; 0],
     pub not_adirectory: [u8; 0],
@@ -6193,6 +6212,7 @@ pub union HostIOErrPayload {
     pub other: core::mem::ManuallyDrop<RocStr>,
     pub out_of_memory: [u8; 0],
     pub permission_denied: [u8; 0],
+    pub timed_out: [u8; 0],
     pub unsupported: [u8; 0],
 }
 
@@ -9708,8 +9728,12 @@ impl IOErr {
         let mut value = self;
         let _ = roc_host;
         match value.tag {
+            IOErrTag::AddrInUse => {},
+            IOErrTag::AddrNotAvailable => {},
             IOErrTag::AlreadyExists => {},
             IOErrTag::BrokenPipe => {},
+            IOErrTag::ConnectionRefused => {},
+            IOErrTag::ConnectionReset => {},
             IOErrTag::Interrupted => {},
             IOErrTag::IsADirectory => {},
             IOErrTag::NotADirectory => {},
@@ -9720,6 +9744,7 @@ impl IOErr {
             },
             IOErrTag::OutOfMemory => {},
             IOErrTag::PermissionDenied => {},
+            IOErrTag::TimedOut => {},
             IOErrTag::Unsupported => {},
         }
     }
@@ -9733,8 +9758,12 @@ impl IOErr {
         let value = self;
         let _ = amount;
         match value.tag {
+            IOErrTag::AddrInUse => {},
+            IOErrTag::AddrNotAvailable => {},
             IOErrTag::AlreadyExists => {},
             IOErrTag::BrokenPipe => {},
+            IOErrTag::ConnectionRefused => {},
+            IOErrTag::ConnectionReset => {},
             IOErrTag::Interrupted => {},
             IOErrTag::IsADirectory => {},
             IOErrTag::NotADirectory => {},
@@ -9745,6 +9774,7 @@ impl IOErr {
             },
             IOErrTag::OutOfMemory => {},
             IOErrTag::PermissionDenied => {},
+            IOErrTag::TimedOut => {},
             IOErrTag::Unsupported => {},
         }
     }
@@ -11775,8 +11805,12 @@ impl HostIOErr {
         let mut value = self;
         let _ = roc_host;
         match value.tag {
+            HostIOErrTag::AddrInUse => {},
+            HostIOErrTag::AddrNotAvailable => {},
             HostIOErrTag::AlreadyExists => {},
             HostIOErrTag::BrokenPipe => {},
+            HostIOErrTag::ConnectionRefused => {},
+            HostIOErrTag::ConnectionReset => {},
             HostIOErrTag::Interrupted => {},
             HostIOErrTag::IsADirectory => {},
             HostIOErrTag::NotADirectory => {},
@@ -11787,6 +11821,7 @@ impl HostIOErr {
             },
             HostIOErrTag::OutOfMemory => {},
             HostIOErrTag::PermissionDenied => {},
+            HostIOErrTag::TimedOut => {},
             HostIOErrTag::Unsupported => {},
         }
     }
@@ -11800,8 +11835,12 @@ impl HostIOErr {
         let value = self;
         let _ = amount;
         match value.tag {
+            HostIOErrTag::AddrInUse => {},
+            HostIOErrTag::AddrNotAvailable => {},
             HostIOErrTag::AlreadyExists => {},
             HostIOErrTag::BrokenPipe => {},
+            HostIOErrTag::ConnectionRefused => {},
+            HostIOErrTag::ConnectionReset => {},
             HostIOErrTag::Interrupted => {},
             HostIOErrTag::IsADirectory => {},
             HostIOErrTag::NotADirectory => {},
@@ -11812,6 +11851,7 @@ impl HostIOErr {
             },
             HostIOErrTag::OutOfMemory => {},
             HostIOErrTag::PermissionDenied => {},
+            HostIOErrTag::TimedOut => {},
             HostIOErrTag::Unsupported => {},
         }
     }
