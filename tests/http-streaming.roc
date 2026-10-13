@@ -149,8 +149,11 @@ read_to_end! = || {
 ## where the last one stopped.
 idle_timeout! : () => Try({}, _)
 idle_timeout! = || {
-	# The server sends "one,", is silent for a second, then sends "two".
-	response = Http.send_streaming!(get("/stream/slow"), { idle_timeout: After(Duration.millis(200)) })?
+	# The server sends "one,", is silent for a second, then sends "two". The
+	# idle timeout also bounds the wait for the status and headers, so it is
+	# short enough to expire in that second and no shorter: the first request
+	# of a process is the slowest, more so under Valgrind.
+	response = Http.send_streaming!(get("/stream/slow"), { idle_timeout: After(Duration.millis(500)) })?
 	var $body = []
 	var $timeouts = 0.U64
 	var $ended = False
@@ -181,7 +184,7 @@ idle_timeout! = || {
 	Stdout.line!("timed out at least once: ${Str.inspect($timeouts >= 1)}, then ended: ${Str.inspect($ended)}")?
 
 	# `read_to_end!` keeps what it has collected when it times out.
-	again = Http.send_streaming!(get("/stream/slow"), { idle_timeout: After(Duration.millis(200)) })?
+	again = Http.send_streaming!(get("/stream/slow"), { idle_timeout: After(Duration.millis(500)) })?
 	var $result = again.read_to_end!(NoLimit)
 	var $read_timeouts = 0.U64
 	while $result == Err(HttpErr(Timeout)) and $read_timeouts < 100 {
