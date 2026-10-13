@@ -843,6 +843,74 @@
           "contains": ["Program exited with error: UnexpectedArguments"]
         }
       ]
+    },
+    {
+      "path": "tests/tcp-server.roc",
+      "cases": [
+        {
+          "name": "server-and-client",
+          "live_handles": 0,
+          "stdout_contains": [
+            "listening: Tcp.Listener(<opaque>), port chosen: True\n",
+            "second listen: Err(TcpErr(AddrInUse))\n",
+            "zero listen timeout: Err(TcpErr(TimedOut))\n",
+            "bounded accept: Err(TcpErr(TimedOut)), equal to TimedOut: True\n",
+            "bounded accept waited: True\n",
+            "zero accept: Err(TcpErr(TimedOut))\n",
+            "connected: Tcp.Connection(<opaque>)\n",
+            "first read: Ok(\"hello\")\n",
+            "zero timeout: Err(TcpErr(TimedOut)), equal to TimedOut: True\n",
+            "same data: Ok(\"again\")\n",
+            "partial line: Err(TcpErr(TimedOut))\n",
+            "partial exact: Err(TcpErr(TimedOut))\n",
+            "whole line: Ok(\"partial\")\n",
+            "over the limit: Err(ReadLimitExceeded(8))\n",
+            "after it: Ok(\"short\")\n",
+            "at the limit: Ok(\"1234567\")\n",
+            "one over: Err(ReadLimitExceeded(8))\n",
+            "delimited: Ok(\"field|\")\n",
+            "delimited over: Err(ReadLimitExceeded(3))\n",
+            "exact: Ok([0, 255, 128])\n",
+            "up to: Ok([10])\n",
+            "none requested: Ok([]), Ok([])\n",
+            "chunks: 150000 bytes, sizes ok: True, last item: TcpErr(TimedOut)\n",
+            "lines: line \"a\"\n",
+            "lines: bad utf8 at byte 0\n",
+            "lines: longer than 8 bytes\n",
+            "lines: line \"\"\n",
+            "lines: line \"b\"\n",
+            "lines: TcpErr(TimedOut)\n",
+            "lines: ended\n",
+            "restarted lines: line \"unfinished\"\n",
+            "restarted lines: line \"last\"\n",
+            "restarted lines: ended\n",
+            "read_line after the end: Err(EndOfInput)\n",
+            "read_until after the end: Err(EndOfInput)\n",
+            "read_up_to after the end: Err(EndOfInput)\n",
+            "read_exactly after the end: Err(UnexpectedEndOfInput)\n",
+            "read_up_to zero after the end: Ok([])\n",
+            "chunks after the end: ended\n",
+            "accepted io timeout: Err(TcpErr(TimedOut)), waited: True\n",
+            "zero io timeout write: Err(TcpErr(TimedOut))\n",
+            "zero io timeout read: Err(TcpErr(TimedOut))\n",
+            "after with_timeout: Ok(\"kept\")\n",
+            "function values: (\"a\", \"b|\", \"cd|\", \"line\")\n",
+            "stream function values: TcpErr(TimedOut), chunk \"rest\", TcpErr(TimedOut), line \"end\"\n",
+            "local_port after close: Err(Closed)\n",
+            "accept after close: Err(Closed)\n",
+            "connect after close is refused: True\n",
+            "zero connect timeout: Err(TcpErr(TimedOut))\n",
+            "tcp server: ok\n"
+          ]
+        },
+        {
+          "name": "second-error",
+          "live_handles": 0,
+          "args": ["unexpected"],
+          "exit_code": 1,
+          "contains": ["Program exited with error: UnexpectedArguments"]
+        }
+      ]
     }
   ]
 }
