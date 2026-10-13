@@ -372,6 +372,29 @@ function_values! = || {
 	checked = require_success(output)?
 	run_text = stdout_utf8(checked)?
 
+	# `BadUtf8` comes from a builtin; widened by `?` beside other errors it
+	# still has to arrive as `BadUtf8`.
+	Stdout.line!("bad utf8 through ?: ${show(utf8_through_try!())} ${show(capture_through_try!())}")?
+
 	check!("function values work", text == "capture\n" and run_text == "run\n" and chunk == Stdout([102, 110]) and state == Finished(finished))?
 	Stdout.line!("function values: ok")
+}
+
+utf8_through_try! : () => Try(Str, _)
+utf8_through_try! = || {
+	output = helper!(["bytes"]).run!()?
+	text = output.stdout_utf8()?
+	if text.is_empty() {
+		return Err(AnotherError)
+	}
+	Ok(text)
+}
+
+capture_through_try! : () => Try(Str, _)
+capture_through_try! = || {
+	text = helper!(["bytes"]).capture!()?
+	if text.is_empty() {
+		return Err(AnotherError)
+	}
+	Ok(text)
 }

@@ -711,7 +711,7 @@
             "timed out, spawned: Err(CmdErr(TimedOut({ stdout: \"Hi\n\", stderr: \"\" })))\n",
             "zero timeout: Err(CmdErr(TimedOut({ stdout: \"\", stderr: \"\" })))\n",
             "deadlines: ok\n",
-            "function value: exec\nfunction values: ok\ncmd: ok\n"
+            "function value: exec\nbad utf8 through ?: Err(BadUtf8({ index: 1, problem: InvalidStartByte })) Err(BadUtf8({ index: 1, problem: InvalidStartByte }))\nfunction values: ok\ncmd: ok\n"
           ],
           "stderr_contains": ["capture: stderr reaches the terminal\n"]
         },

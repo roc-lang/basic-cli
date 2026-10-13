@@ -279,7 +279,11 @@ Cmd :: {
 		match finish!(cmd, Capture) {
 			Ok(output) =>
 				match output.require_success() {
-					Ok(succeeded) => succeeded.stdout_utf8()
+					Ok(succeeded) =>
+						match succeeded.stdout_utf8() {
+							Ok(text) => Ok(text)
+							Err(BadUtf8(problem)) => Err(BadUtf8(problem))
+						}
 					Err(BadExitStatus(failed)) => Err(BadExitStatus(failed))
 				}
 			Err(CmdErr(err)) => Err(CmdErr(err))
@@ -447,7 +451,13 @@ Cmd :: {
 		## The captured standard output as text, or `BadUtf8` when it is not
 		## valid UTF-8.
 		stdout_utf8 : Output -> Try(Str, [BadUtf8({ problem : Str.Utf8Problem, index : U64 })])
-		stdout_utf8 = |output| Str.from_utf8(output.stdout_bytes)
+		stdout_utf8 = |output|
+			# The builtin's one-tag error is rebuilt, so it keeps its tag when
+			# `?` widens it beside other errors.
+			match Str.from_utf8(output.stdout_bytes) {
+				Ok(text) => Ok(text)
+				Err(BadUtf8(problem)) => Err(BadUtf8(problem))
+			}
 
 		## The captured standard output as text, with invalid UTF-8 replaced by
 		## the Unicode replacement character.
