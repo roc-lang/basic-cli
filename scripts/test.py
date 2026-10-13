@@ -421,8 +421,14 @@ def verify_output(source: Path, case_name: str, stdout: str, stderr: str,
         if isinstance(expected, bool) or not isinstance(expected, int):
             raise SystemExit(f"{source} [{case_name}]: live_handles must be an integer")
         # The host writes the report to stderr, which a PTY merges into stdout.
-        verify_text(source, case_name, "live-handle report", stdout if pty else stderr,
-                    [], [rf"^live handles: {expected}$"], expect_crash=expect_crash)
+        # Child processes inherit the variable and may report too, so every
+        # report must match: one child's zero must not hide the app's leak.
+        reports = re.findall(r"^live handles: (\d+)\r?$", stdout if pty else stderr, re.MULTILINE)
+        if not reports or any(int(count) != expected for count in reports):
+            raise SystemExit(
+                f"{source} [{case_name}]: expected every live-handle report to be "
+                f"{expected}, got {reports or 'none'}"
+            )
     if not pty:
         verify_text(source, case_name, "stdout", stdout,
                     run_spec.get("stdout_contains", []), run_spec.get("stdout_regex", []),

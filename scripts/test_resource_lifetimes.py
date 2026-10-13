@@ -80,7 +80,9 @@ def main() -> None:
             env={**os.environ, "BASIC_CLI_LIVE_HANDLES": "1"},
         )
         print(result.stderr, end="", flush=True)
-        if not re.search(r"^live handles: 0$", result.stderr, re.MULTILINE):
+        # Child processes inherit the variable and may report too.
+        reports = re.findall(r"^live handles: (\d+)$", result.stderr, re.MULTILINE)
+        if not reports or any(count != "0" for count in reports):
             raise SystemExit(f"{name}: resource handles were still live at exit")
         text = log.read_text()
         if not re.search(r"total heap usage: [1-9][0-9,]* allocs", text):
