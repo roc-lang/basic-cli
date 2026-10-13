@@ -175,7 +175,8 @@ Cmd :: {
 		}
 	}
 
-	## Create a new command with the given program name. Use a function that starts with `exec_` to execute it.
+	## Create a new command with the given program name. Execute it with [run!],
+	## [spawn!] or [exec!].
 	##
 	## ```roc
 	## cmd = Cmd.new("ls")
@@ -444,25 +445,11 @@ Cmd :: {
 	to_inspect = |cmd| to_str(cmd)
 }
 
-flatten_arg_pairs : List((OsStr, OsStr)), List(OsStr), U64 -> List(OsStr)
-flatten_arg_pairs = |pairs, acc, idx| {
-	if idx >= pairs.len() {
-		acc
-	} else {
-		match pairs.get(idx) {
-			Ok(pair) =>
-				flatten_arg_pairs(pairs, acc.append(pair.0).append(pair.1), idx + 1)
-			Err(_) =>
-				acc
-		}
-	}
-}
-
 to_host_cmd : Cmd -> Host.Cmd
 to_host_cmd = |cmd| {
 	args: cmd.args.map(OsStr.to_raw),
 	clear_envs: cmd.clear_envs,
-	envs: flatten_arg_pairs(cmd.envs, [], 0).map(OsStr.to_raw),
+	envs: cmd.envs.join_map(|(name, value)| [name, value]).map(OsStr.to_raw),
 	program: OsStr.to_raw(cmd.program),
 	cwd: cmd.cwd_value.map(Path.to_raw),
 	stdin_mode: match cmd.stdin_value {
@@ -501,26 +488,14 @@ path_dirs = |path_value, is_windows|
 				.map(Path.utf8)
 
 		UnixBytes(bytes) =>
-			split_on(bytes, if is_windows ';' else ':')
+			bytes.split_on(if is_windows ';' else ':')
 				.keep_if(|segment| !List.is_empty(segment))
 				.map(Path.unix_bytes)
 
 		WindowsU16s(u16s) =>
-			split_on(u16s, if is_windows ';' else ':')
+			u16s.split_on(if is_windows ';' else ':')
 				.keep_if(|segment| !List.is_empty(segment))
 				.map(Path.windows_u16s)
-	}
-
-## Split a list into segments on a separator element (segments may be empty).
-split_on : List(a), a -> List(List(a)) where [a.is_eq : a, a -> Bool]
-split_on = |items, sep| split_on_help(items, sep, [], [])
-
-split_on_help : List(a), a, List(a), List(List(a)) -> List(List(a)) where [a.is_eq : a, a -> Bool]
-split_on_help = |remaining, sep, current, acc|
-	match remaining {
-		[] => acc.append(current)
-		[x, .. as rest] if x == sep => split_on_help(rest, sep, [], acc.append(current))
-		[x, .. as rest] => split_on_help(rest, sep, current.append(x), acc)
 	}
 
 ## The executable extensions to try on Windows, taken from `%PATHEXT%`.
@@ -597,8 +572,8 @@ expect has_separator("a\\b", False) == False
 expect has_separator("a\\b", True) == True
 
 ## Splitting keeps every segment, including a trailing empty one after a separator.
-expect split_on([1.U8, 2, 58, 3], 58) == [[1, 2], [3]]
-expect split_on([59.U16, 1, 59], 59) == [[], [1], []]
+expect [1.U8, 2, 58, 3].split_on(58) == [[1, 2], [3]]
+expect [59.U16, 1, 59].split_on(59) == [[], [1], []]
 
 ## PATH splitting preserves raw bytes, including non-UTF-8 directory entries.
 expect {
