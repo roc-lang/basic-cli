@@ -338,6 +338,10 @@ Tcp :: [].{
 	## address the name resolves to. `io_timeout` is the timeout the new
 	## [Connection] holds for its reads and writes.
 	##
+	## A port nobody listens on is `Err(TcpErr(ConnectionRefused))` once the
+	## operating system reports it. Windows retries for about two seconds
+	## first, so a shorter `connect_timeout` gives `Err(TcpErr(TimedOut))` there.
+	##
 	## ```roc
 	## conn = Tcp.connect!("localhost", 8080, { connect_timeout: Duration.seconds(1), io_timeout: Duration.seconds(5) })?
 	## ```
