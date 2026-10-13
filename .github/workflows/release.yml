@@ -166,9 +166,10 @@ jobs:
         with:
           github_token: ${{ github.token }}
 
-      # 0.22.2 publicly aliases InternalHttp.TransportErr; roc bump currently
-      # rejects that alias during API extraction. Keep warning until the compiler
-      # can compare it, and bound the check so a compiler hang cannot block release.
+      # roc bump cannot extract a public API that mentions an unexposed type, and
+      # 0.25.0's Sqlite row decoders take Host.SqliteStmt. Keep warning until the
+      # predecessor is a release without such a type, and bound the check so a
+      # compiler hang cannot block release.
       - name: Check version bump
         env:
           RELEASE_VERSION: ${{ needs.release-info.outputs.release_version }}

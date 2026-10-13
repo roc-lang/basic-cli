@@ -406,7 +406,9 @@ Path := [
 				}
 		}
 
-	## Returns the filename extension without the leading dot.
+	## Returns everything after the first dot in the filename that is not a
+	## leading dot: `txt` for `notes.txt`, `tar.gz` for `archive.tar.gz`, and
+	## nothing for `.gitignore`.
 	ext : Path -> Try(Path, [IsDirPath, EndsInDots])
 	ext = |path|
 		match filename(path) {
@@ -746,7 +748,7 @@ expect Path.filename(Path.windows("foo/bar..")) == Err(EndsInDots)
 expect Path.filename(Path.utf8("foo/bar/")) == Err(IsDirPath)
 expect Path.filename(Path.utf8("foo/bar..")) == Err(EndsInDots)
 
-## `ext` returns the filename extension without the leading dot.
+## `ext` returns everything after the first dot that is not a leading dot.
 expect Path.ext(Path.unix("foo/bar.txt")) == Ok(Path.unix("txt"))
 expect Path.ext(Path.unix("foo/bar.")) == Ok(Path.unix(""))
 expect Path.ext(Path.unix("foo/.bar.txt")) == Ok(Path.unix("txt"))

@@ -127,7 +127,7 @@ or crate-wide.
 Release-tooling regression tests run with:
 
 ```sh
-python3 -m unittest scripts/test_check_release_version.py scripts/test_check_version_bump.py scripts/test_update_nix_release.py
+python3 -m unittest scripts/test_check_release_version.py scripts/test_check_release_branch.py scripts/test_check_version_bump.py scripts/test_update_nix_release.py scripts/test_check_roc_nightly.py scripts/test_windows_runtime.py
 ```
 
 Stable releases must be dispatched from the default branch. To publish a branch
@@ -139,8 +139,10 @@ dispatching so the release tag records the versioned sources.
 
 The release workflow bounds `roc bump` to 120 seconds and saves its output in
 `.release/bump-output.txt`. It currently warns on comparison errors and timeouts:
-the compiler still rejects the public `InternalHttp.TransportErr` alias in the
-0.22.2 predecessor. Switch to `--mode require` once that comparison works.
+`roc bump` cannot extract a public API that mentions a type the platform header
+does not expose, and in the 0.25.0 predecessor the `Sqlite` row decoders take
+the unexposed `Host.SqliteStmt`. Switch to `--mode require` once the
+predecessor is a release without such a type.
 
 Run the full local check before opening release or CI-facing changes:
 
