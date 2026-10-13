@@ -36,45 +36,45 @@ Path := [
 	to_os_str : Path -> OsStr
 	to_os_str = |path| OsStr.from_raw(to_raw(path))
 
-	## Returns `Bool.True` if the path exists on disk and is pointing at a regular file.
+	## Returns `True` if the path exists on disk and is pointing at a regular file.
 	##
 	## This function does not traverse symbolic links; symbolic links (including
-	## broken ones) return `Bool.False`.
-	## Sockets, FIFOs, devices, and other special filesystem objects also return `Bool.False`.
+	## broken ones) return `False`.
+	## Sockets, FIFOs, devices, and other special filesystem objects also return `False`.
 	is_file! : Path => Try(Bool, [PathErr(IOErr, Path)])
 	is_file! = |path|
 		match type!(path) {
-			Ok(IsFile) => Ok(Bool.True)
-			Ok(_) => Ok(Bool.False)
-			Err(PathErr(NotFound, _)) => Ok(Bool.False)
+			Ok(IsFile) => Ok(True)
+			Ok(_) => Ok(False)
+			Err(PathErr(NotFound, _)) => Ok(False)
 			Err(err) => Err(err)
 		}
 
-	## Returns `Bool.True` if the path exists on disk and is pointing at a directory.
+	## Returns `True` if the path exists on disk and is pointing at a directory.
 	##
 	## This function does not traverse symbolic links; symbolic links (including
-	## broken ones) return `Bool.False`.
-	## Sockets, FIFOs, devices, and other special filesystem objects also return `Bool.False`.
+	## broken ones) return `False`.
+	## Sockets, FIFOs, devices, and other special filesystem objects also return `False`.
 	is_dir! : Path => Try(Bool, [PathErr(IOErr, Path)])
 	is_dir! = |path|
 		match type!(path) {
-			Ok(IsDir) => Ok(Bool.True)
-			Ok(_) => Ok(Bool.False)
-			Err(PathErr(NotFound, _)) => Ok(Bool.False)
+			Ok(IsDir) => Ok(True)
+			Ok(_) => Ok(False)
+			Err(PathErr(NotFound, _)) => Ok(False)
 			Err(err) => Err(err)
 		}
 
-	## Returns `Bool.True` if the path exists on disk and is pointing at a symbolic link.
+	## Returns `True` if the path exists on disk and is pointing at a symbolic link.
 	##
 	## This function will not traverse symbolic links - it checks whether the path
 	## itself is a symlink.
-	## Sockets, FIFOs, devices, and other special filesystem objects return `Bool.False`.
+	## Sockets, FIFOs, devices, and other special filesystem objects return `False`.
 	is_sym_link! : Path => Try(Bool, [PathErr(IOErr, Path)])
 	is_sym_link! = |path|
 		match type!(path) {
-			Ok(IsSymLink) => Ok(Bool.True)
-			Ok(_) => Ok(Bool.False)
-			Err(PathErr(NotFound, _)) => Ok(Bool.False)
+			Ok(IsSymLink) => Ok(True)
+			Ok(_) => Ok(False)
+			Err(PathErr(NotFound, _)) => Ok(False)
 			Err(err) => Err(err)
 		}
 
@@ -82,8 +82,8 @@ Path := [
 	exists! : Path => Try(Bool, [PathErr(IOErr, Path)])
 	exists! = |path|
 		match type!(path) {
-			Ok(_) => Ok(Bool.True)
-			Err(PathErr(NotFound, _)) => Ok(Bool.False)
+			Ok(_) => Ok(True)
+			Err(PathErr(NotFound, _)) => Ok(False)
 			Err(err) => Err(err)
 		}
 
@@ -776,7 +776,7 @@ expect {
 	result = map_file_result(Err(FileErr(NotFound)), Path.utf8("a.txt"))
 	match result {
 		Err(PathErr(NotFound, path)) => path == Path.utf8("a.txt")
-		_ => Bool.False
+		_ => False
 	}
 }
 
@@ -786,7 +786,7 @@ expect {
 	match result {
 		# Raw non-UTF-8 bytes survive the trip through the error.
 		Err(PathErr(NotADirectory, path)) => path == Path.unix_bytes([0x2F, 0xFF])
-		_ => Bool.False
+		_ => False
 	}
 }
 
@@ -795,7 +795,7 @@ expect {
 	result = map_file_result(Ok(42), Path.utf8("a.txt"))
 	match result {
 		Ok(value) => value == 42
-		Err(_) => Bool.False
+		Err(_) => False
 	}
 }
 

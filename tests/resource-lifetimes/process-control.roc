@@ -21,7 +21,7 @@ main! = |args| {
 			.arg_str("--echo-helper")
 			.cwd(directory)
 			.timeout_ms(5000)
-			.manage_tree(Bool.True)
+			.manage_tree(True)
 
 		# run! captures bytes and represents the exit status explicitly.
 		output = command.stdin(Bytes([0, 42, 255]))

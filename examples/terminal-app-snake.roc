@@ -24,7 +24,7 @@ initial_state = {
 	snake: { first: { x: 10, y: 10 }, rest: [{ x: 9, y: 10 }, { x: 8, y: 10 }] },
 	food: { x: 15, y: 15 },
 	direction: right,
-	game_over: Bool.False,
+	game_over: False,
 }
 
 grid_size : I64
@@ -99,7 +99,7 @@ apply_input_byte = |state, byte|
 	} else if byte == 100 {
 		{ ..state, direction: right }
 	} else if byte == 113 {
-		{ ..state, game_over: Bool.True }
+		{ ..state, game_over: True }
 	} else {
 		state
 	}
@@ -112,7 +112,7 @@ update_game = |state| {
 		new_head = move_head(state.snake.first, state.direction)
 
 		if hit_wall(new_head) or snake_contains(state.snake, new_head) {
-			{ ..state, game_over: Bool.True }
+			{ ..state, game_over: True }
 		} else if new_head == state.food {
 			new_snake = snake_prepend(state.snake, new_head)
 			new_food = { x: (new_head.x + 3) % grid_size, y: (new_head.y + 3) % grid_size }
@@ -194,11 +194,11 @@ positions_contains : List(Position), Position -> Bool
 positions_contains = |positions, pos| {
 	for current in positions {
 		if current == pos {
-			return Bool.True
+			return True
 		}
 	}
 
-	Bool.False
+	False
 }
 
 snake_prepend : Snake, Position -> Snake

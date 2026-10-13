@@ -19,7 +19,7 @@ main! = |args| {
 	_ = reader.seek!(Start(0))?
 	var $chunks = reader.chunks(65_536)?
 	var $total = 0.U64
-	while Bool.True {
+	while True {
 		match Stream.next!($chunks) {
 			Done => {
 				break

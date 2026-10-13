@@ -13,7 +13,7 @@ main! = |_args| Env.with_temp_dir!(
 		path = Path.join(workspace, "chunks.dat")
 		Path.write_bytes!(path, [0, 255, 128, 10, 1, 2, 3, 4])?
 		check_chunks!(path)?
-		for early in [Bool.False, Bool.True] {
+		for early in [False, True] {
 			match read_one!(path, early) {
 				Ok(_) => {}
 				Err(ExpectedEarlyReturn) => {}

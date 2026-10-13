@@ -21,7 +21,7 @@ main! = |args| {
 		.stdout(Tee)
 		.stderr(Tee)
 		.timeout_ms(300_000)
-		.manage_tree(Bool.True)
+		.manage_tree(True)
 		.spawn!() ? |err| StartFailed(err)
 
 	pid = child.pid!() ? |err| ProcessFailed(err)

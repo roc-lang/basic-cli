@@ -14,7 +14,7 @@ main! = |_args| {
 		|workspace| {
 			path = Path.join(workspace, "lines.txt")
 			Path.write_utf8!(path, "first\nsecond\n")?
-			for early in [Bool.False, Bool.True] {
+			for early in [False, True] {
 				match read_aliases!(path, early) {
 					Ok(_) => {}
 					Err(ExpectedEarlyReturn) => {}
@@ -25,7 +25,7 @@ main! = |_args| {
 		},
 	)?
 
-	for early in [Bool.False, Bool.True] {
+	for early in [False, True] {
 		port = match release_listener!(early) {
 			Ok(released_port) => released_port
 			Err(Released(released_port)) => released_port

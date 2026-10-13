@@ -529,5 +529,5 @@ expect {
 			status = Sqlite.str("status")(cols)(stmt)?
 			Ok({ id, task, status })
 		}
-	Bool.True
+	True
 }

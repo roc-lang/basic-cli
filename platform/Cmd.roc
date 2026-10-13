@@ -182,7 +182,7 @@ Cmd :: {
 	new : OsStr -> Cmd
 	new = |program| {
 		args: [],
-		clear_envs: Bool.False,
+		clear_envs: False,
 		envs: [],
 		program,
 		cwd_value: [],
@@ -192,8 +192,8 @@ Cmd :: {
 		timeout_value: 0,
 		output_limit_value: 16777216,
 		pending_limit_value: 1048576,
-		manage_tree_value: Bool.False,
-		merge_stderr_value: Bool.False,
+		manage_tree_value: False,
+		merge_stderr_value: False,
 	}
 
 	## Create a new command from a dynamic `Str`. String literals can be passed
@@ -332,7 +332,7 @@ Cmd :: {
 	##         .env("ONLY_THIS", "visible")
 	## ```
 	clear_envs : Cmd -> Cmd
-	clear_envs = |cmd| { ..cmd, clear_envs: Bool.True }
+	clear_envs = |cmd| { ..cmd, clear_envs: True }
 
 	## Report whether `command` can be found on the system as something runnable.
 	##
@@ -347,8 +347,8 @@ Cmd :: {
 	check_available! = |command| {
 		is_windows =
 			match Env.platform!().os {
-				WINDOWS => Bool.True
-				_ => Bool.False
+				WINDOWS => True
+				_ => False
 			}
 
 		if has_separator(command, is_windows) {
@@ -536,10 +536,10 @@ path_extensions! = ||
 search_dirs! : List(Path), Str, List(Str), Bool => Bool
 search_dirs! = |dirs, command, extensions, is_windows|
 	match dirs {
-		[] => Bool.False
+		[] => False
 		[dir, .. as rest] =>
 			if search_extensions!(dir, command, extensions, is_windows) {
-				Bool.True
+				True
 			} else {
 				search_dirs!(rest, command, extensions, is_windows)
 			}
@@ -548,10 +548,10 @@ search_dirs! = |dirs, command, extensions, is_windows|
 search_extensions! : Path, Str, List(Str), Bool => Bool
 search_extensions! = |dir, command, extensions, is_windows|
 	match extensions {
-		[] => Bool.False
+		[] => False
 		[ext, .. as rest] =>
 			if candidate_available!(dir.join(command.concat(ext)), is_windows) {
-				Bool.True
+				True
 			} else {
 				search_extensions!(dir, command, rest, is_windows)
 			}
@@ -564,9 +564,9 @@ candidate_available! : Path, Bool => Bool
 candidate_available! = |candidate, is_windows| {
 	runnable = if is_windows Path.exists!(candidate) else Path.is_executable!(candidate)
 	match runnable {
-		Ok(Bool.True) => not_directory!(candidate)
-		Ok(Bool.False) => Bool.False
-		Err(_) => Bool.False
+		Ok(True) => not_directory!(candidate)
+		Ok(False) => False
+		Err(_) => False
 	}
 }
 
@@ -576,7 +576,7 @@ not_directory! : Path => Bool
 not_directory! = |candidate|
 	match Path.is_dir!(candidate) {
 		Ok(is_dir) => !is_dir
-		Err(_) => Bool.True
+		Err(_) => True
 	}
 
 ## Inspection is escaped and includes the full immutable command configuration.
@@ -590,10 +590,10 @@ expect {
 }
 
 ## A name is a path only when it carries a separator for the current platform.
-expect has_separator("git", Bool.False) == Bool.False
-expect has_separator("./git", Bool.False) == Bool.True
-expect has_separator("a\\b", Bool.False) == Bool.False
-expect has_separator("a\\b", Bool.True) == Bool.True
+expect has_separator("git", False) == False
+expect has_separator("./git", False) == True
+expect has_separator("a\\b", False) == False
+expect has_separator("a\\b", True) == True
 
 ## Splitting keeps every segment, including a trailing empty one after a separator.
 expect split_on([1.U8, 2, 58, 3], 58) == [[1, 2], [3]]
@@ -603,19 +603,19 @@ expect split_on([59.U16, 1, 59], 59) == [[], [1], []]
 expect {
 	# "/a" ++ ":" ++ "/<0xFF>b" — the 0xFF byte is not valid UTF-8.
 	path = OsStr.unix_bytes([0x2F, 0x61, 0x3A, 0x2F, 0xFF, 0x62])
-	path_dirs(path, Bool.False) == [Path.unix_bytes([0x2F, 0x61]), Path.unix_bytes([0x2F, 0xFF, 0x62])]
+	path_dirs(path, False) == [Path.unix_bytes([0x2F, 0x61]), Path.unix_bytes([0x2F, 0xFF, 0x62])]
 }
 
 ## The UTF-8 PATH representation splits the same way.
-expect path_dirs(OsStr.utf8("/a:/b"), Bool.False) == [Path.utf8("/a"), Path.utf8("/b")]
+expect path_dirs(OsStr.utf8("/a:/b"), False) == [Path.utf8("/a"), Path.utf8("/b")]
 
 ## Empty PATH entries (a stray or trailing separator) are dropped, not resolved to root.
-expect path_dirs(OsStr.utf8("/a::/b:"), Bool.False) == [Path.utf8("/a"), Path.utf8("/b")]
+expect path_dirs(OsStr.utf8("/a::/b:"), False) == [Path.utf8("/a"), Path.utf8("/b")]
 
 ## Windows PATH splits on ';' and preserves UTF-16 units.
 expect {
 	path = OsStr.windows_u16s([0x43, 0x3B, 0x44])
-	path_dirs(path, Bool.True) == [Path.windows_u16s([0x43]), Path.windows_u16s([0x44])]
+	path_dirs(path, True) == [Path.windows_u16s([0x43]), Path.windows_u16s([0x44])]
 }
 
 output_mode : [Default, Inherit, Null, Capture, Pipe, Tee] -> U8
