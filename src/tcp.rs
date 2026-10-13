@@ -700,8 +700,11 @@ mod tests {
             kind(connection.read_up_to(1, SHORT)),
             io::ErrorKind::TimedOut
         );
-        assert!(started.elapsed() >= Duration::from_nanos(SHORT));
-        assert!(started.elapsed() < Duration::from_secs(5));
+        // A socket timeout is counted in clock ticks on Windows and can end a
+        // little before its nominal length, so only half of it is required.
+        let elapsed = started.elapsed();
+        assert!(elapsed >= Duration::from_nanos(SHORT / 2), "{elapsed:?}");
+        assert!(elapsed < Duration::from_secs(5), "{elapsed:?}");
     }
 
     #[test]
