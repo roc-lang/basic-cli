@@ -61,6 +61,8 @@ Host :: [].{
 	file_write_bytes! : NativePath, List(U8) => Try({}, [FileErr(IOErr)])
 	file_read_utf8! : NativePath => Try(Str, [FileErr(IOErr)])
 	file_write_utf8! : NativePath, Str => Try({}, [FileErr(IOErr)])
+	file_append_bytes! : NativePath, List(U8) => Try({}, [FileErr(IOErr)])
+	file_append_utf8! : NativePath, Str => Try({}, [FileErr(IOErr)])
 	file_open_reader! : NativePath, U64 => Try(FileReader, [FileErr(IOErr)])
 	file_read_line! : FileReader => Try(List(U8), [FileErr(IOErr)])
 	file_delete! : NativePath => Try({}, [FileErr(IOErr)])

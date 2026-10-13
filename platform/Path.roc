@@ -142,6 +142,34 @@ Path := [
 	write_utf8! : Path, Str => Try({}, [PathErr(IOErr, Path)])
 	write_utf8! = |path, content| map_file_result(Host.file_write_utf8!(to_raw(path), content), path)
 
+	## Append bytes to the end of the file at this path, creating the file if it
+	## does not exist. Missing parent directories are not created.
+	##
+	## Existing contents are never truncated or overwritten: the file is opened in
+	## append mode, so the operating system places the bytes at the current end of
+	## the file even when other writers are appending to it. The bytes are handed
+	## to the operating system in one write, which keeps appends from concurrent
+	## writers from interleaving in the common case, but this is not guaranteed for
+	## large contents or on network filesystems.
+	##
+	## The append is not atomic or durable: a failure mid-write can leave part of
+	## the bytes appended, and nothing is flushed to the storage device before
+	## this returns.
+	append_bytes! : Path, List(U8) => Try({}, [PathErr(IOErr, Path)])
+	append_bytes! = |path, bytes| map_file_result(Host.file_append_bytes!(to_raw(path), bytes), path)
+
+	## Append UTF-8 text to the end of the file at this path, creating the file if
+	## it does not exist. No newline is added.
+	##
+	## ```roc
+	## Path.append_utf8!("events.log", "started\n")?
+	## ```
+	##
+	## This has the same creation, concurrency and failure behavior as
+	## [append_bytes!].
+	append_utf8! : Path, Str => Try({}, [PathErr(IOErr, Path)])
+	append_utf8! = |path, content| map_file_result(Host.file_append_utf8!(to_raw(path), content), path)
+
 	## Replace every occurrence of `pattern` with `replacement` in the UTF-8 file
 	## at this path.
 	##

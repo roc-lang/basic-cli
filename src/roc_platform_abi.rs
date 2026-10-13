@@ -9069,6 +9069,26 @@ pub struct HostFileWriteUtf8Args {
     pub arg1: RocStr,
 }
 
+/// Arguments for Host.file_append_bytes!
+/// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], List(U8) => Try({}, [FileErr(IOErr)])
+/// Refcounted fields are owned by the hosted function.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostFileAppendBytesArgs {
+    pub arg0: UnixBytesOrUtf8OrWindowsU16s,
+    pub arg1: RocListWith<u8, false>,
+}
+
+/// Arguments for Host.file_append_utf8!
+/// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], Str => Try({}, [FileErr(IOErr)])
+/// Refcounted fields are owned by the hosted function.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostFileAppendUtf8Args {
+    pub arg0: UnixBytesOrUtf8OrWindowsU16s,
+    pub arg1: RocStr,
+}
+
 /// Arguments for Host.http_send_request!
 /// Roc signature: { body : List(U8), headers : List((Str, Str)), method : U8, method_ext : Str, timeout_ms : U64, uri : Str } => Try({ body : List(U8), headers : List((Str, Str)), status : U16 }, [BadBody, NetworkError, Other(List(U8)), Timeout])
 /// Refcounted fields are owned by the hosted function.
@@ -9550,6 +9570,12 @@ pub type HostFileWriteBytesResultTag = HostFileDeleteResultTag;
 pub type HostFileWriteUtf8Result = HostFileDeleteResult;
 pub type HostFileWriteUtf8ResultPayload = HostFileDeleteResultPayload;
 pub type HostFileWriteUtf8ResultTag = HostFileDeleteResultTag;
+pub type HostFileAppendBytesResult = HostFileDeleteResult;
+pub type HostFileAppendBytesResultPayload = HostFileDeleteResultPayload;
+pub type HostFileAppendBytesResultTag = HostFileDeleteResultTag;
+pub type HostFileAppendUtf8Result = HostFileDeleteResult;
+pub type HostFileAppendUtf8ResultPayload = HostFileDeleteResultPayload;
+pub type HostFileAppendUtf8ResultTag = HostFileDeleteResultTag;
 pub type HostHttpSendRequestArg0 = AnonStruct8bbc5017d7a8cb36;
 pub type HostHttpSendRequestArg0Headers = AnonStruct77eaba63dfee299d;
 pub type HostHttpSendRequestErr = BadBodyOrNetworkErrorOrOtherOrTimeout;
@@ -13329,6 +13355,24 @@ unsafe extern "C" {
     ///     unsafe { arg1.decref(roc_host); }
     /// The result is owned by Roc: return exactly one owned reference.
     pub fn hosted_file_write_utf8(arg0: UnixBytesOrUtf8OrWindowsU16s, arg1: RocStr) -> HostFileDeleteResult;
+
+    /// Hosted symbol for Host.file_append_bytes!
+    /// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], List(U8) => Try({}, [FileErr(IOErr)])
+    /// Owned arguments. Release each exactly once before returning, unless it is
+    /// moved into storage or into the result:
+    ///     unsafe { arg0.decref(roc_host); }
+    ///     unsafe { arg1.decref(roc_host); }
+    /// The result is owned by Roc: return exactly one owned reference.
+    pub fn hosted_file_append_bytes(arg0: UnixBytesOrUtf8OrWindowsU16s, arg1: RocListWith<u8, false>) -> HostFileDeleteResult;
+
+    /// Hosted symbol for Host.file_append_utf8!
+    /// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], Str => Try({}, [FileErr(IOErr)])
+    /// Owned arguments. Release each exactly once before returning, unless it is
+    /// moved into storage or into the result:
+    ///     unsafe { arg0.decref(roc_host); }
+    ///     unsafe { arg1.decref(roc_host); }
+    /// The result is owned by Roc: return exactly one owned reference.
+    pub fn hosted_file_append_utf8(arg0: UnixBytesOrUtf8OrWindowsU16s, arg1: RocStr) -> HostFileDeleteResult;
 
     /// Hosted symbol for Host.http_send_request!
     /// Roc signature: { body : List(U8), headers : List((Str, Str)), method : U8, method_ext : Str, timeout_ms : U64, uri : Str } => Try({ body : List(U8), headers : List((Str, Str)), status : U16 }, [BadBody, NetworkError, Other(List(U8)), Timeout])
