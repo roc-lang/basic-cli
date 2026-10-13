@@ -1,20 +1,30 @@
-## Read piped bytes to end-of-input and validate them as UTF-8.
+## Number each line of piped text, reading one line at a time.
 app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.25.0/CZsY7tYZwR3rj9kYbpaCfxki2yVAaRL8bBwMLvB2xkbA.tar.zst" }
 
 import pf.OsStr
+import pf.Stderr
 import pf.Stdin
 import pf.Stdout
 
-# Reading piped text from stdin, for example: `echo "hey" | roc ./examples/stdin-pipe.roc`
+# Reading piped text from stdin, for example: `cat LICENSE | roc ./examples/stdin-pipe.roc`
 
 main! : List(OsStr) => Try({}, _)
 main! = |_| {
-	# Data is only sent with Stdin.line! if the user presses Enter,
-	# so you'll need to use read_to_end! to read data that was piped in without a newline.
-	piped_in = Stdin.read_to_end!()?
-	piped_in_str = Str.from_utf8(piped_in)?
+	# The stream ends when the input does. The last line need not end in a
+	# newline, so `echo -n "hey"` is one line too.
+	var $number = 0.U64
+	for! item in Stdin.lines() {
+		$number = $number + 1
+		match item {
+			Ok(line) => Stdout.line!("${$number.to_str()}: ${line}")?
+			# Only this line is affected; the stream carries on with the next.
+			Err(BadUtf8({ index, .. })) => Stderr.line!("${$number.to_str()}: invalid UTF-8 at byte ${index.to_str()}")?
+			# Reading failed, and this is the stream's last item.
+			Err(StdinErr(err)) => {
+				return Err(StdinErr(err))
+			}
+		}
+	}
 
-	Stdout.line!("This is what you piped in: \"${piped_in_str}\"")?
-
-	Ok({})
+	Stdout.line!("Read ${$number.to_str()} line(s)")
 }

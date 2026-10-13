@@ -15,6 +15,10 @@
           "stdin": "someinput\n",
           "stdout_contains": ["someinput\n"],
           "stderr_contains": ["Copied 10 bytes from stdin to stdout."]
+        },
+        {
+          "name": "no-input",
+          "stderr_contains": ["Copied 0 bytes from stdin to stdout."]
         }
       ]
     },
@@ -214,9 +218,7 @@
       "cases": [
         {
           "name": "happy",
-          "regex": [
-            "Done reading file: \\{ bytes_read: [0-9]+, lines_read: [0-9]+ \\}"
-          ]
+          "regex": ["Done reading file: \\{ lines_read: [0-9]+, longest_line_bytes: [0-9]+ \\}"]
         }
       ]
     },
@@ -416,6 +418,12 @@
           "name": "end-of-input",
           "exit_code": 1,
           "stderr_contains": ["MissingFirstName"]
+        },
+        {
+          "name": "empty-last-name",
+          "stdin": "John\n\n",
+          "exit_code": 1,
+          "stderr_contains": ["MissingLastName"]
         }
       ]
     },
@@ -423,15 +431,24 @@
       "path": "examples/stdin-pipe.roc",
       "cases": [
         {
-          "name": "valid-utf8",
+          "name": "unterminated-line",
           "stdin": "hey",
-          "contains": ["This is what you piped in: \"hey\""]
+          "stdout_contains": ["1: hey\nRead 1 line(s)\n"]
         },
         {
-          "name": "invalid-utf8",
-          "stdin_hex": "fffe",
-          "exit_code": 1,
-          "contains": ["BadUtf8({ index: 0, problem: InvalidStartByte })"]
+          "name": "crlf-and-empty-lines",
+          "stdin": "a\r\nb\n\nc",
+          "stdout_contains": ["1: a\n2: b\n3: \n4: c\nRead 4 line(s)\n"]
+        },
+        {
+          "name": "invalid-utf8-line",
+          "stdin_hex": "6f6b0afffe0a656e640a",
+          "stdout_contains": ["1: ok\n3: end\nRead 3 line(s)\n"],
+          "stderr_contains": ["2: invalid UTF-8 at byte 0"]
+        },
+        {
+          "name": "no-input",
+          "stdout_contains": ["Read 0 line(s)"]
         }
       ]
     },
@@ -566,6 +583,86 @@
           "exit_code": 1,
           "contains": [
             "MissingCommand"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "tests/read-streams.roc",
+      "cases": [
+        {
+          "name": "stdin-lines",
+          "args": ["stdin-lines"],
+          "stdin": "a\r\nb\n\nc",
+          "stdout_contains": ["line: \"a\"\nline: \"b\"\nline: \"\"\nline: \"c\"\nstream ended\nline! after the end: Err(EndOfInput)\nbytes! after the end: Err(EndOfInput)\n"]
+        },
+        {
+          "name": "stdin-lines-one-carriage-return",
+          "args": ["stdin-lines"],
+          "stdin": "two\r\r\n\rmid\rdle\nlast\r",
+          "stdout_contains": ["line: \"two\\r\"\nline: \"\\rmid\\rdle\"\nline: \"last\\r\"\nstream ended\n"]
+        },
+        {
+          "name": "stdin-lines-bad-utf8",
+          "args": ["stdin-lines"],
+          "stdin_hex": "6f6b0afffe0d0a656e640a",
+          "stdout_contains": ["line: \"ok\"\nbad utf8 at byte 0\nline: \"end\"\nstream ended\n"]
+        },
+        {
+          "name": "stdin-lines-no-input",
+          "args": ["stdin-lines"],
+          "stdout_regex": ["\\Astream ended\nline! after the end: Err\\(EndOfInput\\)\n"]
+        },
+        {
+          "name": "stdin-line-calls",
+          "args": ["stdin-line-calls"],
+          "stdin_hex": "780d0a0aff7a0a6c617374",
+          "stdout_contains": ["first: \"x\"\nsecond: Ok(\"\")\nthird: Err(BadUtf8({ index: 0, problem: InvalidStartByte }))\nfourth: Ok(\"last\")\nfifth: end of input\n"]
+        },
+        {
+          "name": "stdin-line-calls-no-input",
+          "args": ["stdin-line-calls"],
+          "exit_code": 1,
+          "stderr_contains": ["EndOfInput"]
+        },
+        {
+          "name": "stdin-chunks",
+          "args": ["stdin-chunks"],
+          "stdin_hex": "00ff0d0a0a80",
+          "stdout_contains": ["chunks: [0, 255, 13, 10, 10, 128]\nbytes! after the end: Err(EndOfInput)\n"]
+        },
+        {
+          "name": "stdin-chunks-no-input",
+          "args": ["stdin-chunks"],
+          "stdout_contains": ["chunks: []\nbytes! after the end: Err(EndOfInput)\n"]
+        },
+        {
+          "name": "header-then-read-to-end",
+          "args": ["header-then-read-to-end"],
+          "stdin": "A: 1\r\nB: 2\r\n\r\nbody\r\nmore",
+          "stdout_contains": ["header: \"A: 1\"\nheader: \"B: 2\"\nrest: [98, 111, 100, 121, 13, 10, 109, 111, 114, 101]\n"]
+        },
+        {
+          "name": "header-then-chunks",
+          "args": ["header-then-chunks"],
+          "stdin": "A: 1\r\nB: 2\r\n\r\nbody\r\nmore",
+          "stdout_contains": ["header: \"A: 1\"\nheader: \"B: 2\"\nrest: [98, 111, 100, 121, 13, 10, 109, 111, 114, 101]\n"]
+        },
+        {
+          "name": "header-then-lines",
+          "args": ["header-then-lines"],
+          "stdin": "A: 1\r\nB: 2\r\n\r\nbody\r\nmore",
+          "stdout_contains": ["header: \"A: 1\"\nheader: \"B: 2\"\nline: \"body\"\nline: \"more\"\nstream ended\n"]
+        },
+        {
+          "name": "file-reader",
+          "args": ["file"],
+          "stdout_contains": [
+            "line: \"one\"\nline: \"\"\nbad utf8 at byte 0\nline: \"four\\r\"\nline: \"five\"\nstream ended at byte 20 of 20\n",
+            "read_line! at the end: Err(EndOfInput)\nread_until! at the end: Err(EndOfInput)\nread_up_to!(8) at the end: Err(EndOfInput)\nread_up_to!(0) at the end: Ok([])\nread_exactly!(1) at the end: Err(UnexpectedEndOfInput)\nread_exactly!(0) at the end: Ok([])\nchunks at the end: 0\n",
+            "after growth: Ok([33, 10])\nafter growth: Ok(\"six\")\nafter growth: Err(EndOfInput)\n",
+            "first pass: \"one\"\nfirst pass: \"\"\nposition after two lines: 6\nread_exactly!(3): [255, 254, 10]\nread_until!('\\n'): Ok([102, 111, 117, 114, 13, 13, 10])\nafter seek: \"six\"\n",
+            "chunk bytes: 26 from the start, 25 from byte 1\n"
           ]
         }
       ]

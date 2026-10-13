@@ -64,7 +64,8 @@ Host :: [].{
 	file_append_bytes! : NativePath, List(U8) => Try({}, [FileErr(IOErr)])
 	file_append_utf8! : NativePath, Str => Try({}, [FileErr(IOErr)])
 	file_open_reader! : NativePath, U64 => Try(FileReader, [FileErr(IOErr)])
-	file_read_line! : FileReader => Try(List(U8), [FileErr(IOErr)])
+	file_read_line! : FileReader => Try(List(U8), [EndOfInput, FileErr(IOErr)])
+	file_read_until! : FileReader, U8 => Try(List(U8), [EndOfInput, FileErr(IOErr)])
 	file_delete! : NativePath => Try({}, [FileErr(IOErr)])
 	file_size_in_bytes! : NativePath => Try(U64, [FileErr(IOErr)])
 	file_is_executable! : NativePath => Try(Bool, [FileErr(IOErr)])
@@ -97,8 +98,8 @@ Host :: [].{
 	stderr_write! : Str => Try({}, [StderrErr(IOErr)])
 	stderr_write_bytes! : List(U8) => Try({}, [StderrErr(IOErr)])
 
-	stdin_line! : () => Try(Str, [EndOfFile, StdinErr(IOErr)])
-	stdin_bytes! : () => Try(List(U8), [EndOfFile, StdinErr(IOErr)])
+	stdin_line! : () => Try(List(U8), [EndOfInput, StdinErr(IOErr)])
+	stdin_bytes! : () => Try(List(U8), [EndOfInput, StdinErr(IOErr)])
 	stdin_read_to_end! : () => Try(List(U8), [StdinErr(IOErr)])
 
 	stdout_line! : Str => Try({}, [StdoutErr(IOErr)])
@@ -162,8 +163,8 @@ Host :: [].{
 
 	env_program_name! : () => Try(NativeOsStr, [ProgramNameUnavailable])
 
-	file_read_up_to! : FileReader, U64 => Try(List(U8), [FileErr(IOErr)])
-	file_read_exactly! : FileReader, U64 => Try(List(U8), [FileErr(IOErr), FileUnexpectedEOF])
+	file_read_up_to! : FileReader, U64 => Try(List(U8), [EndOfInput, FileErr(IOErr)])
+	file_read_exactly! : FileReader, U64 => Try(List(U8), [FileErr(IOErr), UnexpectedEndOfInput])
 	file_reader_position! : FileReader => Try(U64, [FileErr(IOErr)])
 	file_reader_seek! : FileReader, [Start(U64), Current(I64), End(I64)] => Try(U64, [FileErr(IOErr)])
 }

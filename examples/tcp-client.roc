@@ -47,7 +47,8 @@ run! = |stream| {
 	Stdout.write!("> ")?
 	match Stdin.line!() {
 		# No more input — exit cleanly.
-		Err(EndOfFile) => Ok({})
+		Err(EndOfInput) => Ok({})
+		Err(BadUtf8(problem)) => Err(BadUtf8(problem))
 		Err(StdinErr(err)) => Err(StdinReadFailed(err))
 		Ok(out_msg) => {
 			stream.write_utf8!("${out_msg}\n", 5_000) ? |err| TcpWriteFailed(err)

@@ -53,6 +53,7 @@ platform ""
 		"hosted_file_read_bytes": Host.file_read_bytes!,
 		"hosted_file_read_exactly": Host.file_read_exactly!,
 		"hosted_file_read_line": Host.file_read_line!,
+		"hosted_file_read_until": Host.file_read_until!,
 		"hosted_file_read_up_to": Host.file_read_up_to!,
 		"hosted_file_read_utf8": Host.file_read_utf8!,
 		"hosted_file_reader_position": Host.file_reader_position!,

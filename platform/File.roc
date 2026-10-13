@@ -10,41 +10,82 @@ File :: [].{
 	## A byte offset from the start, current logical position, or end of a file.
 	SeekFrom : [Start(U64), Current(I64), End(I64)]
 
-	## Represents a buffered file reader.
+	## A buffered file reader.
 	##
-	## The file is automatically closed when the last reference to the reader is
-	## dropped. It wraps an opaque host-side `BufReader<File>` handle.
-	## Aliases share one cursor, including bytes buffered by line or binary reads.
+	## The file is closed when the last reference to the reader is released.
+	## Copies of a reader share one cursor and one buffer, so every read,
+	## whether of lines, delimited bytes or binary data, continues where the
+	## previous one stopped.
+	##
+	## Every read ends the same way: once all data has been returned, the next
+	## read is `Err(EndOfInput)`. An empty `Ok` is real data, such as an empty
+	## line. A read may be repeated after `EndOfInput`; if the file has grown
+	## it returns the new data.
 	Reader :: { host : Host.FileReader }.{
+
+		# A tag union that crosses the host boundary is closed by design, so
+		# every method below rebuilds the error it forwards from the host. That
+		# gives callers an open union, which `?` can combine with other error
+		# types however the method is called.
 
 		## Render the reader without exposing its host handle.
 		to_inspect : Reader -> Str
 		to_inspect = |_| "File.Reader(<opaque>)"
 
-		## Read bytes up to and including the next newline from this buffered reader.
-		##
-		## Returns an empty list at EOF.
-		read_line! : Reader => Try(List(U8), _)
-		read_line! = |reader|
-			Host.file_read_line!(reader.host)
-				.map_err(|FileErr(err)| FileErr(err))
-
-		## Read at most `max_bytes` bytes. Short reads are valid, even before EOF.
-		## For a positive maximum, an empty list means EOF. Zero performs no I/O.
+		## Read at most `max_bytes` bytes. Short reads are valid, even before
+		## the end of the file. Asking for zero bytes performs no I/O and
+		## returns `Ok([])`; otherwise the result is never empty, and the end
+		## of the file is `Err(EndOfInput)`.
 		## Returned bytes remain valid after later reads or seeks.
-		read_up_to! : Reader, U64 => Try(List(U8), [FileErr(IOErr)])
+		read_up_to! : Reader, U64 => Try(List(U8), [EndOfInput, FileErr(IOErr)])
 		read_up_to! = |reader, max_bytes|
-			Host.file_read_up_to!(reader.host, max_bytes)
-				.map_err(|FileErr(err)| FileErr(err))
+			match Host.file_read_up_to!(reader.host, max_bytes) {
+				Ok(bytes) => Ok(bytes)
+				Err(EndOfInput) => Err(EndOfInput)
+				Err(FileErr(err)) => Err(FileErr(err))
+			}
 
-		## Read exactly `count` bytes, or report `FileUnexpectedEOF`.
+		## Read exactly `count` bytes, or report `UnexpectedEndOfInput`.
 		## Zero succeeds without I/O. Errors may consume bytes; partial data is
 		## not returned and the cursor is not restored.
-		read_exactly! : Reader, U64 => Try(List(U8), [FileErr(IOErr), FileUnexpectedEOF])
+		read_exactly! : Reader, U64 => Try(List(U8), [UnexpectedEndOfInput, FileErr(IOErr)])
 		read_exactly! = |reader, count|
 			match Host.file_read_exactly!(reader.host, count) {
 				Ok(bytes) => Ok(bytes)
-				Err(FileUnexpectedEOF) => Err(FileUnexpectedEOF)
+				Err(UnexpectedEndOfInput) => Err(UnexpectedEndOfInput)
+				Err(FileErr(err)) => Err(FileErr(err))
+			}
+
+		## Read bytes through and including the next `delimiter`.
+		##
+		## If the file ends first, the bytes before the end are returned without
+		## a delimiter, and the read after that is `Err(EndOfInput)`. So the
+		## result is never empty, and its last byte shows whether the delimiter
+		## arrived: to follow a growing file line by line, use
+		## `reader.read_until!('\n')` rather than [read_line!].
+		read_until! : Reader, U8 => Try(List(U8), [EndOfInput, FileErr(IOErr)])
+		read_until! = |reader, delimiter|
+			match Host.file_read_until!(reader.host, delimiter) {
+				Ok(bytes) => Ok(bytes)
+				Err(EndOfInput) => Err(EndOfInput)
+				Err(FileErr(err)) => Err(FileErr(err))
+			}
+
+		## Read a line of text.
+		##
+		## A line ends at `\n`. The terminator is not returned, and one `\r`
+		## before it is removed. A file that ends without a `\n` still yields
+		## its last line; after that the result is `Err(EndOfInput)`. An empty
+		## line is `Ok("")`. Lines have no length limit.
+		##
+		## A line that is not valid UTF-8 is consumed and reported as `BadUtf8`;
+		## the next call reads the line after it. For the bytes of a line, use
+		## `reader.read_until!('\n')`.
+		read_line! : Reader => Try(Str, [EndOfInput, BadUtf8({ problem : Str.Utf8Problem, index : U64 }), FileErr(IOErr)])
+		read_line! = |reader|
+			match Host.file_read_line!(reader.host) {
+				Ok(bytes) => Str.from_utf8(bytes)
+				Err(EndOfInput) => Err(EndOfInput)
 				Err(FileErr(err)) => Err(FileErr(err))
 			}
 
@@ -63,40 +104,85 @@ File :: [].{
 			Host.file_reader_seek!(reader.host, from)
 				.map_err(|FileErr(err)| FileErr(err))
 
-		## Lazily read nonempty chunks of at most `max_bytes` from this reader.
-		## Zero is rejected immediately with InvalidChunkSize. Construction does
-		## no I/O; each pull reads from the current shared cursor. Chunk boundaries
-		## do not correspond to records, newlines, or text encoding boundaries.
-		## EOF ends the stream; a read error yields one Err item, then ends.
-		## Follow the returned continuation when pulling. To resume after EOF
-		## and a seek, create a new stream. Retained chunks remain valid.
-		## The stream keeps the file open while it retains a reader. Its terminal
-		## continuation holds no reader. Process chunks individually to bound memory;
-		## Stream.collect! accumulates every chunk and does not propagate Err items.
-		chunks : Reader, U64 -> Try(Stream(Try(List(U8), [FileErr(IOErr)])), [InvalidChunkSize])
-		chunks = |reader, max_bytes|
-			if max_bytes == 0 {
-				Err(InvalidChunkSize)
-			} else {
-				# Keep the reader in the state, not the callback capture, so Finished
-				# can release it even when the terminal continuation is retained.
-				Ok(
-					Stream.custom(
-						Reading(reader),
-						Unknown,
-						|state|
-							match state {
-								Finished => Err(NoMore)
-								Reading(current) =>
-									match read_up_to!(current, max_bytes) {
-										Ok(bytes) if bytes.is_empty() => Err(NoMore)
-										Ok(bytes) => Ok((Ok(bytes), Reading(current)))
-										Err(FileErr(err)) => Ok((Err(FileErr(err)), Finished))
-									}
-							},
-					),
-				)
-			}
+		## Lazily read this reader a line at a time, as [read_line!] does.
+		##
+		## Building the stream reads nothing. The stream ends at the end of the
+		## file. A `BadUtf8` item concerns one line, and the stream continues
+		## with the next. A `FileErr` item is the last one; the reader stays
+		## usable and a new stream may be started.
+		##
+		## Each item is one read from the shared cursor and the stream holds no
+		## data of its own, so it can be mixed with [seek!], [position!] and
+		## the other reads, and leaving the loop early loses nothing.
+		##
+		## ```roc
+		## for! item in reader.lines() {
+		##     match item {
+		##         Ok(line) => Stdout.line!(line)?
+		##         Err(BadUtf8(_)) => {}
+		##         Err(FileErr(err)) => { return Err(FileErr(err)) }
+		##     }
+		## }
+		## ```
+		##
+		## The stream keeps the file open until it has finished or is released.
+		lines : Reader -> Stream(Try(Str, [BadUtf8({ problem : Str.Utf8Problem, index : U64 }), FileErr(IOErr)]))
+		lines = |reader|
+			# Keep the reader in the state, not the callback capture, so Finished
+			# can release it even when the terminal continuation is retained.
+			Stream.custom(
+				Reading(reader),
+				Unknown,
+				|state|
+					match state {
+						Finished => Err(NoMore)
+						Reading(current) =>
+							match read_line!(current) {
+								Ok(text) => Ok((Ok(text), Reading(current)))
+								Err(EndOfInput) => Err(NoMore)
+								Err(BadUtf8(problem)) => Ok((Err(BadUtf8(problem)), Reading(current)))
+								Err(FileErr(err)) => Ok((Err(FileErr(err)), Finished))
+							}
+					},
+			)
+
+		## Lazily read this reader as non-empty chunks of at most 64 KiB.
+		## Chunk boundaries do not correspond to records, newlines, or text
+		## encoding boundaries. For a chosen size, call [read_up_to!] in a loop.
+		##
+		## Building the stream reads nothing; each item is one read from the
+		## shared cursor. The stream ends at the end of the file. A `FileErr`
+		## item is the last one; the reader stays usable and a new stream may be
+		## started, for example after a [seek!]. Retained chunks remain valid.
+		##
+		## ```roc
+		## for! item in reader.chunks() {
+		##     bytes = item?
+		##     $total = $total + bytes.len()
+		## }
+		## ```
+		##
+		## The stream keeps the file open until it has finished or is released.
+		## Process chunks individually to bound memory; `Stream.collect!`
+		## accumulates every chunk.
+		chunks : Reader -> Stream(Try(List(U8), [FileErr(IOErr)]))
+		chunks = |reader|
+			# Keep the reader in the state, not the callback capture, so Finished
+			# can release it even when the terminal continuation is retained.
+			Stream.custom(
+				Reading(reader),
+				Unknown,
+				|state|
+					match state {
+						Finished => Err(NoMore)
+						Reading(current) =>
+							match read_up_to!(current, 65_536) {
+								Ok(bytes) => Ok((Ok(bytes), Reading(current)))
+								Err(EndOfInput) => Err(NoMore)
+								Err(FileErr(err)) => Ok((Err(FileErr(err)), Finished))
+							}
+					},
+			)
 	}
 
 	## Open a file for buffered reading using the default buffer capacity.
@@ -106,7 +192,7 @@ File :: [].{
 	##
 	## ```roc
 	## reader = File.open_reader!("LICENSE")?
-	## line = reader.read_line!()?
+	## first_line = reader.read_line!()?
 	## ```
 	open_reader! = |path|
 		Host.file_open_reader!(Path.to_raw(path), 0)

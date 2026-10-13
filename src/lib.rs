@@ -8,7 +8,7 @@ use core::ptr::NonNull;
 use std::ffi::CStr;
 use std::ffi::{c_char, c_void, OsStr as StdOsStr, OsString};
 use std::fs;
-use std::io::{self, BufRead, BufReader, Read, Write};
+use std::io::{self, BufReader, Read, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 
@@ -48,9 +48,6 @@ type FileBytesResultTag = HostFileReadBytesResultTag;
 type FileReaderOpenResult = HostFileOpenReaderResult;
 type FileReaderOpenResultPayload = HostFileOpenReaderResultPayload;
 type FileReaderOpenResultTag = HostFileOpenReaderResultTag;
-type FileReaderLineResult = HostFileReadLineResult;
-type FileReaderLineResultPayload = HostFileReadLineResultPayload;
-type FileReaderLineResultTag = HostFileReadLineResultTag;
 type FileStrResult = HostFileReadUtf8Result;
 type FileStrResultPayload = HostFileReadUtf8ResultPayload;
 type FileStrResultTag = HostFileReadUtf8ResultTag;
@@ -77,13 +74,6 @@ type StderrUnitResultTag = HostStderrLineResultTag;
 type StderrBytesResult = HostStderrWriteBytesResult;
 type StderrBytesResultPayload = HostStderrWriteBytesResultPayload;
 type StderrBytesResultTag = HostStderrWriteBytesResultTag;
-
-type StdinLineReadErr = EndOfFileOrStdinErr;
-type StdinLineReadErrPayload = EndOfFileOrStdinErrPayload;
-type StdinLineReadErrTag = EndOfFileOrStdinErrTag;
-type StdinBytesReadErr = EndOfFileOrStdinErr;
-type StdinBytesReadErrPayload = EndOfFileOrStdinErrPayload;
-type StdinBytesReadErrTag = EndOfFileOrStdinErrTag;
 
 type StdoutUnitResult = HostStdoutLineResult;
 type StdoutUnitResultPayload = HostStdoutLineResultPayload;
@@ -573,21 +563,36 @@ fn try_file_reader_err(error: IOErr) -> FileReaderOpenResult {
     }
 }
 
-fn try_file_reader_line_ok(value: RocListWith<u8, false>) -> FileReaderLineResult {
-    FileReaderLineResult {
-        payload: FileReaderLineResultPayload {
-            ok: ManuallyDrop::new(value),
+/// Result of one read from a `File.Reader`: `None` is the end of the file.
+fn file_reader_read_result(
+    result: io::Result<Option<Vec<u8>>>,
+    roc_host: &RocHost,
+) -> HostFileReadLineResult {
+    let error = match result {
+        Ok(Some(bytes)) => {
+            return HostFileReadLineResult {
+                payload: HostFileReadLineResultPayload {
+                    ok: ManuallyDrop::new(roc_u8_list_from_slice(&bytes, roc_host)),
+                },
+                tag: HostFileReadLineResultTag::Ok,
+            }
+        }
+        Ok(None) => EndOfInputOrFileErr {
+            payload: EndOfInputOrFileErrPayload { end_of_input: [] },
+            tag: EndOfInputOrFileErrTag::EndOfInput,
         },
-        tag: FileReaderLineResultTag::Ok,
-    }
-}
-
-fn try_file_reader_line_err(error: IOErr) -> FileReaderLineResult {
-    FileReaderLineResult {
-        payload: FileReaderLineResultPayload {
+        Err(error) => EndOfInputOrFileErr {
+            payload: EndOfInputOrFileErrPayload {
+                file_err: ManuallyDrop::new(file_io_err_from_io(&error, roc_host)),
+            },
+            tag: EndOfInputOrFileErrTag::FileErr,
+        },
+    };
+    HostFileReadLineResult {
+        payload: HostFileReadLineResultPayload {
             err: ManuallyDrop::new(error),
         },
-        tag: FileReaderLineResultTag::Err,
+        tag: HostFileReadLineResultTag::Err,
     }
 }
 
@@ -859,66 +864,31 @@ fn try_stderr_bytes_err(error: IOErr) -> StderrBytesResult {
     }
 }
 
-fn stdin_line_eof_or_err_eof() -> StdinLineReadErr {
-    StdinLineReadErr {
-        payload: StdinLineReadErrPayload { end_of_file: [] },
-        tag: StdinLineReadErrTag::EndOfFile,
-    }
-}
-
-fn stdin_line_eof_or_err_io(error: IOErr) -> StdinLineReadErr {
-    StdinLineReadErr {
-        payload: StdinLineReadErrPayload {
-            stdin_err: ManuallyDrop::new(error),
+/// Result of one read from standard input: `None` is the end of input.
+fn stdin_read_result(
+    result: io::Result<Option<Vec<u8>>>,
+    roc_host: &RocHost,
+) -> HostStdinBytesResult {
+    let error = match result {
+        Ok(Some(bytes)) => {
+            return HostStdinBytesResult {
+                payload: HostStdinBytesResultPayload {
+                    ok: ManuallyDrop::new(roc_u8_list_from_slice(&bytes, roc_host)),
+                },
+                tag: HostStdinBytesResultTag::Ok,
+            }
+        }
+        Ok(None) => EndOfInputOrStdinErr {
+            payload: EndOfInputOrStdinErrPayload { end_of_input: [] },
+            tag: EndOfInputOrStdinErrTag::EndOfInput,
         },
-        tag: StdinLineReadErrTag::StdinErr,
-    }
-}
-
-fn stdin_bytes_eof_or_err_eof() -> StdinBytesReadErr {
-    StdinBytesReadErr {
-        payload: StdinBytesReadErrPayload { end_of_file: [] },
-        tag: StdinBytesReadErrTag::EndOfFile,
-    }
-}
-
-fn stdin_bytes_eof_or_err_io(error: IOErr) -> StdinBytesReadErr {
-    StdinBytesReadErr {
-        payload: StdinBytesReadErrPayload {
-            stdin_err: ManuallyDrop::new(error),
+        Err(error) => EndOfInputOrStdinErr {
+            payload: EndOfInputOrStdinErrPayload {
+                stdin_err: ManuallyDrop::new(stdin_io_err_from_io(&error, roc_host)),
+            },
+            tag: EndOfInputOrStdinErrTag::StdinErr,
         },
-        tag: StdinBytesReadErrTag::StdinErr,
-    }
-}
-
-fn try_stdin_line_ok(value: RocStr) -> HostStdinLineResult {
-    HostStdinLineResult {
-        payload: HostStdinLineResultPayload {
-            ok: ManuallyDrop::new(value),
-        },
-        tag: HostStdinLineResultTag::Ok,
-    }
-}
-
-fn try_stdin_line_err(error: StdinLineReadErr) -> HostStdinLineResult {
-    HostStdinLineResult {
-        payload: HostStdinLineResultPayload {
-            err: ManuallyDrop::new(error),
-        },
-        tag: HostStdinLineResultTag::Err,
-    }
-}
-
-fn try_stdin_bytes_ok(value: RocListWith<u8, false>) -> HostStdinBytesResult {
-    HostStdinBytesResult {
-        payload: HostStdinBytesResultPayload {
-            ok: ManuallyDrop::new(value),
-        },
-        tag: HostStdinBytesResultTag::Ok,
-    }
-}
-
-fn try_stdin_bytes_err(error: StdinBytesReadErr) -> HostStdinBytesResult {
+    };
     HostStdinBytesResult {
         payload: HostStdinBytesResultPayload {
             err: ManuallyDrop::new(error),
@@ -1566,17 +1536,26 @@ pub extern "C" fn hosted_file_open_reader(
 ///
 /// `handle` must be a live file reader handle from `hosted_file_open_reader`.
 #[no_mangle]
-pub unsafe extern "C" fn hosted_file_read_line(handle: *mut u64) -> FileReaderLineResult {
-    let roc_host = roc_host();
-    let result = {
-        let reader = unsafe { file_reader_ref(handle) };
-        let mut buffer = Vec::new();
-        match reader.read_until(b'\n', &mut buffer) {
-            Ok(_) => try_file_reader_line_ok(roc_u8_list_from_slice(&buffer, roc_host)),
-            Err(error) => try_file_reader_line_err(file_io_err_from_io(&error, roc_host)),
-        }
-    };
-    release_file_reader(handle, roc_host);
+pub unsafe extern "C" fn hosted_file_read_line(handle: *mut u64) -> HostFileReadLineResult {
+    let host = roc_host();
+    let result = file_reader::read_line(unsafe { file_reader_ref(handle) });
+    let result = file_reader_read_result(result, host);
+    release_file_reader(handle, host);
+    result
+}
+
+/// # Safety
+///
+/// `handle` must be a live file reader handle from `hosted_file_open_reader`.
+#[no_mangle]
+pub unsafe extern "C" fn hosted_file_read_until(
+    handle: *mut u64,
+    delimiter: u8,
+) -> HostFileReadUntilResult {
+    let host = roc_host();
+    let result = file_reader::read_until(unsafe { file_reader_ref(handle) }, delimiter);
+    let result = file_reader_read_result(result, host);
+    release_file_reader(handle, host);
     result
 }
 
@@ -1589,10 +1568,8 @@ pub unsafe extern "C" fn hosted_file_read_up_to(
     count: u64,
 ) -> HostFileReadUpToResult {
     let host = roc_host();
-    let result = match file_reader::read_up_to(unsafe { file_reader_ref(handle) }, count) {
-        Ok(bytes) => try_file_bytes_ok(roc_u8_list_from_slice(&bytes, host)),
-        Err(error) => try_file_bytes_err(file_io_err_from_io(&error, host)),
-    };
+    let result = file_reader::read_up_to(unsafe { file_reader_ref(handle) }, count);
+    let result = file_reader_read_result(result, host);
     release_file_reader(handle, host);
     result
 }
@@ -1615,16 +1592,16 @@ pub unsafe extern "C" fn hosted_file_read_exactly(
         },
         Err(error) => {
             let error = if error.kind() == io::ErrorKind::UnexpectedEof {
-                FileErrOrFileUnexpectedEOF {
-                    tag: FileErrOrFileUnexpectedEOFTag::FileUnexpectedEOF,
-                    payload: FileErrOrFileUnexpectedEOFPayload {
-                        file_unexpected_eof: [],
+                FileErrOrUnexpectedEndOfInput {
+                    tag: FileErrOrUnexpectedEndOfInputTag::UnexpectedEndOfInput,
+                    payload: FileErrOrUnexpectedEndOfInputPayload {
+                        unexpected_end_of_input: [],
                     },
                 }
             } else {
-                FileErrOrFileUnexpectedEOF {
-                    tag: FileErrOrFileUnexpectedEOFTag::FileErr,
-                    payload: FileErrOrFileUnexpectedEOFPayload {
+                FileErrOrUnexpectedEndOfInput {
+                    tag: FileErrOrUnexpectedEndOfInputTag::FileErr,
+                    payload: FileErrOrUnexpectedEndOfInputPayload {
                         file_err: ManuallyDrop::new(file_io_err_from_io(&error, host)),
                     },
                 }
@@ -2206,35 +2183,22 @@ pub extern "C" fn hosted_stderr_write_bytes(bytes: RocListWith<u8, false>) -> St
     }
 }
 
+/// The most bytes one `Stdin.bytes!` call, or one `Stdin.chunks` item, returns.
+const STDIN_CHUNK_BYTES: u64 = 16_384;
+
 #[no_mangle]
 pub extern "C" fn hosted_stdin_line() -> HostStdinLineResult {
-    let roc_host = roc_host();
-    let mut line = String::new();
-    match io::stdin().lock().read_line(&mut line) {
-        Ok(0) => try_stdin_line_err(stdin_line_eof_or_err_eof()),
-        Ok(_) => {
-            let trimmed = line.trim_end_matches('\n').trim_end_matches('\r');
-            try_stdin_line_ok(RocStr::from_str(trimmed, roc_host))
-        }
-        Err(error) => try_stdin_line_err(stdin_line_eof_or_err_io(stdin_io_err_from_io(
-            &error, roc_host,
-        ))),
-    }
+    // Every stdin read goes through the one process-wide buffer behind
+    // `io::stdin()`, so line, chunk and read-to-end calls can be mixed.
+    stdin_read_result(file_reader::read_line(&mut io::stdin().lock()), roc_host())
 }
 
 #[no_mangle]
 pub extern "C" fn hosted_stdin_bytes() -> HostStdinBytesResult {
-    let roc_host = roc_host();
-    let mut buffer = [0u8; 16_384];
-    match io::stdin().lock().read(&mut buffer) {
-        Ok(0) => try_stdin_bytes_err(stdin_bytes_eof_or_err_eof()),
-        Ok(bytes_read) => {
-            try_stdin_bytes_ok(roc_u8_list_from_slice(&buffer[..bytes_read], roc_host))
-        }
-        Err(error) => try_stdin_bytes_err(stdin_bytes_eof_or_err_io(stdin_io_err_from_io(
-            &error, roc_host,
-        ))),
-    }
+    stdin_read_result(
+        file_reader::read_up_to(&mut io::stdin().lock(), STDIN_CHUNK_BYTES),
+        roc_host(),
+    )
 }
 
 #[no_mangle]

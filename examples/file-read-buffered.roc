@@ -15,31 +15,35 @@ main! = |_args| {
 	reader : File.Reader
 	reader = File.open_reader!("LICENSE")?
 
-	read_summary : ReadSummary
-	read_summary = process_line!(reader, { lines_read: 0, bytes_read: 0 })?
+	read_summary = summarize!(reader)?
 
 	Stdout.line!("Done reading file: ${Str.inspect(read_summary)}")?
 
 	Ok({})
 }
 
-ReadSummary := { lines_read : U64, bytes_read : U64 }
+ReadSummary := { lines_read : U64, longest_line_bytes : U64 }
 
-## Count the number of lines and the number of bytes read.
-process_line! : File.Reader, ReadSummary => Try(ReadSummary, _)
-process_line! = |reader, { lines_read, bytes_read }|
-	match reader.read_line!() {
-		Ok(bytes) if bytes.len() == 0 =>
-			Ok({ lines_read, bytes_read })
-
-		Ok(bytes) =>
-			process_line!(
-				reader,
-				{
-					lines_read: lines_read + 1,
-					bytes_read: bytes_read + bytes.len(),
-				},
-			)
-
-		Err(err) => Err(err)
+## Count the lines and find the length of the longest one, holding only one
+## line in memory at a time.
+summarize! : File.Reader => Try(ReadSummary, _)
+summarize! = |reader| {
+	var $lines_read = 0.U64
+	var $longest_line_bytes = 0.U64
+	for! item in reader.lines() {
+		match item {
+			Ok(line) => {
+				$lines_read = $lines_read + 1
+				$longest_line_bytes = $longest_line_bytes.max(line.count_utf8_bytes())
+			}
+			# A line that is not valid UTF-8 still counts as a line.
+			Err(BadUtf8(_)) => {
+				$lines_read = $lines_read + 1
+			}
+			Err(FileErr(err)) => {
+				return Err(FileErr(err))
+			}
+		}
 	}
+	Ok({ lines_read: $lines_read, longest_line_bytes: $longest_line_bytes })
+}

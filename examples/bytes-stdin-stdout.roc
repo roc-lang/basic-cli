@@ -8,11 +8,16 @@ import pf.Stderr
 
 main! : List(OsStr) => Try({}, _)
 main! = |_args| {
-	data = Stdin.read_to_end!()?
+	# Each chunk is written before the next is read, so memory use stays
+	# bounded however much is piped in.
+	var $total = 0.U64
+	for! item in Stdin.chunks() {
+		bytes = item?
+		Stdout.write_bytes!(bytes)?
+		$total = $total + bytes.len()
+	}
 
-	Stdout.write_bytes!(data)?
-
-	Stderr.line!("Copied ${data.len().to_str()} bytes from stdin to stdout.")?
+	Stderr.line!("Copied ${$total.to_str()} bytes from stdin to stdout.")?
 
 	Ok({})
 }

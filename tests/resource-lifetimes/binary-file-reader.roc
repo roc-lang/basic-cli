@@ -14,7 +14,7 @@ main! = |_args| Env.with_temp_dir!(
 		Path.write_bytes!(path, [97, 10, 0, 255, 128, 120, 121, 122])?
 		check_reader!(path)?
 		match fail_early!(path) {
-			Err(FileUnexpectedEOF) => {}
+			Err(UnexpectedEndOfInput) => {}
 			Err(err) => return Err(err)
 			Ok(_) => return Err(ExpectedTruncation)
 		}
@@ -29,7 +29,7 @@ main! = |_args| Env.with_temp_dir!(
 check_reader! = |path| {
 	reader = File.open_reader_with_capacity!(path, 4)?
 	alias = reader
-	line = reader.read_line!()?
+	line = reader.read_until!('\n')?
 	expect line == [97, 10]
 	var $position = alias.position!()?
 	expect $position == 2
@@ -45,8 +45,11 @@ check_reader! = |path| {
 	expect $position == 6
 	$bytes = reader.read_exactly!(2)?
 	expect $bytes == [121, 122]
-	$bytes = reader.read_up_to!(1)?
-	expect $bytes == []
+	match reader.read_up_to!(1) {
+		Err(EndOfInput) => {}
+		Err(err) => return Err(err)
+		Ok(_) => return Err(ExpectedEndOfInput)
+	}
 	$position = reader.seek!(Start(0))?
 	expect $position == 0
 	$bytes = reader.read_exactly!(2)?
@@ -71,8 +74,11 @@ check_reader! = |path| {
 	expect $position == 2
 	$position = reader.seek!(Start(100))?
 	expect $position == 100
-	$bytes = alias.read_up_to!(1)?
-	expect $bytes == []
+	match alias.read_up_to!(1) {
+		Err(EndOfInput) => {}
+		Err(err) => return Err(err)
+		Ok(_) => return Err(ExpectedEndOfInput)
+	}
 	match reader.seek!(End(-100)) {
 		Err(FileErr(_)) => {}
 		Ok(_) => return Err(ExpectedInvalidSeek)
@@ -91,10 +97,13 @@ fail_early! = |path| {
 
 check_empty! = |path| {
 	reader = File.open_reader!(path)?
-	bytes = reader.read_up_to!(16)?
-	expect bytes == []
+	match reader.read_up_to!(16) {
+		Err(EndOfInput) => {}
+		Err(err) => return Err(err)
+		Ok(_) => return Err(ExpectedEndOfInput)
+	}
 	match reader.read_exactly!(1) {
-		Err(FileUnexpectedEOF) => Ok({})
+		Err(UnexpectedEndOfInput) => Ok({})
 		Err(err) => Err(err)
 		Ok(_) => Err(ExpectedTruncation)
 	}

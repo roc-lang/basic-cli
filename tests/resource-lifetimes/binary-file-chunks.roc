@@ -20,8 +20,9 @@ main! = |_args| Env.with_temp_dir!(
 				Err(err) => return Err(err)
 			}
 		}
-		# This continuation must not keep the file handle alive.
-		terminal = error_tail!(path)?
+		# This continuation must not keep the handle alive. Reading a directory
+		# fails, which makes the error item that ends the stream.
+		terminal = error_tail!(workspace)?
 		Path.delete!(path)?
 		match Stream.next!(terminal) {
 			Done => {}
@@ -36,20 +37,16 @@ main! = |_args| Env.with_temp_dir!(
 
 check_chunks! = |path| {
 	reader = File.open_reader_with_capacity!(path, 2)?
-	match reader.chunks(0) {
-		Err(InvalidChunkSize) => {}
-		Ok(_) => return Err(ExpectedInvalidChunkSize)
-	}
-	stream = reader.chunks(2)?
+	stream = reader.chunks()
 	expect Stream.size_hint(stream) == Unknown
 	before = reader.position!()?
 	expect before == 0
 	# An alias can move the cursor between construction and consumption.
 	_ = reader.seek!(Start(1))?
 	first = pull!(stream)?
-	expect first.bytes == [255, 128]
+	expect first.bytes == [255, 128, 10, 1, 2, 3, 4]
 	after = reader.position!()?
-	expect after == 3
+	expect after == 8
 	# Later pulls consult the same cursor and do not invalidate retained chunks.
 	_ = reader.seek!(End(-2))?
 	last = pull!(first.rest)?
@@ -60,18 +57,18 @@ check_chunks! = |path| {
 	}
 	_ = reader.seek!(Start(0))?
 	# A fresh stream can read again after EOF and a seek.
-	all = Stream.collect!(reader.chunks(3)?)
+	all = Stream.collect!(reader.chunks())
 	var $contents = []
 	for result in all {
 		bytes = result?
 		expect !bytes.is_empty()
-		expect bytes.len() <= 3
+		expect bytes.len() <= 65_536
 		$contents = List.concat($contents, bytes)
 	}
 	expect $contents == [0, 255, 128, 10, 1, 2, 3, 4]
-	expect first.bytes == [255, 128]
+	expect first.bytes == [255, 128, 10, 1, 2, 3, 4]
 	_ = reader.seek!(Start(0))?
-	lengths = Stream.collect!(Stream.map(reader.chunks(3)?, |item| item.map_ok(|bytes| bytes.len())))
+	lengths = Stream.collect!(Stream.map(reader.chunks(), |item| item.map_ok(|bytes| bytes.len())))
 	var $total = 0.U64
 	for length in lengths {
 		$total = $total + length?
@@ -88,9 +85,9 @@ pull! = |stream|
 
 read_one! = |path, early| {
 	# The stream owns the reader after the helper that opened it has returned.
-	stream = open_chunks!(path, 2)?
+	stream = open_chunks!(path)?
 	first = pull!(stream)?
-	expect first.bytes == [0, 255]
+	expect first.bytes == [0, 255, 128, 10, 1, 2, 3, 4]
 	if early {
 		return Err(ExpectedEarlyReturn)
 	}
@@ -98,21 +95,21 @@ read_one! = |path, early| {
 }
 
 error_tail! = |path| {
-	stream = open_chunks!(path, U64.highest)?
+	stream = open_chunks!(path)?
 	match Stream.next!(stream) {
-		One({ item: Err(FileErr(OutOfMemory)), rest }) => Ok(rest)
+		One({ item: Err(FileErr(_)), rest }) => Ok(rest)
 		_ => Err(ExpectedReadError)
 	}
 }
 
-open_chunks! = |path, max_bytes| {
+open_chunks! = |path| {
 	reader = File.open_reader!(path)?
-	reader.chunks(max_bytes)
+	Ok(reader.chunks())
 }
 
 check_empty! = |path| {
 	reader = File.open_reader!(path)?
-	stream = reader.chunks(8)?
+	stream = reader.chunks()
 	match Stream.next!(stream) {
 		Done => Ok({})
 		_ => Err(ExpectedEOF)
