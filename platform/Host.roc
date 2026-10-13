@@ -8,38 +8,24 @@ Host :: [].{
 	NativeOsStr : [Utf8(Str), UnixBytes(List(U8)), WindowsU16s(List(U16))]
 	NativePath : [Utf8(Str), UnixBytes(List(U8)), WindowsU16s(List(U16))]
 
+	# A command whose streams, deadline and limits are already resolved: `Cmd.roc`
+	# applies the defaults of the entry point before the command crosses.
 	Cmd : {
 		args : List(NativeOsStr),
 		clear_envs : Bool,
-		cwd : List(NativeOsStr),
-		stdin_mode : U8,
-		stdout_mode : U8,
-		stderr_mode : U8,
-		stdin_bytes : List(U8),
-		timeout_ms : U64,
-		output_limit : U64,
+		cwd : [Inherit, Dir(NativePath)],
+		stdin : [Inherit, Null, Bytes(List(U8)), Pipe],
+		stdout : [Inherit, Null, Capture, Tee, Pipe],
+		stderr : [Inherit, Null, Capture, Tee, Pipe, MergeWithStdout],
+		timeout : [NoTimeout, AfterNanos(U64)],
+		output_limit : [NoLimit, MaxBytes(U64)],
 		pending_limit : U64,
 		manage_tree : Bool,
-		merge_stderr : Bool,
 		envs : List(NativeOsStr),
 		program : NativeOsStr,
 	}
 
-	CmdOutputSuccess : {
-		stderr_bytes : List(U8),
-		stdout_bytes : List(U8),
-	}
-
-	CmdOutputFailure : {
-		stderr_bytes : List(U8),
-		stdout_bytes : List(U8),
-		exit_code : I32,
-	}
-
 	PathType : [File, Dir, SymLink, Other]
-
-	cmd_exec_exit_code! : Cmd => Try(I32, IOErr)
-	cmd_exec_output! : Cmd => Try(CmdOutputSuccess, [NonZeroExitCode(CmdOutputFailure), FailedToGetExitCode(IOErr)])
 
 	dir_create! : NativePath => Try({}, [DirErr(IOErr)])
 	dir_create_all! : NativePath => Try({}, [DirErr(IOErr)])
@@ -140,18 +126,20 @@ Host :: [].{
 	env_create_temp_dir! : NativePath, Str => Try(NativePath, IOErr)
 	monotonic_now! : () => U64
 
-	CmdRunResult : { exit_code : I32, signal : I32, stdout_bytes : List(U8), stderr_bytes : List(U8), failure : U8 }
-	ChildEvent : { stream : U8, bytes : List(U8) }
-	cmd_spawn! : Cmd => Try(Resource.Child, IOErr)
-	cmd_run! : Cmd => Try(CmdRunResult, IOErr)
-	child_pid! : Resource.Child => Try(U32, IOErr)
-	child_wait! : Resource.Child => Try(CmdRunResult, IOErr)
-	child_try_wait! : Resource.Child => Try(List(CmdRunResult), IOErr)
-	child_kill! : Resource.Child => Try({}, IOErr)
-	child_close! : Resource.Child => Try({}, IOErr)
-	child_close_stdin! : Resource.Child => Try({}, IOErr)
-	child_write! : Resource.Child, List(U8), U64 => Try({}, IOErr)
-	child_read! : Resource.Child, U64, U64 => Try(ChildEvent, IOErr)
+	CmdPartialOutput : { stdout_bytes : List(U8), stderr_bytes : List(U8) }
+	CmdOutput : { status : [Exited(I32), Signaled(I32)], stdout_bytes : List(U8), stderr_bytes : List(U8) }
+	CmdErr : [StartFailed(IOErr), TimedOut(CmdPartialOutput), OutputLimitExceeded(CmdPartialOutput), IOErr(IOErr)]
+	cmd_spawn! : Cmd => Try(Resource.Child, CmdErr)
+	cmd_run! : Cmd => Try(CmdOutput, CmdErr)
+	child_pid! : Resource.Child => U32
+	child_wait! : Resource.Child => Try(CmdOutput, [Closed, CmdErr(CmdErr)])
+	child_poll! : Resource.Child => Try([Running, Finished(CmdOutput)], [Closed, CmdErr(CmdErr)])
+	child_kill! : Resource.Child => Try({}, [Closed, CmdErr(CmdErr)])
+	child_close! : Resource.Child => Try({}, CmdErr)
+	child_close_stdin! : Resource.Child => Try({}, [Closed, CmdErr(CmdErr)])
+	# The waits are in nanoseconds; zero makes one attempt that does not wait.
+	child_write! : Resource.Child, List(U8), U64 => Try({}, [Closed, CmdErr(CmdErr)])
+	child_read! : Resource.Child, U64 => Try([Stdout(List(U8)), Stderr(List(U8))], [EndOfInput, Closed, CmdErr(CmdErr)])
 
 	tcp_listen! : Str, U16, U64 => Try(Resource.TcpListener, [TcpErr(IOErr)])
 	tcp_local_port! : Resource.TcpListener => Try(U16, [Closed, TcpErr(IOErr)])

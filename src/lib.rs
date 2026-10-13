@@ -34,7 +34,7 @@ use crate::roc_platform_abi::*;
 // RustGlue assigns numbered names (TryTypeN, IOErrTypeN, ...) to anonymous Roc
 // records and result types, and the numbers shift whenever a module is added.
 // To stay robust against that renumbering we alias against the *semantic* names
-// the generator also emits (e.g. `HostCmdExecExitCodeResult`), which are keyed by
+// the generator also emits (e.g. `HostCmdRunResult`), which are keyed by
 // module + function name and therefore stable. Where our preferred local name is
 // identical to a generated semantic name (for example `HostDirListResult`), we
 // omit a local alias and rely on the `use crate::roc_platform_abi::*;` glob above.
@@ -228,6 +228,13 @@ macro_rules! define_common_io_err {
 }
 
 define_common_io_err!(
+    cmd_io_err_from_io,
+    cmd_io_err_other,
+    IOErr,
+    IOErrTag,
+    IOErrPayload
+);
+define_common_io_err!(
     dir_io_err_from_io,
     dir_io_err_other,
     IOErr,
@@ -286,9 +293,9 @@ define_common_io_err!(
 define_common_io_err!(
     host_io_err_from_io,
     host_io_err_other,
-    HostIOErr,
-    HostIOErrTag,
-    HostIOErrPayload
+    IOErr,
+    IOErrTag,
+    IOErrPayload
 );
 define_common_io_err!(
     tcp_io_err_from_io,
@@ -423,7 +430,7 @@ fn try_env_set_cwd_ok() -> HostEnvSetCwdResult {
     }
 }
 
-fn try_env_set_cwd_err(error: HostIOErr) -> HostEnvSetCwdResult {
+fn try_env_set_cwd_err(error: IOErr) -> HostEnvSetCwdResult {
     HostEnvSetCwdResult {
         payload: HostEnvSetCwdResultPayload {
             err: ManuallyDrop::new(error),

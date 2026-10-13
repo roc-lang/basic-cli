@@ -78,7 +78,16 @@
       "cases": [
         {
           "name": "happy",
-          "contains": ["Hello", "Command config: Cmd({", "Exit code: 1", "stdout_bytes: [72, 105, 10]"]
+          "live_handles": 0,
+          "stdout_contains": [
+            "Hello\nCaptured: Hi Roc\n",
+            "Command config: Cmd({ program: OsStr.utf8(\"/usr/bin/env\"), args: [], env_names: [OsStr.utf8(\"FOO\"), OsStr.utf8(\"BAZ\")], clear_envs: True,",
+            "FOO=BAR\n",
+            "BAZ=DUCK\n",
+            "Status: Exited(1)\nStderr: cat: ",
+            "Status again: Exited(1)\nFailed: cat non_existent.txt\nBytes: [72, 105, 10]\nNot installed: definitely-not-a-real-command-xyz\n"
+          ],
+          "stderr_regex": ["^cat: .*non_existent\\.txt"]
         }
       ]
     },
@@ -652,6 +661,86 @@
           "exit_code": 1,
           "contains": [
             "MissingCommand"
+          ]
+        },
+        {
+          "name": "missing-program",
+          "live_handles": 0,
+          "args": [
+            "definitely-not-a-real-command-xyz"
+          ],
+          "exit_code": 1,
+          "stderr_regex": [
+            "^Program exited with error: CmdErr\\(StartFailed\\(NotFound, OsStr\\.\\w+\\(\"definitely-not-a-real-command-xyz\"\\)\\)\\)$"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "tests/cmd-api.roc",
+      "cases": [
+        {
+          "name": "every-entry-point",
+          "live_handles": 0,
+          "timeout": 60,
+          "env": { "CMD_TEST_INHERITED": "yes" },
+          "stdout_contains": [
+            "exec: printed by the child\ncapture: Hi\n",
+            "run: Exited(0) \"to stdout\n\" \"to stderr\n\"\n",
+            "bad exit: Err(BadExitStatus({ command: \"<command>\", status: Exited(3), stdout: \"out\n\", stderr: \"err\n\" }))\n",
+            "exec: Exited(4) \"out\n\"\ncapture: Exited(5) \"out\n\"\n",
+            "inherit_stdio: printed by the child\ninherit_stdio: Exited(0)\n",
+            "bad utf8: Err(BadUtf8({ index: 1, problem: InvalidStartByte }))\n",
+            "lossy: { command: \"<command>\", status: Exited(0), stdout: \"H\ufffd\n\", stderr: \"\" }\n",
+            "running: ok\n",
+            "missing program: Err(CmdErr(StartFailed(NotFound, OsStr.utf8(\"definitely-not-a-real-command-xyz\"))))\n",
+            "missing program, in words: could not start definitely-not-a-real-command-xyz: entity was not found\n",
+            "missing program, spawned: definitely-not-a-real-command-xyz\n",
+            "environment values: hidden\n",
+            "output limit: Err(CmdErr(OutputLimitExceeded({ stdout: \"Hell\", stderr: \"\" })))\n",
+            "errors: ok\n",
+            "merged: \"out\nerr\n\" \"\"\n",
+            "tee: printed and captured\n",
+            "inherited environment: CMD_TEST_INHERITED=yes\n",
+            "streams: ok\n",
+            "read, zero wait: Err(CmdErr(IOErr(TimedOut)))\nread, short wait: Err(CmdErr(IOErr(TimedOut)))\n",
+            "write after close_stdin!: Err(CmdErr(IOErr(BrokenPipe)))\nread at the end: Err(EndOfInput)\n",
+            "after close!: read Err(Closed), write Err(Closed), wait Err(Closed), poll Err(Closed), kill Err(Closed), close_stdin Err(Closed)\n",
+            "child: ok\n",
+            "timed out: Err(CmdErr(TimedOut({ stdout: \"Hi\n\", stderr: \"\" })))\n",
+            "timed out, spawned: Err(CmdErr(TimedOut({ stdout: \"Hi\n\", stderr: \"\" })))\n",
+            "zero timeout: Err(CmdErr(TimedOut({ stdout: \"\", stderr: \"\" })))\n",
+            "deadlines: ok\n",
+            "function value: exec\nfunction values: ok\ncmd: ok\n"
+          ],
+          "stderr_contains": ["capture: stderr reaches the terminal\n"]
+        },
+        {
+          "name": "unhandled-timeout",
+          "live_handles": 0,
+          "timeout": 60,
+          "args": ["unhandled-timeout"],
+          "exit_code": 1,
+          "stderr_contains": [
+            "Program exited with error: CmdErr(TimedOut({ stdout: \"Hi\n\", stderr: \"\" }))\n"
+          ]
+        },
+        {
+          "name": "unhandled-start-failure",
+          "live_handles": 0,
+          "args": ["unhandled-start-failure"],
+          "exit_code": 1,
+          "stderr_contains": [
+            "Program exited with error: CmdErr(StartFailed(NotFound, OsStr.utf8(\"definitely-not-a-real-command-xyz\")))\n"
+          ]
+        },
+        {
+          "name": "unhandled-bad-exit",
+          "live_handles": 0,
+          "args": ["unhandled-bad-exit"],
+          "exit_code": 1,
+          "stderr_regex": [
+            "^Program exited with error: BadExitStatus\\(\\{ command: \"[^\\n]*cmd-api(\\.exe)? --helper exit 3\", status: Exited\\(3\\), stdout: \"out\n\", stderr: \"err\n\" \\}\\)$"
           ]
         }
       ]

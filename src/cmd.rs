@@ -1,127 +1,33 @@
+//! The hosted `Cmd` and `Child` functions: conversions between the generated
+//! Roc ABI types and the Rust-owned process service.
 use core::mem::ManuallyDrop;
 use std::io;
+use std::time::Duration;
 
+use crate::process_service::{
+    Child, ChildError, Config, Error, Event, Output, OutputMode, Partial, Status, StderrMode,
+    StdinMode, Stream,
+};
 use crate::roc_platform_abi::*;
-use crate::{os_string_from_native, roc_host, roc_u8_list_from_slice, NativeOsStr};
+use crate::{
+    cmd_io_err_from_io, os_string_from_native, path_from_native, roc_host, roc_u8_list_from_slice,
+    NativeOsStr,
+};
 
-type CmdExitResult = HostCmdExecExitCodeResult;
-type CmdExitResultPayload = HostCmdExecExitCodeResultPayload;
-type CmdExitResultTag = HostCmdExecExitCodeResultTag;
-type CmdOutputResult = HostCmdExecOutputResult;
-type CmdOutputResultPayload = HostCmdExecOutputResultPayload;
-type CmdOutputResultTag = HostCmdExecOutputResultTag;
-type CmdOutputError = FailedToGetExitCodeOrNonZeroExitCode;
-type CmdOutputErrorPayload = FailedToGetExitCodeOrNonZeroExitCodePayload;
-type CmdOutputErrorTag = FailedToGetExitCodeOrNonZeroExitCodeTag;
-type CmdOutputFailure = HostCmdExecOutputErrNonZeroExitCode;
-type CmdOutputSuccess = HostCmdExecOutputOk;
-type Cmd = HostCmdExecExitCodeArgs;
-
-fn cmd_io_err_other(message: &str, roc_host: &RocHost) -> HostIOErr {
-    HostIOErr {
-        payload: HostIOErrPayload {
-            other: ManuallyDrop::new(RocStr::from_str(message, roc_host)),
-        },
-        tag: HostIOErrTag::Other,
-    }
-}
-
-fn cmd_io_err_from_io(error: &io::Error, roc_host: &RocHost) -> HostIOErr {
-    match error.kind() {
-        io::ErrorKind::AlreadyExists => HostIOErr {
-            payload: HostIOErrPayload { already_exists: [] },
-            tag: HostIOErrTag::AlreadyExists,
-        },
-        io::ErrorKind::BrokenPipe => HostIOErr {
-            payload: HostIOErrPayload { broken_pipe: [] },
-            tag: HostIOErrTag::BrokenPipe,
-        },
-        io::ErrorKind::Interrupted => HostIOErr {
-            payload: HostIOErrPayload { interrupted: [] },
-            tag: HostIOErrTag::Interrupted,
-        },
-        io::ErrorKind::IsADirectory => HostIOErr {
-            payload: HostIOErrPayload { is_adirectory: [] },
-            tag: HostIOErrTag::IsADirectory,
-        },
-        io::ErrorKind::NotFound => HostIOErr {
-            payload: HostIOErrPayload { not_found: [] },
-            tag: HostIOErrTag::NotFound,
-        },
-        io::ErrorKind::NotADirectory => HostIOErr {
-            payload: HostIOErrPayload { not_adirectory: [] },
-            tag: HostIOErrTag::NotADirectory,
-        },
-        io::ErrorKind::OutOfMemory => HostIOErr {
-            payload: HostIOErrPayload { out_of_memory: [] },
-            tag: HostIOErrTag::OutOfMemory,
-        },
-        io::ErrorKind::PermissionDenied => HostIOErr {
-            payload: HostIOErrPayload {
-                permission_denied: [],
-            },
-            tag: HostIOErrTag::PermissionDenied,
-        },
-        io::ErrorKind::Unsupported => HostIOErr {
-            payload: HostIOErrPayload { unsupported: [] },
-            tag: HostIOErrTag::Unsupported,
-        },
-        _ => cmd_io_err_other(&error.to_string(), roc_host),
-    }
-}
-
-fn cmd_output_io_err_other(message: &str, roc_host: &RocHost) -> IOErr {
-    IOErr {
-        payload: IOErrPayload {
-            other: ManuallyDrop::new(RocStr::from_str(message, roc_host)),
-        },
-        tag: IOErrTag::Other,
-    }
-}
-
-fn cmd_output_io_err_from_io(error: &io::Error, roc_host: &RocHost) -> IOErr {
-    match error.kind() {
-        io::ErrorKind::AlreadyExists => IOErr {
-            payload: IOErrPayload { already_exists: [] },
-            tag: IOErrTag::AlreadyExists,
-        },
-        io::ErrorKind::BrokenPipe => IOErr {
-            payload: IOErrPayload { broken_pipe: [] },
-            tag: IOErrTag::BrokenPipe,
-        },
-        io::ErrorKind::Interrupted => IOErr {
-            payload: IOErrPayload { interrupted: [] },
-            tag: IOErrTag::Interrupted,
-        },
-        io::ErrorKind::IsADirectory => IOErr {
-            payload: IOErrPayload { is_adirectory: [] },
-            tag: IOErrTag::IsADirectory,
-        },
-        io::ErrorKind::NotFound => IOErr {
-            payload: IOErrPayload { not_found: [] },
-            tag: IOErrTag::NotFound,
-        },
-        io::ErrorKind::NotADirectory => IOErr {
-            payload: IOErrPayload { not_adirectory: [] },
-            tag: IOErrTag::NotADirectory,
-        },
-        io::ErrorKind::OutOfMemory => IOErr {
-            payload: IOErrPayload { out_of_memory: [] },
-            tag: IOErrTag::OutOfMemory,
-        },
-        io::ErrorKind::PermissionDenied => IOErr {
-            payload: IOErrPayload {
-                permission_denied: [],
-            },
-            tag: IOErrTag::PermissionDenied,
-        },
-        io::ErrorKind::Unsupported => IOErr {
-            payload: IOErrPayload { unsupported: [] },
-            tag: IOErrTag::Unsupported,
-        },
-        _ => cmd_output_io_err_other(&error.to_string(), roc_host),
-    }
-}
+// `cmd_run!` and `cmd_spawn!` take the same record, which the generator emits
+// once per function.
+type Cmd = HostCmdRunArgs;
+type CmdErr = HostCmdRunErr;
+type CmdErrPayload = HostCmdRunErrPayload;
+type CmdErrTag = HostCmdRunErrTag;
+type CmdOutput = HostCmdRunOk;
+type CmdPartialOutput = HostCmdRunErrTimedOut;
+type ChildErr = HostChildWaitErr;
+type ChildErrPayload = HostChildWaitErrPayload;
+type ChildErrTag = HostChildWaitErrTag;
+type ChildUnitResult = HostChildKillResult;
+type ChildUnitResultPayload = HostChildKillResultPayload;
+type ChildUnitResultTag = HostChildKillResultTag;
 
 fn take_arg_list(
     list: &RocList<NativeOsStr>,
@@ -152,397 +58,386 @@ fn take_arg_list(
     }
 }
 
-fn cmd_to_std(cmd: &Cmd, roc_host: &RocHost) -> io::Result<std::process::Command> {
+/// Consume every refcounted field of a hosted command, whether or not all of
+/// them convert, and build the service configuration.
+fn command_config(cmd: Cmd, roc_host: &RocHost) -> io::Result<Config> {
     let program = os_string_from_native(cmd.program, roc_host);
     let args = take_arg_list(&cmd.args, roc_host);
     let envs = take_arg_list(&cmd.envs, roc_host);
-    let cwd = take_arg_list(&cmd.cwd, roc_host);
+    let cwd = match cmd.cwd.tag {
+        DirOrInheritTag::Dir => {
+            let dir = ManuallyDrop::into_inner(unsafe { cmd.cwd.payload.dir });
+            path_from_native(dir, roc_host).map(Some)
+        }
+        DirOrInheritTag::Inherit => Ok(None),
+    };
+    let stdin = match cmd.stdin.tag {
+        BytesOrInheritOrNullOrPipeTag::Bytes => {
+            let bytes = ManuallyDrop::into_inner(unsafe { cmd.stdin.payload.bytes });
+            let input = bytes.as_slice().to_vec();
+            unsafe { bytes.decref(roc_host) };
+            StdinMode::Bytes(input)
+        }
+        BytesOrInheritOrNullOrPipeTag::Inherit => StdinMode::Inherit,
+        BytesOrInheritOrNullOrPipeTag::Null => StdinMode::Null,
+        BytesOrInheritOrNullOrPipeTag::Pipe => StdinMode::Pipe,
+    };
 
-    let mut std_cmd = std::process::Command::new(program?);
-
-    for arg in args? {
-        std_cmd.arg(arg);
-    }
-
+    let mut command = std::process::Command::new(program?);
+    command.args(args?);
     if cmd.clear_envs {
-        std_cmd.env_clear();
+        command.env_clear();
     }
-
-    if let Some(cwd) = cwd?.first() {
-        std_cmd.current_dir(cwd);
+    if let Some(cwd) = cwd? {
+        command.current_dir(cwd);
     }
-
-    let envs = envs?;
-    for chunk in envs.chunks(2) {
-        if let [key, value] = chunk {
-            std_cmd.env(key, value);
+    for pair in envs?.chunks(2) {
+        if let [key, value] = pair {
+            command.env(key, value);
         }
     }
 
-    Ok(std_cmd)
-}
-
-fn try_cmd_exit_ok(value: i32) -> CmdExitResult {
-    CmdExitResult {
-        payload: CmdExitResultPayload {
-            ok: ManuallyDrop::new(value),
-        },
-        tag: CmdExitResultTag::Ok,
-    }
-}
-
-fn try_cmd_exit_err(error: IOErr) -> CmdExitResult {
-    CmdExitResult {
-        payload: CmdExitResultPayload {
-            err: ManuallyDrop::new(error),
-        },
-        tag: CmdExitResultTag::Err,
-    }
-}
-
-fn try_cmd_output_ok(value: CmdOutputSuccess) -> CmdOutputResult {
-    CmdOutputResult {
-        payload: CmdOutputResultPayload {
-            ok: ManuallyDrop::new(value),
-        },
-        tag: CmdOutputResultTag::Ok,
-    }
-}
-
-fn try_cmd_output_err(error: CmdOutputError) -> CmdOutputResult {
-    CmdOutputResult {
-        payload: CmdOutputResultPayload {
-            err: ManuallyDrop::new(error),
-        },
-        tag: CmdOutputResultTag::Err,
-    }
-}
-
-fn cmd_output_nonzero_error(value: CmdOutputFailure) -> CmdOutputError {
-    CmdOutputError {
-        payload: CmdOutputErrorPayload {
-            non_zero_exit_code: ManuallyDrop::new(value),
-        },
-        tag: CmdOutputErrorTag::NonZeroExitCode,
-    }
-}
-
-fn cmd_output_failed_to_get_exit_code(error: IOErr) -> CmdOutputError {
-    CmdOutputError {
-        payload: CmdOutputErrorPayload {
-            failed_to_get_exit_code: ManuallyDrop::new(error),
-        },
-        tag: CmdOutputErrorTag::FailedToGetExitCode,
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn hosted_cmd_host_exec_exit_code(cmd: Cmd) -> CmdExitResult {
-    let roc_host = roc_host();
-    let std_cmd = match cmd_to_std(&cmd, roc_host) {
-        Ok(cmd) => cmd,
-        Err(error) => {
-            unsafe { cmd.stdin_bytes.decref(roc_host) };
-            return try_cmd_exit_err(cmd_output_io_err_from_io(&error, roc_host));
-        }
-    };
-
-    let config = command_config(std_cmd, &cmd, false);
-    match crate::process_service::Child::spawn(config).and_then(|child| child.wait()) {
-        Ok(status) => match if status.failure == 0 && status.signal == 0 {
-            Some(status.exit_code)
-        } else {
-            None
-        } {
-            Some(code) => try_cmd_exit_ok(code),
-            None => try_cmd_exit_err(cmd_output_io_err_other(
-                incomplete_reason(status.failure),
-                roc_host,
-            )),
-        },
-        Err(error) => try_cmd_exit_err(cmd_output_io_err_from_io(&error, roc_host)),
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn hosted_cmd_host_exec_output(cmd: Cmd) -> CmdOutputResult {
-    let roc_host = roc_host();
-    let std_cmd = match cmd_to_std(&cmd, roc_host) {
-        Ok(cmd) => cmd,
-        Err(error) => {
-            unsafe { cmd.stdin_bytes.decref(roc_host) };
-            return try_cmd_output_err(cmd_output_failed_to_get_exit_code(
-                cmd_output_io_err_from_io(&error, roc_host),
-            ));
-        }
-    };
-
-    let config = command_config(std_cmd, &cmd, true);
-    match crate::process_service::Child::spawn(config).and_then(|child| child.wait()) {
-        Ok(output) => {
-            let stdout_bytes = roc_u8_list_from_slice(&output.stdout, roc_host);
-            let stderr_bytes = roc_u8_list_from_slice(&output.stderr, roc_host);
-
-            match if output.failure == 0 && output.signal == 0 {
-                Some(output.exit_code)
-            } else {
-                None
-            } {
-                Some(0) => try_cmd_output_ok(CmdOutputSuccess {
-                    stderr_bytes,
-                    stdout_bytes,
-                }),
-                Some(exit_code) => try_cmd_output_err(cmd_output_nonzero_error(CmdOutputFailure {
-                    stderr_bytes,
-                    stdout_bytes,
-                    exit_code,
-                })),
-                None => {
-                    unsafe {
-                        stdout_bytes.decref(roc_host);
-                        stderr_bytes.decref(roc_host);
-                    }
-                    try_cmd_output_err(cmd_output_failed_to_get_exit_code(cmd_output_io_err_other(
-                        incomplete_reason(output.failure),
-                        roc_host,
-                    )))
-                }
-            }
-        }
-        Err(error) => try_cmd_output_err(cmd_output_failed_to_get_exit_code(
-            cmd_output_io_err_from_io(&error, roc_host),
-        )),
-    }
-}
-
-fn incomplete_reason(failure: u8) -> &'static str {
-    match failure {
-        1 => "Process execution timed out",
-        2 => "Process output limit exceeded",
-        _ => "Process was killed by signal",
-    }
-}
-
-fn command_config(
-    command: std::process::Command,
-    cmd: &Cmd,
-    capture_default: bool,
-) -> crate::process_service::Config {
-    let input = cmd.stdin_bytes.as_slice().to_vec();
-    unsafe {
-        cmd.stdin_bytes.decref(roc_host());
-    }
-    crate::process_service::Config {
+    Ok(Config {
         command,
-        stdin_mode: if capture_default && cmd.stdin_mode == 0 {
-            2
-        } else {
-            cmd.stdin_mode
+        stdin,
+        stdout: match cmd.stdout {
+            CaptureOrInheritOrNullOrPipeOrTee::Capture => OutputMode::Capture,
+            CaptureOrInheritOrNullOrPipeOrTee::Inherit => OutputMode::Inherit,
+            CaptureOrInheritOrNullOrPipeOrTee::Null => OutputMode::Null,
+            CaptureOrInheritOrNullOrPipeOrTee::Pipe => OutputMode::Pipe,
+            CaptureOrInheritOrNullOrPipeOrTee::Tee => OutputMode::Tee,
         },
-        stdout_mode: if capture_default && cmd.stdout_mode == 0 {
-            3
-        } else {
-            cmd.stdout_mode
+        stderr: {
+            use CaptureOrInheritOrMergeWithStdoutOrNullOrPipeOrTee as Mode;
+            match cmd.stderr {
+                Mode::Capture => StderrMode::Separate(OutputMode::Capture),
+                Mode::Inherit => StderrMode::Separate(OutputMode::Inherit),
+                Mode::Null => StderrMode::Separate(OutputMode::Null),
+                Mode::Pipe => StderrMode::Separate(OutputMode::Pipe),
+                Mode::Tee => StderrMode::Separate(OutputMode::Tee),
+                Mode::MergeWithStdout => StderrMode::MergeWithStdout,
+            }
         },
-        stderr_mode: if capture_default && cmd.stderr_mode == 0 {
-            3
-        } else {
-            cmd.stderr_mode
+        timeout: match cmd.timeout.tag {
+            AfterNanosOrNoTimeoutTag::AfterNanos => {
+                Some(Duration::from_nanos(ManuallyDrop::into_inner(unsafe {
+                    cmd.timeout.payload.after_nanos
+                })))
+            }
+            AfterNanosOrNoTimeoutTag::NoTimeout => None,
         },
-        input,
-        timeout_ms: cmd.timeout_ms,
-        output_limit: cmd.output_limit as usize,
-        pending_limit: cmd.pending_limit as usize,
+        output_limit: match cmd.output_limit.tag {
+            MaxBytesOrNoLimitTag::MaxBytes => {
+                let bytes = ManuallyDrop::into_inner(unsafe { cmd.output_limit.payload.max_bytes });
+                // More than the address space holds is no limit at all.
+                usize::try_from(bytes).ok()
+            }
+            MaxBytesOrNoLimitTag::NoLimit => None,
+        },
+        pending_limit: usize::try_from(cmd.pending_limit).unwrap_or(usize::MAX),
         manage_tree: cmd.manage_tree,
-        merge_stderr: cmd.merge_stderr,
+    })
+}
+
+fn same_command(cmd: HostCmdSpawnArgs) -> Cmd {
+    Cmd {
+        args: cmd.args,
+        clear_envs: cmd.clear_envs,
+        cwd: cmd.cwd,
+        envs: cmd.envs,
+        manage_tree: cmd.manage_tree,
+        output_limit: cmd.output_limit,
+        pending_limit: cmd.pending_limit,
+        program: cmd.program,
+        stderr: cmd.stderr,
+        stdin: cmd.stdin,
+        stdout: cmd.stdout,
+        timeout: cmd.timeout,
     }
 }
 
-macro_rules! normalize_command {
-    ($cmd:expr) => {{
-        let cmd = $cmd;
-        Cmd {
-            args: cmd.args,
-            envs: cmd.envs,
-            program: cmd.program,
-            cwd: cmd.cwd,
-            clear_envs: cmd.clear_envs,
-            stdin_mode: cmd.stdin_mode,
-            stdout_mode: cmd.stdout_mode,
-            stderr_mode: cmd.stderr_mode,
-            stdin_bytes: cmd.stdin_bytes,
-            timeout_ms: cmd.timeout_ms,
-            output_limit: cmd.output_limit,
-            pending_limit: cmd.pending_limit,
-            manage_tree: cmd.manage_tree,
-            merge_stderr: cmd.merge_stderr,
-        }
-    }};
+/// Start a command. A command that cannot be converted for this operating
+/// system never starts, which is the same failure as a program that is missing.
+fn start(cmd: Cmd) -> Result<Child, Error> {
+    Child::spawn(command_config(cmd, roc_host()).map_err(Error::Start)?)
 }
-fn managed_spawn(cmd: Cmd, capture_default: bool) -> io::Result<crate::process_service::Child> {
-    let command = match cmd_to_std(&cmd, roc_host()) {
-        Ok(command) => command,
-        Err(err) => {
-            unsafe { cmd.stdin_bytes.decref(roc_host()) };
-            return Err(err);
-        }
-    };
-    crate::process_service::Child::spawn(command_config(command, &cmd, capture_default))
+
+fn partial_output(partial: &Partial) -> CmdPartialOutput {
+    CmdPartialOutput {
+        stdout_bytes: roc_u8_list_from_slice(&partial.stdout, roc_host()),
+        stderr_bytes: roc_u8_list_from_slice(&partial.stderr, roc_host()),
+    }
 }
-fn run_output(output: crate::process_service::Output) -> HostCmdRunOk {
-    HostCmdRunOk {
-        exit_code: output.exit_code,
-        signal: output.signal,
-        failure: output.failure,
+
+fn cmd_err(error: &Error) -> CmdErr {
+    let roc_host = roc_host();
+    match error {
+        Error::Start(error) => CmdErr {
+            tag: CmdErrTag::StartFailed,
+            payload: CmdErrPayload {
+                start_failed: ManuallyDrop::new(cmd_io_err_from_io(error, roc_host)),
+            },
+        },
+        Error::TimedOut(partial) => CmdErr {
+            tag: CmdErrTag::TimedOut,
+            payload: CmdErrPayload {
+                timed_out: ManuallyDrop::new(partial_output(partial)),
+            },
+        },
+        Error::OutputLimitExceeded(partial) => CmdErr {
+            tag: CmdErrTag::OutputLimitExceeded,
+            payload: CmdErrPayload {
+                output_limit_exceeded: ManuallyDrop::new(partial_output(partial)),
+            },
+        },
+        Error::Io(error) => CmdErr {
+            tag: CmdErrTag::IOErr,
+            payload: CmdErrPayload {
+                ioerr: ManuallyDrop::new(cmd_io_err_from_io(error, roc_host)),
+            },
+        },
+    }
+}
+
+fn child_err(error: &ChildError) -> ChildErr {
+    match error {
+        ChildError::Closed => ChildErr {
+            tag: ChildErrTag::Closed,
+            payload: ChildErrPayload { closed: [] },
+        },
+        ChildError::Cmd(error) => ChildErr {
+            tag: ChildErrTag::CmdErr,
+            payload: ChildErrPayload {
+                cmd_err: ManuallyDrop::new(cmd_err(error)),
+            },
+        },
+    }
+}
+
+fn cmd_output(output: &Output) -> CmdOutput {
+    CmdOutput {
+        status: match output.status {
+            Status::Exited(code) => ExitedOrSignaled {
+                tag: ExitedOrSignaledTag::Exited,
+                payload: ExitedOrSignaledPayload {
+                    exited: ManuallyDrop::new(code),
+                },
+            },
+            Status::Signaled(signal) => ExitedOrSignaled {
+                tag: ExitedOrSignaledTag::Signaled,
+                payload: ExitedOrSignaledPayload {
+                    signaled: ManuallyDrop::new(signal),
+                },
+            },
+        },
         stdout_bytes: roc_u8_list_from_slice(&output.stdout, roc_host()),
         stderr_bytes: roc_u8_list_from_slice(&output.stderr, roc_host()),
     }
 }
-fn run_result(result: io::Result<crate::process_service::Output>) -> HostCmdRunResult {
+
+fn unit_result(result: Result<(), ChildError>) -> ChildUnitResult {
     match result {
-        Ok(output) => HostCmdRunResult {
-            tag: HostCmdRunResultTag::Ok,
-            payload: HostCmdRunResultPayload {
-                ok: ManuallyDrop::new(run_output(output)),
-            },
+        Ok(()) => ChildUnitResult {
+            tag: ChildUnitResultTag::Ok,
+            payload: ChildUnitResultPayload { ok: [] },
         },
-        Err(err) => HostCmdRunResult {
-            tag: HostCmdRunResultTag::Err,
-            payload: HostCmdRunResultPayload {
-                err: ManuallyDrop::new(cmd_output_io_err_from_io(&err, roc_host())),
+        Err(error) => ChildUnitResult {
+            tag: ChildUnitResultTag::Err,
+            payload: ChildUnitResultPayload {
+                err: ManuallyDrop::new(child_err(&error)),
             },
         },
     }
 }
-fn unit_result(result: io::Result<()>) -> HostChildCloseResult {
-    match result {
-        Ok(()) => HostChildCloseResult {
-            tag: HostChildCloseResultTag::Ok,
-            payload: HostChildCloseResultPayload { ok: [] },
-        },
-        Err(err) => HostChildCloseResult {
-            tag: HostChildCloseResultTag::Err,
-            payload: HostChildCloseResultPayload {
-                err: ManuallyDrop::new(cmd_io_err_from_io(&err, roc_host())),
-            },
-        },
-    }
-}
-fn with_child<T>(handle: *mut u64, f: impl FnOnce(&crate::process_service::Child) -> T) -> T {
-    let result =
-        f(unsafe { crate::resources::resource_ref::<crate::process_service::Child>(handle) });
+
+/// Borrow the child behind a handle for one hosted call, then drop the
+/// reference the call was passed.
+fn with_child<T>(handle: *mut u64, f: impl FnOnce(&Child) -> T) -> T {
+    let result = f(unsafe { crate::resources::resource_ref::<Child>(handle) });
     crate::resources::release(handle, roc_host());
     result
 }
+
 #[no_mangle]
 pub extern "C" fn hosted_cmd_spawn(cmd: HostCmdSpawnArgs) -> HostCmdSpawnResult {
-    match managed_spawn(normalize_command!(cmd), false)
-        .and_then(|child| crate::resources::box_resource(child, roc_host()))
-    {
+    let spawned = start(same_command(cmd))
+        .and_then(|child| crate::resources::box_resource(child, roc_host()).map_err(Error::Start));
+    match spawned {
         Ok(handle) => HostCmdSpawnResult {
             tag: HostCmdSpawnResultTag::Ok,
             payload: HostCmdSpawnResultPayload {
                 ok: ManuallyDrop::new(handle),
             },
         },
-        Err(err) => HostCmdSpawnResult {
+        Err(error) => HostCmdSpawnResult {
             tag: HostCmdSpawnResultTag::Err,
             payload: HostCmdSpawnResultPayload {
-                err: ManuallyDrop::new(cmd_output_io_err_from_io(&err, roc_host())),
+                err: ManuallyDrop::new(cmd_err(&error)),
             },
         },
     }
 }
+
 #[no_mangle]
 pub extern "C" fn hosted_cmd_run(cmd: HostCmdRunArgs) -> HostCmdRunResult {
-    run_result(managed_spawn(normalize_command!(cmd), true).and_then(|child| child.wait()))
-}
-#[no_mangle]
-pub extern "C" fn hosted_child_pid(handle: *mut u64) -> HostChildPidResult {
-    match with_child(handle, |child| child.pid()) {
-        Ok(pid) => HostChildPidResult {
-            tag: HostChildPidResultTag::Ok,
-            payload: HostChildPidResultPayload {
-                ok: ManuallyDrop::new(pid),
+    let finished = start(cmd).and_then(|child| match child.wait() {
+        Ok(output) => Ok(output),
+        Err(ChildError::Cmd(error)) => Err(error),
+        // Nothing else holds this child, so nothing can have closed it.
+        Err(ChildError::Closed) => Err(Error::Io(io::Error::other("Child is closed"))),
+    });
+    match finished {
+        Ok(output) => HostCmdRunResult {
+            tag: HostCmdRunResultTag::Ok,
+            payload: HostCmdRunResultPayload {
+                ok: ManuallyDrop::new(cmd_output(&output)),
             },
         },
-        Err(err) => HostChildPidResult {
-            tag: HostChildPidResultTag::Err,
-            payload: HostChildPidResultPayload {
-                err: ManuallyDrop::new(cmd_output_io_err_from_io(&err, roc_host())),
+        Err(error) => HostCmdRunResult {
+            tag: HostCmdRunResultTag::Err,
+            payload: HostCmdRunResultPayload {
+                err: ManuallyDrop::new(cmd_err(&error)),
             },
         },
     }
 }
+
+#[no_mangle]
+pub extern "C" fn hosted_child_pid(handle: *mut u64) -> u32 {
+    with_child(handle, |child| child.pid())
+}
+
 #[no_mangle]
 pub extern "C" fn hosted_child_wait(handle: *mut u64) -> HostChildWaitResult {
-    run_result(with_child(handle, |child| child.wait()))
-}
-#[no_mangle]
-pub extern "C" fn hosted_child_try_wait(handle: *mut u64) -> HostChildTryWaitResult {
-    match with_child(handle, |child| child.try_wait()) {
-        Ok(output) => {
-            let values: Vec<_> = output.into_iter().map(run_output).collect();
-            let list = unsafe { RocList::from_slice(&values, roc_host()) };
-            HostChildTryWaitResult {
-                tag: HostChildTryWaitResultTag::Ok,
-                payload: HostChildTryWaitResultPayload {
-                    ok: ManuallyDrop::new(list),
-                },
-            }
-        }
-        Err(err) => HostChildTryWaitResult {
-            tag: HostChildTryWaitResultTag::Err,
-            payload: HostChildTryWaitResultPayload {
-                err: ManuallyDrop::new(cmd_output_io_err_from_io(&err, roc_host())),
+    match with_child(handle, |child| child.wait()) {
+        Ok(output) => HostChildWaitResult {
+            tag: HostChildWaitResultTag::Ok,
+            payload: HostChildWaitResultPayload {
+                ok: ManuallyDrop::new(cmd_output(&output)),
+            },
+        },
+        Err(error) => HostChildWaitResult {
+            tag: HostChildWaitResultTag::Err,
+            payload: HostChildWaitResultPayload {
+                err: ManuallyDrop::new(child_err(&error)),
             },
         },
     }
 }
+
+#[no_mangle]
+pub extern "C" fn hosted_child_poll(handle: *mut u64) -> HostChildPollResult {
+    let state = match with_child(handle, |child| child.poll()) {
+        Ok(Some(output)) => Ok(HostChildPollOk {
+            tag: HostChildPollOkTag::Finished,
+            payload: HostChildPollOkPayload {
+                finished: ManuallyDrop::new(cmd_output(&output)),
+            },
+        }),
+        Ok(None) => Ok(HostChildPollOk {
+            tag: HostChildPollOkTag::Running,
+            payload: HostChildPollOkPayload { running: [] },
+        }),
+        Err(error) => Err(child_err(&error)),
+    };
+    match state {
+        Ok(state) => HostChildPollResult {
+            tag: HostChildPollResultTag::Ok,
+            payload: HostChildPollResultPayload {
+                ok: ManuallyDrop::new(state),
+            },
+        },
+        Err(error) => HostChildPollResult {
+            tag: HostChildPollResultTag::Err,
+            payload: HostChildPollResultPayload {
+                err: ManuallyDrop::new(error),
+            },
+        },
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn hosted_child_kill(handle: *mut u64) -> HostChildKillResult {
     unit_result(with_child(handle, |child| child.kill()))
 }
+
 #[no_mangle]
 pub extern "C" fn hosted_child_close(handle: *mut u64) -> HostChildCloseResult {
-    unit_result(with_child(handle, |child| child.close()))
+    match with_child(handle, |child| child.close()) {
+        Ok(()) => HostChildCloseResult {
+            tag: HostChildCloseResultTag::Ok,
+            payload: HostChildCloseResultPayload { ok: [] },
+        },
+        Err(error) => HostChildCloseResult {
+            tag: HostChildCloseResultTag::Err,
+            payload: HostChildCloseResultPayload {
+                err: ManuallyDrop::new(cmd_err(&error)),
+            },
+        },
+    }
 }
+
 #[no_mangle]
 pub extern "C" fn hosted_child_close_stdin(handle: *mut u64) -> HostChildCloseStdinResult {
     unit_result(with_child(handle, |child| child.close_stdin()))
 }
+
 #[no_mangle]
 pub extern "C" fn hosted_child_write(
     handle: *mut u64,
     bytes: RocListWith<u8, false>,
-    timeout_ms: u64,
+    wait_nanos: u64,
 ) -> HostChildWriteResult {
     let input = bytes.as_slice().to_vec();
     unsafe { bytes.decref(roc_host()) };
-    unit_result(with_child(handle, |child| child.write(input, timeout_ms)))
+    unit_result(with_child(handle, |child| {
+        child.write(input, Duration::from_nanos(wait_nanos))
+    }))
 }
+
 #[no_mangle]
-pub extern "C" fn hosted_child_read(
-    handle: *mut u64,
-    max_bytes: u64,
-    timeout_ms: u64,
-) -> HostChildReadResult {
-    match with_child(handle, |child| child.read(max_bytes as usize, timeout_ms)) {
-        Ok(event) => HostChildReadResult {
-            tag: HostChildReadResultTag::Ok,
-            payload: HostChildReadResultPayload {
-                ok: ManuallyDrop::new(HostChildReadOk {
-                    stream: event.stream,
-                    bytes: roc_u8_list_from_slice(&event.bytes, roc_host()),
-                }),
-            },
+pub extern "C" fn hosted_child_read(handle: *mut u64, wait_nanos: u64) -> HostChildReadResult {
+    let read = with_child(handle, |child| child.read(Duration::from_nanos(wait_nanos)));
+    let err = |tag, payload| HostChildReadResult {
+        tag: HostChildReadResultTag::Err,
+        payload: HostChildReadResultPayload {
+            err: ManuallyDrop::new(HostChildReadErr { tag, payload }),
         },
-        Err(err) => HostChildReadResult {
-            tag: HostChildReadResultTag::Err,
-            payload: HostChildReadResultPayload {
-                err: ManuallyDrop::new(cmd_output_io_err_from_io(&err, roc_host())),
+    };
+    match read {
+        Ok(Some(Event { stream, bytes })) => {
+            let bytes = ManuallyDrop::new(roc_u8_list_from_slice(&bytes, roc_host()));
+            let chunk = match stream {
+                Stream::Stdout => HostChildReadOk {
+                    tag: HostChildReadOkTag::Stdout,
+                    payload: HostChildReadOkPayload { stdout: bytes },
+                },
+                Stream::Stderr => HostChildReadOk {
+                    tag: HostChildReadOkTag::Stderr,
+                    payload: HostChildReadOkPayload { stderr: bytes },
+                },
+            };
+            HostChildReadResult {
+                tag: HostChildReadResultTag::Ok,
+                payload: HostChildReadResultPayload {
+                    ok: ManuallyDrop::new(chunk),
+                },
+            }
+        }
+        Ok(None) => err(
+            HostChildReadErrTag::EndOfInput,
+            HostChildReadErrPayload { end_of_input: [] },
+        ),
+        Err(ChildError::Closed) => err(
+            HostChildReadErrTag::Closed,
+            HostChildReadErrPayload { closed: [] },
+        ),
+        Err(ChildError::Cmd(error)) => err(
+            HostChildReadErrTag::CmdErr,
+            HostChildReadErrPayload {
+                cmd_err: ManuallyDrop::new(cmd_err(&error)),
             },
-        },
+        ),
     }
 }
 
@@ -582,6 +477,146 @@ mod ownership_tests {
                 utf8: ManuallyDrop::new(RocStr::from_str(value, host)),
             },
         }
+    }
+
+    /// A command whose every refcounted field owns a heap allocation: the
+    /// program, one argument and its list, two environment strings and their
+    /// list, the working directory, and the stdin bytes. Eight in all.
+    fn heap_command(program: NativeOsStr, host: &RocHost) -> Cmd {
+        let args = [utf8("an argument long enough to need the heap", host)];
+        let envs = [
+            utf8("A_VARIABLE_NAME_LONG_ENOUGH_FOR_THE_HEAP", host),
+            utf8("a variable value long enough for the heap", host),
+        ];
+        Cmd {
+            output_limit: MaxBytesOrNoLimit {
+                tag: MaxBytesOrNoLimitTag::MaxBytes,
+                payload: MaxBytesOrNoLimitPayload {
+                    max_bytes: ManuallyDrop::new(7),
+                },
+            },
+            pending_limit: 9,
+            timeout: AfterNanosOrNoTimeout {
+                tag: AfterNanosOrNoTimeoutTag::AfterNanos,
+                payload: AfterNanosOrNoTimeoutPayload {
+                    after_nanos: ManuallyDrop::new(0),
+                },
+            },
+            args: unsafe { RocList::from_slice(&args, host) },
+            cwd: DirOrInherit {
+                tag: DirOrInheritTag::Dir,
+                payload: DirOrInheritPayload {
+                    dir: ManuallyDrop::new(utf8("a/directory/name/long/enough/for/the/heap", host)),
+                },
+            },
+            envs: unsafe { RocList::from_slice(&envs, host) },
+            program,
+            stdin: BytesOrInheritOrNullOrPipe {
+                tag: BytesOrInheritOrNullOrPipeTag::Bytes,
+                payload: BytesOrInheritOrNullOrPipePayload {
+                    bytes: ManuallyDrop::new(unsafe {
+                        RocListWith::<u8, false>::from_slice(&[0, 42, 255], host)
+                    }),
+                },
+            },
+            clear_envs: true,
+            manage_tree: true,
+            stderr: CaptureOrInheritOrMergeWithStdoutOrNullOrPipeOrTee::MergeWithStdout,
+            stdout: CaptureOrInheritOrNullOrPipeOrTee::Tee,
+        }
+    }
+
+    #[test]
+    fn command_config_consumes_every_field_and_keeps_typed_settings() {
+        let host = host();
+        let program = "a program name long enough to need the heap";
+        let config = command_config(heap_command(utf8(program, &host), &host), &host).unwrap();
+        assert_eq!(config.command.get_program(), program);
+        assert_eq!(
+            config.command.get_args().collect::<Vec<_>>(),
+            ["an argument long enough to need the heap"]
+        );
+        // The working directory arrives as a union nested in a union.
+        assert_eq!(
+            config.command.get_current_dir(),
+            Some(std::path::Path::new(
+                "a/directory/name/long/enough/for/the/heap"
+            ))
+        );
+        assert_eq!(
+            config.command.get_envs().collect::<Vec<_>>(),
+            [(
+                std::ffi::OsStr::new("A_VARIABLE_NAME_LONG_ENOUGH_FOR_THE_HEAP"),
+                Some(std::ffi::OsStr::new(
+                    "a variable value long enough for the heap"
+                ))
+            )]
+        );
+        assert!(matches!(config.stdin, StdinMode::Bytes(bytes) if bytes == [0, 42, 255]));
+        assert_eq!(config.stdout, OutputMode::Tee);
+        assert_eq!(config.stderr, StderrMode::MergeWithStdout);
+        // Zero is a deadline, not the absence of one.
+        assert_eq!(config.timeout, Some(Duration::ZERO));
+        assert_eq!(config.output_limit, Some(7));
+        assert_eq!(config.pending_limit, 9);
+        assert!(config.manage_tree);
+        finish(host, 8);
+    }
+
+    #[test]
+    fn command_config_without_a_deadline_limit_or_directory() {
+        let host = host();
+        let mut cmd = heap_command(utf8("tool", &host), &host);
+        // Release the directory this test replaces.
+        unsafe { ManuallyDrop::into_inner(cmd.cwd.payload.dir).decref(&host) };
+        cmd.cwd = DirOrInherit {
+            tag: DirOrInheritTag::Inherit,
+            payload: DirOrInheritPayload { inherit: [] },
+        };
+        cmd.timeout = AfterNanosOrNoTimeout {
+            tag: AfterNanosOrNoTimeoutTag::NoTimeout,
+            payload: AfterNanosOrNoTimeoutPayload { no_timeout: [] },
+        };
+        cmd.output_limit = MaxBytesOrNoLimit {
+            tag: MaxBytesOrNoLimitTag::NoLimit,
+            payload: MaxBytesOrNoLimitPayload { no_limit: [] },
+        };
+        cmd.stderr = CaptureOrInheritOrMergeWithStdoutOrNullOrPipeOrTee::Pipe;
+        let config = command_config(cmd, &host).unwrap();
+        assert_eq!(config.command.get_current_dir(), None);
+        assert_eq!(config.timeout, None);
+        assert_eq!(config.output_limit, None);
+        assert_eq!(config.stderr, StderrMode::Separate(OutputMode::Pipe));
+        finish(host, 7);
+    }
+
+    #[test]
+    fn command_that_cannot_be_converted_still_releases_every_field() {
+        let host = host();
+        // The other operating system's native representation.
+        #[cfg(unix)]
+        let foreign = NativeOsStr {
+            tag: UnixBytesOrUtf8OrWindowsU16sTag::WindowsU16s,
+            payload: UnixBytesOrUtf8OrWindowsU16sPayload {
+                windows_u16s: ManuallyDrop::new(unsafe {
+                    RocListWith::<u16, false>::from_slice(&[0xd800, 42], &host)
+                }),
+            },
+        };
+        #[cfg(windows)]
+        let foreign = NativeOsStr {
+            tag: UnixBytesOrUtf8OrWindowsU16sTag::UnixBytes,
+            payload: UnixBytesOrUtf8OrWindowsU16sPayload {
+                unix_bytes: ManuallyDrop::new(unsafe {
+                    RocListWith::<u8, false>::from_slice(&[255, 42], &host)
+                }),
+            },
+        };
+        let error = command_config(heap_command(foreign, &host), &host)
+            .err()
+            .expect("a foreign program name must not convert");
+        assert_eq!(error.kind(), io::ErrorKind::Unsupported);
+        finish(host, 8);
     }
 
     #[test]
