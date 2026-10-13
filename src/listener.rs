@@ -1,4 +1,5 @@
 //! Deadline-aware listeners using a host-thread reactor.
+use crate::tcp::Deadline;
 use crate::{resources, roc_host, roc_platform_abi::*};
 use std::{
     io,
@@ -26,12 +27,26 @@ pub(crate) struct Listener {
     socket: Option<tokio::net::TcpListener>,
 }
 
-fn listen(host: String, port: u16, timeout_ms: u64) -> io::Result<Listener> {
-    let deadline = crate::tcp::deadline_from_timeout(timeout_ms)?;
+/// Why a listener operation produced no value.
+#[derive(Debug)]
+enum ListenerError {
+    /// `Tcp.Listener.close!` already released the socket.
+    Closed,
+    Io(io::Error),
+}
+
+impl From<io::Error> for ListenerError {
+    fn from(error: io::Error) -> Self {
+        Self::Io(error)
+    }
+}
+
+fn listen(host: String, port: u16, timeout_nanos: u64) -> io::Result<Listener> {
+    let deadline = Deadline::after_nanos(timeout_nanos)?;
     let addresses = crate::tcp::resolve_with_deadline(host, port, deadline)?;
     let mut error = io::Error::from(io::ErrorKind::AddrNotAvailable);
     for address in addresses {
-        crate::tcp::remaining_time(deadline)?;
+        deadline.remaining()?;
         let result = (|| {
             let socket = socket2::Socket::new(
                 socket2::Domain::for_address(address),
@@ -80,31 +95,44 @@ fn exclusive_address(socket: &socket2::Socket) -> io::Result<()> {
 }
 
 impl Listener {
-    fn socket(&self) -> io::Result<&tokio::net::TcpListener> {
-        self.socket
-            .as_ref()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::NotConnected, "ListenerClosed"))
+    fn socket(&self) -> Result<&tokio::net::TcpListener, ListenerError> {
+        self.socket.as_ref().ok_or(ListenerError::Closed)
     }
-    fn accept(&self, timeout_ms: u64) -> io::Result<TcpStream> {
-        crate::tcp::deadline_from_timeout(timeout_ms)?;
+
+    /// Wait for a connection: for `Some(nanos)`, or indefinitely for `None`.
+    /// The wait bounds this call only; the accepted socket has no timeout of
+    /// its own until a read or write sets one.
+    fn accept(&self, wait_nanos: Option<u64>) -> Result<TcpStream, ListenerError> {
         let socket = self.socket()?;
-        RUNTIME.block_on(async {
-            let (stream, _) =
-                tokio::time::timeout(Duration::from_millis(timeout_ms), socket.accept())
+        if wait_nanos == Some(0) {
+            return Err(io::Error::from(io::ErrorKind::TimedOut).into());
+        }
+        let (stream, _) = RUNTIME.block_on(async {
+            match wait_nanos {
+                Some(nanos) => tokio::time::timeout(Duration::from_nanos(nanos), socket.accept())
                     .await
-                    .map_err(|_| io::Error::from(io::ErrorKind::TimedOut))??;
-            let stream = stream.into_std()?;
-            stream.set_nonblocking(false)?;
-            Ok(stream)
-        })
+                    .unwrap_or_else(|_| Err(io::Error::from(io::ErrorKind::TimedOut))),
+                None => socket.accept().await,
+            }
+        })?;
+        let stream = stream.into_std()?;
+        stream.set_nonblocking(false)?;
+        Ok(stream)
     }
 }
 
-fn error_string(error: io::Error, host: &RocHost) -> RocStr {
-    if error.kind() == io::ErrorKind::NotConnected {
-        RocStr::from_str("ListenerClosed", host)
-    } else {
-        crate::tcp::to_tcp_connect_err(error, host)
+fn closed_or_tcp_err(error: ListenerError, host: &RocHost) -> ClosedOrTcpErr {
+    match error {
+        ListenerError::Closed => ClosedOrTcpErr {
+            tag: ClosedOrTcpErrTag::Closed,
+            payload: ClosedOrTcpErrPayload { closed: [] },
+        },
+        ListenerError::Io(error) => ClosedOrTcpErr {
+            tag: ClosedOrTcpErrTag::TcpErr,
+            payload: ClosedOrTcpErrPayload {
+                tcp_err: ManuallyDrop::new(crate::tcp::tcp_io_err(error, host)),
+            },
+        },
     }
 }
 
@@ -112,12 +140,12 @@ fn error_string(error: io::Error, host: &RocHost) -> RocStr {
 pub extern "C" fn hosted_tcp_listen(
     host: RocStr,
     port: u16,
-    timeout_ms: u64,
+    timeout_nanos: u64,
 ) -> HostTcpListenResult {
     let roc_host = roc_host();
     let name = host.as_str().to_owned();
     unsafe { host.decref(roc_host) };
-    match listen(name, port, timeout_ms)
+    match listen(name, port, timeout_nanos)
         .and_then(|listener| resources::box_resource(listener, roc_host))
     {
         Ok(handle) => HostTcpListenResult {
@@ -129,7 +157,7 @@ pub extern "C" fn hosted_tcp_listen(
         Err(error) => HostTcpListenResult {
             tag: HostTcpListenResultTag::Err,
             payload: HostTcpListenResultPayload {
-                err: ManuallyDrop::new(error_string(error, roc_host)),
+                err: ManuallyDrop::new(crate::tcp::tcp_io_err(error, roc_host)),
             },
         },
     }
@@ -139,17 +167,20 @@ pub extern "C" fn hosted_tcp_listen(
 pub extern "C" fn hosted_tcp_local_port(handle: *mut u64) -> HostTcpLocalPortResult {
     let host = roc_host();
     let listener = unsafe { resources::resource_ref::<Listener>(handle) };
-    let result = match listener.socket().and_then(|socket| socket.local_addr()) {
-        Ok(address) => HostTcpLocalPortResult {
+    let port = listener
+        .socket()
+        .and_then(|socket| Ok(socket.local_addr()?.port()));
+    let result = match port {
+        Ok(port) => HostTcpLocalPortResult {
             tag: HostTcpLocalPortResultTag::Ok,
             payload: HostTcpLocalPortResultPayload {
-                ok: ManuallyDrop::new(address.port()),
+                ok: ManuallyDrop::new(port),
             },
         },
         Err(error) => HostTcpLocalPortResult {
             tag: HostTcpLocalPortResultTag::Err,
             payload: HostTcpLocalPortResultPayload {
-                err: ManuallyDrop::new(error_string(error, host)),
+                err: ManuallyDrop::new(closed_or_tcp_err(error, host)),
             },
         },
     };
@@ -158,23 +189,30 @@ pub extern "C" fn hosted_tcp_local_port(handle: *mut u64) -> HostTcpLocalPortRes
 }
 
 #[no_mangle]
-pub extern "C" fn hosted_tcp_accept(handle: *mut u64, timeout_ms: u64) -> HostTcpAcceptResult {
+pub extern "C" fn hosted_tcp_accept(
+    handle: *mut u64,
+    wait: AfterOrNoTimeout,
+) -> HostTcpAcceptResult {
     let host = roc_host();
+    let wait_nanos = match wait.tag {
+        AfterOrNoTimeoutTag::After => Some(unsafe { *wait.payload.after }),
+        AfterOrNoTimeoutTag::NoTimeout => None,
+    };
     let listener = unsafe { resources::resource_ref::<Listener>(handle) };
-    let result = match listener
-        .accept(timeout_ms)
-        .and_then(|stream| crate::tcp::box_tcp_stream(std::io::BufReader::new(stream), host))
-    {
-        Ok(stream) => HostTcpAcceptResult {
+    let connection = listener.accept(wait_nanos).and_then(|stream| {
+        crate::tcp::connection_result(Ok(stream), host).map_err(ListenerError::Io)
+    });
+    let result = match connection {
+        Ok(connection) => HostTcpAcceptResult {
             tag: HostTcpAcceptResultTag::Ok,
             payload: HostTcpAcceptResultPayload {
-                ok: ManuallyDrop::new(stream),
+                ok: ManuallyDrop::new(connection),
             },
         },
         Err(error) => HostTcpAcceptResult {
             tag: HostTcpAcceptResultTag::Err,
             payload: HostTcpAcceptResultPayload {
-                err: ManuallyDrop::new(error_string(error, host)),
+                err: ManuallyDrop::new(closed_or_tcp_err(error, host)),
             },
         },
     };
@@ -197,34 +235,84 @@ pub extern "C" fn hosted_tcp_listener_close(handle: *mut u64) -> HostTcpListener
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const LONG: u64 = 10_000_000_000;
+    const SHORT: u64 = 20_000_000;
+
+    fn timed_out(result: Result<TcpStream, ListenerError>) -> bool {
+        matches!(result, Err(ListenerError::Io(error)) if error.kind() == io::ErrorKind::TimedOut)
+    }
+
     #[test]
     fn reserved_port_accept_deadline_and_close() {
-        let mut listener = listen("127.0.0.1".into(), 0, 1000).unwrap();
+        let mut listener = listen("127.0.0.1".into(), 0, LONG).unwrap();
         let address = listener.socket().unwrap().local_addr().unwrap();
         assert_ne!(address.port(), 0);
         assert!(TcpListener::bind(address).is_err());
-        assert_eq!(
-            listener.accept(10).unwrap_err().kind(),
-            io::ErrorKind::TimedOut
-        );
-        assert_eq!(
-            listener.accept(0).unwrap_err().kind(),
-            io::ErrorKind::TimedOut
-        );
+        assert!(timed_out(listener.accept(Some(SHORT))));
+        assert!(timed_out(listener.accept(Some(0))));
+        // A timed-out accept leaves the listener accepting.
         let client = TcpStream::connect(address).unwrap();
-        let server = listener.accept(1000).unwrap();
-        drop(client);
-        drop(server);
+        let server = listener.accept(Some(LONG)).unwrap();
+        // A zero wait expires even when a client is already queued.
+        let second_client = TcpStream::connect(address).unwrap();
+        assert!(timed_out(listener.accept(Some(0))));
+        let second_server = listener.accept(None).unwrap();
+        // The accept wait is not left on the connection as a socket timeout.
+        assert_eq!(server.read_timeout().unwrap(), None);
+        assert_eq!(second_server.write_timeout().unwrap(), None);
+        drop((client, server, second_client, second_server));
         listener.socket.take();
-        assert_eq!(
-            listener.accept(1000).unwrap_err().kind(),
-            io::ErrorKind::NotConnected
-        );
+        assert!(matches!(
+            listener.accept(Some(LONG)),
+            Err(ListenerError::Closed)
+        ));
+        assert!(matches!(listener.accept(None), Err(ListenerError::Closed)));
+        assert!(matches!(listener.socket(), Err(ListenerError::Closed)));
     }
+
+    #[test]
+    fn accept_without_a_timeout_waits_for_a_client() {
+        let listener = listen("127.0.0.1".into(), 0, LONG).unwrap();
+        let address = listener.socket().unwrap().local_addr().unwrap();
+        let client = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(100));
+            TcpStream::connect(address).unwrap()
+        });
+        let started = std::time::Instant::now();
+        let server = listener.accept(None).unwrap();
+        assert!(started.elapsed() >= Duration::from_millis(50));
+        drop((server, client.join().unwrap()));
+    }
+
+    #[test]
+    fn listen_failures_are_typed() {
+        let host = resources::make_host();
+        assert_eq!(
+            listen("127.0.0.1".into(), 0, 0).err().unwrap().kind(),
+            io::ErrorKind::TimedOut
+        );
+        let listener = listen("127.0.0.1".into(), 0, LONG).unwrap();
+        let port = listener.socket().unwrap().local_addr().unwrap().port();
+        let Err(in_use) = listen("127.0.0.1".into(), port, LONG) else {
+            panic!("a bound port was bound again");
+        };
+        assert_eq!(in_use.kind(), io::ErrorKind::AddrInUse);
+        assert_eq!(
+            crate::tcp::tcp_io_err(in_use, &host).tag,
+            IOErrTag::AddrInUse
+        );
+        let closed = closed_or_tcp_err(ListenerError::Closed, &host);
+        assert_eq!(closed.tag, ClosedOrTcpErrTag::Closed);
+        let timed_out = closed_or_tcp_err(listener.accept(Some(0)).unwrap_err(), &host);
+        assert_eq!(timed_out.tag, ClosedOrTcpErrTag::TcpErr);
+        assert_eq!(unsafe { timed_out.payload.tcp_err.tag }, IOErrTag::TimedOut);
+    }
+
     #[test]
     fn final_arc_release_releases_port() {
         let host = resources::make_host();
-        let listener = listen("127.0.0.1".into(), 0, 1000).unwrap();
+        let listener = listen("127.0.0.1".into(), 0, LONG).unwrap();
         let address = listener.socket().unwrap().local_addr().unwrap();
         let handle = resources::box_resource(listener, &host).unwrap();
         unsafe { incref_box(handle.cast(), 1) };

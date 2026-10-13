@@ -289,6 +289,13 @@ define_common_io_err!(
     HostIOErrTag,
     HostIOErrPayload
 );
+define_common_io_err!(
+    tcp_io_err_from_io,
+    tcp_io_err_other,
+    IOErr,
+    IOErrTag,
+    IOErrPayload
+);
 
 fn try_dir_unit_ok() -> DirUnitResult {
     DirUnitResult {

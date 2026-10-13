@@ -42,10 +42,18 @@ These current host-level limitations may affect application design:
   configurable size limit ([issue #436](https://github.com/roc-lang/basic-cli/issues/436)),
   and several network and TLS failures currently use a generic transport error
   ([issue #438](https://github.com/roc-lang/basic-cli/issues/438)).
-- TCP connect, read, and write operations require a caller-configured timeout
-  covering the whole operation. A zero timeout fails immediately.
-  `Tcp.Stream.read_until!` and `read_line!` also require a maximum byte count,
-  preventing an untrusted peer from causing unbounded buffering.
+- TCP reads and writes always have a timeout: a `Tcp.Connection` holds the
+  `io_timeout` it was created with, which bounds each read or write as a
+  whole, and `with_timeout` returns the same connection with another. The wait
+  to connect or accept is separate; only `accept!` may wait indefinitely
+  (`NoTimeout`). `Duration.zero` expires immediately, and expiry is always
+  `TcpErr(TimedOut)`.
+- A TCP read that times out consumes nothing: the bytes that had arrived stay
+  buffered for the next read. A write that times out may have sent any prefix.
+- `Tcp.Connection.read_until!`, `read_line!` and `lines` stop at the
+  connection's line limit (1 MiB unless changed with `with_line_limit`),
+  preventing an untrusted peer from causing unbounded buffering. The rest of
+  an over-long record is discarded before the next read returns.
 - SQLite keeps up to 16 recently used ordinary path connections open. A live
   prepared statement keeps its connection open after cache eviction, and reused
   paths continue sharing that live connection. The exact `:memory:` path is kept

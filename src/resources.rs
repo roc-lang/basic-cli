@@ -93,8 +93,8 @@ resource_kinds! {
     Child => crate::process_service::Child,
     FileReader => std::io::BufReader<std::fs::File>,
     SqliteStmt => crate::sqlite::SqliteStatement,
+    TcpConnection => crate::tcp::Connection,
     TcpListener => crate::listener::Listener,
-    TcpStream => std::io::BufReader<std::net::TcpStream>,
     #[cfg(test)]
     TestA => tests::Probe<0>,
     #[cfg(test)]

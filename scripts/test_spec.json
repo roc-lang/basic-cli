@@ -491,14 +491,14 @@
           "name": "server-available",
           "live_handles": 0,
           "helper": "tcp",
-          "stdin": "Hi\n",
-          "contains": ["Connected!", "< Hi"]
+          "stdin": "Hi\nthere\n",
+          "stdout_contains": ["Connected!\n> < Hi\n> < there\n> \n<< one\n<< two\n<< three\n"]
         },
         {
           "name": "connection-refused",
           "live_handles": 0,
           "exit_code": 1,
-          "contains": ["ConnectFailed"]
+          "contains": ["Program exited with error: TcpErr(ConnectionRefused)"]
         }
       ]
     },

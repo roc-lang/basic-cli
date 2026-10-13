@@ -1,216 +1,357 @@
+import Duration
 import Host
+import IOErr
 import Resource
 
-## Connect to TCP servers and exchange buffered byte streams.
+## The line limit a new connection holds: 1 MiB.
+default_line_limit : U64
+default_line_limit = 1_048_576
+
+## The accept wait as the host takes it, in nanoseconds.
+accept_wait : [NoTimeout, After(Duration)] -> [NoTimeout, After(U64)]
+accept_wait = |accept_timeout|
+	match accept_timeout {
+		NoTimeout => NoTimeout
+		After(duration) => After(duration.to_nanos())
+	}
+
+## Connect to TCP servers, accept TCP clients, and exchange bytes and lines.
 ##
 ## See the [host runtime behavior](https://github.com/roc-lang/basic-cli#host-runtime-behavior)
 ## for additional runtime details.
 ##
-## Timeout arguments are in milliseconds and apply to the whole operation,
-## including every underlying read/write attempt. A zero timeout fails
-## immediately. Read and write timeouts are returned as
-## `TcpReadErr(TimedOut)` and `TcpWriteErr(TimedOut)` respectively.
+## Every failure of the network or the operating system is `TcpErr(IOErr)`, so
+## results compare with `==`: `result == Err(TcpErr(ConnectionRefused))`.
+##
+## Timeouts are [Duration]s. The wait to connect or to accept bounds that one
+## call. The connection it produces holds its own I/O timeout, which bounds
+## each later read or write as a whole. `Duration.zero` expires immediately,
+## and an expired timeout is always `TcpErr(TimedOut)`.
 ##
 ## ```roc
-## stream = Tcp.connect!("example.com", 80, 5_000)?
-## stream.write_utf8!("GET / HTTP/1.0\r\nHost: example.com\r\n\r\n", 5_000)?
-## status_line = stream.read_line!(1_024, 5_000)?
+## conn = Tcp.connect!("example.com", 80, { connect_timeout: Duration.seconds(5), io_timeout: Duration.seconds(5) })?
+## conn.write_utf8!("GET / HTTP/1.0\r\nHost: example.com\r\n\r\n")?
+## status_line = conn.read_line!()?
+## ```
+##
+## A server accepts connections from a [Listener]:
+##
+## ```roc
+## listener = Tcp.listen!("127.0.0.1", 8085, Duration.seconds(5))?
+## while True {
+##     conn = listener.accept!({ accept_timeout: NoTimeout, io_timeout: Duration.seconds(30) })?
+##     line = conn.read_line!()?
+##     conn.write_utf8!("you said ${line}\n")?
+## }
 ## ```
 Tcp :: [].{
 
-	## A listening socket. Final ARC release closes it; close! affects all aliases.
+	# A tag union that crosses the host boundary is closed by design, so every
+	# function below rebuilds the error it forwards from the host. That gives
+	# callers an open union, which `?` can combine with other error types
+	# however the function is called.
+
+	## A listening socket.
+	##
+	## The socket is closed when the last reference to the listener is
+	## released, or earlier by [close!]. Copies of a listener share one
+	## socket, so closing one closes them all.
 	Listener :: { host : Resource.TcpListener }.{
+
+		## Render the listener without exposing its host handle.
 		to_inspect : Listener -> Str
 		to_inspect = |_| "Tcp.Listener(<opaque>)"
 
-		## Read the reserved local port.
-		local_port! : Listener => Try(U16, _)
-		local_port! = |listener| Host.tcp_local_port!(listener.host).map_err(parse_listener_err)
+		## The port this listener is bound to. After `Tcp.listen!(host, 0, …)`
+		## this is the port the operating system chose. `Closed` after [close!].
+		local_port! : Listener => Try(U16, [Closed, TcpErr(IOErr)])
+		local_port! = |listener|
+			match Host.tcp_local_port!(listener.host) {
+				Ok(port) => Ok(port)
+				Err(Closed) => Err(Closed)
+				Err(TcpErr(err)) => Err(TcpErr(err))
+			}
 
-		## Accept a connection within the given whole-operation timeout.
-		accept! : Listener, U64 => Try(Stream, _)
-		accept! = |listener, timeout_ms|
-			Host.tcp_accept!(listener.host, timeout_ms)
-				.map_ok(|host| Stream.{ host })
-				.map_err(parse_listener_err)
-
-		## Close the listener. Repeated closes succeed.
-		close! : Listener => Try({}, _)
-		close! = |listener| Host.tcp_listener_close!(listener.host).map_err(parse_listener_err)
-	}
-
-	## Bind an address and listen. Port zero reserves an OS-assigned port until
-	## this listener is closed. The timeout includes hostname resolution.
-	listen! : Str, U16, U64 => Try(Listener, _)
-	listen! = |host, port, timeout_ms|
-		Host.tcp_listen!(host, port, timeout_ms)
-			.map_ok(|host_handle| Listener.{ host: host_handle })
-			.map_err(parse_listener_err)
-
-	## Represents a TCP stream.
-	##
-	## The connection is automatically closed when the last reference to the
-	## stream is dropped. It wraps an opaque host-side `BufReader<TcpStream>`
-	## handle.
-	Stream :: { host : Resource.TcpStream }.{
-
-		## Render the stream without exposing its host handle.
-		to_inspect : Stream -> Str
-		to_inspect = |_| "Tcp.Stream(<opaque>)"
-
-		## Read up to a number of bytes, waiting at most `timeout_ms` milliseconds.
-		read_up_to! : Stream, U64, U64 => Try(List(U8), _)
-		read_up_to! = |stream, bytes_to_read, timeout_ms|
-			Host.tcp_read_up_to!(stream.host, bytes_to_read, timeout_ms)
-				.map_err(|err| TcpReadErr(parse_stream_err(err)))
-
-		## Read an exact number of bytes, waiting at most `timeout_ms` milliseconds.
+		## Wait for a client to connect.
 		##
-		## `TcpUnexpectedEOF` is returned if the stream ends before the specified
-		## number of bytes is reached.
-		read_exactly! : Stream, U64, U64 => Try(List(U8), _)
-		read_exactly! = |stream, bytes_to_read, timeout_ms|
-			match Host.tcp_read_exactly!(stream.host, bytes_to_read, timeout_ms) {
-				Ok(bytes) => Ok(bytes)
-				Err("UnexpectedEof") => Err(TcpUnexpectedEOF)
-				Err(err) => Err(TcpReadErr(parse_stream_err(err)))
+		## `accept_timeout` bounds this call only: `NoTimeout` waits
+		## indefinitely, and `After(duration)` gives up with
+		## `Err(TcpErr(TimedOut))`, after which the listener can accept again.
+		## `io_timeout` is the timeout the new [Connection] holds for its reads
+		## and writes; a connection never inherits the accept wait.
+		##
+		## `Closed` after [close!].
+		##
+		## ```roc
+		## match listener.accept!({ accept_timeout: After(Duration.seconds(1)), io_timeout: Duration.seconds(30) }) {
+		##     Ok(conn) => serve!(conn)?
+		##     Err(TcpErr(TimedOut)) => {}
+		##     Err(Closed) => { return Ok({}) }
+		##     Err(TcpErr(err)) => { return Err(TcpErr(err)) }
+		## }
+		## ```
+		accept! : Listener, { accept_timeout : [NoTimeout, After(Duration)], io_timeout : Duration } => Try(Connection, [Closed, TcpErr(IOErr)])
+		accept! = |listener, options|
+			match Host.tcp_accept!(listener.host, accept_wait(options.accept_timeout)) {
+				Ok(host) => Ok(Connection.{ host, timeout: options.io_timeout, line_limit: default_line_limit })
+				Err(Closed) => Err(Closed)
+				Err(TcpErr(err)) => Err(TcpErr(err))
 			}
 
-		## Read until a delimiter or EOF is reached, consuming at most `max_bytes`
-		## and waiting at most `timeout_ms` milliseconds.
-		## If found, the delimiter is included as the last byte. Returns
-		## `TcpReadLimitExceeded(max_bytes)` if the delimiter was not found within
-		## the limit.
-		read_until! : Stream, U8, U64, U64 => Try(List(U8), _)
-		read_until! = |stream, byte, max_bytes, timeout_ms|
-			match Host.tcp_read_until!(stream.host, byte, max_bytes, timeout_ms) {
-				Ok(bytes) => Ok(bytes)
-				Err("LimitExceeded") => Err(TcpReadLimitExceeded(max_bytes))
-				Err(err) => Err(TcpReadErr(parse_stream_err(err)))
-			}
-
-		## Read at most `max_bytes` through a newline (`\n`, byte 10) or EOF as
-		## UTF-8, waiting at most `timeout_ms` milliseconds. If found, the newline
-		## is included as the last character.
-		read_line! : Stream, U64, U64 => Try(Str, _)
-		read_line! = |stream, max_bytes, timeout_ms|
-			match read_until!(stream, 10, max_bytes, timeout_ms) {
-				Ok(bytes) => Str.from_utf8(bytes).map_err(|err| TcpReadBadUtf8(err))
-				Err(err) => Err(err)
-			}
-
-		## Write bytes, waiting at most `timeout_ms` milliseconds.
-		write! : Stream, List(U8), U64 => Try({}, _)
-		write! = |stream, bytes, timeout_ms|
-			Host.tcp_write!(stream.host, bytes, timeout_ms)
-				.map_err(|err| TcpWriteErr(parse_stream_err(err)))
-
-		## Write a string as UTF-8, waiting at most `timeout_ms` milliseconds.
-		write_utf8! : Stream, Str, U64 => Try({}, _)
-		write_utf8! = |stream, str, timeout_ms|
-			write!(stream, Str.to_utf8(str), timeout_ms)
+		## Stop listening and release the port. Closing again succeeds.
+		## Connections already accepted stay open.
+		close! : Listener => Try({}, [TcpErr(IOErr)])
+		close! = |listener|
+			Host.tcp_listener_close!(listener.host)
+				.map_err(|TcpErr(err)| TcpErr(err))
 	}
 
-	## Represents errors that can occur when connecting to a remote host.
-	ConnectErr : [
-		PermissionDenied,
-		AddrInUse,
-		AddrNotAvailable,
-		ConnectionRefused,
-		Interrupted,
-		TimedOut,
-		Unsupported,
-		Unrecognized(Str),
-	]
-
-	## Represents errors that can occur when performing an effect with a `Stream`.
-	StreamErr : [
-		StreamNotFound,
-		PermissionDenied,
-		ConnectionRefused,
-		ConnectionReset,
-		Interrupted,
-		TimedOut,
-		OutOfMemory,
-		BrokenPipe,
-		Unrecognized(Str),
-	]
-
-	## Opens a TCP connection, waiting at most `timeout_ms` milliseconds across
-	## DNS resolution and all resolved addresses. A zero timeout fails immediately.
+	## Bind an address and listen for connections. Port zero asks the operating
+	## system for a free port, which [Listener.local_port!] reports. The
+	## timeout covers hostname resolution.
 	##
 	## ```roc
-	## # Connect to localhost:8080
-	## stream = Tcp.connect!("localhost", 8080, 5_000)?
+	## listener = Tcp.listen!("127.0.0.1", 0, Duration.seconds(5))?
+	## port = listener.local_port!()?
+	## ```
+	listen! : Str, U16, Duration => Try(Listener, [TcpErr(IOErr)])
+	listen! = |host, port, timeout|
+		match Host.tcp_listen!(host, port, timeout.to_nanos()) {
+			Ok(handle) => Ok(Listener.{ host: handle })
+			Err(TcpErr(err)) => Err(TcpErr(err))
+		}
+
+	## A buffered TCP connection, with the I/O timeout and line limit its
+	## reads and writes use.
+	##
+	## The connection is closed when the last reference to it is released.
+	## Copies of a connection share one socket and one buffer, so every read,
+	## whether of lines, delimited bytes or binary data, continues where the
+	## previous one stopped. [with_timeout] and [with_line_limit] change the
+	## settings of the copy they return, not the socket.
+	##
+	## Every read ends the same way: once the peer has closed its side and all
+	## data has been returned, the next read is `Err(EndOfInput)`. An empty
+	## `Ok` is real data, such as an empty line.
+	##
+	## A read that times out consumes nothing. Bytes that had arrived stay
+	## buffered for the next read, so a client may simply read again. A write
+	## that times out may have sent any prefix of its bytes: drop the
+	## connection unless the protocol can resynchronise.
+	Connection :: { host : Resource.TcpConnection, timeout : Duration, line_limit : U64 }.{
+
+		## Render the connection without exposing its host handle.
+		to_inspect : Connection -> Str
+		to_inspect = |_| "Tcp.Connection(<opaque>)"
+
+		## The same connection with another I/O timeout. Each read or write
+		## through the result is bounded as a whole by `timeout`.
+		##
+		## ```roc
+		## # Poll: is a line already here?
+		## match conn.with_timeout(Duration.millis(10)).read_line!() {
+		##     Ok(line) => handle!(line)?
+		##     Err(TcpErr(TimedOut)) => {}
+		##     Err(err) => { return Err(err) }
+		## }
+		## ```
+		with_timeout : Connection, Duration -> Connection
+		with_timeout = |conn, timeout| Connection.{ host: conn.host, timeout, line_limit: conn.line_limit }
+
+		## The same connection with another limit, in bytes, on one record read
+		## by [read_until!], [read_line!] or [lines]. The delimiter or line
+		## terminator counts towards the limit. The default is 1,048,576 (1 MiB).
+		with_line_limit : Connection, U64 -> Connection
+		with_line_limit = |conn, max_bytes| Connection.{ host: conn.host, timeout: conn.timeout, line_limit: max_bytes }
+
+		## Read at most `max_bytes` bytes, returning as soon as any have
+		## arrived. Short reads are valid. Asking for zero bytes returns
+		## `Ok([])` without waiting; otherwise the result is never empty, and a
+		## closed peer is `Err(EndOfInput)`.
+		read_up_to! : Connection, U64 => Try(List(U8), [EndOfInput, TcpErr(IOErr)])
+		read_up_to! = |conn, max_bytes|
+			match Host.tcp_read_up_to!(conn.host, max_bytes, conn.timeout.to_nanos()) {
+				Ok(bytes) => Ok(bytes)
+				Err(EndOfInput) => Err(EndOfInput)
+				Err(TcpErr(err)) => Err(TcpErr(err))
+			}
+
+		## Read exactly `count` bytes. Zero succeeds without waiting.
+		##
+		## If the peer closes before `count` bytes arrive the result is
+		## `Err(UnexpectedEndOfInput)`. The bytes that did arrive are not
+		## consumed: [read_up_to!] returns them.
+		read_exactly! : Connection, U64 => Try(List(U8), [UnexpectedEndOfInput, TcpErr(IOErr)])
+		read_exactly! = |conn, count|
+			match Host.tcp_read_exactly!(conn.host, count, conn.timeout.to_nanos()) {
+				Ok(bytes) => Ok(bytes)
+				Err(UnexpectedEndOfInput) => Err(UnexpectedEndOfInput)
+				Err(TcpErr(err)) => Err(TcpErr(err))
+			}
+
+		## Read bytes through and including the next `delimiter`.
+		##
+		## If the peer closes first, the bytes before the end are returned
+		## without a delimiter, and the read after that is `Err(EndOfInput)`.
+		## So the result is never empty, and its last byte shows whether the
+		## delimiter arrived.
+		##
+		## A record longer than the connection's line limit is
+		## `Err(ReadLimitExceeded(limit))`. The rest of that record, through
+		## its delimiter, is then discarded before the next read returns, as
+		## part of that read and within its timeout.
+		##
+		## ```roc
+		## field = conn.read_until!('|')?
+		## ```
+		read_until! : Connection, U8 => Try(List(U8), [EndOfInput, ReadLimitExceeded(U64), TcpErr(IOErr)])
+		read_until! = |conn, delimiter|
+			match Host.tcp_read_until!(conn.host, delimiter, conn.line_limit, conn.timeout.to_nanos()) {
+				Ok(bytes) => Ok(bytes)
+				Err(EndOfInput) => Err(EndOfInput)
+				Err(ReadLimitExceeded(limit)) => Err(ReadLimitExceeded(limit))
+				Err(TcpErr(err)) => Err(TcpErr(err))
+			}
+
+		## Read a line of text.
+		##
+		## A line ends at `\n`. The terminator is not returned, and one `\r`
+		## before it is removed. If the peer closes without a final `\n` the
+		## last line is still returned; after that the result is
+		## `Err(EndOfInput)`. An empty line is `Ok("")`.
+		##
+		## A line longer than the connection's line limit is
+		## `Err(ReadLimitExceeded(limit))`, and a line that is not valid UTF-8
+		## is `BadUtf8`. Either way that line is skipped and the next call
+		## reads the line after it. For the bytes of a line, use
+		## `conn.read_until!('\n')`.
+		read_line! : Connection => Try(Str, [EndOfInput, ReadLimitExceeded(U64), BadUtf8({ problem : Str.Utf8Problem, index : U64 }), TcpErr(IOErr)])
+		read_line! = |conn|
+			match Host.tcp_read_line!(conn.host, conn.line_limit, conn.timeout.to_nanos()) {
+				Ok(bytes) => Str.from_utf8(bytes)
+				Err(EndOfInput) => Err(EndOfInput)
+				Err(ReadLimitExceeded(limit)) => Err(ReadLimitExceeded(limit))
+				Err(TcpErr(err)) => Err(TcpErr(err))
+			}
+
+		## Write all of `bytes`. They are sent at once, not buffered.
+		write_bytes! : Connection, List(U8) => Try({}, [TcpErr(IOErr)])
+		write_bytes! = |conn, bytes|
+			Host.tcp_write!(conn.host, bytes, conn.timeout.to_nanos())
+				.map_err(|TcpErr(err)| TcpErr(err))
+
+		## Write a string as UTF-8. It is sent at once, not buffered.
+		write_utf8! : Connection, Str => Try({}, [TcpErr(IOErr)])
+		write_utf8! = |conn, str|
+			write_bytes!(conn, Str.to_utf8(str))
+
+		## Lazily read this connection as non-empty chunks of at most 64 KiB,
+		## each returned as soon as it arrives. Chunk boundaries do not
+		## correspond to the peer's writes, records, or text encoding
+		## boundaries. For a chosen size, call [read_up_to!] in a loop.
+		##
+		## Building the stream reads nothing; each item is one read with the
+		## connection's timeout. The stream ends when the peer closes. A
+		## `TcpErr` item, including `TcpErr(TimedOut)`, is the last one; the
+		## connection stays usable and a new stream may be started.
+		##
+		## ```roc
+		## for! item in conn.chunks() {
+		##     bytes = item?
+		##     $total = $total + bytes.len()
+		## }
+		## ```
+		##
+		## The stream holds no data of its own, so it can be mixed with the
+		## other reads and with writes. It keeps the connection open until it
+		## has finished or is released.
+		chunks : Connection -> Stream(Try(List(U8), [TcpErr(IOErr)]))
+		chunks = |conn|
+			# Keep the connection in the state, not the callback capture, so
+			# Finished can release it even when the terminal continuation is
+			# retained.
+			Stream.custom(
+				Reading(conn),
+				Unknown,
+				|state|
+					match state {
+						Finished => Err(NoMore)
+						Reading(current) =>
+							match read_up_to!(current, 65_536) {
+								Ok(bytes) => Ok((Ok(bytes), Reading(current)))
+								Err(EndOfInput) => Err(NoMore)
+								Err(TcpErr(err)) => Ok((Err(TcpErr(err)), Finished))
+							}
+					},
+			)
+
+		## Lazily read this connection a line at a time, as [read_line!] does.
+		##
+		## Building the stream reads nothing; each item is one read with the
+		## connection's timeout and line limit. The stream ends when the peer
+		## closes. `BadUtf8` and `ReadLimitExceeded` items concern one line, and
+		## the stream continues with the next. A `TcpErr` item, including
+		## `TcpErr(TimedOut)`, is the last one; the connection stays usable, so
+		## a client that tolerates idle periods calls `conn.lines()` again.
+		##
+		## ```roc
+		## for! item in conn.lines() {
+		##     match item {
+		##         Ok(line) => Stdout.line!(line)?
+		##         Err(BadUtf8(_)) => {}
+		##         Err(ReadLimitExceeded(_)) => {}
+		##         Err(TcpErr(err)) => { return Err(TcpErr(err)) }
+		##     }
+		## }
+		## ```
+		##
+		## The stream holds no data of its own, so it can be mixed with the
+		## other reads and with writes, and leaving the loop early loses
+		## nothing. It keeps the connection open until it has finished or is
+		## released.
+		lines : Connection -> Stream(Try(Str, [ReadLimitExceeded(U64), BadUtf8({ problem : Str.Utf8Problem, index : U64 }), TcpErr(IOErr)]))
+		lines = |conn|
+			# Keep the connection in the state, not the callback capture, so
+			# Finished can release it even when the terminal continuation is
+			# retained.
+			Stream.custom(
+				Reading(conn),
+				Unknown,
+				|state|
+					match state {
+						Finished => Err(NoMore)
+						Reading(current) =>
+							match read_line!(current) {
+								Ok(text) => Ok((Ok(text), Reading(current)))
+								Err(EndOfInput) => Err(NoMore)
+								Err(BadUtf8(problem)) => Ok((Err(BadUtf8(problem)), Reading(current)))
+								Err(ReadLimitExceeded(limit)) => Ok((Err(ReadLimitExceeded(limit)), Reading(current)))
+								Err(TcpErr(err)) => Ok((Err(TcpErr(err)), Finished))
+							}
+					},
+			)
+	}
+
+	## Open a TCP connection.
+	##
+	## `connect_timeout` bounds this call, across hostname resolution and every
+	## address the name resolves to. `io_timeout` is the timeout the new
+	## [Connection] holds for its reads and writes.
+	##
+	## ```roc
+	## conn = Tcp.connect!("localhost", 8080, { connect_timeout: Duration.seconds(1), io_timeout: Duration.seconds(5) })?
 	## ```
 	##
 	## Valid hostnames look like `127.0.0.1`, `::1`, `localhost`, or `roc-lang.org`.
-	connect! = |host, port, timeout_ms|
-		Host.tcp_connect!(host, port, timeout_ms)
-			.map_ok(|stream| Stream.{ host: stream })
-			.map_err(parse_connect_err)
-
-	## Convert a `ConnectErr` to a `Str` you can print.
-	connect_err_to_str = |err|
-		match err {
-			PermissionDenied => "PermissionDenied"
-			AddrInUse => "AddrInUse"
-			AddrNotAvailable => "AddrNotAvailable"
-			ConnectionRefused => "ConnectionRefused"
-			Interrupted => "Interrupted"
-			TimedOut => "TimedOut"
-			Unsupported => "Unsupported"
-			Unrecognized(message) => "Unrecognized Error: ${message}"
-		}
-
-	## Convert a `StreamErr` to a `Str` you can print.
-	stream_err_to_str = |err|
-		match err {
-			StreamNotFound => "StreamNotFound"
-			PermissionDenied => "PermissionDenied"
-			ConnectionRefused => "ConnectionRefused"
-			ConnectionReset => "ConnectionReset"
-			Interrupted => "Interrupted"
-			TimedOut => "TimedOut"
-			OutOfMemory => "OutOfMemory"
-			BrokenPipe => "BrokenPipe"
-			Unrecognized(message) => "Unrecognized Error: ${message}"
+	connect! : Str, U16, { connect_timeout : Duration, io_timeout : Duration } => Try(Connection, [TcpErr(IOErr)])
+	connect! = |host, port, options|
+		match Host.tcp_connect!(host, port, options.connect_timeout.to_nanos()) {
+			Ok(handle) => Ok(Connection.{ host: handle, timeout: options.io_timeout, line_limit: default_line_limit })
+			Err(TcpErr(err)) => Err(TcpErr(err))
 		}
 }
 
-# ---- internal helpers (module-private) -----------------------------------------
-
-parse_connect_err = |err|
-	match err {
-		"ErrorKind::PermissionDenied" => PermissionDenied
-		"ErrorKind::AddrInUse" => AddrInUse
-		"ErrorKind::AddrNotAvailable" => AddrNotAvailable
-		"ErrorKind::ConnectionRefused" => ConnectionRefused
-		"ErrorKind::Interrupted" => Interrupted
-		"ErrorKind::TimedOut" => TimedOut
-		"ErrorKind::Unsupported" => Unsupported
-		other => Unrecognized(other)
-	}
-
-parse_stream_err = |err|
-	match err {
-		"StreamNotFound" => StreamNotFound
-		"ErrorKind::PermissionDenied" => PermissionDenied
-		"ErrorKind::ConnectionRefused" => ConnectionRefused
-		"ErrorKind::ConnectionReset" => ConnectionReset
-		"ErrorKind::Interrupted" => Interrupted
-		"ErrorKind::TimedOut" => TimedOut
-		"ErrorKind::OutOfMemory" => OutOfMemory
-		"ErrorKind::BrokenPipe" => BrokenPipe
-		other => Unrecognized(other)
-	}
-
-expect parse_connect_err("ErrorKind::TimedOut") == TimedOut
-
-expect parse_stream_err("ErrorKind::TimedOut") == TimedOut
-
-parse_listener_err = |err|
-	match err {
-		"ListenerClosed" => ListenerClosed
-		_ => TcpListenErr(parse_connect_err(err))
-	}
+expect default_line_limit == 1_048_576
+expect accept_wait(NoTimeout) == NoTimeout
+expect accept_wait(After(Duration.millis(250))) == After(250_000_000)
+expect accept_wait(After(Duration.zero)) == After(0)

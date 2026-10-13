@@ -101,11 +101,14 @@ Host :: [].{
 	stdout_write! : Str => Try({}, [StdoutErr(IOErr)])
 	stdout_write_bytes! : List(U8) => Try({}, [StdoutErr(IOErr)])
 
-	tcp_connect! : Str, U16, U64 => Try(Resource.TcpStream, Str)
-	tcp_read_up_to! : Resource.TcpStream, U64, U64 => Try(List(U8), Str)
-	tcp_read_exactly! : Resource.TcpStream, U64, U64 => Try(List(U8), Str)
-	tcp_read_until! : Resource.TcpStream, U8, U64, U64 => Try(List(U8), Str)
-	tcp_write! : Resource.TcpStream, List(U8), U64 => Try({}, Str)
+	# Tcp timeouts cross as nanoseconds. A connection's I/O timeout and line
+	# limit live in `Tcp.Connection` and are passed with each read or write.
+	tcp_connect! : Str, U16, U64 => Try(Resource.TcpConnection, [TcpErr(IOErr)])
+	tcp_read_up_to! : Resource.TcpConnection, U64, U64 => Try(List(U8), [EndOfInput, TcpErr(IOErr)])
+	tcp_read_exactly! : Resource.TcpConnection, U64, U64 => Try(List(U8), [TcpErr(IOErr), UnexpectedEndOfInput])
+	tcp_read_until! : Resource.TcpConnection, U8, U64, U64 => Try(List(U8), [EndOfInput, ReadLimitExceeded(U64), TcpErr(IOErr)])
+	tcp_read_line! : Resource.TcpConnection, U64, U64 => Try(List(U8), [EndOfInput, ReadLimitExceeded(U64), TcpErr(IOErr)])
+	tcp_write! : Resource.TcpConnection, List(U8), U64 => Try({}, [TcpErr(IOErr)])
 
 	tty_enable_raw_mode! : () => Try({}, IOErr)
 	tty_disable_raw_mode! : () => Try({}, IOErr)
@@ -150,10 +153,10 @@ Host :: [].{
 	child_write! : Resource.Child, List(U8), U64 => Try({}, IOErr)
 	child_read! : Resource.Child, U64, U64 => Try(ChildEvent, IOErr)
 
-	tcp_listen! : Str, U16, U64 => Try(Resource.TcpListener, Str)
-	tcp_local_port! : Resource.TcpListener => Try(U16, Str)
-	tcp_accept! : Resource.TcpListener, U64 => Try(Resource.TcpStream, Str)
-	tcp_listener_close! : Resource.TcpListener => Try({}, Str)
+	tcp_listen! : Str, U16, U64 => Try(Resource.TcpListener, [TcpErr(IOErr)])
+	tcp_local_port! : Resource.TcpListener => Try(U16, [Closed, TcpErr(IOErr)])
+	tcp_accept! : Resource.TcpListener, [NoTimeout, After(U64)] => Try(Resource.TcpConnection, [Closed, TcpErr(IOErr)])
+	tcp_listener_close! : Resource.TcpListener => Try({}, [TcpErr(IOErr)])
 
 	env_program_name! : () => Try(NativeOsStr, [ProgramNameUnavailable])
 

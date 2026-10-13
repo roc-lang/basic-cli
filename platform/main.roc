@@ -106,6 +106,7 @@ platform ""
 		"hosted_tcp_listener_close": Host.tcp_listener_close!,
 		"hosted_tcp_local_port": Host.tcp_local_port!,
 		"hosted_tcp_read_exactly": Host.tcp_read_exactly!,
+		"hosted_tcp_read_line": Host.tcp_read_line!,
 		"hosted_tcp_read_until": Host.tcp_read_until!,
 		"hosted_tcp_read_up_to": Host.tcp_read_up_to!,
 		"hosted_tcp_write": Host.tcp_write!,
