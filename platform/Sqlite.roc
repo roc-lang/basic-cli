@@ -243,9 +243,14 @@ Sqlite :: [].{
 		## ```
 		##
 		## The stream holds its statement, and with it SQLite's read lock, until
-		## it has finished or is released; leaving the loop early releases it.
-		## The connection stays usable meanwhile, also for another stream of the
-		## same query.
+		## it has finished or is released. The connection stays usable
+		## meanwhile, also for another stream of the same query.
+		##
+		## A stream left with `break` is released when the function containing
+		## the loop returns, not at the end of the loop
+		## ([roc-lang/roc#12266](https://github.com/roc-lang/roc/issues/12266)).
+		## Give the loop a function of its own if the lock has to be gone before
+		## the next statement, such as a `DROP TABLE`.
 		rows : Db, Query, Decoder(a, err) -> Stream(Try(a, [SqliteErr(Err), Closed, BadRow(err)]))
 		rows = |db, query, decoder|
 			# Keep the connection, the decoder and the cursor in the state, not the

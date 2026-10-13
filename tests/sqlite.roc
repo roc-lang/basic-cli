@@ -68,9 +68,11 @@ drain! = |stream, label| {
 	Stdout.line!("${label}: end")
 }
 
-## Stop reading the events at the third. The loop has a function of its own
-## so the stream is gone when it returns: an optimized build may keep a
-## stream that a loop was left with `break` until the end of the function.
+## Stop reading the events at the third.
+##
+## TODO(roc-lang/roc#12266): a stream left with `break` is only released when
+## the enclosing function returns, so this loop lives in its own function;
+## inline it again once that is fixed.
 leave_early! : Sqlite.Db => Try({}, _)
 leave_early! = |db| {
 	for! item in db.rows("SELECT id, payload FROM events ORDER BY id", decode_event) {
@@ -100,8 +102,8 @@ rows! = || {
 	db.execute!("DELETE FROM events WHERE id = ${Integer(2)}")?
 	drain!(events, "again")?
 
-	# Leaving the loop early releases the statement: a table cannot be
-	# dropped while a statement is reading it.
+	# A stream that was left early releases its statement: a table cannot
+	# be dropped while a statement is reading it.
 	leave_early!(db)?
 	show!("drop after break", db.execute!("DROP TABLE events"))?
 
