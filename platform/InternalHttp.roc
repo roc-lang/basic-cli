@@ -2,6 +2,7 @@ import http.Header
 import http.Method
 import http.Request
 import http.Response
+import Resource
 
 ## Define host-ABI HTTP types and convert them to the shared HTTP package types.
 ## These records map directly to the generated Rust glue types.
@@ -27,6 +28,15 @@ InternalHttp :: [].{
 		status : U16,
 		headers : List(HostHeaderTuple),
 		body : List(U8),
+	}
+
+	# What the host returns once the status and headers of a streaming
+	# response have arrived. The body stays in the host, behind `body`.
+	StreamingResponseFromHost : {
+		status : U16,
+		headers : List(HostHeaderTuple),
+		content_length : [Known(U64), Unknown],
+		body : Resource.HttpResponse,
 	}
 
 	to_host_request : Request -> RequestToAndFromHost

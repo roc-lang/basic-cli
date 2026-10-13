@@ -1,260 +1,113 @@
 import IOErr
 import Host
+import Resource
 import OsStr
 import Env
 import Path
+import Duration
 
 ## Build and run child processes with native-safe programs, arguments, and
 ## environment values.
 ##
-## Use `run!` when exit status and output are data your application handles:
+## There are four ways to run a command:
+##
+## - [exec!] runs it on your terminal and requires it to succeed.
+## - [capture!] requires it to succeed and returns what it printed, as text.
+## - [run!] returns the exit status and the captured output as data.
+## - [spawn!] starts it and returns a [Child] to wait on, read from and write to.
 ##
 ## ```roc
-## output = Cmd.new("roc")
-## 	.arg("version")
-## 	.timeout_ms(5_000)
-## 	.run!()?
+## Cmd.new("cargo").args(["build", "--release"]).exec!()?
 ##
+## sha = Cmd.new("git").args(["rev-parse", "HEAD"]).capture!()?.trim()
+##
+## output = Cmd.new("roc").arg("version").timeout(Duration.seconds(5)).run!()?
 ## match output.status {
 ## 	Exited(0) => Stdout.write_bytes!(output.stdout_bytes)
 ## 	Exited(code) => Err(CommandFailed(code))
 ## 	Signaled(signal) => Err(CommandSignaled(signal))
 ## }
 ## ```
+##
+## Programs and arguments are passed to the operating system as they are: no
+## shell is involved, so spaces, `$FOO` and `*.txt` stay literal.
+##
+## Errors, [to_str] and `Str.inspect` never contain the value of an environment
+## variable, so a command that carries a secret can be logged.
 Cmd :: {
 	args : List(OsStr),
 	clear_envs : Bool,
 	envs : List((OsStr, OsStr)),
 	program : OsStr,
-	cwd_value : List(Path),
-	stdin_value : [Default, Inherit, Null, Bytes(List(U8)), Pipe],
-	stdout_value : [Default, Inherit, Null, Capture, Pipe, Tee],
-	stderr_value : [Default, Inherit, Null, Capture, Pipe, Tee],
-	timeout_value : U64,
-	output_limit_value : U64,
+	cwd_value : [Inherit, Dir(Path)],
+	stdin_value : [Unset, Set([Inherit, Null, Bytes(List(U8)), Pipe])],
+	stdout_value : [Unset, Set([Inherit, Null, Capture, Tee, Pipe])],
+	stderr_value : [Unset, Set([Inherit, Null, Capture, Tee, Pipe, MergeWithStdout])],
+	timeout_value : [NoTimeout, After(Duration)],
+	output_limit_value : [NoLimit, MaxBytes(U64)],
 	pending_limit_value : U64,
 	manage_tree_value : Bool,
-	merge_stderr_value : Bool,
 }.{
 
-	## Simplest way to execute a command by name with arguments.
-	## Stdin, stdout, and stderr are inherited from the parent process.
+	## Where the child's standard input comes from.
 	##
-	## If you want to capture the output, use [exec_output!] instead.
+	## - `Inherit`: the parent's standard input.
+	## - `Null`: an input that is already at its end.
+	## - `Bytes(bytes)`: the given bytes, after which the input ends.
+	## - `Pipe`: a pipe written with [Child.write_bytes!] and ended with
+	##   [Child.close_stdin!]. Only [spawn!] returns a [Child], so with [exec!],
+	##   [capture!] and [run!] it means `Null`.
+	StdinMode : [Inherit, Null, Bytes(List(U8)), Pipe]
+
+	## Where the child's standard output goes.
 	##
-	## ```roc
-	## Cmd.exec!("echo", ["hello world"])?
-	## ```
-	exec! : OsStr, List(OsStr) => Try({}, [ExecFailed({ command : Str, exit_code : I32 }), FailedToGetExitCode({ command : Str, err : IOErr })])
-	exec! = |program, arguments| {
-		command = "${OsStr.display(program)} ${Str.join_with(arguments.map(OsStr.display), " ")}"
+	## - `Inherit`: the parent's standard output.
+	## - `Null`: discarded.
+	## - `Capture`: kept in memory and returned in the [Output].
+	## - `Tee`: captured and also forwarded to the parent's standard output. The
+	##   child sees a pipe, not a terminal.
+	## - `Pipe`: queued as chunks for [Child.read!]. Only [spawn!] returns a
+	##   [Child], so with [exec!], [capture!] and [run!] it means `Capture`.
+	StdoutMode : [Inherit, Null, Capture, Tee, Pipe]
 
-		exit_code = new(program)
-			.args(arguments)
-			.exec_exit_code!()?
+	## Where the child's standard error goes: the modes of [StdoutMode], or
+	## `MergeWithStdout`, which sends it into the same OS pipe as standard output.
+	## That keeps the order in which the child wrote to the two streams, which two
+	## separate streams cannot. The merged stream follows the standard output
+	## mode and is reported as standard output.
+	StderrMode : [Inherit, Null, Capture, Tee, Pipe, MergeWithStdout]
 
-		if exit_code == 0 {
-			Ok({})
-		} else {
-			Err(ExecFailed({ command, exit_code }))
-		}
-	}
+	## How a child ended: `Exited(code)` with its exit code, or `Signaled(signal)`
+	## when a signal terminated it. `Signaled` is reported on Unix only.
+	ExitStatus : [Exited(I32), Signaled(I32)]
 
-	## Execute a Cmd (using the builder pattern).
-	## Stdin, stdout, and stderr are inherited from the parent process.
-	##
-	## You should prefer using [exec!] instead, only use this if you want to use [env], [envs] or [clear_envs].
-	## If you want to capture the output, use [exec_output!] instead.
-	##
-	## ```roc
-	## Cmd.new("cargo")
-	##     .arg("build")
-	##     .env("RUST_BACKTRACE", "1")
-	##     .exec_cmd!()?
-	## ```
-	exec_cmd! : Cmd => Try({}, [ExecCmdFailed({ command : Str, exit_code : I32 }), FailedToGetExitCode({ command : Str, err : IOErr })])
-	exec_cmd! = |cmd| {
-		command = to_str(cmd)
-		exit_code = exec_exit_code!(cmd)?
+	## The output captured before a deadline or an output limit stopped a command.
+	PartialOutput : { stdout_bytes : List(U8), stderr_bytes : List(U8) }
 
-		if exit_code == 0 {
-			Ok({})
-		} else {
-			Err(ExecCmdFailed({ command, exit_code }))
-		}
-	}
-
-	## Execute command and capture stdout and stderr as UTF-8 strings.
-	## Invalid UTF-8 sequences are replaced with the Unicode replacement character.
-	##
-	## Use [exec_output_bytes!] instead if you want to capture the output in the original form as bytes.
-	## [exec_output_bytes!] may also be used for maximum performance, because you may be able to avoid unnecessary UTF-8 conversions.
-	##
-	## ```roc
-	## cmd_output =
-	##     Cmd.new("echo")
-	##         .args(["Hi"])
-	##         .exec_output!()?
-	##
-	## Stdout.line!("Echo output: ${cmd_output.stdout_utf8}")?
-	## ```
-	exec_output! : Cmd => Try({ stdout_utf8 : Str, stderr_utf8_lossy : Str }, [StdoutContainsInvalidUtf8({ cmd_str : Str, err : [BadUtf8({ problem : _, index : U64 })] }), NonZeroExitCode({ command : Str, exit_code : I32, stdout_utf8_lossy : Str, stderr_utf8_lossy : Str }), FailedToGetExitCode({ command : Str, err : IOErr })])
-	exec_output! = |cmd| {
-		cmd_str = to_str(cmd)
-		exec_try = Host.cmd_exec_output!(to_host_cmd(cmd))
-
-		match exec_try {
-			Ok({ stderr_bytes, stdout_bytes }) => {
-				stdout_utf8 = Str.from_utf8(stdout_bytes)
-					.map_err(|err| StdoutContainsInvalidUtf8({ cmd_str, err }))?
-
-				stderr_utf8_lossy = Str.from_utf8_lossy(stderr_bytes)
-
-				Ok({ stdout_utf8, stderr_utf8_lossy })
-			}
-
-			Err(NonZeroExitCode({ exit_code, stderr_bytes, stdout_bytes })) => {
-				stdout_utf8_lossy = Str.from_utf8_lossy(stdout_bytes)
-				stderr_utf8_lossy = Str.from_utf8_lossy(stderr_bytes)
-
-				Err(NonZeroExitCode({ command: cmd_str, exit_code, stdout_utf8_lossy, stderr_utf8_lossy }))
-			}
-
-			Err(FailedToGetExitCode(err)) => Err(FailedToGetExitCode({ command: cmd_str, err }))
-		}
-	}
-
-	## Execute command and capture stdout and stderr in the original form as bytes.
-	##
-	## Use [exec_output!] instead if you want to get the output as UTF-8 strings.
-	##
-	## ```roc
-	## cmd_output =
-	##     Cmd.new("echo")
-	##         .args(["Hi"])
-	##         .exec_output_bytes!()?
-	##
-	## Stdout.line!("${Str.inspect(cmd_output)}")? # {stderr_bytes: [], stdout_bytes: [72, 105, 10]}
-	## ```
-	exec_output_bytes! : Cmd => Try({ stderr_bytes : List(U8), stdout_bytes : List(U8) }, [NonZeroExitCodeB({ exit_code : I32, stdout_bytes : List(U8), stderr_bytes : List(U8) }), FailedToGetExitCodeB(IOErr)])
-	exec_output_bytes! = |cmd| {
-		exec_try = Host.cmd_exec_output!(to_host_cmd(cmd))
-
-		match exec_try {
-			Ok({ stderr_bytes, stdout_bytes }) =>
-				Ok({ stdout_bytes, stderr_bytes })
-
-			Err(NonZeroExitCode({ exit_code, stderr_bytes, stdout_bytes })) => {
-				Err(NonZeroExitCodeB({ exit_code, stdout_bytes, stderr_bytes }))
-			}
-
-			Err(FailedToGetExitCode(err)) => {
-				Err(FailedToGetExitCodeB(err))
-			}
-		}
-	}
-
-	## Execute a command and return its exit code.
-	## Stdin, stdout, and stderr are inherited from the parent process.
-	##
-	## You should prefer using [exec!] or [exec_cmd!] instead, only use this if you want to take a specific action based on a **specific non-zero exit code**.
-	## For example, `roc check` returns exit code 1 if there are errors, and exit code 2 if there are only warnings.
-	## So, you could use `exec_exit_code!` to ignore warnings on `roc check`.
-	##
-	## ```roc
-	## exit_code = Cmd.new("cat").arg("non_existent.txt").exec_exit_code!()?
-	## ```
-	exec_exit_code! : Cmd => Try(I32, [FailedToGetExitCode({ command : Str, err : IOErr })])
-	exec_exit_code! = |cmd| {
-		command = to_str(cmd)
-
-		match Host.cmd_exec_exit_code!(to_host_cmd(cmd)) {
-			Ok(num) => Ok(num)
-			Err(io_err) => Err(FailedToGetExitCode({ command, err: io_err }))
-		}
-	}
-
-	## Create a new command with the given program name. Use a function that starts with `exec_` to execute it.
+	## Create a new command with the given program name. Execute it with
+	## [exec!], [capture!], [run!] or [spawn!].
 	##
 	## ```roc
 	## cmd = Cmd.new("ls")
 	## ```
+	##
+	## The program is an [OsStr]. A string literal can be passed directly, and so
+	## can a literal that interpolates: `Cmd.new("${tool}")`.
 	new : OsStr -> Cmd
 	new = |program| {
 		args: [],
-		clear_envs: Bool.False,
+		clear_envs: False,
 		envs: [],
 		program,
-		cwd_value: [],
-		stdin_value: Default,
-		stdout_value: Default,
-		stderr_value: Default,
-		timeout_value: 0,
-		output_limit_value: 16777216,
+		cwd_value: Inherit,
+		stdin_value: Unset,
+		stdout_value: Unset,
+		stderr_value: Unset,
+		timeout_value: NoTimeout,
+		output_limit_value: MaxBytes(16777216),
 		pending_limit_value: 1048576,
-		manage_tree_value: Bool.False,
-		merge_stderr_value: Bool.False,
+		manage_tree_value: False,
 	}
-
-	## Create a new command from a dynamic `Str`. String literals can be passed
-	## directly to [new].
-	new_str : Str -> Cmd
-	new_str = |program| new(OsStr.from_str(program))
-
-	## Set the child working directory without changing the parent directory.
-	## Use an absolute executable path or a bare PATH name: resolving a relative
-	## executable against cwd is platform-specific.
-	cwd : Cmd, Path -> Cmd
-	cwd = |cmd, path| { ..cmd, cwd_value: [path] }
-
-	## Bytes supplies and closes stdin automatically. Pipe supports Child.write!.
-	## Default is Null for run!/exec_output!, Inherit for spawn!/exec_cmd!.
-	stdin : Cmd, [Default, Inherit, Null, Bytes(List(U8)), Pipe] -> Cmd
-	stdin = |cmd, mode| { ..cmd, stdin_value: mode }
-
-	## Capture retains bytes; Pipe queues tagged Child.read! events; Tee captures
-	## and forwards to the parent. Default captures for run!/exec_output!, and
-	## inherits for spawn!/exec_cmd!. Tee exposes a pipe, not a terminal, to the child.
-	stdout : Cmd, [Default, Inherit, Null, Capture, Pipe, Tee] -> Cmd
-	stdout = |cmd, mode| { ..cmd, stdout_value: mode }
-
-	## Configure stderr independently, with the same modes and defaults as stdout.
-	stderr : Cmd, [Default, Inherit, Null, Capture, Pipe, Tee] -> Cmd
-	stderr = |cmd, mode| { ..cmd, stderr_value: mode }
-
-	## Zero disables the execution deadline. It covers output draining too.
-	timeout_ms : Cmd, U64 -> Cmd
-	timeout_ms = |cmd, millis| { ..cmd, timeout_value: millis }
-
-	## Combined capture budget in bytes (default 16 MiB). Exceeding it cancels
-	## the command and returns OutputLimit with the retained partial output.
-	output_limit : Cmd, U64 -> Cmd
-	output_limit = |cmd, bytes| { ..cmd, output_limit_value: bytes }
-
-	## Combined unread Pipe event budget (default 1 MiB). Consume events with
-	## Child.read! while running; exceeding this budget cancels the child.
-	pending_limit : Cmd, U64 -> Cmd
-	pending_limit = |cmd, bytes| { ..cmd, pending_limit_value: bytes }
-
-	## Also terminate descendants on cancellation, using a Unix process group
-	## or Windows Job Object. Disabled by default; descendants must not escape it.
-	manage_tree : Cmd, Bool -> Cmd
-	manage_tree = |cmd, enabled| { ..cmd, manage_tree_value: enabled }
-
-	## Send both child streams into one OS pipe using stdout's mode and budget.
-	## This preserves kernel write order; separate streams have no total ordering.
-	merge_stderr : Cmd, Bool -> Cmd
-	merge_stderr = |cmd, enabled| { ..cmd, merge_stderr_value: enabled }
-
-	## Nonzero exits and signal termination are returned as status data.
-	## Defaults to null stdin and captured stdout/stderr. Successful completion
-	## waits for output EOF; deadlines include draining and tee forwarding.
-	run! : Cmd => Try(RunOutput, RunErr)
-	run! = |cmd| decode_run(Host.cmd_run!(to_host_cmd(cmd)).map_err(|err| IO(err))?)
-
-	## Start a managed child immediately. Default streams are inherited.
-	spawn! : Cmd => Try(Child, IOErr)
-	spawn! = |cmd| Host.cmd_spawn!(to_host_cmd(cmd)).map_ok(|handle| Child.{ host: handle })
 
 	## Add a single argument to the command.
 	## ❗ Shell features like variable substitution (e.g. `$FOO`), glob patterns (e.g. `*.txt`), ... are not available.
@@ -268,29 +121,21 @@ Cmd :: {
 		args: cmd.args.append(a),
 	}
 
-	## Add a dynamic `Str` argument. String literals can be passed directly to [arg].
-	arg_str : Cmd, Str -> Cmd
-	arg_str = |cmd, a| arg(cmd, OsStr.from_str(a))
-
 	## Add multiple arguments to the command.
 	## ❗ Shell features like variable substitution (e.g. `$FOO`), glob patterns (e.g. `*.txt`), ... are not available.
 	##
 	## ```roc
 	## cmd = Cmd.new("ls").args(["-l", "-a"])
 	## ```
+	##
+	## For a `List(Str)` use `cmd.args(names.map(OsStr.from_str))`.
 	args : Cmd, List(OsStr) -> Cmd
 	args = |cmd, new_args| {
 		..cmd,
 		args: cmd.args.concat(new_args),
 	}
 
-	## Add multiple dynamic `Str` arguments. Lists of string literals can be passed
-	## directly to [args].
-	args_str : Cmd, List(Str) -> Cmd
-	args_str = |cmd, new_args| args(cmd, new_args.map(OsStr.from_str))
-
 	## Add a single environment variable to the command.
-	##
 	##
 	## ```roc
 	## cmd = Cmd.new("env").env("FOO", "bar") # add the environment variable "FOO" with value "bar"
@@ -300,11 +145,6 @@ Cmd :: {
 		{ ..cmd, envs: cmd.envs.append((key, value)) }
 	}
 
-	## Add a dynamic `Str` environment variable. String literals can be passed
-	## directly to [env].
-	env_str : Cmd, Str, Str -> Cmd
-	env_str = |cmd, key, value| env(cmd, OsStr.from_str(key), OsStr.from_str(value))
-
 	## Add multiple environment variables to the command.
 	##
 	## ```roc
@@ -312,14 +152,6 @@ Cmd :: {
 	## ```
 	envs : Cmd, List((OsStr, OsStr)) -> Cmd
 	envs = |cmd, pairs| { ..cmd, envs: cmd.envs.concat(pairs) }
-
-	## Add multiple dynamic `Str` environment variables. Lists of literal pairs can
-	## be passed directly to [envs].
-	envs_str : Cmd, List((Str, Str)) -> Cmd
-	envs_str = |cmd, pairs| {
-		arg_pairs = pairs.map(|(key, value)| (OsStr.from_str(key), OsStr.from_str(value)))
-		envs(cmd, arg_pairs)
-	}
 
 	## Clear all environment variables before running the command.
 	## Only environment variables added via `env` or `envs` will be available.
@@ -332,7 +164,167 @@ Cmd :: {
 	##         .env("ONLY_THIS", "visible")
 	## ```
 	clear_envs : Cmd -> Cmd
-	clear_envs = |cmd| { ..cmd, clear_envs: Bool.True }
+	clear_envs = |cmd| { ..cmd, clear_envs: True }
+
+	## Set the child working directory without changing the parent directory.
+	## Use an absolute executable path or a bare PATH name: resolving a relative
+	## executable against cwd is platform-specific.
+	cwd : Cmd, Path -> Cmd
+	cwd = |cmd, path| { ..cmd, cwd_value: Dir(path) }
+
+	## Choose the child's standard input; see [StdinMode].
+	##
+	## When this is not called, [run!] gives the child `Null`, and [exec!],
+	## [capture!] and [spawn!] let it inherit the parent's standard input.
+	stdin : Cmd, StdinMode -> Cmd
+	stdin = |cmd, mode| { ..cmd, stdin_value: Set(mode) }
+
+	## Choose where the child's standard output goes; see [StdoutMode].
+	##
+	## When this is not called, [run!] and [capture!] capture it, and [exec!] and
+	## [spawn!] let it go to the parent's standard output.
+	stdout : Cmd, StdoutMode -> Cmd
+	stdout = |cmd, mode| { ..cmd, stdout_value: Set(mode) }
+
+	## Choose where the child's standard error goes; see [StderrMode].
+	##
+	## When this is not called, [run!] captures it, and [exec!], [capture!] and
+	## [spawn!] let it go to the parent's standard error.
+	stderr : Cmd, StderrMode -> Cmd
+	stderr = |cmd, mode| { ..cmd, stderr_value: Set(mode) }
+
+	## Let the child use the parent's standard input, output and error, however
+	## the command is run. With [run!] this gives the exit status of a command
+	## that prints to the terminal:
+	##
+	## ```roc
+	## status = Cmd.new("roc").args(["check", "main.roc"]).inherit_stdio().run!()?.status
+	## ```
+	inherit_stdio : Cmd -> Cmd
+	inherit_stdio = |cmd| { ..cmd, stdin_value: Set(Inherit), stdout_value: Set(Inherit), stderr_value: Set(Inherit) }
+
+	## Stop the command when it has run for longer than `duration`. The deadline
+	## covers the whole run, including reading the rest of its output.
+	##
+	## A command that reaches its deadline is killed, and the result is
+	## `Err(CmdErr(TimedOut(partial)))` with the output captured so far. That is
+	## also what [Child.wait!] and [Child.poll!] return for a child started with
+	## [spawn!]. When `timeout` is not called there is no deadline;
+	## `Duration.zero` expires immediately.
+	timeout : Cmd, Duration -> Cmd
+	timeout = |cmd, duration| { ..cmd, timeout_value: After(duration) }
+
+	## Limit how many bytes of standard output and standard error are captured,
+	## counted together. The default is `MaxBytes(16777216)`, 16 MiB.
+	##
+	## A command that prints more is killed, and the result is
+	## `Err(CmdErr(OutputLimitExceeded(partial)))` with the output captured up to
+	## the limit. `NoLimit` captures whatever the command prints.
+	output_limit : Cmd, [NoLimit, MaxBytes(U64)] -> Cmd
+	output_limit = |cmd, limit| { ..cmd, output_limit_value: limit }
+
+	## Limit how many bytes of `Pipe` output may wait to be read with
+	## [Child.read!], counted over both streams (default 1 MiB). A child that
+	## gets further ahead of its reader is killed, and [Child.wait!] returns
+	## `Err(CmdErr(OutputLimitExceeded(partial)))`.
+	pending_limit : Cmd, U64 -> Cmd
+	pending_limit = |cmd, bytes| { ..cmd, pending_limit_value: bytes }
+
+	## Also terminate descendants on cancellation, using a Unix process group
+	## or Windows Job Object. Disabled by default; descendants must not escape it.
+	manage_tree : Cmd, Bool -> Cmd
+	manage_tree = |cmd, enabled| { ..cmd, manage_tree_value: enabled }
+
+	# A tag union that crosses the host boundary is closed by design, so the
+	# four entry points below, like the `Child` methods, rebuild the error they
+	# forward from the host. That gives callers an open union, which `?` can
+	# combine with other error types however the function is called.
+	# `tests/cmd-api.roc` covers the function-value form.
+
+	## Run the command on the parent's terminal and require it to succeed.
+	##
+	## Standard input, output and error are inherited unless the command sets
+	## them. Any status other than exit code 0 is `Err(BadExitStatus(output))`.
+	##
+	## ```roc
+	## Cmd.new("cargo").args(["build", "--release"]).exec!()?
+	## ```
+	exec! : Cmd => Try({}, [CmdErr(Err), BadExitStatus(Output)])
+	exec! = |cmd|
+		match finish!(cmd, Exec) {
+			Ok(output) =>
+				match output.require_success() {
+					Ok(_) => Ok({})
+					Err(BadExitStatus(failed)) => Err(BadExitStatus(failed))
+				}
+			Err(CmdErr(err)) => Err(CmdErr(err))
+		}
+
+	## Run the command, require it to succeed, and return its standard output as
+	## text.
+	##
+	## Standard output is captured unless the command sets it. Standard input and
+	## standard error are inherited unless the command sets them, so warnings
+	## still reach the terminal, as with a shell's `$(..)`. Any status other than
+	## exit code 0 is `Err(BadExitStatus(output))`, and output that is not UTF-8
+	## is `Err(BadUtf8(..))`.
+	##
+	## The text is returned as printed, including a final newline:
+	##
+	## ```roc
+	## sha = Cmd.new("git").args(["rev-parse", "${branch}"]).capture!()?.trim()
+	## ```
+	capture! : Cmd => Try(Str, [CmdErr(Err), BadExitStatus(Output), BadUtf8({ problem : Str.Utf8Problem, index : U64 })])
+	capture! = |cmd|
+		match finish!(cmd, Capture) {
+			Ok(output) =>
+				match output.require_success() {
+					Ok(succeeded) =>
+						match succeeded.stdout_utf8() {
+							Ok(text) => Ok(text)
+							Err(BadUtf8(problem)) => Err(BadUtf8(problem))
+						}
+					Err(BadExitStatus(failed)) => Err(BadExitStatus(failed))
+				}
+			Err(CmdErr(err)) => Err(CmdErr(err))
+		}
+
+	## Run the command and return its exit status and output as data. A non-zero
+	## exit code or a signal is not an error here: match on `output.status`, or
+	## call [Output.require_success].
+	##
+	## Standard output and standard error are captured, and standard input is
+	## `Null`, unless the command sets them. The result is returned once the
+	## command has exited and all of its output has been read.
+	##
+	## ```roc
+	## output = Cmd.new("roc").args(["check", "main.roc"]).run!()?
+	## ```
+	run! : Cmd => Try(Output, [CmdErr(Err)])
+	run! = |cmd|
+		match finish!(cmd, Run) {
+			Ok(output) => Ok(output)
+			Err(CmdErr(err)) => Err(CmdErr(err))
+		}
+
+	## Start the command and return a [Child] without waiting for it.
+	##
+	## Standard input, output and error are inherited unless the command sets
+	## them. Set a stream to `Pipe` to exchange data with the child while it runs.
+	spawn! : Cmd => Try(Child, [CmdErr(Err)])
+	spawn! = |cmd|
+		match Host.cmd_spawn!(to_host_cmd(cmd, Spawn)) {
+			Ok(handle) =>
+				Ok(
+					Child.{
+						host: handle,
+						pid_value: Host.child_pid!(handle),
+						command: to_str(cmd),
+						program: cmd.program,
+					},
+				)
+			Err(err) => Err(CmdErr(from_host_err(err, cmd.program)))
+		}
 
 	## Report whether `command` can be found on the system as something runnable.
 	##
@@ -347,8 +339,8 @@ Cmd :: {
 	check_available! = |command| {
 		is_windows =
 			match Env.platform!().os {
-				WINDOWS => Bool.True
-				_ => Bool.False
+				WINDOWS => True
+				_ => False
 			}
 
 		if has_separator(command, is_windows) {
@@ -369,119 +361,316 @@ Cmd :: {
 		}
 	}
 
-	## Render a command configuration as a stable, escaped string.
+	## The program and its arguments, separated by spaces, for messages and logs.
+	## An argument that is empty or contains a space or a quote is written as a
+	## quoted, escaped string. The environment, the working directory and the
+	## other settings are not included.
+	##
+	## ```roc
+	## expect Cmd.new("git").args(["commit", "-m", "first draft"]).to_str() == "git commit -m \"first draft\""
+	## ```
 	to_str : Cmd -> Str
 	to_str = |cmd|
-		"Cmd({ program: ${Str.inspect(cmd.program)}, args: ${Str.inspect(cmd.args)}, envs: ${Str.inspect(cmd.envs)}, clear_envs: ${Str.inspect(cmd.clear_envs)}, cwd: ${Str.inspect(cmd.cwd_value)}, stdin: ${Str.inspect(cmd.stdin_value)}, stdout: ${Str.inspect(cmd.stdout_value)}, stderr: ${Str.inspect(cmd.stderr_value)}, timeout_ms: ${Str.inspect(cmd.timeout_value)}, output_limit: ${Str.inspect(cmd.output_limit_value)}, pending_limit: ${Str.inspect(cmd.pending_limit_value)}, manage_tree: ${Str.inspect(cmd.manage_tree_value)}, merge_stderr: ${Str.inspect(cmd.merge_stderr_value)} })"
+		Str.join_with([cmd.program].concat(cmd.args).map(display_word), " ")
 
-	## The completed child status and captured output. Output is empty for streams
-	## configured as `Inherit` or `Null`.
-	RunOutput : { status : [Exited(I32), Signaled(I32)], stdout_bytes : List(U8), stderr_bytes : List(U8) }
-
-	## Output retained before a timeout or capture limit stopped the command.
-	PartialOutput : { stdout_bytes : List(U8), stderr_bytes : List(U8) }
-
-	## A failure to start or supervise a command, an expired deadline, or a full
-	## capture budget. Nonzero exit codes are represented by `RunOutput.status`.
-	RunErr : [IO(IOErr), Timeout(PartialOutput), OutputLimit(PartialOutput)]
-
-	## A managed child. Final reference release terminates and reaps the process.
-	## Use close! for deterministic cleanup before the last reference is released.
-	Child :: { host : Host.Child }.{
-
-		## Return the operating-system process identifier while the child is open.
-		pid! : Child => Try(U32, IOErr)
-		pid! = |child| Host.child_pid!(child.host)
-
-		## Closes piped stdin before waiting; call read!/write! for an interactive exchange first.
-		wait! : Child => Try(RunOutput, RunErr)
-		wait! = |child| decode_run(Host.child_wait!(child.host).map_err(|err| IO(err))?)
-
-		## Returns [] while running, or one result after exit and output draining.
-		try_wait! : Child => Try(List(RunOutput), RunErr)
-		try_wait! = |child| {
-			values = Host.child_try_wait!(child.host).map_err(|err| IO(err))?
-			match values {
-				[] => Ok([])
-				[value, ..] => Ok([decode_run(value)?])
-			}
-		}
-
-		## Request forced termination. Use wait! to observe termination and reaping.
-		kill! : Child => Try({}, IOErr)
-		kill! = |child| Host.child_kill!(child.host)
-
-		## Terminate and reap, invalidating every alias. Repeated close! succeeds.
-		close! : Child => Try({}, IOErr)
-		close! = |child| Host.child_close!(child.host)
-
-		## Close piped stdin so the child observes EOF. Repeated closes succeed.
-		close_stdin! : Child => Try({}, IOErr)
-		close_stdin! = |child| Host.child_close_stdin!(child.host)
-
-		## Write piped stdin within timeout milliseconds. A timed-out write may
-		## have delivered a prefix; retrying the whole input can duplicate bytes.
-		write! : Child, List(U8), U64 => Try({}, IOErr)
-		write! = |child, bytes, timeout| Host.child_write!(child.host, bytes, timeout)
-
-		## Returns one stream chunk, or End after all output drains. Timeout is an IO error.
-		read! : Child, U64, U64 => Try([Stdout(List(U8)), Stderr(List(U8)), End], IOErr)
-		read! = |child, max_bytes, timeout| {
-			event = Host.child_read!(child.host, max_bytes, timeout)?
-			Ok(
-				match event.stream {
-					1 => Stdout(event.bytes)
-					2 => Stderr(event.bytes)
-					_ => End
-				},
-			)
-		}
-	}
-
-	## Customize command output for `Str.inspect`.
+	## Customize command output for `Str.inspect`: the full configuration, with
+	## the names of the environment variables it sets but never their values, and
+	## the length of `Bytes` input but not its content.
 	to_inspect : Cmd -> Str
-	to_inspect = |cmd| to_str(cmd)
-}
+	to_inspect = |cmd| {
+		env_names = cmd.envs.map(|(name, _)| name)
+		stdin_text =
+			match cmd.stdin_value {
+				Set(Bytes(bytes)) => "Set(Bytes(<${bytes.len().to_str()} bytes>))"
+				other => Str.inspect(other)
+			}
 
-flatten_arg_pairs : List((OsStr, OsStr)), List(OsStr), U64 -> List(OsStr)
-flatten_arg_pairs = |pairs, acc, idx| {
-	if idx >= pairs.len() {
-		acc
-	} else {
-		match pairs.get(idx) {
-			Ok(pair) =>
-				flatten_arg_pairs(pairs, acc.append(pair.0).append(pair.1), idx + 1)
-			Err(_) =>
-				acc
-		}
+		"Cmd({ program: ${Str.inspect(cmd.program)}, args: ${Str.inspect(cmd.args)}, env_names: ${Str.inspect(env_names)}, clear_envs: ${Str.inspect(cmd.clear_envs)}, cwd: ${Str.inspect(cmd.cwd_value)}, stdin: ${stdin_text}, stdout: ${Str.inspect(cmd.stdout_value)}, stderr: ${Str.inspect(cmd.stderr_value)}, timeout: ${Str.inspect(cmd.timeout_value)}, output_limit: ${Str.inspect(cmd.output_limit_value)}, pending_limit: ${Str.inspect(cmd.pending_limit_value)}, manage_tree: ${Str.inspect(cmd.manage_tree_value)} })"
+	}
+
+	## Why a command could not be started or did not run to completion. A
+	## non-zero exit code is not one of these: it is `BadExitStatus`, or the
+	## `status` of an [Output].
+	##
+	## - `StartFailed(err, program)`: the program could not be started, for
+	##   example `StartFailed(NotFound, program)` when it does not exist.
+	## - `TimedOut(partial)`: the command reached the deadline set with
+	##   [timeout] and was killed.
+	## - `OutputLimitExceeded(partial)`: the command printed more than
+	##   [output_limit] or [pending_limit] allows and was killed.
+	## - `IOErr(err)`: an operating-system failure while the command ran. A
+	##   [Child.read!] or [Child.write_bytes!] that waited for its whole
+	##   `Duration` is `IOErr(TimedOut)`.
+	Err := [StartFailed(IOErr, OsStr), TimedOut(PartialOutput), OutputLimitExceeded(PartialOutput), IOErr(IOErr)].{
+
+		## Compare two errors, so results that contain one work with `==`.
+		is_eq : _
+
+		## Describe the error in a sentence, without the captured output.
+		to_str : Err -> Str
+		to_str = |err|
+			match err {
+				StartFailed(io_err, program) => "could not start ${display_word(program)}: ${io_err.to_str()}"
+				TimedOut(_) => "command timed out"
+				OutputLimitExceeded(_) => "command exceeded its output limit"
+				IOErr(io_err) => io_err.to_str()
+			}
+
+		## Customize error output for `Str.inspect`. Captured output is shown as
+		## text, with invalid UTF-8 replaced, not as a list of bytes.
+		to_inspect : Err -> Str
+		to_inspect = |err|
+			match err {
+				StartFailed(io_err, program) => "StartFailed(${Str.inspect(io_err)}, ${Str.inspect(program)})"
+				TimedOut(partial) => "TimedOut(${inspect_partial(partial)})"
+				OutputLimitExceeded(partial) => "OutputLimitExceeded(${inspect_partial(partial)})"
+				IOErr(io_err) => "IOErr(${Str.inspect(io_err)})"
+			}
+	}
+
+	## The result of a command that ran to completion: how it ended and what it
+	## printed. `command` is the program and arguments, as [to_str] renders them.
+	## Output is empty for a stream that was not captured.
+	Output := { command : Str, status : ExitStatus, stdout_bytes : List(U8), stderr_bytes : List(U8) }.{
+
+		## Compare two outputs, so results that contain one work with `==`.
+		is_eq : _
+
+		## Turn any status other than exit code 0 into `Err(BadExitStatus(output))`.
+		##
+		## ```roc
+		## bytes = cmd.run!()?.require_success()?.stdout_bytes
+		## ```
+		require_success : Output -> Try(Output, [BadExitStatus(Output)])
+		require_success = |output|
+			match output.status {
+				Exited(0) => Ok(output)
+				_ => Err(BadExitStatus(output))
+			}
+
+		## The captured standard output as text, or `BadUtf8` when it is not
+		## valid UTF-8.
+		stdout_utf8 : Output -> Try(Str, [BadUtf8({ problem : Str.Utf8Problem, index : U64 })])
+		stdout_utf8 = |output|
+			# The builtin's one-tag error is rebuilt, so it keeps its tag when
+			# `?` widens it beside other errors.
+			match Str.from_utf8(output.stdout_bytes) {
+				Ok(text) => Ok(text)
+				Err(BadUtf8(problem)) => Err(BadUtf8(problem))
+			}
+
+		## The captured standard output as text, with invalid UTF-8 replaced by
+		## the Unicode replacement character.
+		stdout_utf8_lossy : Output -> Str
+		stdout_utf8_lossy = |output| Str.from_utf8_lossy(output.stdout_bytes)
+
+		## The captured standard error as text, with invalid UTF-8 replaced by
+		## the Unicode replacement character.
+		stderr_utf8_lossy : Output -> Str
+		stderr_utf8_lossy = |output| Str.from_utf8_lossy(output.stderr_bytes)
+
+		## Customize output for `Str.inspect`. Captured output is shown as text,
+		## with invalid UTF-8 replaced, not as a list of bytes.
+		to_inspect : Output -> Str
+		to_inspect = |output|
+			"{ command: ${Str.inspect(output.command)}, status: ${Str.inspect(output.status)}, stdout: ${Str.inspect(Str.from_utf8_lossy(output.stdout_bytes))}, stderr: ${Str.inspect(Str.from_utf8_lossy(output.stderr_bytes))} }"
+	}
+
+	## A running command started with [spawn!].
+	##
+	## When the last reference to a child is released, a child that is still
+	## running is killed and reaped. Use [Child.close!] to do that at a chosen
+	## point. After `close!` every other operation returns `Err(Closed)`.
+	Child :: { host : Resource.Child, pid_value : U32, command : Str, program : OsStr }.{
+
+		# A tag union that crosses the host boundary is closed by design, so
+		# every method below rebuilds the error it forwards from the host. That
+		# gives callers an open union, which `?` can combine with other error
+		# types however the method is called.
+
+		## The operating-system process identifier the child was started with.
+		pid : Child -> U32
+		pid = |child| child.pid_value
+
+		## Wait for the child to exit and for all of its output to be read, then
+		## return its status and captured output. A piped standard input is
+		## closed first, so exchange data with [write_bytes!] and [read!] before
+		## waiting. Waiting again returns the same result.
+		wait! : Child => Try(Output, [CmdErr(Cmd.Err), Closed])
+		wait! = |child|
+			match Host.child_wait!(child.host) {
+				Ok(output) => Ok(from_host_output(output, child.command))
+				Err(Closed) => Err(Closed)
+				Err(CmdErr(err)) => Err(CmdErr(from_host_err(err, child.program)))
+			}
+
+		## Check on the child without waiting: `Running`, or `Finished(output)`
+		## once it has exited and all of its output has been read.
+		poll! : Child => Try([Running, Finished(Output)], [CmdErr(Cmd.Err), Closed])
+		poll! = |child|
+			match Host.child_poll!(child.host) {
+				Ok(Running) => Ok(Running)
+				Ok(Finished(output)) => Ok(Finished(from_host_output(output, child.command)))
+				Err(Closed) => Err(Closed)
+				Err(CmdErr(err)) => Err(CmdErr(from_host_err(err, child.program)))
+			}
+
+		## Ask the operating system to kill the child. This does not wait: use
+		## [wait!] to see it end. Killing a child that has exited does nothing.
+		kill! : Child => Try({}, [CmdErr(Cmd.Err), Closed])
+		kill! = |child|
+			match Host.child_kill!(child.host) {
+				Ok({}) => Ok({})
+				Err(Closed) => Err(Closed)
+				Err(CmdErr(err)) => Err(CmdErr(from_host_err(err, child.program)))
+			}
+
+		## Close a piped standard input so the child sees the end of its input.
+		## Closing it again does nothing.
+		close_stdin! : Child => Try({}, [CmdErr(Cmd.Err), Closed])
+		close_stdin! = |child|
+			match Host.child_close_stdin!(child.host) {
+				Ok({}) => Ok({})
+				Err(Closed) => Err(Closed)
+				Err(CmdErr(err)) => Err(CmdErr(from_host_err(err, child.program)))
+			}
+
+		## Kill a child that is still running, reap it, and close the handle for
+		## every reference to it. Closing again does nothing.
+		close! : Child => Try({}, [CmdErr(Cmd.Err)])
+		close! = |child|
+			match Host.child_close!(child.host) {
+				Ok({}) => Ok({})
+				Err(err) => Err(CmdErr(from_host_err(err, child.program)))
+			}
+
+		## Return the next chunk of `Pipe` output, from whichever stream has
+		## one, waiting up to `wait` for it. The host picks the chunk size.
+		##
+		## `Duration.zero` does not wait: it returns a chunk that is ready, and
+		## otherwise times out. A wait that expires is
+		## `Err(CmdErr(IOErr(TimedOut)))`; the child keeps running and may be
+		## read again. Once the child has exited and every chunk has been
+		## returned, the result is `Err(EndOfInput)`.
+		##
+		## ```roc
+		## chunk = child.read!(Duration.seconds(1))?
+		## ```
+		read! : Child, Duration => Try([Stdout(List(U8)), Stderr(List(U8))], [EndOfInput, CmdErr(Cmd.Err), Closed])
+		read! = |child, wait|
+			match Host.child_read!(child.host, wait.to_nanos()) {
+				Ok(Stdout(bytes)) => Ok(Stdout(bytes))
+				Ok(Stderr(bytes)) => Ok(Stderr(bytes))
+				Err(EndOfInput) => Err(EndOfInput)
+				Err(Closed) => Err(Closed)
+				Err(CmdErr(err)) => Err(CmdErr(from_host_err(err, child.program)))
+			}
+
+		## Write bytes to a piped standard input, waiting up to `wait` for the
+		## child to accept all of them. `Duration.zero` makes one attempt that
+		## does not wait.
+		##
+		## A wait that expires is `Err(CmdErr(IOErr(TimedOut)))`. Part of the
+		## input may have been delivered by then, so writing all of it again can
+		## duplicate bytes. Writing when standard input is not a pipe, or after
+		## [close_stdin!], is `Err(CmdErr(IOErr(BrokenPipe)))`.
+		write_bytes! : Child, List(U8), Duration => Try({}, [CmdErr(Cmd.Err), Closed])
+		write_bytes! = |child, bytes, wait|
+			match Host.child_write!(child.host, bytes, wait.to_nanos()) {
+				Ok({}) => Ok({})
+				Err(Closed) => Err(Closed)
+				Err(CmdErr(err)) => Err(CmdErr(from_host_err(err, child.program)))
+			}
+
+		## Write text to a piped standard input as UTF-8; see [write_bytes!].
+		write_utf8! : Child, Str, Duration => Try({}, [CmdErr(Cmd.Err), Closed])
+		write_utf8! = |child, text, wait| write_bytes!(child, text.to_utf8(), wait)
 	}
 }
 
-to_host_cmd : Cmd -> Host.Cmd
-to_host_cmd = |cmd| {
+## Run a command to completion with the stream defaults of one entry point.
+finish! : Cmd, [Run, Exec, Capture, Spawn] => Try(Cmd.Output, [CmdErr(Cmd.Err)])
+finish! = |cmd, entry|
+	match Host.cmd_run!(to_host_cmd(cmd, entry)) {
+		Ok(output) => Ok(from_host_output(output, Cmd.to_str(cmd)))
+		Err(err) => Err(CmdErr(from_host_err(err, cmd.program)))
+	}
+
+from_host_output : Host.CmdOutput, Str -> Cmd.Output
+from_host_output = |output, command| {
+	command,
+	status: output.status,
+	stdout_bytes: output.stdout_bytes,
+	stderr_bytes: output.stderr_bytes,
+}
+
+## The host does not know which program a `Cmd` names, so it is added here.
+from_host_err : Host.CmdErr, OsStr -> Cmd.Err
+from_host_err = |err, program|
+	match err {
+		StartFailed(io_err) => StartFailed(io_err, program)
+		TimedOut(partial) => TimedOut(partial)
+		OutputLimitExceeded(partial) => OutputLimitExceeded(partial)
+		IOErr(io_err) => IOErr(io_err)
+	}
+
+## Captured output as text, so an unhandled error is readable.
+inspect_partial : Cmd.PartialOutput -> Str
+inspect_partial = |partial|
+	"{ stdout: ${Str.inspect(Str.from_utf8_lossy(partial.stdout_bytes))}, stderr: ${Str.inspect(Str.from_utf8_lossy(partial.stderr_bytes))} }"
+
+## A program or argument as one word of a command line: as it is when that is
+## unambiguous, otherwise quoted and escaped.
+display_word : OsStr -> Str
+display_word = |word| {
+	text = OsStr.display(word)
+	if text.is_empty() or text.contains(" ") or text.contains("\"") or text.contains("\n") or text.contains("\t") {
+		Str.inspect(text)
+	} else {
+		text
+	}
+}
+
+## Resolve the streams a command did not set, and `Pipe` where no `Child` is
+## returned, for the entry point that runs it. The host is given final modes.
+to_host_cmd : Cmd, [Run, Exec, Capture, Spawn] -> Host.Cmd
+to_host_cmd = |cmd, entry| {
 	args: cmd.args.map(OsStr.to_raw),
 	clear_envs: cmd.clear_envs,
-	envs: flatten_arg_pairs(cmd.envs, [], 0).map(OsStr.to_raw),
+	envs: cmd.envs.join_map(|(name, value)| [name, value]).map(OsStr.to_raw),
 	program: OsStr.to_raw(cmd.program),
-	cwd: cmd.cwd_value.map(Path.to_raw),
-	stdin_mode: match cmd.stdin_value {
-		Default => 0
-		Inherit => 1
-		Null => 2
-		Bytes(_) => 3
-		Pipe => 4
+	cwd: match cmd.cwd_value {
+		Inherit => Inherit
+		Dir(path) => Dir(Path.to_raw(path))
 	},
-	stdout_mode: output_mode(cmd.stdout_value),
-	stderr_mode: output_mode(cmd.stderr_value),
-	stdin_bytes: match cmd.stdin_value {
-		Bytes(bytes) => bytes
-		_ => []
+	stdin: match (cmd.stdin_value, entry) {
+		(Unset, Run) => Null
+		(Unset, _) => Inherit
+		(Set(Pipe), Spawn) => Pipe
+		(Set(Pipe), _) => Null
+		(Set(mode), _) => mode
 	},
-	timeout_ms: cmd.timeout_value,
+	stdout: match (cmd.stdout_value, entry) {
+		(Unset, Run) | (Unset, Capture) => Capture
+		(Unset, _) => Inherit
+		(Set(Pipe), Spawn) => Pipe
+		(Set(Pipe), _) => Capture
+		(Set(mode), _) => mode
+	},
+	stderr: match (cmd.stderr_value, entry) {
+		(Unset, Run) => Capture
+		(Unset, _) => Inherit
+		(Set(Pipe), Spawn) => Pipe
+		(Set(Pipe), _) => Capture
+		(Set(mode), _) => mode
+	},
+	timeout: match cmd.timeout_value {
+		NoTimeout => NoTimeout
+		After(duration) => AfterNanos(duration.to_nanos())
+	},
 	output_limit: cmd.output_limit_value,
 	pending_limit: cmd.pending_limit_value,
 	manage_tree: cmd.manage_tree_value,
-	merge_stderr: cmd.merge_stderr_value,
 }
 
 ## A command name is a path, rather than a bare name, when it carries a separator.
@@ -500,26 +689,14 @@ path_dirs = |path_value, is_windows|
 				.map(Path.utf8)
 
 		UnixBytes(bytes) =>
-			split_on(bytes, if is_windows ';' else ':')
+			bytes.split_on(if is_windows ';' else ':')
 				.keep_if(|segment| !List.is_empty(segment))
 				.map(Path.unix_bytes)
 
 		WindowsU16s(u16s) =>
-			split_on(u16s, if is_windows ';' else ':')
+			u16s.split_on(if is_windows ';' else ':')
 				.keep_if(|segment| !List.is_empty(segment))
 				.map(Path.windows_u16s)
-	}
-
-## Split a list into segments on a separator element (segments may be empty).
-split_on : List(a), a -> List(List(a)) where [a.is_eq : a, a -> Bool]
-split_on = |items, sep| split_on_help(items, sep, [], [])
-
-split_on_help : List(a), a, List(a), List(List(a)) -> List(List(a)) where [a.is_eq : a, a -> Bool]
-split_on_help = |remaining, sep, current, acc|
-	match remaining {
-		[] => acc.append(current)
-		[x, .. as rest] if x == sep => split_on_help(rest, sep, [], acc.append(current))
-		[x, .. as rest] => split_on_help(rest, sep, current.append(x), acc)
 	}
 
 ## The executable extensions to try on Windows, taken from `%PATHEXT%`.
@@ -536,10 +713,10 @@ path_extensions! = ||
 search_dirs! : List(Path), Str, List(Str), Bool => Bool
 search_dirs! = |dirs, command, extensions, is_windows|
 	match dirs {
-		[] => Bool.False
+		[] => False
 		[dir, .. as rest] =>
 			if search_extensions!(dir, command, extensions, is_windows) {
-				Bool.True
+				True
 			} else {
 				search_dirs!(rest, command, extensions, is_windows)
 			}
@@ -548,10 +725,10 @@ search_dirs! = |dirs, command, extensions, is_windows|
 search_extensions! : Path, Str, List(Str), Bool => Bool
 search_extensions! = |dir, command, extensions, is_windows|
 	match extensions {
-		[] => Bool.False
+		[] => False
 		[ext, .. as rest] =>
 			if candidate_available!(dir.join(command.concat(ext)), is_windows) {
-				Bool.True
+				True
 			} else {
 				search_extensions!(dir, command, rest, is_windows)
 			}
@@ -564,9 +741,9 @@ candidate_available! : Path, Bool => Bool
 candidate_available! = |candidate, is_windows| {
 	runnable = if is_windows Path.exists!(candidate) else Path.is_executable!(candidate)
 	match runnable {
-		Ok(Bool.True) => not_directory!(candidate)
-		Ok(Bool.False) => Bool.False
-		Err(_) => Bool.False
+		Ok(True) => not_directory!(candidate)
+		Ok(False) => False
+		Err(_) => False
 	}
 }
 
@@ -576,64 +753,193 @@ not_directory! : Path => Bool
 not_directory! = |candidate|
 	match Path.is_dir!(candidate) {
 		Ok(is_dir) => !is_dir
-		Err(_) => Bool.True
+		Err(_) => True
 	}
 
-## Inspection is escaped and includes the full immutable command configuration.
+## `to_str` is the program and its arguments, quoted only where needed.
+expect Cmd.new("git").args(["rev-parse", "HEAD"]).to_str() == "git rev-parse HEAD"
+expect Cmd.new("git").args(["commit", "-m", "first draft", ""]).to_str() == "git commit -m \"first draft\" \"\""
+
+## Neither rendering contains the value of an environment variable, or the
+## bytes given as standard input.
 expect {
-	cmd = Cmd.new_str("echo\nnext")
-		.arg_str("hello world")
-		.env_str("NAME", "Roc")
+	cmd = Cmd.new("deploy")
+		.arg("now")
+		.env("API_TOKEN", "hunter2")
+		.envs([("REGION", "eu-west-1")])
+		.stdin(Bytes("hunter2".to_utf8()))
 		.clear_envs()
 
-	Str.inspect(cmd) == "Cmd({ program: OsStr.utf8(\"echo\\nnext\"), args: [OsStr.utf8(\"hello world\")], envs: [(OsStr.utf8(\"NAME\"), OsStr.utf8(\"Roc\"))], clear_envs: True, cwd: [], stdin: Default, stdout: Default, stderr: Default, timeout_ms: 0, output_limit: 16777216, pending_limit: 1048576, manage_tree: False, merge_stderr: False })"
+	Str.inspect(cmd) == "Cmd({ program: OsStr.utf8(\"deploy\"), args: [OsStr.utf8(\"now\")], env_names: [OsStr.utf8(\"API_TOKEN\"), OsStr.utf8(\"REGION\")], clear_envs: True, cwd: Inherit, stdin: Set(Bytes(<7 bytes>)), stdout: Unset, stderr: Unset, timeout: NoTimeout, output_limit: MaxBytes(16777216), pending_limit: 1048576, manage_tree: False })"
+}
+expect {
+	cmd = Cmd.new("deploy").env("API_TOKEN", "hunter2")
+	!Str.inspect(cmd).contains("hunter2") and !cmd.to_str().contains("hunter2")
+}
+
+## A builder call replaces the earlier setting of the same stream.
+expect {
+	cmd = Cmd.new("tool").stdout(Null).inherit_stdio().stderr(MergeWithStdout).timeout(Duration.seconds(5)).output_limit(NoLimit)
+	Str.inspect(cmd).contains("stdin: Set(Inherit), stdout: Set(Inherit), stderr: Set(MergeWithStdout), timeout: After(Duration(5s)), output_limit: NoLimit")
+}
+
+## Streams a command did not set follow the entry point that runs it.
+expect {
+	host = to_host_cmd(Cmd.new("tool"), Run)
+	host.stdin == Null and host.stdout == Capture and host.stderr == Capture
+}
+expect {
+	host = to_host_cmd(Cmd.new("tool"), Exec)
+	host.stdin == Inherit and host.stdout == Inherit and host.stderr == Inherit
+}
+expect {
+	host = to_host_cmd(Cmd.new("tool"), Capture)
+	host.stdin == Inherit and host.stdout == Capture and host.stderr == Inherit
+}
+expect {
+	host = to_host_cmd(Cmd.new("tool"), Spawn)
+	host.stdin == Inherit and host.stdout == Inherit and host.stderr == Inherit
+}
+
+## `Pipe` needs a `Child`: only `spawn!` passes it on.
+expect {
+	cmd = Cmd.new("tool").stdin(Pipe).stdout(Pipe).stderr(Pipe)
+	spawned = to_host_cmd(cmd, Spawn)
+	ran = to_host_cmd(cmd, Run)
+	executed = to_host_cmd(cmd, Exec)
+	spawned.stdin == Pipe and spawned.stdout == Pipe and spawned.stderr == Pipe and ran.stdin == Null and ran.stdout == Capture and ran.stderr == Capture and executed.stdin == Null and executed.stdout == Capture and executed.stderr == Capture
+}
+
+## A stream that was set is passed on as it is.
+expect {
+	host = to_host_cmd(Cmd.new("tool").stdin(Bytes([1, 2])).stdout(Tee).stderr(MergeWithStdout), Run)
+	host.stdin == Bytes([1, 2]) and host.stdout == Tee and host.stderr == MergeWithStdout
+}
+
+## The deadline and the limits cross as typed values, and zero is a deadline.
+expect {
+	host = to_host_cmd(Cmd.new("tool"), Run)
+	host.timeout == NoTimeout and host.output_limit == MaxBytes(16777216) and host.cwd == Inherit
+}
+expect {
+	host = to_host_cmd(Cmd.new("tool").timeout(Duration.zero).output_limit(NoLimit).cwd(Path.utf8("/tmp")), Run)
+	host.timeout == AfterNanos(0) and host.output_limit == NoLimit and host.cwd == Dir(Utf8("/tmp"))
+}
+
+## Only exit code 0 is success.
+expect {
+	output : Cmd.Output
+	output = { command: "true", status: Exited(0), stdout_bytes: [], stderr_bytes: [] }
+	output.require_success() == Ok(output)
+}
+expect {
+	output : Cmd.Output
+	output = { command: "false", status: Exited(1), stdout_bytes: [], stderr_bytes: [] }
+	output.require_success() == Err(BadExitStatus(output))
+}
+expect {
+	output : Cmd.Output
+	output = { command: "sleep 30", status: Signaled(9), stdout_bytes: [], stderr_bytes: [] }
+	output.require_success() == Err(BadExitStatus(output))
+}
+
+## Output is text when it is UTF-8, and lossy text on request.
+expect {
+	output : Cmd.Output
+	output = { command: "echo Hi", status: Exited(0), stdout_bytes: [72, 105, 10], stderr_bytes: [255] }
+	output.stdout_utf8() == Ok("Hi\n") and output.stdout_utf8_lossy() == "Hi\n" and output.stderr_utf8_lossy() == "\u(FFFD)"
+}
+expect {
+	output : Cmd.Output
+	output = { command: "tool", status: Exited(0), stdout_bytes: [72, 255], stderr_bytes: [] }
+	match output.stdout_utf8() {
+		Err(BadUtf8({ index, .. })) => index == 1
+		Ok(_) => False
+	}
+}
+
+## An output prints its bytes as text.
+expect {
+	output : Cmd.Output
+	output = { command: "echo Hi", status: Exited(0), stdout_bytes: [72, 105, 10], stderr_bytes: [] }
+	Str.inspect(output) == "{ command: \"echo Hi\", status: Exited(0), stdout: \"Hi\n\", stderr: \"\" }"
+}
+
+## An unhandled error prints captured output as text.
+expect {
+	result : Try({}, [CmdErr(Cmd.Err)])
+	result = Err(CmdErr(TimedOut({ stdout_bytes: [72, 105, 10], stderr_bytes: [] })))
+	Str.inspect(result) == "Err(CmdErr(TimedOut({ stdout: \"Hi\n\", stderr: \"\" })))"
+}
+expect {
+	err : Cmd.Err
+	err = OutputLimitExceeded({ stdout_bytes: [97, 255], stderr_bytes: [98] })
+	Str.inspect(err) == "OutputLimitExceeded({ stdout: \"a\u(FFFD)\", stderr: \"b\" })"
+}
+expect {
+	err : Cmd.Err
+	err = StartFailed(NotFound, "no-such-tool")
+	Str.inspect(err) == "StartFailed(NotFound, OsStr.utf8(\"no-such-tool\"))" and err.to_str() == "could not start no-such-tool: entity was not found"
+}
+expect {
+	err : Cmd.Err
+	err = IOErr(TimedOut)
+	Str.inspect(err) == "IOErr(TimedOut)" and err.to_str() == "operation timed out"
+}
+expect {
+	timed_out : Cmd.Err
+	timed_out = TimedOut({ stdout_bytes: [], stderr_bytes: [] })
+	limited : Cmd.Err
+	limited = OutputLimitExceeded({ stdout_bytes: [], stderr_bytes: [] })
+	timed_out.to_str() == "command timed out" and limited.to_str() == "command exceeded its output limit"
+}
+
+## Errors and outputs compare by content.
+expect {
+	left : Try(Cmd.Output, [CmdErr(Cmd.Err)])
+	left = Err(CmdErr(StartFailed(NotFound, "tool")))
+	left == Err(CmdErr(StartFailed(NotFound, "tool"))) and left != Err(CmdErr(StartFailed(PermissionDenied, "tool"))) and left != Err(CmdErr(IOErr(NotFound)))
+}
+expect {
+	left : Cmd.Err
+	left = TimedOut({ stdout_bytes: [1], stderr_bytes: [] })
+	right : Cmd.Err
+	right = TimedOut({ stdout_bytes: [2], stderr_bytes: [] })
+	left != right
+}
+expect {
+	left : Cmd.Output
+	left = { command: "a", status: Exited(0), stdout_bytes: [1], stderr_bytes: [] }
+	right : Cmd.Output
+	right = { command: "a", status: Exited(1), stdout_bytes: [1], stderr_bytes: [] }
+	left != right and left == left
 }
 
 ## A name is a path only when it carries a separator for the current platform.
-expect has_separator("git", Bool.False) == Bool.False
-expect has_separator("./git", Bool.False) == Bool.True
-expect has_separator("a\\b", Bool.False) == Bool.False
-expect has_separator("a\\b", Bool.True) == Bool.True
+expect has_separator("git", False) == False
+expect has_separator("./git", False) == True
+expect has_separator("a\\b", False) == False
+expect has_separator("a\\b", True) == True
 
 ## Splitting keeps every segment, including a trailing empty one after a separator.
-expect split_on([1.U8, 2, 58, 3], 58) == [[1, 2], [3]]
-expect split_on([59.U16, 1, 59], 59) == [[], [1], []]
+expect [1.U8, 2, 58, 3].split_on(58) == [[1, 2], [3]]
+expect [59.U16, 1, 59].split_on(59) == [[], [1], []]
 
 ## PATH splitting preserves raw bytes, including non-UTF-8 directory entries.
 expect {
 	# "/a" ++ ":" ++ "/<0xFF>b" — the 0xFF byte is not valid UTF-8.
 	path = OsStr.unix_bytes([0x2F, 0x61, 0x3A, 0x2F, 0xFF, 0x62])
-	path_dirs(path, Bool.False) == [Path.unix_bytes([0x2F, 0x61]), Path.unix_bytes([0x2F, 0xFF, 0x62])]
+	path_dirs(path, False) == [Path.unix_bytes([0x2F, 0x61]), Path.unix_bytes([0x2F, 0xFF, 0x62])]
 }
 
 ## The UTF-8 PATH representation splits the same way.
-expect path_dirs(OsStr.utf8("/a:/b"), Bool.False) == [Path.utf8("/a"), Path.utf8("/b")]
+expect path_dirs(OsStr.utf8("/a:/b"), False) == [Path.utf8("/a"), Path.utf8("/b")]
 
 ## Empty PATH entries (a stray or trailing separator) are dropped, not resolved to root.
-expect path_dirs(OsStr.utf8("/a::/b:"), Bool.False) == [Path.utf8("/a"), Path.utf8("/b")]
+expect path_dirs(OsStr.utf8("/a::/b:"), False) == [Path.utf8("/a"), Path.utf8("/b")]
 
 ## Windows PATH splits on ';' and preserves UTF-16 units.
 expect {
 	path = OsStr.windows_u16s([0x43, 0x3B, 0x44])
-	path_dirs(path, Bool.True) == [Path.windows_u16s([0x43]), Path.windows_u16s([0x44])]
-}
-
-output_mode : [Default, Inherit, Null, Capture, Pipe, Tee] -> U8
-output_mode = |mode| match mode {
-	Default => 0
-	Inherit => 1
-	Null => 2
-	Capture => 3
-	Pipe => 4
-	Tee => 5
-}
-
-decode_run : Host.CmdRunResult -> Try(Cmd.RunOutput, Cmd.RunErr)
-decode_run = |value| {
-	partial = { stdout_bytes: value.stdout_bytes, stderr_bytes: value.stderr_bytes }
-	match value.failure {
-		1 => Err(Timeout(partial))
-		2 => Err(OutputLimit(partial))
-		_ => Ok({ stdout_bytes: partial.stdout_bytes, stderr_bytes: partial.stderr_bytes, status: if value.signal == 0 Exited(value.exit_code) else Signaled(value.signal) })
-	}
+	path_dirs(path, True) == [Path.windows_u16s([0x43]), Path.windows_u16s([0x44])]
 }

@@ -14,7 +14,7 @@ report! = |name| {
 main! : List(OsStr) => Try({}, _)
 main! = |_args| {
 	# A command found on the PATH.
-	report!("sh")?
+	report!("git")?
 
 	# A name that is not installed.
 	report!("definitely-not-a-real-command-xyz")?

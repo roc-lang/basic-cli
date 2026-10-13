@@ -111,7 +111,7 @@ Url :: {
 	## IPv6 brackets are omitted; to_str includes them where required.
 	host : Url -> Str
 	host = |url|
-		if starts_with(url.host, "[") {
+		if url.host.starts_with("[") {
 			trim_brackets(url.host)
 		} else {
 			url.host
@@ -170,7 +170,7 @@ Url :: {
 				url.path
 			} else if url.path == "/" {
 				Str.concat("/", suffix)
-			} else if ends_with(url.path, "/") {
+			} else if url.path.ends_with("/") {
 				Str.concat(url.path, suffix)
 			} else {
 				Str.concat(Str.concat(url.path, "/"), suffix)
@@ -220,9 +220,9 @@ Url :: {
 			Some(query_str) =>
 				Str.split_on(query_str, "&").map(
 					|pair|
-						match split_first(pair, "=") {
-							Found({ before, after }) => (form_decode(before), form_decode(after))
-							NotFound => (form_decode(pair), "")
+						match pair.split_first("=") {
+							Ok({ before, after }) => (form_decode(before), form_decode(after))
+							Err(NotFound) => (form_decode(pair), "")
 						},
 				)
 		}
@@ -286,9 +286,9 @@ Url :: {
 parse_absolute : Str -> Try(Url, Url.ParseErr)
 parse_absolute = |input| {
 	scheme_parts =
-		match split_first(input, "://") {
-			Found(parts) => Ok(parts)
-			NotFound =>
+		match input.split_first("://") {
+			Ok(parts) => Ok(parts)
+			Err(NotFound) =>
 				if Str.contains(input, ":") {
 					Err(MissingAuthority)
 				} else {
@@ -296,7 +296,7 @@ parse_absolute = |input| {
 				}
 		}?
 	scheme =
-		match ascii_lower(scheme_parts.before) {
+		match scheme_parts.before.with_ascii_lowercased() {
 			"http" => Ok(Http)
 			"https" => Ok(Https)
 			other => Err(UnsupportedScheme(other))
@@ -324,17 +324,17 @@ parse_absolute = |input| {
 
 parse_authority : Str, [Http, Https] -> Try({ host : Str, port : [None, Some(U16)] }, Url.ParseErr)
 parse_authority = |authority, scheme| {
-	if starts_with(authority, "[") {
-		match split_first(authority, "]") {
-			NotFound => Err(InvalidIpv6(authority))
-			Found({ before, after }) => {
-				raw_ipv6 = drop_prefix(before, "[")
+	if authority.starts_with("[") {
+		match authority.split_first("]") {
+			Err(NotFound) => Err(InvalidIpv6(authority))
+			Ok({ before, after }) => {
+				raw_ipv6 = before.drop_prefix("[")
 				host = validate_ipv6(raw_ipv6)?
 				port =
 					if Str.is_empty(after) {
 						Ok(None)
-					} else if starts_with(after, ":") {
-						parse_port(drop_prefix(after, ":"), scheme)
+					} else if after.starts_with(":") {
+						parse_port(after.drop_prefix(":"), scheme)
 					} else {
 						Err(InvalidIpv6(authority))
 					}
@@ -343,9 +343,9 @@ parse_authority = |authority, scheme| {
 		}
 	} else {
 		{ raw_host, raw_port } =
-			match split_last(authority, ":") {
-				Found({ before, after }) => { raw_host: before, raw_port: Some(after) }
-				NotFound => { raw_host: authority, raw_port: None }
+			match authority.split_last(":") {
+				Ok({ before, after }) => { raw_host: before, raw_port: Some(after) }
+				Err(NotFound) => { raw_host: authority, raw_port: None }
 			}
 		host = validate_host(raw_host)?
 		port =
@@ -372,7 +372,7 @@ validate_host = |raw_host| {
 
 validate_dns_name : Str -> Try(Str, [InvalidHost(Str)])
 validate_dns_name = |raw_host| {
-	host = ascii_lower(raw_host)
+	host = raw_host.with_ascii_lowercased()
 	labels = Str.split_on(host, ".")
 	valid =
 		List.len(Str.to_utf8(host)) <= 253 and
@@ -535,21 +535,21 @@ u16_to_hex_help = |value, digits| {
 parse_suffix : Str -> Try({ fragment : [None, Some(Str)], path : Str, query : [None, Some(Str)] }, Url.ParseErr)
 parse_suffix = |suffix| {
 	{ before_fragment, fragment } =
-		match split_first(suffix, "#") {
-			Found({ before, after }) => { before_fragment: before, fragment: Some(after) }
-			NotFound => { before_fragment: suffix, fragment: None }
+		match suffix.split_first("#") {
+			Ok({ before, after }) => { before_fragment: before, fragment: Some(after) }
+			Err(NotFound) => { before_fragment: suffix, fragment: None }
 		}
 	{ raw_path, query } =
-		match split_first(before_fragment, "?") {
-			Found({ before, after }) => { raw_path: before, query: Some(after) }
-			NotFound => { raw_path: before_fragment, query: None }
+		match before_fragment.split_first("?") {
+			Ok({ before, after }) => { raw_path: before, query: Some(after) }
+			Err(NotFound) => { raw_path: before_fragment, query: None }
 		}
 	path_input = if Str.is_empty(raw_path) {
 		"/"
 	} else {
 		raw_path
 	}
-	if Bool.not(starts_with(path_input, "/")) {
+	if Bool.not(path_input.starts_with("/")) {
 		Err(InvalidCharacter(first_or_zero(Str.to_utf8(path_input))))
 	} else {
 		path = validate_component(path_input, Path)?
@@ -620,17 +620,17 @@ is_forbidden = |byte, kind| {
 
 resolve_reference : Url, Str -> Try(Url, Url.ParseErr)
 resolve_reference = |base, reference| {
-	lower = ascii_lower(reference)
-	if starts_with(lower, "http://") or starts_with(lower, "https://") {
+	lower = reference.with_ascii_lowercased()
+	if lower.starts_with("http://") or lower.starts_with("https://") {
 		parse_absolute(reference)
-	} else if Str.contains(reference, "://") or starts_with(reference, "//") {
+	} else if Str.contains(reference, "://") or reference.starts_with("//") {
 		Err(MissingScheme)
 	} else {
 		relative = parse_relative(reference)?
 		next_path =
 			if Str.is_empty(relative.path) {
 				base.path
-			} else if starts_with(relative.path, "/") {
+			} else if relative.path.starts_with("/") {
 				normalize_path(relative.path)
 			} else {
 				normalize_path(Str.concat(path_directory(base.path), relative.path))
@@ -660,14 +660,14 @@ resolve_reference = |base, reference| {
 parse_relative : Str -> Try({ fragment : [None, Some(Str)], path : Str, query : [None, Some(Str)] }, Url.ParseErr)
 parse_relative = |reference| {
 	{ before_fragment, fragment } =
-		match split_first(reference, "#") {
-			Found({ before, after }) => { before_fragment: before, fragment: Some(after) }
-			NotFound => { before_fragment: reference, fragment: None }
+		match reference.split_first("#") {
+			Ok({ before, after }) => { before_fragment: before, fragment: Some(after) }
+			Err(NotFound) => { before_fragment: reference, fragment: None }
 		}
 	{ raw_path, query } =
-		match split_first(before_fragment, "?") {
-			Found({ before, after }) => { raw_path: before, query: Some(after) }
-			NotFound => { raw_path: before_fragment, query: None }
+		match before_fragment.split_first("?") {
+			Ok({ before, after }) => { raw_path: before, query: Some(after) }
+			Err(NotFound) => { raw_path: before_fragment, query: None }
 		}
 	path = validate_component(raw_path, Path)?
 	encoded_query = validate_optional(query, Query)?
@@ -677,12 +677,12 @@ parse_relative = |reference| {
 
 normalize_path : Str -> Str
 normalize_path = |path_str| {
-	rooted = if starts_with(path_str, "/") {
+	rooted = if path_str.starts_with("/") {
 		path_str
 	} else {
 		Str.concat("/", path_str)
 	}
-	trailing = ends_with(rooted, "/") or ends_with(rooted, "/.") or ends_with(rooted, "/..")
+	trailing = rooted.ends_with("/") or rooted.ends_with("/.") or rooted.ends_with("/..")
 	normalized = normalize_segments(Str.split_on(rooted, "/"), [])
 	joined = Str.concat("/", Str.join_with(normalized, "/"))
 	if trailing and joined != "/" {
@@ -851,19 +851,6 @@ parse_err_to_str = |err|
 		UnsupportedScheme(scheme) => Str.concat("Unsupported URL scheme: ", scheme)
 	}
 
-ascii_lower : Str -> Str
-ascii_lower = |input|
-	Str.from_utf8_lossy(
-		Str.to_utf8(input).map(
-			|byte|
-				if byte >= 65 and byte <= 90 {
-					byte + 32
-				} else {
-					byte
-				},
-		),
-	)
-
 ascii_upper_hex : U8 -> U8
 ascii_upper_hex = |byte|
 	if byte >= 97 and byte <= 102 {
@@ -949,62 +936,6 @@ trim_brackets = |str| {
 		""
 	} else {
 		Str.from_utf8_lossy(List.sublist(bytes, { start: 1, len: List.len(bytes) - 2 }))
-	}
-}
-
-starts_with : Str, Str -> Bool
-starts_with = |str, prefix|
-	if Str.is_empty(prefix) {
-		True
-	} else {
-		match split_first(str, prefix) {
-			Found({ before, after: _ }) => Str.is_empty(before)
-			NotFound => False
-		}
-	}
-
-ends_with : Str, Str -> Bool
-ends_with = |str, suffix| {
-	if Str.is_empty(suffix) {
-		True
-	} else {
-		parts = Str.split_on(str, suffix)
-		match parts.get(List.len(parts) - 1) {
-			Ok(last) => Str.is_empty(last)
-			Err(_) => False
-		}
-	}
-}
-
-drop_prefix : Str, Str -> Str
-drop_prefix = |str, prefix| {
-	parts = Str.split_on(str, prefix)
-	Str.join_with(List.drop_first(parts, 1), prefix)
-}
-
-split_first : Str, Str -> [Found({ after : Str, before : Str }), NotFound]
-split_first = |str, separator| {
-	parts = Str.split_on(str, separator)
-	if List.len(parts) > 1 {
-		match parts.get(0) {
-			Ok(before) => Found({ before, after: Str.join_with(List.drop_first(parts, 1), separator) })
-			Err(_) => NotFound
-		}
-	} else {
-		NotFound
-	}
-}
-
-split_last : Str, Str -> [Found({ after : Str, before : Str }), NotFound]
-split_last = |str, separator| {
-	parts = Str.split_on(str, separator)
-	if List.len(parts) > 1 {
-		match parts.get(List.len(parts) - 1) {
-			Ok(after) => Found({ before: Str.join_with(List.drop_last(parts, 1), separator), after })
-			Err(_) => NotFound
-		}
-	} else {
-		NotFound
 	}
 }
 

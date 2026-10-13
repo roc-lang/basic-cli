@@ -37,20 +37,44 @@ These current host-level limitations may affect application design:
   operating system trust store. A certificate trusted only through a locally
   installed OS root will therefore be rejected. [Issue #454](https://github.com/roc-lang/basic-cli/issues/454)
   tracks research into the appropriate trust configuration for basic-cli.
-- The timeout configured on an HTTP `Request` covers the request and response;
-  `NoTimeout` leaves it unbounded. Responses are buffered completely without a
-  configurable size limit ([issue #436](https://github.com/roc-lang/basic-cli/issues/436)),
-  and several network and TLS failures currently use a generic transport error
-  ([issue #438](https://github.com/roc-lang/basic-cli/issues/438)).
-- TCP connect, read, and write operations require a caller-configured timeout
-  covering the whole operation. A zero timeout fails immediately.
-  `Tcp.Stream.read_until!` and `read_line!` also require a maximum byte count,
-  preventing an untrusted peer from causing unbounded buffering.
-- SQLite keeps up to 16 recently used ordinary path connections open. A live
-  prepared statement keeps its connection open after cache eviction, and reused
-  paths continue sharing that live connection. The exact `:memory:` path is kept
-  open for the lifetime of its host thread, so repeated use accesses the same
-  in-memory database.
+- The timeout configured on an HTTP `Request` is the deadline for the whole
+  exchange, response body included; `NoTimeout` leaves it unbounded.
+  `Http.send!` and the functions built on it buffer the response completely
+  without a configurable size limit ([issue #436](https://github.com/roc-lang/basic-cli/issues/436)).
+- `Http.send_streaming!` returns once the status and headers have arrived and
+  hands the body over in chunks of at most 64 KiB, so a download need not fit
+  in memory. Its `idle_timeout` (30 seconds unless set) bounds each single
+  wait, for the headers and for each part of the body, so a large download can
+  leave the `Request` at `NoTimeout`. After an idle timeout the response can
+  still be read; the `Request` deadline passing is final. Each streaming
+  response has its own connection, closed when the body ends or fails, or when
+  the response and its streams are released. Request bodies are not streamed.
+- Several network and TLS failures currently use a generic HTTP transport
+  error ([issue #438](https://github.com/roc-lang/basic-cli/issues/438)).
+- TCP reads and writes always have a timeout: a `Tcp.Connection` holds the
+  `io_timeout` it was created with, which bounds each read or write as a
+  whole, and `with_timeout` returns the same connection with another. The wait
+  to connect or accept is separate; only `accept!` may wait indefinitely
+  (`NoTimeout`). `Duration.zero` expires immediately, and expiry is always
+  `TcpErr(TimedOut)`.
+- A TCP read that times out consumes nothing: the bytes that had arrived stay
+  buffered for the next read. A write that times out may have sent any prefix.
+- `Tcp.Connection.read_until!`, `read_line!` and `lines` stop at the
+  connection's line limit (1 MiB unless changed with `with_line_limit`),
+  preventing an untrusted peer from causing unbounded buffering. The rest of
+  an over-long record is discarded before the next read returns.
+- `File.Writer` buffers written bytes in the host; they reach the operating
+  system when the buffer fills and on `flush!`. The file is closed when the
+  last reference to the writer is released, which writes what is still
+  buffered but cannot report a failure, so flush after the last write or use
+  `File.with_writer!`. A crash loses buffered bytes.
+- Every `Sqlite.open!` call opens its own connection; `Sqlite.open_in_memory!`
+  and the path `":memory:"` open a new, private in-memory database each time.
+  A connection waits up to five seconds for another connection's lock unless
+  `busy_timeout` says otherwise. It is closed by `close!`, or when the `Db` and
+  every unfinished `rows` stream made from it have been released. Each
+  connection keeps up to 32 prepared statements, keyed by their SQL text, and
+  drops the least recently used.
 
 ## Examples
 
@@ -58,10 +82,10 @@ The [examples](examples/) directory contains executable, application-shaped CLI
 programs for common tasks like reading files, running commands, constructing
 URLs, making HTTP requests, working with SQLite, and reading stdin.
 
-The examples are pinned to the [`0.21.0-rc4` release](https://github.com/roc-lang/basic-cli/releases/tag/0.21.0-rc4):
+The examples are pinned to the [`0.25.0` release](https://github.com/roc-lang/basic-cli/releases/tag/0.25.0):
 
 ```roc
-app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.21.0-rc4/FvCh4vdqm3nBY6DWEfZ8RuGCVfjuMY43HA8KSNk9qVDn.tar.zst" }
+app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.25.0/CZsY7tYZwR3rj9kYbpaCfxki2yVAaRL8bBwMLvB2xkbA.tar.zst" }
 ```
 
 To run examples from a local checkout instead, build the platform first and use `"../platform/main.roc"`; see [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -71,7 +95,7 @@ HTTP examples use Roc's builtin `Json` parser and encoder directly through
 
 ## Documentation
 
-- [`0.21.0-rc4` release documentation](https://roc-lang.github.io/basic-cli/0.21.0-rc4/)
+- [`0.25.0` release documentation](https://roc-lang.github.io/basic-cli/0.25.0/)
 - [latest main branch](https://roc-lang.github.io/basic-cli/main/)
 
 ## Nix

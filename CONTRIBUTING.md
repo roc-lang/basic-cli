@@ -127,7 +127,7 @@ or crate-wide.
 Release-tooling regression tests run with:
 
 ```sh
-python3 -m unittest scripts/test_check_release_version.py scripts/test_check_version_bump.py scripts/test_update_nix_release.py
+python3 -m unittest scripts/test_check_release_version.py scripts/test_check_release_branch.py scripts/test_check_version_bump.py scripts/test_update_nix_release.py scripts/test_check_roc_nightly.py scripts/test_windows_runtime.py
 ```
 
 Stable releases must be dispatched from the default branch. To publish a branch
@@ -139,8 +139,10 @@ dispatching so the release tag records the versioned sources.
 
 The release workflow bounds `roc bump` to 120 seconds and saves its output in
 `.release/bump-output.txt`. It currently warns on comparison errors and timeouts:
-the compiler still rejects the public `InternalHttp.TransportErr` alias in the
-0.22.2 predecessor. Switch to `--mode require` once that comparison works.
+`roc bump` cannot extract a public API that mentions a type the platform header
+does not expose, and in the 0.25.0 predecessor the `Sqlite` row decoders take
+the unexposed `Host.SqliteStmt`. Switch to `--mode require` once the
+predecessor is a release without such a type.
 
 Run the full local check before opening release or CI-facing changes:
 
@@ -189,20 +191,46 @@ output assertions used by CI:
 ./scripts/test.py --operation run --target x64musl --artifact-dir dist/example-binaries --valgrind
 ```
 
-The static musl allocator is invisible to Valgrind's heap accounting: a report
-of zero heap allocations alone does not prove cleanup. On x86_64 glibc Linux,
-run the additional ownership check used by CI:
+Native resource handles (file readers, sockets, listeners, child processes,
+SQLite connections and row streams) are checked on every OS by the suite itself. A run case with
+`"live_handles": 0` in `scripts/test_spec.json` sets `BASIC_CLI_LIVE_HANDLES`,
+which makes the host print how many handles are still open after `main!`
+returns, and requires the total to be zero:
+
+```text
+live handles: 0
+live handles[Child]: 0
+live handles[FileReader]: 0
+...
+```
+
+The report goes to stderr, covers normal returns, errors and exit codes, and is
+not printed when the program crashes. Every example that opens a handle carries
+the assertion, as do the fixtures in `tests/resource-lifetimes/`, which verify
+port release, stream EOF, shared aliases, command reuse, and early returns. Add
+it to the cases of any new app that opens a handle. Rust tests in
+`src/resources.rs` verify exactly-once native finalization, and others verify
+child reaping.
+
+The counters are the only check that sees a leaked handle. Handle boxes live in
+the host's own address ranges rather than on the heap (see `src/resources.rs`),
+so they are invisible to Valgrind, and the native value behind a leaked handle
+stays reachable from its slot instead of being reported as lost.
+
+Valgrind still checks everything else, but the static musl allocator is
+invisible to its heap accounting: a report of zero heap allocations alone does
+not prove cleanup. On x86_64 glibc Linux, run the additional ownership check
+used by CI:
 
 ```sh
 ROC=/path/to/pinned/roc python3 scripts/test_resource_lifetimes.py
 ```
 
 It creates an isolated diagnostic platform under `target/`, uses glibc so
-Valgrind observes allocations, and rejects memory errors and definite/indirect
-leaks. It also tracks file descriptors. The fixtures in
-`tests/resource-lifetimes/` verify port release, stream EOF, shared aliases, command reuse, and early returns; Rust tests verify
-exactly-once native finalization and child reaping. Runtime reactor descriptors
-and reachable service state can remain until process exit.
+Valgrind observes allocations, and runs the `tests/resource-lifetimes/` fixtures
+against a debug host. It rejects memory errors, definite/indirect leaks and a
+non-zero live-handle total, and tracks file descriptors. Runtime reactor
+descriptors and reachable service state can remain until process exit.
 
 For faster local iterations when the platform host is already built:
 
@@ -235,6 +263,115 @@ ROC=../roc/zig-out/bin/roc ROC_SRC=../roc ./ci/regenerate_glue.sh
 Use `ci/regenerate_glue.sh --check` separately when reviewing platform ABI changes; CI intentionally treats the committed Rust glue as the host ABI source of truth.
 
 Do not edit generated glue by hand.
+
+## API conventions
+
+New public API is reviewed against these rules. A proposal states its
+decisions and assumptions, not open questions.
+
+### Methods
+
+- An operation on a value is a method on that value's type, called with
+  receiver syntax: `reader.lines()`. Module-level functions are for
+  constructors and entry points (`Tcp.connect!`, `Duration.seconds(5)`) and
+  process-global things (`Stdin.line!()`).
+- Prefer the dispatched names: `to_str`, `to_inspect`, `is_eq`, operators, `map`.
+
+### Options
+
+- One function per operation. Tuning goes in a trailing nominal options record
+  with defaulted fields (`{}` for all defaults); no `_with` twins, no options
+  argument where nothing needs tuning.
+- Positional arguments are the subject, the data and the amount requested. One
+  mandatory value is positional.
+- A setting that outlives one call (a timeout, a line limit) is held by the
+  handle and changed with a pure `with_…` method.
+
+### Timeouts and limits
+
+- A timeout is a `Duration`; zero expires immediately. Mandatory: positional.
+  Optional: `timeout : [NoTimeout, After(Duration)] ?? NoTimeout`, or a finite
+  default where waiting forever is a bad one.
+- Builders take `timeout(Duration)`; uncalled means no deadline.
+- The wait to connect or accept is separate from the resulting connection's
+  I/O timeout.
+- Expiry is never a bare `TimedOut` beside a wrapper. Where the cause is
+  `IOErr` it is that variant, `TcpErr(TimedOut)`. Inside a module's nominal
+  error it is `IOErr(TimedOut)`; a whole-operation deadline may be its own
+  variant (`Cmd.Err.TimedOut(PartialOutput)`). Http follows
+  [#438](https://github.com/roc-lang/basic-cli/issues/438).
+- A byte limit is `max_bytes : U64`, or `[NoLimit, MaxBytes(U64)]` where
+  unlimited is legal; exceeding one is `ReadLimitExceeded(U64)`. Only network
+  reads have a default line limit.
+
+### End of input and streams
+
+- A single read ends with `Err(EndOfInput)`; a short fixed-size read is
+  `Err(UnexpectedEndOfInput)`; an empty `Ok` is real data. Lines exclude the
+  terminator and one trailing `\r`.
+- `BadUtf8` is always the builtin's
+  `BadUtf8({ problem : Str.Utf8Problem, index : U64 })`, produced by
+  `Str.from_utf8(bytes)?`, never re-wrapped.
+- `chunks`, `lines` and `rows` are pure, infallible and do no I/O. `chunks`
+  takes no argument on any source; the host picks the size, at most 64 KiB.
+- Items are `Try(value, err)`. A source error, including a timeout, is the last
+  item; the handle stays usable and a new stream may be started. An error about
+  one item (`BadUtf8`, `ReadLimitExceeded` on one network line, a row whose
+  values do not decode) is not terminal. One that would recur on every item (a
+  missing column) is a source error, reported once.
+- Examples name every per-item tag; none writes `Err(_) => {}` on a stream item.
+- No read-ahead in Roc: a stream over a source other calls also read (`Stdin`,
+  `File.Reader`, `Tcp.Connection`) buffers nothing a later direct read would
+  miss; batch in the host.
+
+### Naming
+
+- `!` if and only if effectful. `_utf8` / `_bytes` only distinguish two
+  existing forms of one operation.
+- Builtin names keep their builtin meaning; unit constructors
+  (`Duration.seconds(5)`) omit `from_`.
+- No `..` in a result type: the compiler warns.
+
+### Errors
+
+- The `err` of every public `Try` is a structural tag union; nominal types are
+  payloads only. Only typed values cross the host boundary.
+- A module's failures arrive under `<Module>Err(cause)`; the cause is `IOErr`
+  or the module's nominal error, in which an OS failure is `IOErr(IOErr)`. A
+  second wrapper needs a different payload and a stated reason:
+  `PathErr(IOErr, Path)` carries the path, `SourceErr(err)` a caller's stream
+  error.
+- Every nominal error type declares `is_eq : _` and `to_str`, and may declare
+  `to_inspect`.
+- Conditions callers match on sit bare beside the wrapper: `EndOfInput`,
+  `UnexpectedEndOfInput`, `BadUtf8`, `ReadLimitExceeded`, `Closed`, `NoRows`,
+  `BadExitStatus`.
+
+### Handles
+
+- Handles are cleaned up on last release; `close!` exists only where closing
+  can fail or its timing matters.
+- `Closed` is one bare tag, only on types with `close!`: no `DbClosed`. A
+  scoped function that closes for the caller (`File.with_writer!`) does not
+  return it.
+
+### At a call site
+
+A module that follows the rules reads like this:
+
+```roc
+conn = Demo.connect!("example.org", { connect_timeout: Duration.seconds(1), io_timeout: Duration.seconds(5) })?
+expect conn.with_timeout(Duration.zero).read_line!() == Err(DemoErr(TimedOut))
+
+for! item in conn.lines() {
+    match item {
+        Ok(line) => Stdout.line!(line)?
+        Err(BadUtf8(_)) => {}
+        Err(ReadLimitExceeded(_)) => {}
+        Err(DemoErr(err)) => { return Err(DemoErr(err)) }
+    }
+}
+```
 
 ## Examples
 

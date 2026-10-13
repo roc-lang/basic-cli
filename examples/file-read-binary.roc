@@ -13,26 +13,18 @@ main! = |args| {
 		[] => return Err(MissingPathArgument)
 	}
 	reader = File.open_reader!(path)?
-	# Preview at most 16 bytes; even a short or empty file is valid.
-	header = reader.read_up_to!(16)?
+	# Preview at most 16 bytes; a short file is valid and an empty one has no header.
+	header = match reader.read_up_to!(16) {
+		Ok(bytes) => bytes
+		Err(EndOfInput) => []
+		Err(FileErr(err)) => return Err(FileErr(err))
+	}
 	Stdout.line!("Header bytes: ${Str.inspect(header)}")?
 	_ = reader.seek!(Start(0))?
-	var $chunks = reader.chunks(65_536)?
 	var $total = 0.U64
-	while Bool.True {
-		match Stream.next!($chunks) {
-			Done => {
-				break
-			}
-			Skip({ rest }) => {
-				$chunks = rest
-			}
-			One({ item, rest }) => {
-				bytes = item?
-				$total = $total + bytes.len()
-				$chunks = rest
-			}
-		}
+	for! item in reader.chunks() {
+		bytes = item?
+		$total = $total + bytes.len()
 	}
 	Stdout.line!("Read ${$total.to_str()} bytes")
 }

@@ -1,3 +1,5 @@
+import InternalUtf16
+
 ## Represent operating-system strings without losing non-Unicode data.
 ##
 ## Native Unix bytes and Windows UTF-16 units roundtrip through host effects;
@@ -14,9 +16,10 @@ OsStr := [
 	from_str : Str -> OsStr
 	from_str = |str| Utf8(str)
 
-	## Create a UTF-8 OS string from a dynamic `Str`.
+	## Create a UTF-8 OS string from a dynamic `Str`. The same as [from_str],
+	## named like the other representation constructors.
 	utf8 : Str -> OsStr
-	utf8 = |str| Utf8(str)
+	utf8 = from_str
 
 	## Create a Unix OS string from a Roc string by storing its UTF-8 bytes.
 	unix : Str -> OsStr
@@ -28,7 +31,7 @@ OsStr := [
 
 	## Create a Windows OS string from a Roc string by storing its UTF-16 code units.
 	windows : Str -> OsStr
-	windows = |str| from_raw(WindowsU16s(str_to_utf16(str)))
+	windows = |str| from_raw(WindowsU16s(InternalUtf16.from_str(str)))
 
 	## Create a Windows OS string from raw UTF-16 code units.
 	windows_u16s : List(U16) -> OsStr
@@ -43,9 +46,9 @@ OsStr := [
 	from_interpolation = |segments|
 		Str.from_interpolation(segments).map_ok(|assemble| |values| Utf8(assemble(values)))
 
-	## TODO: Restore generic parser_for and encoder_for helpers when the compiler
-	## no longer treats auto-derived `_` declarations in platforms as hosted:
-	## https://github.com/roc-lang/roc/issues/10162
+	## Parse and encode every OS string representation as a lossless tagged value.
+	parser_for : _
+	encoder_for : _
 
 	## Convert an OS string to a string if its raw representation is valid text.
 	to_str_try : OsStr -> Try(Str, [InvalidStr(U64)])
@@ -57,7 +60,7 @@ OsStr := [
 					Ok(str) => Ok(str)
 					Err(BadUtf8({ index, problem: _ })) => Err(InvalidStr(index))
 				}
-			WindowsU16s(u16s) => utf16_to_str(u16s)
+			WindowsU16s(u16s) => InternalUtf16.to_str(u16s)
 		}
 
 	## Convert an OS string to the bytes that represent it, for writing to a byte
@@ -72,7 +75,7 @@ OsStr := [
 		match to_raw(os_str) {
 			Utf8(str) => Str.to_utf8(str)
 			UnixBytes(bytes) => bytes
-			WindowsU16s(u16s) => utf16_to_utf8_lossy(u16s)
+			WindowsU16s(u16s) => InternalUtf16.to_utf8_lossy(u16s)
 		}
 
 	## Convert an OS string to a best-effort display string, replacing invalid text
@@ -82,7 +85,7 @@ OsStr := [
 		match to_raw(os_str) {
 			Utf8(str) => str
 			UnixBytes(bytes) => Str.from_utf8_lossy(bytes)
-			WindowsU16s(u16s) => Str.from_utf8_lossy(utf16_to_utf8_lossy(u16s))
+			WindowsU16s(u16s) => Str.from_utf8_lossy(InternalUtf16.to_utf8_lossy(u16s))
 		}
 
 	## Customize debug output for `Str.inspect`.
@@ -96,23 +99,59 @@ OsStr := [
 					Err(_) => "OsStr.unix_bytes(${Str.inspect(bytes)})"
 				}
 			WindowsU16s(u16s) =>
-				match utf16_to_str(u16s) {
+				match InternalUtf16.to_str(u16s) {
 					Ok(str) => "OsStr.windows(${Json.to_str(str)})"
 					Err(_) => "OsStr.windows_u16s(${Str.inspect(u16s)})"
 				}
 		}
 
-	## Compare OS strings by their exact tagged representation.
+	## Compare OS strings by content, whichever representation holds it.
+	##
+	## A string literal is stored as UTF-8, while the operating system hands
+	## back native units, so `args.contains("--verbose")` and
+	## `Env.var!("EDITOR")? == "vim"` compare text with native units.
+	##
+	## - Two values that are valid Unicode are equal when they are the same text,
+	##   in any mix of UTF-8, Unix bytes and Windows UTF-16.
+	## - Unix bytes that are not valid UTF-8, or UTF-16 with an unpaired
+	##   surrogate, equal only the identical units of the same kind, and never a
+	##   UTF-8 value.
+	##
+	## Nothing is normalized: case, Unicode normal forms and path separators
+	## all still distinguish two values.
 	is_eq : OsStr, OsStr -> Bool
-	is_eq = |left, right| to_raw(left) == to_raw(right)
+	is_eq = |left, right|
+		match (to_raw(left), to_raw(right)) {
+			(Utf8(a), Utf8(b)) => a == b
+			(UnixBytes(a), UnixBytes(b)) => a == b
+			(WindowsU16s(a), WindowsU16s(b)) => a == b
+			(Utf8(str), UnixBytes(bytes)) | (UnixBytes(bytes), Utf8(str)) => Str.to_utf8(str) == bytes
+			(Utf8(str), WindowsU16s(u16s)) | (WindowsU16s(u16s), Utf8(str)) => InternalUtf16.from_str(str) == u16s
+			# Encoding text never produces an unpaired surrogate, so the last case
+			# also requires the UTF-16 side to be valid.
+			(UnixBytes(bytes), WindowsU16s(u16s)) | (WindowsU16s(u16s), UnixBytes(bytes)) =>
+				match Str.from_utf8(bytes) {
+					Ok(str) => InternalUtf16.from_str(str) == u16s
+					Err(_) => False
+				}
+		}
 
-	## Hash OS strings consistently with exact tagged equality.
+	## Hash OS strings consistently with [is_eq]: valid Unicode hashes as its
+	## text in every representation, and anything else as its raw units.
 	to_hash : OsStr, Hasher -> Hasher
 	to_hash = |os_str, hasher|
 		match to_raw(os_str) {
-			Utf8(str) => Str.to_hash(str, Hasher.write_u8(hasher, 0))
-			UnixBytes(bytes) => List.to_hash(bytes, Hasher.write_u8(hasher, 1))
-			WindowsU16s(u16s) => List.to_hash(u16s, Hasher.write_u8(hasher, 2))
+			Utf8(str) => Str.to_hash(str, hasher)
+			UnixBytes(bytes) =>
+				match Str.from_utf8(bytes) {
+					Ok(str) => Str.to_hash(str, hasher)
+					Err(_) => List.to_hash(bytes, hasher)
+				}
+			WindowsU16s(u16s) =>
+				match InternalUtf16.to_str(u16s) {
+					Ok(str) => Str.to_hash(str, hasher)
+					Err(_) => List.to_hash(u16s, hasher)
+				}
 		}
 
 	## Expose the host ABI representation.
@@ -135,114 +174,6 @@ OsStr := [
 
 }
 
-str_to_utf16 : Str -> List(U16)
-str_to_utf16 = |str| utf8_to_utf16(Str.to_utf8(str), [])
-
-utf8_to_utf16 : List(U8), List(U16) -> List(U16)
-utf8_to_utf16 = |remaining, out|
-	match remaining {
-		[] => out
-		[byte, .. as rest] if byte < 0x80 =>
-			utf8_to_utf16(rest, out.append(U8.to_u16(byte)))
-		[byte1, byte2, .. as rest] if byte1 < 0xE0 => {
-			top = U32.shl_wrap(U8.to_u32(U8.bitwise_and(byte1, 0x1F)), 6)
-			bottom = U8.to_u32(U8.bitwise_and(byte2, 0x3F))
-			utf8_to_utf16(rest, out.append(U32.to_u16_wrap(U32.bitwise_or(top, bottom))))
-		}
-		[byte1, byte2, byte3, .. as rest] if byte1 < 0xF0 => {
-			top = U32.shl_wrap(U8.to_u32(U8.bitwise_and(byte1, 0x0F)), 12)
-			middle = U32.shl_wrap(U8.to_u32(U8.bitwise_and(byte2, 0x3F)), 6)
-			bottom = U8.to_u32(U8.bitwise_and(byte3, 0x3F))
-			code_point = U32.bitwise_or(U32.bitwise_or(top, middle), bottom)
-			utf8_to_utf16(rest, out.append(U32.to_u16_wrap(code_point)))
-		}
-		[byte1, byte2, byte3, byte4, .. as rest] => {
-			top = U32.shl_wrap(U8.to_u32(U8.bitwise_and(byte1, 0x07)), 18)
-			middle1 = U32.shl_wrap(U8.to_u32(U8.bitwise_and(byte2, 0x3F)), 12)
-			middle2 = U32.shl_wrap(U8.to_u32(U8.bitwise_and(byte3, 0x3F)), 6)
-			bottom = U8.to_u32(U8.bitwise_and(byte4, 0x3F))
-			code_point = U32.bitwise_or(U32.bitwise_or(U32.bitwise_or(top, middle1), middle2), bottom)
-			high = U32.to_u16_wrap(0xD800 + U32.shr_wrap(code_point - 0x10000, 10))
-			low = U32.to_u16_wrap(0xDC00 + U32.bitwise_and(code_point - 0x10000, 0x3FF))
-			utf8_to_utf16(rest, out.append(high).append(low))
-		}
-		_ => {
-			crash "A Str contained invalid UTF-8. This should never happen."
-		}
-	}
-
-utf16_to_str : List(U16) -> Try(Str, [InvalidStr(U64)])
-utf16_to_str = |u16s|
-	match utf16_to_utf8(u16s, [], 0) {
-		Ok(bytes) =>
-			match Str.from_utf8(bytes) {
-				Ok(str) => Ok(str)
-				Err(BadUtf8({ index, problem: _ })) => Err(InvalidStr(index))
-			}
-		Err(InvalidUtf16(index)) => Err(InvalidStr(index))
-	}
-
-utf16_to_utf8 : List(U16), List(U8), U64 -> Try(List(U8), [InvalidUtf16(U64)])
-utf16_to_utf8 = |remaining, out, index|
-	match remaining {
-		[] => Ok(out)
-		[high, low, .. as rest] if is_high_surrogate(high) and is_low_surrogate(low) => {
-			high_bits = U32.shl_wrap(U16.to_u32(high) - 0xD800, 10)
-			low_bits = U16.to_u32(low) - 0xDC00
-			code_point = 0x10000 + high_bits + low_bits
-			utf16_to_utf8(rest, append_code_point_utf8(out, code_point), index + 2)
-		}
-		[unit, ..] if is_surrogate(unit) => Err(InvalidUtf16(index))
-		[unit, .. as rest] =>
-			utf16_to_utf8(rest, append_code_point_utf8(out, U16.to_u32(unit)), index + 1)
-	}
-
-utf16_to_utf8_lossy : List(U16) -> List(U8)
-utf16_to_utf8_lossy = |u16s| utf16_to_utf8_lossy_help(u16s, [])
-
-utf16_to_utf8_lossy_help : List(U16), List(U8) -> List(U8)
-utf16_to_utf8_lossy_help = |remaining, out|
-	match remaining {
-		[] => out
-		[high, low, .. as rest] if is_high_surrogate(high) and is_low_surrogate(low) => {
-			high_bits = U32.shl_wrap(U16.to_u32(high) - 0xD800, 10)
-			low_bits = U16.to_u32(low) - 0xDC00
-			code_point = 0x10000 + high_bits + low_bits
-			utf16_to_utf8_lossy_help(rest, append_code_point_utf8(out, code_point))
-		}
-		[unit, .. as rest] if is_surrogate(unit) =>
-			utf16_to_utf8_lossy_help(rest, append_code_point_utf8(out, 0xFFFD))
-		[unit, .. as rest] =>
-			utf16_to_utf8_lossy_help(rest, append_code_point_utf8(out, U16.to_u32(unit)))
-	}
-
-append_code_point_utf8 : List(U8), U32 -> List(U8)
-append_code_point_utf8 = |out, code_point|
-	if code_point < 0x80 {
-		out.append(U32.to_u8_wrap(code_point))
-	} else if code_point < 0x800 {
-		out.append(U32.to_u8_wrap(0xC0 + U32.shr_wrap(code_point, 6)))
-			.append(U32.to_u8_wrap(0x80 + U32.bitwise_and(code_point, 0x3F)))
-	} else if code_point < 0x10000 {
-		out.append(U32.to_u8_wrap(0xE0 + U32.shr_wrap(code_point, 12)))
-			.append(U32.to_u8_wrap(0x80 + U32.bitwise_and(U32.shr_wrap(code_point, 6), 0x3F)))
-			.append(U32.to_u8_wrap(0x80 + U32.bitwise_and(code_point, 0x3F)))
-	} else {
-		out.append(U32.to_u8_wrap(0xF0 + U32.shr_wrap(code_point, 18)))
-			.append(U32.to_u8_wrap(0x80 + U32.bitwise_and(U32.shr_wrap(code_point, 12), 0x3F)))
-			.append(U32.to_u8_wrap(0x80 + U32.bitwise_and(U32.shr_wrap(code_point, 6), 0x3F)))
-			.append(U32.to_u8_wrap(0x80 + U32.bitwise_and(code_point, 0x3F)))
-	}
-
-is_high_surrogate : U16 -> Bool
-is_high_surrogate = |unit| unit >= 0xD800 and unit <= 0xDBFF
-
-is_low_surrogate : U16 -> Bool
-is_low_surrogate = |unit| unit >= 0xDC00 and unit <= 0xDFFF
-
-is_surrogate : U16 -> Bool
-is_surrogate = |unit| unit >= 0xD800 and unit <= 0xDFFF
-
 ## Inspection identifies the representation and preserves invalid raw units.
 expect Str.inspect(OsStr.utf8("a\nb")) == "OsStr.utf8(\"a\\nb\")"
 expect Str.inspect(OsStr.unix("abc")) == "OsStr.unix(\"abc\")"
@@ -255,12 +186,139 @@ expect {
 	name = "config"
 	value : OsStr
 	value = "${name}.toml"
-	value == OsStr.utf8("config.toml")
+	OsStr.to_raw(value) == Utf8("config.toml")
 }
 
-## Equality and hashing preserve representation identity.
-expect OsStr.utf8("abc") != OsStr.unix("abc")
+## Equality follows the content, not the representation that holds it.
+expect OsStr.utf8("abc") == OsStr.unix("abc")
+expect OsStr.unix("abc") == OsStr.utf8("abc")
+expect OsStr.utf8("abc") == OsStr.windows("abc")
+expect OsStr.windows("abc") == OsStr.utf8("abc")
+expect OsStr.unix("abc") == OsStr.windows("abc")
+expect OsStr.windows("abc") == OsStr.unix("abc")
+
+## The same representation still compares its units.
+expect OsStr.utf8("abc") == OsStr.utf8("abc")
+expect OsStr.unix("abc") == OsStr.unix_bytes([97, 98, 99])
+expect OsStr.windows("abc") == OsStr.windows_u16s([97, 98, 99])
+expect OsStr.utf8("abc") != OsStr.utf8("abd")
+expect OsStr.unix("abc") != OsStr.unix("abd")
+expect OsStr.windows("abc") != OsStr.windows("abd")
+
+## Different text is unequal in every pairing, including a prefix.
+expect OsStr.utf8("abc") != OsStr.unix("abd")
+expect OsStr.utf8("abc") != OsStr.windows("abd")
+expect OsStr.unix("abc") != OsStr.windows("abd")
+expect OsStr.utf8("abc") != OsStr.unix("ab")
+expect OsStr.windows("ab") != OsStr.utf8("abc")
+expect OsStr.unix("ab") != OsStr.windows("abc")
+expect OsStr.utf8("") == OsStr.unix_bytes([])
+expect OsStr.utf8("") == OsStr.windows_u16s([])
+expect OsStr.unix_bytes([]) == OsStr.windows_u16s([])
+
+## A literal equals the native value the operating system returns for that text.
+expect {
+	literal : OsStr
+	literal = "--verbose"
+	literal == OsStr.unix("--verbose") and literal == OsStr.windows("--verbose")
+}
+
+## Text outside ASCII compares by code point: two, three and four byte UTF-8
+## sequences against one UTF-16 unit or a surrogate pair.
+expect OsStr.utf8("é€") == OsStr.unix_bytes([0xC3, 0xA9, 0xE2, 0x82, 0xAC])
+expect OsStr.utf8("é€") == OsStr.windows_u16s([0xE9, 0x20AC])
+expect OsStr.unix_bytes([0xC3, 0xA9, 0xE2, 0x82, 0xAC]) == OsStr.windows_u16s([0xE9, 0x20AC])
+expect OsStr.utf8("🐦") == OsStr.unix_bytes([0xF0, 0x9F, 0x90, 0xA6])
+expect OsStr.utf8("🐦") == OsStr.windows_u16s([0xD83D, 0xDC26])
+expect OsStr.unix_bytes([0xF0, 0x9F, 0x90, 0xA6]) == OsStr.windows_u16s([0xD83D, 0xDC26])
+expect OsStr.windows_u16s([0xD83D, 0xDC26]) == OsStr.unix_bytes([0xF0, 0x9F, 0x90, 0xA6])
+expect OsStr.utf8("🐦") != OsStr.windows_u16s([0xD83D, 0xDC27])
+
+## Invalid UTF-8 equals only the identical bytes. It is not the text `display`
+## shows for it, and not UTF-16 units with the same numbers.
+expect OsStr.unix_bytes([97, 255]) == OsStr.unix_bytes([97, 255])
+expect OsStr.unix_bytes([97, 255]) != OsStr.unix_bytes([97, 254])
+expect OsStr.unix_bytes([97, 255]) != OsStr.utf8(OsStr.display(OsStr.unix_bytes([97, 255])))
+expect OsStr.utf8("a") != OsStr.unix_bytes([97, 255])
+expect OsStr.unix_bytes([97, 255]) != OsStr.windows_u16s([97, 255])
+expect OsStr.windows_u16s([97, 255]) != OsStr.unix_bytes([97, 255])
+
+## An unpaired surrogate equals only the identical units. It is not the text
+## `display` shows for it, and not the bytes a lenient encoder would write.
+expect OsStr.windows_u16s([0xD800, 97]) == OsStr.windows_u16s([0xD800, 97])
+expect OsStr.windows_u16s([0xD800, 97]) != OsStr.windows_u16s([0xD801, 97])
+expect OsStr.windows_u16s([0xD800, 97]) != OsStr.utf8(OsStr.display(OsStr.windows_u16s([0xD800, 97])))
+expect OsStr.utf8("a") != OsStr.windows_u16s([0xD800, 97])
+expect OsStr.windows_u16s([0xD800, 97]) != OsStr.unix_bytes([0xEF, 0xBF, 0xBD, 97])
+expect OsStr.windows_u16s([0xD800, 97]) != OsStr.unix_bytes([0xED, 0xA0, 0x80, 97])
+expect OsStr.unix_bytes([0xED, 0xA0, 0x80, 97]) != OsStr.windows_u16s([0xD800, 97])
+
+## Invalid values of different kinds are never equal.
+expect OsStr.unix_bytes([255]) != OsStr.windows_u16s([0xD800])
+expect OsStr.windows_u16s([0xDC00]) != OsStr.unix_bytes([0xDC])
+
+## Nothing is normalized: case, Unicode normal forms and separators differ.
+expect OsStr.utf8("Abc") != OsStr.unix("abc")
+expect OsStr.utf8("é") != OsStr.unix("e\u(0301)")
+expect OsStr.utf8("a/b") != OsStr.windows("a\\b")
+expect OsStr.utf8("./a") != OsStr.unix("a")
+expect OsStr.utf8("a/") != OsStr.unix("a")
+
+## Equality is transitive across all three representations, and unequal
+## values stay unequal through a third.
+expect {
+	text = OsStr.utf8("naïve 🐦")
+	bytes = OsStr.unix("naïve 🐦")
+	units = OsStr.windows("naïve 🐦")
+	text == bytes and bytes == units and text == units and units == text and units == bytes and bytes == text
+}
+
+expect {
+	bytes = OsStr.unix_bytes([97, 255])
+	units = OsStr.windows_u16s([97, 255])
+	text = OsStr.utf8("aÿ")
+	# The units are valid text; the bytes are not, so they equal neither.
+	units == text and bytes != units and bytes != text
+}
+
+## Inspection still shows the representation of values that are equal.
+expect OsStr.utf8("abc") == OsStr.unix("abc") and Str.inspect(OsStr.utf8("abc")) != Str.inspect(OsStr.unix("abc"))
+expect Str.inspect(OsStr.windows("abc")) == "OsStr.windows(\"abc\")"
+
+## Hashing agrees with equality, so `Dict`, `Set` and `List.contains` find a
+## value through any representation.
+expect Dict.single(OsStr.unix("HOME"), "found").get(OsStr.utf8("HOME")) == Ok("found")
+expect Dict.single(OsStr.windows("HOME"), "found").get(OsStr.utf8("HOME")) == Ok("found")
+expect Dict.single(OsStr.utf8("HOME"), "found").get(OsStr.unix("HOME")) == Ok("found")
+expect Dict.single(OsStr.utf8("HOME"), "found").get(OsStr.windows("HOME")) == Ok("found")
+expect Dict.single(OsStr.unix("HOME"), "found").get(OsStr.windows("HOME")) == Ok("found")
+expect Dict.single(OsStr.windows("HOME"), "found").get(OsStr.unix("HOME")) == Ok("found")
+expect Dict.single(OsStr.windows("🐦"), "found").get(OsStr.unix_bytes([0xF0, 0x9F, 0x90, 0xA6])) == Ok("found")
+expect Dict.single(OsStr.unix("HOME"), "found").get(OsStr.utf8("home")) == Err(KeyNotFound)
+
+expect {
+	literal : OsStr
+	literal = "HOME"
+	Dict.from_list([(OsStr.unix("PATH"), 1), (OsStr.unix("HOME"), 2)]).get(literal) == Ok(2)
+}
+
+expect [OsStr.unix("--quiet"), OsStr.unix("--verbose")].contains("--verbose")
+expect [OsStr.windows("--quiet"), OsStr.windows("--verbose")].contains("--verbose")
+expect Bool.not([OsStr.unix("--quiet")].contains("--verbose"))
+
+## Values equal across representations collapse to one `Set` or `Dict` key.
+expect Set.from_list([OsStr.utf8("abc"), OsStr.unix("abc"), OsStr.windows("abc")]).len() == 1
+expect Set.from_list([OsStr.utf8("abc"), OsStr.unix("abc"), OsStr.windows("abd")]).len() == 2
+expect Set.from_list([OsStr.unix("abc")]).contains(OsStr.windows("abc"))
+expect Dict.from_list([(OsStr.utf8("k"), 1), (OsStr.unix("k"), 2), (OsStr.windows("k"), 3)]).len() == 1
+
+## Invalid native units are still usable keys, and stay apart from text and
+## from each other.
 expect Dict.single(OsStr.unix_bytes([97, 255]), "found").get(OsStr.unix_bytes([97, 255])) == Ok("found")
+expect Dict.single(OsStr.windows_u16s([0xD800, 97]), "found").get(OsStr.windows_u16s([0xD800, 97])) == Ok("found")
+expect Dict.single(OsStr.unix_bytes([97, 255]), "found").get(OsStr.windows_u16s([97, 255])) == Err(KeyNotFound)
+expect Dict.single(OsStr.windows_u16s([0xD800, 97]), "found").get(OsStr.utf8(OsStr.display(OsStr.windows_u16s([0xD800, 97])))) == Err(KeyNotFound)
+expect Set.from_list([OsStr.unix_bytes([97, 255]), OsStr.windows_u16s([97, 255]), OsStr.utf8("aÿ")]).len() == 2
 
 ## `to_bytes` keeps raw Unix bytes and encodes other representations as UTF-8.
 expect OsStr.to_bytes(OsStr.utf8("abc")) == [97, 98, 99]
@@ -268,3 +326,26 @@ expect OsStr.to_bytes(OsStr.unix("abc")) == [97, 98, 99]
 expect OsStr.to_bytes(OsStr.unix_bytes([97, 255, 98])) == [97, 255, 98]
 expect OsStr.to_bytes(OsStr.windows("abc")) == [97, 98, 99]
 expect OsStr.to_bytes(OsStr.windows_u16s([0xD800, 97])) == [0xEF, 0xBF, 0xBD, 97]
+
+## Generic codecs roundtrip non-text representations without loss.
+expect {
+	original = OsStr.windows_u16s([0xD800, 97])
+	decoded : Try(OsStr, _)
+	decoded = Json.parse(Json.to_str(original))
+	decoded == Ok(original)
+}
+
+expect {
+	original = OsStr.unix_bytes([97, 255])
+	decoded : Try(OsStr, _)
+	decoded = Json.parse(Json.to_str(original))
+	decoded == Ok(original)
+}
+
+## Constructors and raw conversion keep the representation they name.
+expect OsStr.to_raw(OsStr.from_str("abc")) == Utf8("abc")
+expect OsStr.to_raw(OsStr.utf8("abc")) == Utf8("abc")
+expect OsStr.to_raw(OsStr.unix("abc")) == UnixBytes([97, 98, 99])
+expect OsStr.to_raw(OsStr.windows("abc")) == WindowsU16s([97, 98, 99])
+expect OsStr.to_raw(OsStr.from_raw(UnixBytes([97, 255]))) == UnixBytes([97, 255])
+expect OsStr.to_raw(OsStr.from_raw(WindowsU16s([0xD800, 97]))) == WindowsU16s([0xD800, 97])

@@ -6,7 +6,7 @@ platform ""
 		## launcher-supplied program name is available from Env.program_name!.
 		main! : List([Utf8(Str), UnixBytes(List(U8)), WindowsU16s(List(U16))]) => Try({}, [Exit(I32), ..])
 	}
-	exposes [Cmd, Env, File, Http, IOErr, Locale, Monotonic, OsStr, Path, Random, Sleep, Sqlite, Stderr, Stdin, Stdout, Tcp, Tty, Url, Utc]
+	exposes [Cmd, Duration, Env, File, Http, IOErr, Locale, Monotonic, OsStr, Path, Random, Sleep, Sqlite, Stderr, Stdin, Stdout, Tcp, Tty, Url, Utc]
 	packages {
 		# HTTP data types (Method, Request, Response) come from the shared
 		# roc-lang/http package so apps and other packages using it see the same
@@ -19,12 +19,10 @@ platform ""
 		"hosted_child_close_stdin": Host.child_close_stdin!,
 		"hosted_child_kill": Host.child_kill!,
 		"hosted_child_pid": Host.child_pid!,
+		"hosted_child_poll": Host.child_poll!,
 		"hosted_child_read": Host.child_read!,
-		"hosted_child_try_wait": Host.child_try_wait!,
 		"hosted_child_wait": Host.child_wait!,
 		"hosted_child_write": Host.child_write!,
-		"hosted_cmd_host_exec_exit_code": Host.cmd_exec_exit_code!,
-		"hosted_cmd_host_exec_output": Host.cmd_exec_output!,
 		"hosted_cmd_run": Host.cmd_run!,
 		"hosted_cmd_spawn": Host.cmd_spawn!,
 		"hosted_dir_create": Host.dir_create!,
@@ -53,6 +51,7 @@ platform ""
 		"hosted_file_read_bytes": Host.file_read_bytes!,
 		"hosted_file_read_exactly": Host.file_read_exactly!,
 		"hosted_file_read_line": Host.file_read_line!,
+		"hosted_file_read_until": Host.file_read_until!,
 		"hosted_file_read_up_to": Host.file_read_up_to!,
 		"hosted_file_read_utf8": Host.file_read_utf8!,
 		"hosted_file_reader_position": Host.file_reader_position!,
@@ -68,8 +67,15 @@ platform ""
 		# type keeps its HostFileDeleteResult name in the generated glue.
 		"hosted_file_append_bytes": Host.file_append_bytes!,
 		"hosted_file_append_utf8": Host.file_append_utf8!,
+		# File.Writer: a buffered writer behind a handle.
+		"hosted_file_open_writer": Host.file_open_writer!,
+		"hosted_file_writer_flush": Host.file_writer_flush!,
+		"hosted_file_writer_write_bytes": Host.file_writer_write_bytes!,
+		"hosted_file_writer_write_utf8": Host.file_writer_write_utf8!,
 		# HTTP is likewise kept at the end to avoid renumbering glue types.
 		"hosted_http_send_request": Host.http_send_request!,
+		"hosted_http_read_body": Host.http_read_body!,
+		"hosted_http_send_streaming": Host.http_send_streaming!,
 		"hosted_locale_all": Host.locale_all!,
 		"hosted_locale_get": Host.locale_get!,
 		"hosted_monotonic_now": Host.monotonic_now!,
@@ -80,15 +86,14 @@ platform ""
 		"hosted_path_type": Host.path_type!,
 		"hosted_random_seed_u32": Host.random_seed_u32!,
 		"hosted_random_seed_u64": Host.random_seed_u64!,
-		"hosted_sleep_millis": Host.sleep_millis!,
-		"hosted_sqlite_bind": Host.sqlite_bind!,
-		"hosted_sqlite_column_value": Host.sqlite_column_value!,
+		"hosted_sleep_nanos": Host.sleep_nanos!,
+		"hosted_sqlite_close": Host.sqlite_close!,
 		"hosted_sqlite_columns": Host.sqlite_columns!,
-		# SQLite hosted functions are kept at the end so adding them does not
-		# renumber the generated glue types for the modules declared above.
-		"hosted_sqlite_prepare": Host.sqlite_prepare!,
-		"hosted_sqlite_reset": Host.sqlite_reset!,
-		"hosted_sqlite_step": Host.sqlite_step!,
+		"hosted_sqlite_execute": Host.sqlite_execute!,
+		"hosted_sqlite_execute_script": Host.sqlite_execute_script!,
+		"hosted_sqlite_next": Host.sqlite_next!,
+		"hosted_sqlite_open": Host.sqlite_open!,
+		"hosted_sqlite_query": Host.sqlite_query!,
 		"hosted_stderr_line": Host.stderr_line!,
 		"hosted_stderr_write": Host.stderr_write!,
 		"hosted_stderr_write_bytes": Host.stderr_write_bytes!,
@@ -105,6 +110,7 @@ platform ""
 		"hosted_tcp_listener_close": Host.tcp_listener_close!,
 		"hosted_tcp_local_port": Host.tcp_local_port!,
 		"hosted_tcp_read_exactly": Host.tcp_read_exactly!,
+		"hosted_tcp_read_line": Host.tcp_read_line!,
 		"hosted_tcp_read_until": Host.tcp_read_until!,
 		"hosted_tcp_read_up_to": Host.tcp_read_up_to!,
 		"hosted_tcp_write": Host.tcp_write!,
@@ -122,6 +128,7 @@ platform ""
 	}
 
 import Cmd
+import Duration
 import Env
 import File
 import Host

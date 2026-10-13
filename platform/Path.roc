@@ -1,6 +1,8 @@
 import IOErr
 import Host
+import InternalUtf16
 import OsStr
+import Utc
 
 path_type_from_host : Host.PathType -> [IsFile, IsDir, IsSymLink, IsOther]
 path_type_from_host = |path_type|
@@ -24,8 +26,8 @@ path_type_from_host = |path_type|
 ## ```
 Path := [
 	Utf8(Str),
-	Unix(List(U8)),
-	Windows(List(U16)),
+	UnixBytes(List(U8)),
+	WindowsU16s(List(U16)),
 ].{
 
 	## Create a path from an OS string value, preserving raw OS units.
@@ -36,45 +38,45 @@ Path := [
 	to_os_str : Path -> OsStr
 	to_os_str = |path| OsStr.from_raw(to_raw(path))
 
-	## Returns `Bool.True` if the path exists on disk and is pointing at a regular file.
+	## Returns `True` if the path exists on disk and is pointing at a regular file.
 	##
 	## This function does not traverse symbolic links; symbolic links (including
-	## broken ones) return `Bool.False`.
-	## Sockets, FIFOs, devices, and other special filesystem objects also return `Bool.False`.
+	## broken ones) return `False`.
+	## Sockets, FIFOs, devices, and other special filesystem objects also return `False`.
 	is_file! : Path => Try(Bool, [PathErr(IOErr, Path)])
 	is_file! = |path|
 		match type!(path) {
-			Ok(IsFile) => Ok(Bool.True)
-			Ok(_) => Ok(Bool.False)
-			Err(PathErr(NotFound, _)) => Ok(Bool.False)
+			Ok(IsFile) => Ok(True)
+			Ok(_) => Ok(False)
+			Err(PathErr(NotFound, _)) => Ok(False)
 			Err(err) => Err(err)
 		}
 
-	## Returns `Bool.True` if the path exists on disk and is pointing at a directory.
+	## Returns `True` if the path exists on disk and is pointing at a directory.
 	##
 	## This function does not traverse symbolic links; symbolic links (including
-	## broken ones) return `Bool.False`.
-	## Sockets, FIFOs, devices, and other special filesystem objects also return `Bool.False`.
+	## broken ones) return `False`.
+	## Sockets, FIFOs, devices, and other special filesystem objects also return `False`.
 	is_dir! : Path => Try(Bool, [PathErr(IOErr, Path)])
 	is_dir! = |path|
 		match type!(path) {
-			Ok(IsDir) => Ok(Bool.True)
-			Ok(_) => Ok(Bool.False)
-			Err(PathErr(NotFound, _)) => Ok(Bool.False)
+			Ok(IsDir) => Ok(True)
+			Ok(_) => Ok(False)
+			Err(PathErr(NotFound, _)) => Ok(False)
 			Err(err) => Err(err)
 		}
 
-	## Returns `Bool.True` if the path exists on disk and is pointing at a symbolic link.
+	## Returns `True` if the path exists on disk and is pointing at a symbolic link.
 	##
 	## This function will not traverse symbolic links - it checks whether the path
 	## itself is a symlink.
-	## Sockets, FIFOs, devices, and other special filesystem objects return `Bool.False`.
+	## Sockets, FIFOs, devices, and other special filesystem objects return `False`.
 	is_sym_link! : Path => Try(Bool, [PathErr(IOErr, Path)])
 	is_sym_link! = |path|
 		match type!(path) {
-			Ok(IsSymLink) => Ok(Bool.True)
-			Ok(_) => Ok(Bool.False)
-			Err(PathErr(NotFound, _)) => Ok(Bool.False)
+			Ok(IsSymLink) => Ok(True)
+			Ok(_) => Ok(False)
+			Err(PathErr(NotFound, _)) => Ok(False)
 			Err(err) => Err(err)
 		}
 
@@ -82,8 +84,8 @@ Path := [
 	exists! : Path => Try(Bool, [PathErr(IOErr, Path)])
 	exists! = |path|
 		match type!(path) {
-			Ok(_) => Ok(Bool.True)
-			Err(PathErr(NotFound, _)) => Ok(Bool.False)
+			Ok(_) => Ok(True)
+			Err(PathErr(NotFound, _)) => Ok(False)
 			Err(err) => Err(err)
 		}
 
@@ -202,17 +204,31 @@ Path := [
 	is_writable! : Path => Try(Bool, [PathErr(IOErr, Path)])
 	is_writable! = |path| map_file_result(Host.file_is_writable!(to_raw(path)), path)
 
-	## Return the last accessed time as nanoseconds since the Unix epoch.
-	time_accessed! : Path => Try(U128, [PathErr(IOErr, Path)])
-	time_accessed! = |path| map_file_result(Host.file_time_accessed!(to_raw(path)), path)
+	## Return when the file at this path was last accessed.
+	##
+	## Times before 1970 are returned as negative instants, not errors.
+	time_accessed! : Path => Try(Utc, [PathErr(IOErr, Path)])
+	time_accessed! = |path|
+		map_file_result(Host.file_time_accessed!(to_raw(path)), path).map_ok(Utc.from_nanos_since_epoch)
 
-	## Return the last modified time as nanoseconds since the Unix epoch.
-	time_modified! : Path => Try(U128, [PathErr(IOErr, Path)])
-	time_modified! = |path| map_file_result(Host.file_time_modified!(to_raw(path)), path)
+	## Return when the file at this path was last modified.
+	##
+	## Times before 1970 are returned as negative instants, not errors.
+	##
+	## ```roc
+	## stale = Utc.now!().since(path.time_modified!()?) > Duration.minutes(5)
+	## ```
+	time_modified! : Path => Try(Utc, [PathErr(IOErr, Path)])
+	time_modified! = |path|
+		map_file_result(Host.file_time_modified!(to_raw(path)), path).map_ok(Utc.from_nanos_since_epoch)
 
-	## Return the creation time as nanoseconds since the Unix epoch.
-	time_created! : Path => Try(U128, [PathErr(IOErr, Path)])
-	time_created! = |path| map_file_result(Host.file_time_created!(to_raw(path)), path)
+	## Return when the file at this path was created.
+	##
+	## Times before 1970 are returned as negative instants, not errors. Fails
+	## with `Unsupported` where the filesystem does not record a creation time.
+	time_created! : Path => Try(Utc, [PathErr(IOErr, Path)])
+	time_created! = |path|
+		map_file_result(Host.file_time_created!(to_raw(path)), path).map_ok(Utc.from_nanos_since_epoch)
 
 	## Create a hard link at `link` pointing to `original`.
 	##
@@ -272,25 +288,25 @@ Path := [
 	from_interpolation = |segments|
 		Str.from_interpolation(segments).map_ok(|assemble| |values| Utf8(assemble(values)))
 
-	## TODO: Restore generic parser_for and encoder_for helpers when the compiler
-	## no longer treats auto-derived `_` declarations in platforms as hosted:
-	## https://github.com/roc-lang/roc/issues/10162
+	## Parse and encode every path representation as a lossless tagged value.
+	parser_for : _
+	encoder_for : _
 
 	## Create a Unix path from a Roc string by storing its UTF-8 bytes.
 	unix : Str -> Path
-	unix = |str| Unix(Str.to_utf8(str))
+	unix = |str| UnixBytes(Str.to_utf8(str))
 
 	## Create a Unix path from raw bytes without validating UTF-8.
 	unix_bytes : List(U8) -> Path
-	unix_bytes = |bytes| Unix(bytes)
+	unix_bytes = |bytes| UnixBytes(bytes)
 
 	## Create a Windows path from a Roc string by storing its UTF-16 code units.
 	windows : Str -> Path
-	windows = |str| Windows(str_to_utf16(str))
+	windows = |str| WindowsU16s(InternalUtf16.from_str(str))
 
 	## Create a Windows path from raw UTF-16 code units.
 	windows_u16s : List(U16) -> Path
-	windows_u16s = |list| Windows(list)
+	windows_u16s = |list| WindowsU16s(list)
 
 	## Convert a path to a string if its raw representation is valid text.
 	to_str : Path -> Try(Str, [InvalidStr(U64)])
@@ -298,13 +314,13 @@ Path := [
 		match path {
 			Utf8(str) => Ok(str)
 
-			Unix(bytes) =>
+			UnixBytes(bytes) =>
 				match Str.from_utf8(bytes) {
 					Ok(str) => Ok(str)
 					Err(BadUtf8({ index, problem: _ })) => Err(InvalidStr(index))
 				}
 
-			Windows(u16s) => utf16_to_str(u16s)
+			WindowsU16s(u16s) => InternalUtf16.to_str(u16s)
 		}
 
 	## Convert a path to a best-effort display string, replacing invalid text with
@@ -313,8 +329,8 @@ Path := [
 	display = |path|
 		match path {
 			Utf8(str) => str
-			Unix(bytes) => Str.from_utf8_lossy(bytes)
-			Windows(u16s) => Str.from_utf8_lossy(utf16_to_utf8_lossy(u16s))
+			UnixBytes(bytes) => Str.from_utf8_lossy(bytes)
+			WindowsU16s(u16s) => Str.from_utf8_lossy(InternalUtf16.to_utf8_lossy(u16s))
 		}
 
 	## Render a path for debugging without losing raw OS units.
@@ -322,30 +338,35 @@ Path := [
 	to_inspect = |path|
 		match path {
 			Utf8(str) => "Path.utf8(${Json.to_str(str)})"
-			Unix(bytes) =>
+			UnixBytes(bytes) =>
 				match Str.from_utf8(bytes) {
 					Ok(str) => "Path.unix(${Json.to_str(str)})"
 					Err(_) => "Path.unix_bytes(${Str.inspect(bytes)})"
 				}
-			Windows(u16s) =>
-				match utf16_to_str(u16s) {
+			WindowsU16s(u16s) =>
+				match InternalUtf16.to_str(u16s) {
 					Ok(str) => "Path.windows(${Json.to_str(str)})"
 					Err(_) => "Path.windows_u16s(${Str.inspect(u16s)})"
 				}
 		}
 
-	## Compare paths by their exact tagged representation.
+	## Compare paths by content, whichever representation holds it.
+	##
+	## A string literal is stored as UTF-8, while the operating system hands
+	## back native units, so `Path.list!("src")?.contains("src/main.roc")`
+	## compares text with native units. The rules are those of
+	## [`OsStr.is_eq`](OsStr#is_eq): valid Unicode is equal when it is the same
+	## text, and invalid native units equal only identical units of the same kind.
+	##
+	## Paths are not normalized. `a/b` and `a\b`, `./a` and `a`, and names that
+	## differ in case or Unicode normal form are all unequal, even where the
+	## file system would treat them as one file.
 	is_eq : Path, Path -> Bool
-	is_eq = |left, right| to_raw(left) == to_raw(right)
+	is_eq = |left, right| to_os_str(left) == to_os_str(right)
 
-	## Hash paths consistently with exact tagged equality.
+	## Hash paths consistently with [is_eq].
 	to_hash : Path, Hasher -> Hasher
-	to_hash = |path, hasher|
-		match to_raw(path) {
-			Utf8(str) => Str.to_hash(str, Hasher.write_u8(hasher, 0))
-			UnixBytes(bytes) => List.to_hash(bytes, Hasher.write_u8(hasher, 1))
-			WindowsU16s(u16s) => List.to_hash(u16s, Hasher.write_u8(hasher, 2))
-		}
+	to_hash = |path, hasher| to_os_str(path).to_hash(hasher)
 
 	## Returns everything after the last directory separator.
 	filename : Path -> Try(Path, [IsDirPath, EndsInDots])
@@ -366,39 +387,41 @@ Path := [
 				}
 			}
 
-			Unix(bytes) =>
+			UnixBytes(bytes) =>
 				if ends_with_u8(bytes, '/') {
 					Err(IsDirPath)
 				} else if ends_with_two_u8(bytes, '.', '.') {
 					Err(EndsInDots)
 				} else {
 					match List.find_last_index(bytes, |byte| byte == '/') {
-						Ok(last_sep_index) => Ok(Unix(after_index_u8(bytes, last_sep_index)))
+						Ok(last_sep_index) => Ok(UnixBytes(after_index_u8(bytes, last_sep_index)))
 						Err(NotFound) => Ok(path)
 					}
 				}
 
-			Windows(u16s) =>
+			WindowsU16s(u16s) =>
 				if ends_with_u16(u16s, '/') or ends_with_u16(u16s, '\\') {
 					Err(IsDirPath)
 				} else if ends_with_two_u16(u16s, '.', '.') {
 					Err(EndsInDots)
 				} else {
 					match List.find_last_index(u16s, |u16| u16 == '/' or u16 == '\\') {
-						Ok(last_sep_index) => Ok(Windows(after_index_u16(u16s, last_sep_index)))
+						Ok(last_sep_index) => Ok(WindowsU16s(after_index_u16(u16s, last_sep_index)))
 						Err(NotFound) => Ok(path)
 					}
 				}
 		}
 
-	## Returns the filename extension without the leading dot.
+	## Returns everything after the first dot in the filename that is not a
+	## leading dot: `txt` for `notes.txt`, `tar.gz` for `archive.tar.gz`, and
+	## nothing for `.gitignore`.
 	ext : Path -> Try(Path, [IsDirPath, EndsInDots])
 	ext = |path|
 		match filename(path) {
 			Err(err) => Err(err)
 			Ok(Utf8(str)) => Ok(Utf8(str_from_valid_utf8(ext_units_u8(Str.to_utf8(str)))))
-			Ok(Unix(bytes)) => Ok(Unix(ext_units_u8(bytes)))
-			Ok(Windows(u16s)) => Ok(Windows(ext_units_u16(u16s)))
+			Ok(UnixBytes(bytes)) => Ok(UnixBytes(ext_units_u8(bytes)))
+			Ok(WindowsU16s(u16s)) => Ok(WindowsU16s(ext_units_u16(u16s)))
 		}
 
 	## Adds a separator and a string component to the path.
@@ -406,8 +429,8 @@ Path := [
 	join = |path, str|
 		match path {
 			Utf8(path_str) => Utf8(path_str.concat("/").concat(str))
-			Unix(bytes) => Unix(bytes.append('/').concat(Str.to_utf8(str)))
-			Windows(u16s) => Windows(u16s.append('\\').concat(str_to_utf16(str)))
+			UnixBytes(bytes) => UnixBytes(bytes.append('/').concat(Str.to_utf8(str)))
+			WindowsU16s(u16s) => WindowsU16s(u16s.append('\\').concat(InternalUtf16.from_str(str)))
 		}
 
 	## Expose the raw OS-specific representation.
@@ -415,8 +438,8 @@ Path := [
 	to_raw = |path|
 		match path {
 			Utf8(str) => Utf8(str)
-			Unix(bytes) => UnixBytes(bytes)
-			Windows(u16s) => WindowsU16s(u16s)
+			UnixBytes(bytes) => UnixBytes(bytes)
+			WindowsU16s(u16s) => WindowsU16s(u16s)
 		}
 
 	## Build a path from the raw OS-specific representation.
@@ -424,8 +447,8 @@ Path := [
 	from_raw = |raw|
 		match raw {
 			Utf8(str) => Utf8(str)
-			UnixBytes(bytes) => Unix(bytes)
-			WindowsU16s(u16s) => Windows(u16s)
+			UnixBytes(bytes) => UnixBytes(bytes)
+			WindowsU16s(u16s) => WindowsU16s(u16s)
 		}
 }
 
@@ -451,134 +474,6 @@ str_from_valid_utf8 = |bytes|
 			crash "A valid UTF-8 path contained invalid UTF-8 after ASCII path slicing."
 		}
 	}
-
-str_to_utf16 : Str -> List(U16)
-str_to_utf16 = |str| utf8_to_utf16(Str.to_utf8(str), [])
-
-utf8_to_utf16 : List(U8), List(U16) -> List(U16)
-utf8_to_utf16 = |remaining, out|
-	match remaining {
-		[] => out
-
-		[byte, .. as rest] if byte < 0x80 =>
-			utf8_to_utf16(rest, out.append(U8.to_u16(byte)))
-
-		[byte1, byte2, .. as rest] if byte1 < 0xE0 => {
-			top = U32.shl_wrap(U8.to_u32(U8.bitwise_and(byte1, 0x1F)), 6)
-			bottom = U8.to_u32(U8.bitwise_and(byte2, 0x3F))
-			code_point = U32.bitwise_or(top, bottom)
-
-			utf8_to_utf16(rest, out.append(U32.to_u16_wrap(code_point)))
-		}
-
-		[byte1, byte2, byte3, .. as rest] if byte1 < 0xF0 => {
-			top = U32.shl_wrap(U8.to_u32(U8.bitwise_and(byte1, 0x0F)), 12)
-			middle = U32.shl_wrap(U8.to_u32(U8.bitwise_and(byte2, 0x3F)), 6)
-			bottom = U8.to_u32(U8.bitwise_and(byte3, 0x3F))
-			code_point = U32.bitwise_or(U32.bitwise_or(top, middle), bottom)
-
-			utf8_to_utf16(rest, out.append(U32.to_u16_wrap(code_point)))
-		}
-
-		[byte1, byte2, byte3, byte4, .. as rest] => {
-			top = U32.shl_wrap(U8.to_u32(U8.bitwise_and(byte1, 0x07)), 18)
-			middle1 = U32.shl_wrap(U8.to_u32(U8.bitwise_and(byte2, 0x3F)), 12)
-			middle2 = U32.shl_wrap(U8.to_u32(U8.bitwise_and(byte3, 0x3F)), 6)
-			bottom = U8.to_u32(U8.bitwise_and(byte4, 0x3F))
-			upper = U32.bitwise_or(U32.bitwise_or(top, middle1), middle2)
-			code_point = U32.bitwise_or(upper, bottom)
-
-			high = U32.to_u16_wrap(0xD800 + U32.shr_wrap(code_point - 0x10000, 10))
-			low = U32.to_u16_wrap(0xDC00 + U32.bitwise_and(code_point - 0x10000, 0x3FF))
-
-			utf8_to_utf16(rest, out.append(high).append(low))
-		}
-
-		_ => {
-			crash "A Str contained invalid UTF-8. This should never happen."
-		}
-	}
-
-utf16_to_str : List(U16) -> Try(Str, [InvalidStr(U64)])
-utf16_to_str = |u16s|
-	match utf16_to_utf8(u16s, [], 0) {
-		Ok(bytes) =>
-			match Str.from_utf8(bytes) {
-				Ok(str) => Ok(str)
-				Err(BadUtf8({ index, problem: _ })) => Err(InvalidStr(index))
-			}
-
-		Err(InvalidUtf16(index)) => Err(InvalidStr(index))
-	}
-
-utf16_to_utf8 : List(U16), List(U8), U64 -> Try(List(U8), [InvalidUtf16(U64)])
-utf16_to_utf8 = |remaining, out, index|
-	match remaining {
-		[] => Ok(out)
-
-		[high, low, .. as rest] if is_high_surrogate(high) and is_low_surrogate(low) => {
-			high_bits = U32.shl_wrap(U16.to_u32(high) - 0xD800, 10)
-			low_bits = U16.to_u32(low) - 0xDC00
-			code_point = 0x10000 + high_bits + low_bits
-
-			utf16_to_utf8(rest, append_code_point_utf8(out, code_point), index + 2)
-		}
-
-		[unit, ..] if is_surrogate(unit) => Err(InvalidUtf16(index))
-
-		[unit, .. as rest] =>
-			utf16_to_utf8(rest, append_code_point_utf8(out, U16.to_u32(unit)), index + 1)
-	}
-
-utf16_to_utf8_lossy : List(U16) -> List(U8)
-utf16_to_utf8_lossy = |u16s| utf16_to_utf8_lossy_help(u16s, [])
-
-utf16_to_utf8_lossy_help : List(U16), List(U8) -> List(U8)
-utf16_to_utf8_lossy_help = |remaining, out|
-	match remaining {
-		[] => out
-
-		[high, low, .. as rest] if is_high_surrogate(high) and is_low_surrogate(low) => {
-			high_bits = U32.shl_wrap(U16.to_u32(high) - 0xD800, 10)
-			low_bits = U16.to_u32(low) - 0xDC00
-			code_point = 0x10000 + high_bits + low_bits
-
-			utf16_to_utf8_lossy_help(rest, append_code_point_utf8(out, code_point))
-		}
-
-		[unit, .. as rest] if is_surrogate(unit) =>
-			utf16_to_utf8_lossy_help(rest, append_code_point_utf8(out, 0xFFFD))
-
-		[unit, .. as rest] =>
-			utf16_to_utf8_lossy_help(rest, append_code_point_utf8(out, U16.to_u32(unit)))
-	}
-
-append_code_point_utf8 : List(U8), U32 -> List(U8)
-append_code_point_utf8 = |out, code_point|
-	if code_point < 0x80 {
-		out.append(U32.to_u8_wrap(code_point))
-	} else if code_point < 0x800 {
-		out.append(U32.to_u8_wrap(0xC0 + U32.shr_wrap(code_point, 6)))
-			.append(U32.to_u8_wrap(0x80 + U32.bitwise_and(code_point, 0x3F)))
-	} else if code_point < 0x10000 {
-		out.append(U32.to_u8_wrap(0xE0 + U32.shr_wrap(code_point, 12)))
-			.append(U32.to_u8_wrap(0x80 + U32.bitwise_and(U32.shr_wrap(code_point, 6), 0x3F)))
-			.append(U32.to_u8_wrap(0x80 + U32.bitwise_and(code_point, 0x3F)))
-	} else {
-		out.append(U32.to_u8_wrap(0xF0 + U32.shr_wrap(code_point, 18)))
-			.append(U32.to_u8_wrap(0x80 + U32.bitwise_and(U32.shr_wrap(code_point, 12), 0x3F)))
-			.append(U32.to_u8_wrap(0x80 + U32.bitwise_and(U32.shr_wrap(code_point, 6), 0x3F)))
-			.append(U32.to_u8_wrap(0x80 + U32.bitwise_and(code_point, 0x3F)))
-	}
-
-is_high_surrogate : U16 -> Bool
-is_high_surrogate = |unit| unit >= 0xD800 and unit <= 0xDBFF
-
-is_low_surrogate : U16 -> Bool
-is_low_surrogate = |unit| unit >= 0xDC00 and unit <= 0xDFFF
-
-is_surrogate : U16 -> Bool
-is_surrogate = |unit| unit >= 0xD800 and unit <= 0xDFFF
 
 ends_with_u8 : List(U8), U8 -> Bool
 ends_with_u8 = |list, suffix|
@@ -657,32 +552,32 @@ path_identity : Path -> Path
 path_identity = |path| path
 
 ## Constructors preserve Unix, Windows, and UTF-8 path representations.
-expect Path.unix("abc") == Unix([97, 98, 99])
-expect Path.unix_bytes([97, 98, 99]) == Unix([97, 98, 99])
-expect Path.windows("abc") == Windows([97, 98, 99])
-expect Path.windows_u16s([97, 98, 99]) == Windows([97, 98, 99])
-expect Path.utf8("abc") == Utf8("abc")
+expect Path.to_raw(Path.unix("abc")) == UnixBytes([97, 98, 99])
+expect Path.to_raw(Path.unix_bytes([97, 98, 99])) == UnixBytes([97, 98, 99])
+expect Path.to_raw(Path.windows("abc")) == WindowsU16s([97, 98, 99])
+expect Path.to_raw(Path.windows_u16s([97, 98, 99])) == WindowsU16s([97, 98, 99])
+expect Path.to_raw(Path.utf8("abc")) == Utf8("abc")
 
 ## Quoted literals dispatch to UTF-8 paths through `from_quote`.
-expect Path.from_quote("config.txt") == Ok(Path.utf8("config.txt"))
-expect quoted_literal_path == Path.utf8("config.txt")
-expect path_identity("nested/config.txt") == Path.utf8("nested/config.txt")
+expect Path.from_quote("config.txt").map_ok(Path.to_raw) == Ok(Utf8("config.txt"))
+expect Path.to_raw(quoted_literal_path) == Utf8("config.txt")
+expect Path.to_raw(path_identity("nested/config.txt")) == Utf8("nested/config.txt")
 
 ## Interpolation creates a UTF-8 representation.
 expect {
 	directory = "config"
 	path : Path
 	path = "${directory}/app.toml"
-	path == Path.utf8("config/app.toml")
+	Path.to_raw(path) == Utf8("config/app.toml")
 }
 
 ## Raw conversion roundtrips every representation without validating raw OS data.
 expect Path.to_raw(Path.unix_bytes([97, 255, 98])) == UnixBytes([97, 255, 98])
 expect Path.to_raw(Path.windows_u16s([0xD800, 97])) == WindowsU16s([0xD800, 97])
 expect Path.to_raw(Path.utf8("abc")) == Utf8("abc")
-expect Path.from_raw(UnixBytes([97, 255, 98])) == Path.unix_bytes([97, 255, 98])
-expect Path.from_raw(WindowsU16s([97, 98, 99])) == Path.windows("abc")
-expect Path.from_raw(Utf8("abc")) == Path.utf8("abc")
+expect Path.to_raw(Path.from_raw(UnixBytes([97, 255, 98]))) == UnixBytes([97, 255, 98])
+expect Path.to_raw(Path.from_raw(WindowsU16s([97, 98, 99]))) == WindowsU16s([97, 98, 99])
+expect Path.to_raw(Path.from_raw(Utf8("abc"))) == Utf8("abc")
 
 ## `to_str` succeeds for valid text and reports the first invalid raw unit.
 expect Path.to_str(Path.unix("abc")) == Ok("abc")
@@ -706,9 +601,159 @@ expect Str.inspect(Path.unix_bytes([97, 255, 98])) == "Path.unix_bytes([97, 255,
 expect Str.inspect(Path.windows("abc")) == "Path.windows(\"abc\")"
 expect Str.inspect(Path.windows_u16s([0xD800, 97])) == "Path.windows_u16s([55296, 97])"
 
-## Equality and hashing preserve representation identity.
-expect Path.utf8("abc") != Path.unix("abc")
+## Equality follows the content, not the representation that holds it.
+expect Path.utf8("abc") == Path.unix("abc")
+expect Path.unix("abc") == Path.utf8("abc")
+expect Path.utf8("abc") == Path.windows("abc")
+expect Path.windows("abc") == Path.utf8("abc")
+expect Path.unix("abc") == Path.windows("abc")
+expect Path.windows("abc") == Path.unix("abc")
+
+## The same representation still compares its units.
+expect Path.utf8("abc") == Path.utf8("abc")
+expect Path.unix("abc") == Path.unix_bytes([97, 98, 99])
+expect Path.windows("abc") == Path.windows_u16s([97, 98, 99])
+expect Path.utf8("abc") != Path.utf8("abd")
+expect Path.unix("abc") != Path.unix("abd")
+expect Path.windows("abc") != Path.windows("abd")
+
+## Different text is unequal in every pairing, including a prefix.
+expect Path.utf8("abc") != Path.unix("abd")
+expect Path.utf8("abc") != Path.windows("abd")
+expect Path.unix("abc") != Path.windows("abd")
+expect Path.utf8("abc") != Path.unix("ab")
+expect Path.windows("ab") != Path.utf8("abc")
+expect Path.unix("ab") != Path.windows("abc")
+expect Path.utf8("") == Path.unix_bytes([])
+expect Path.utf8("") == Path.windows_u16s([])
+expect Path.unix_bytes([]) == Path.windows_u16s([])
+
+## A literal equals the native value the operating system returns for that text.
+expect {
+	literal : Path
+	literal = "--verbose"
+	literal == Path.unix("--verbose") and literal == Path.windows("--verbose")
+}
+
+## Text outside ASCII compares by code point: two, three and four byte UTF-8
+## sequences against one UTF-16 unit or a surrogate pair.
+expect Path.utf8("é€") == Path.unix_bytes([0xC3, 0xA9, 0xE2, 0x82, 0xAC])
+expect Path.utf8("é€") == Path.windows_u16s([0xE9, 0x20AC])
+expect Path.unix_bytes([0xC3, 0xA9, 0xE2, 0x82, 0xAC]) == Path.windows_u16s([0xE9, 0x20AC])
+expect Path.utf8("🐦") == Path.unix_bytes([0xF0, 0x9F, 0x90, 0xA6])
+expect Path.utf8("🐦") == Path.windows_u16s([0xD83D, 0xDC26])
+expect Path.unix_bytes([0xF0, 0x9F, 0x90, 0xA6]) == Path.windows_u16s([0xD83D, 0xDC26])
+expect Path.windows_u16s([0xD83D, 0xDC26]) == Path.unix_bytes([0xF0, 0x9F, 0x90, 0xA6])
+expect Path.utf8("🐦") != Path.windows_u16s([0xD83D, 0xDC27])
+
+## Invalid UTF-8 equals only the identical bytes. It is not the text `display`
+## shows for it, and not UTF-16 units with the same numbers.
+expect Path.unix_bytes([97, 255]) == Path.unix_bytes([97, 255])
+expect Path.unix_bytes([97, 255]) != Path.unix_bytes([97, 254])
+expect Path.unix_bytes([97, 255]) != Path.utf8(Path.display(Path.unix_bytes([97, 255])))
+expect Path.utf8("a") != Path.unix_bytes([97, 255])
+expect Path.unix_bytes([97, 255]) != Path.windows_u16s([97, 255])
+expect Path.windows_u16s([97, 255]) != Path.unix_bytes([97, 255])
+
+## An unpaired surrogate equals only the identical units. It is not the text
+## `display` shows for it, and not the bytes a lenient encoder would write.
+expect Path.windows_u16s([0xD800, 97]) == Path.windows_u16s([0xD800, 97])
+expect Path.windows_u16s([0xD800, 97]) != Path.windows_u16s([0xD801, 97])
+expect Path.windows_u16s([0xD800, 97]) != Path.utf8(Path.display(Path.windows_u16s([0xD800, 97])))
+expect Path.utf8("a") != Path.windows_u16s([0xD800, 97])
+expect Path.windows_u16s([0xD800, 97]) != Path.unix_bytes([0xEF, 0xBF, 0xBD, 97])
+expect Path.windows_u16s([0xD800, 97]) != Path.unix_bytes([0xED, 0xA0, 0x80, 97])
+expect Path.unix_bytes([0xED, 0xA0, 0x80, 97]) != Path.windows_u16s([0xD800, 97])
+
+## Invalid values of different kinds are never equal.
+expect Path.unix_bytes([255]) != Path.windows_u16s([0xD800])
+expect Path.windows_u16s([0xDC00]) != Path.unix_bytes([0xDC])
+
+## Nothing is normalized: case, Unicode normal forms and separators differ.
+expect Path.utf8("Abc") != Path.unix("abc")
+expect Path.utf8("é") != Path.unix("e\u(0301)")
+expect Path.utf8("a/b") != Path.windows("a\\b")
+expect Path.utf8("./a") != Path.unix("a")
+expect Path.utf8("a/") != Path.unix("a")
+
+## Equality is transitive across all three representations, and unequal
+## values stay unequal through a third.
+expect {
+	text = Path.utf8("naïve 🐦")
+	bytes = Path.unix("naïve 🐦")
+	units = Path.windows("naïve 🐦")
+	text == bytes and bytes == units and text == units and units == text and units == bytes and bytes == text
+}
+
+expect {
+	bytes = Path.unix_bytes([97, 255])
+	units = Path.windows_u16s([97, 255])
+	text = Path.utf8("aÿ")
+	# The units are valid text; the bytes are not, so they equal neither.
+	units == text and bytes != units and bytes != text
+}
+
+## Inspection still shows the representation of values that are equal.
+expect Path.utf8("abc") == Path.unix("abc") and Str.inspect(Path.utf8("abc")) != Str.inspect(Path.unix("abc"))
+expect Str.inspect(Path.windows("abc")) == "Path.windows(\"abc\")"
+
+## Hashing agrees with equality, so `Dict`, `Set` and `List.contains` find a
+## value through any representation.
+expect Dict.single(Path.unix("HOME"), "found").get(Path.utf8("HOME")) == Ok("found")
+expect Dict.single(Path.windows("HOME"), "found").get(Path.utf8("HOME")) == Ok("found")
+expect Dict.single(Path.utf8("HOME"), "found").get(Path.unix("HOME")) == Ok("found")
+expect Dict.single(Path.utf8("HOME"), "found").get(Path.windows("HOME")) == Ok("found")
+expect Dict.single(Path.unix("HOME"), "found").get(Path.windows("HOME")) == Ok("found")
+expect Dict.single(Path.windows("HOME"), "found").get(Path.unix("HOME")) == Ok("found")
+expect Dict.single(Path.windows("🐦"), "found").get(Path.unix_bytes([0xF0, 0x9F, 0x90, 0xA6])) == Ok("found")
+expect Dict.single(Path.unix("HOME"), "found").get(Path.utf8("home")) == Err(KeyNotFound)
+
+expect {
+	literal : Path
+	literal = "HOME"
+	Dict.from_list([(Path.unix("PATH"), 1), (Path.unix("HOME"), 2)]).get(literal) == Ok(2)
+}
+
+expect [Path.unix("--quiet"), Path.unix("--verbose")].contains("--verbose")
+expect [Path.windows("--quiet"), Path.windows("--verbose")].contains("--verbose")
+expect Bool.not([Path.unix("--quiet")].contains("--verbose"))
+
+## Values equal across representations collapse to one `Set` or `Dict` key.
+expect Set.from_list([Path.utf8("abc"), Path.unix("abc"), Path.windows("abc")]).len() == 1
+expect Set.from_list([Path.utf8("abc"), Path.unix("abc"), Path.windows("abd")]).len() == 2
+expect Set.from_list([Path.unix("abc")]).contains(Path.windows("abc"))
+expect Dict.from_list([(Path.utf8("k"), 1), (Path.unix("k"), 2), (Path.windows("k"), 3)]).len() == 1
+
+## Invalid native units are still usable keys, and stay apart from text and
+## from each other.
 expect Dict.single(Path.unix_bytes([97, 255]), "found").get(Path.unix_bytes([97, 255])) == Ok("found")
+expect Dict.single(Path.windows_u16s([0xD800, 97]), "found").get(Path.windows_u16s([0xD800, 97])) == Ok("found")
+expect Dict.single(Path.unix_bytes([97, 255]), "found").get(Path.windows_u16s([97, 255])) == Err(KeyNotFound)
+expect Dict.single(Path.windows_u16s([0xD800, 97]), "found").get(Path.utf8(Path.display(Path.windows_u16s([0xD800, 97])))) == Err(KeyNotFound)
+expect Set.from_list([Path.unix_bytes([97, 255]), Path.windows_u16s([97, 255]), Path.utf8("aÿ")]).len() == 2
+
+## A listed entry is found by the literal naming it.
+expect [Path.unix("src/lib.roc"), Path.unix("src/main.roc")].contains("src/main.roc")
+
+## A path and the OS string it converts to hash alike, as they compare alike.
+expect Path.to_os_str(Path.unix("abc")) == OsStr.utf8("abc")
+
+## Generic codecs roundtrip non-text representations without loss.
+expect {
+	original = Path.windows_u16s([0xD800, 97])
+	decoded : Try(Path, _)
+	decoded = Json.parse(Json.to_str(original))
+	decoded == Ok(original)
+}
+
+expect {
+	original = Path.unix_bytes([97, 255])
+	decoded : Try(Path, _)
+	decoded = Json.parse(Json.to_str(original))
+	decoded == Ok(original)
+}
+
+expect Json.to_str(Path.utf8("a.txt")) == Json.to_str(OsStr.utf8("a.txt"))
 
 ## `filename` returns everything after the last separator.
 expect Path.filename(Path.unix("foo/bar.txt")) == Ok(Path.unix("bar.txt"))
@@ -731,7 +776,7 @@ expect Path.filename(Path.windows("foo/bar..")) == Err(EndsInDots)
 expect Path.filename(Path.utf8("foo/bar/")) == Err(IsDirPath)
 expect Path.filename(Path.utf8("foo/bar..")) == Err(EndsInDots)
 
-## `ext` returns the filename extension without the leading dot.
+## `ext` returns everything after the first dot that is not a leading dot.
 expect Path.ext(Path.unix("foo/bar.txt")) == Ok(Path.unix("txt"))
 expect Path.ext(Path.unix("foo/bar.")) == Ok(Path.unix(""))
 expect Path.ext(Path.unix("foo/.bar.txt")) == Ok(Path.unix("txt"))
@@ -770,13 +815,24 @@ expect Path.join(Path.unix("foo"), "bar") == Path.unix("foo/bar")
 expect Path.join(Path.windows("foo"), "bar") == Path.windows("foo\\bar")
 expect Path.join(Path.utf8("foo"), "bar") == Path.utf8("foo/bar")
 
+## `filename`, `ext` and `join` answer in the representation they were given.
+expect Path.filename(Path.unix("a/b.c")).map_ok(Path.to_raw) == Ok(UnixBytes([98, 46, 99]))
+expect Path.filename(Path.windows("a\\b.c")).map_ok(Path.to_raw) == Ok(WindowsU16s([98, 46, 99]))
+expect Path.filename(Path.utf8("a/b.c")).map_ok(Path.to_raw) == Ok(Utf8("b.c"))
+expect Path.ext(Path.unix("a/b.c")).map_ok(Path.to_raw) == Ok(UnixBytes([99]))
+expect Path.ext(Path.windows("a\\b.c")).map_ok(Path.to_raw) == Ok(WindowsU16s([99]))
+expect Path.ext(Path.utf8("a/b.c")).map_ok(Path.to_raw) == Ok(Utf8("c"))
+expect Path.to_raw(Path.join(Path.unix("a"), "b")) == UnixBytes([97, 47, 98])
+expect Path.to_raw(Path.join(Path.windows("a"), "b")) == WindowsU16s([97, 92, 98])
+expect Path.to_raw(Path.join(Path.utf8("a"), "b")) == Utf8("a/b")
+
 ## Errors carry the path they were about, and successes pass through untouched.
 expect {
 	result : Try({}, [PathErr(IOErr, Path)])
 	result = map_file_result(Err(FileErr(NotFound)), Path.utf8("a.txt"))
 	match result {
 		Err(PathErr(NotFound, path)) => path == Path.utf8("a.txt")
-		_ => Bool.False
+		_ => False
 	}
 }
 
@@ -786,7 +842,7 @@ expect {
 	match result {
 		# Raw non-UTF-8 bytes survive the trip through the error.
 		Err(PathErr(NotADirectory, path)) => path == Path.unix_bytes([0x2F, 0xFF])
-		_ => Bool.False
+		_ => False
 	}
 }
 
@@ -795,7 +851,7 @@ expect {
 	result = map_file_result(Ok(42), Path.utf8("a.txt"))
 	match result {
 		Ok(value) => value == 42
-		Err(_) => Bool.False
+		Err(_) => False
 	}
 }
 

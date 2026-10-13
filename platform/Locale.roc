@@ -78,11 +78,11 @@ Locale :: { raw : Str }.{
 
 	## Compare locale tags without ASCII case distinctions.
 	is_eq : Locale, Locale -> Bool
-	is_eq = |left, right| ascii_lower(left.raw) == ascii_lower(right.raw)
+	is_eq = |left, right| left.raw.caseless_ascii_equals(right.raw)
 
 	## Hash locale tags without ASCII case distinctions.
 	to_hash : Locale, Hasher -> Hasher
-	to_hash = |locale, hasher| Str.to_hash(ascii_lower(locale.raw), hasher)
+	to_hash = |locale, hasher| Str.to_hash(locale.raw.with_ascii_lowercased(), hasher)
 
 	## Returns the most preferred locale for the system or application.
 	##
@@ -92,10 +92,14 @@ Locale :: { raw : Str }.{
 	##
 	## Returns `Err(NotAvailable)` if the locale cannot be determined.
 	get! : () => Try(Locale, [NotAvailable])
-	get! = || {
-		raw = Host.locale_get!()?
-		Ok(Locale.{ raw })
-	}
+	get! = ||
+		match Host.locale_get!() {
+			Ok(raw) => Ok(Locale.{ raw })
+			# Hosted error rows are closed by design; rebuilding the tag gives app
+			# authors an open row, as `get! = Locale.get!` then `get!()?` needs
+			# (`tests/error-rows.roc`).
+			Err(NotAvailable) => Err(NotAvailable)
+		}
 
 	## Returns the preferred locales for the system or application.
 	##
@@ -188,19 +192,6 @@ ascii_byte_eq = |bytes, expected|
 		[byte] => byte == expected or byte == expected - 32
 		_ => False
 	}
-
-ascii_lower : Str -> Str
-ascii_lower = |input|
-	Str.from_utf8_lossy(
-		Str.to_utf8(input).map(
-			|byte|
-				if byte >= 65 and byte <= 90 {
-					byte + 32
-				} else {
-					byte
-				},
-		),
-	)
 
 parse_err_to_str : Locale.ParseErr -> Str
 parse_err_to_str = |err|

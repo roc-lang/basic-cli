@@ -1,9 +1,10 @@
 ## Read a file's accessed, modified, and creation timestamps.
 app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.25.0/CZsY7tYZwR3rj9kYbpaCfxki2yVAaRL8bBwMLvB2xkbA.tar.zst" }
 
+import pf.Duration
 import pf.OsStr
-import pf.Stdout
 import pf.Path
+import pf.Stdout
 import pf.Utc
 
 main! : List(OsStr) => Try({}, _)
@@ -11,20 +12,24 @@ main! = |args| {
 	file : Path
 	file = path_argument(args)?
 
-	time_modified = Utc.to_millis_since_epoch(file.time_modified!()?)
+	modified = file.time_modified!()?
+	accessed = file.time_accessed!()?
 
-	time_accessed = Utc.to_millis_since_epoch(file.time_accessed!()?)
-
+	# Not every filesystem records when a file was created.
 	created_line = match file.time_created!() {
-		Ok(time_created) => "    Created: ${Utc.to_millis_since_epoch(time_created).to_str()} ms since epoch"
+		Ok(created) => "    Created: ${created.to_iso_8601()}"
 		Err(PathErr(Unsupported, _path)) => "    Created: unsupported"
 		Err(err) => Err(err)?
 	}
 
+	# The time between two instants is a Duration, which compares with others.
+	age = Utc.now!().since(modified)
+	freshness = if age > Duration.minutes(5) "stale" else "fresh"
+
 	Stdout.line!(
 		\\${file.display()} file time metadata:
-		\\    Modified: ${time_modified.to_str()} ms since epoch
-		\\    Accessed: ${time_accessed.to_str()} ms since epoch
+		\\    Modified: ${modified.to_iso_8601()} (${freshness})
+		\\    Accessed: ${accessed.to_iso_8601()}
 		\\${created_line}
 		,
 	)?

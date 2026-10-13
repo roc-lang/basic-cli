@@ -13,9 +13,13 @@ Random :: [].{
 	seed_u32! = || widen_random_err(Host.random_seed_u32!())
 }
 
-## Rebuild the error union so it is open at call sites.
-## Passing a hosted function's result straight through leaves the union closed,
-## which stops `?` from combining it with other error types.
+## Rebuild the error union so app authors get an open row.
+##
+## An error row that crosses the host boundary is closed by design, and a
+## wrapper that forwards the hosted result keeps that closed row. Every public
+## function here rebuilds the union instead, so its error combines with others
+## in every call form, including `seed! = Random.seed_u64!` followed by `seed!()?`.
+## `tests/error-rows.roc` covers that form.
 widen_random_err : Try(v, [RandomErr(IOErr)]) -> Try(v, [RandomErr(IOErr)])
 widen_random_err = |result|
 	match result {

@@ -28,9 +28,13 @@ Stdout :: [].{
 	write_bytes! = |bytes| widen_stdout_err(Host.stdout_write_bytes!(bytes))
 }
 
-## Rebuild the error union so it is open at call sites.
-## Passing a hosted function's result straight through leaves the union closed,
-## which stops `?` from combining it with other error types.
+## Rebuild the error union so app authors get an open row.
+##
+## An error row that crosses the host boundary is closed by design, and a
+## wrapper that forwards the hosted result keeps that closed row. Every public
+## function here rebuilds the union instead, so its error combines with others
+## in every call form, including `out! = Stdout.line!` followed by `out!(text)?`.
+## `tests/error-rows.roc` covers that form.
 widen_stdout_err : Try(v, [StdoutErr(IOErr)]) -> Try(v, [StdoutErr(IOErr)])
 widen_stdout_err = |result|
 	match result {

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import atexit
 import contextlib
 import functools
 import hashlib
@@ -13,6 +14,7 @@ import select
 import shutil
 import signal
 import socket
+import struct
 import subprocess
 import sys
 import tempfile
@@ -34,9 +36,12 @@ if hasattr(sys.stderr, "reconfigure"):
 ROOT = Path(__file__).resolve().parents[1]
 SPEC_PATH = ROOT / "scripts" / "test_spec.json"
 STAGES = ("fmt", "check", "test", "build", "run")
-APP_DIRS = (ROOT / "examples", ROOT / "tests")
+APP_DIRS = (ROOT / "examples", ROOT / "tests", ROOT / "tests" / "resource-lifetimes")
 DEFAULT_ARTIFACT_DIR = ROOT / "dist" / "example-binaries"
 ROC = os.environ.get("ROC", "roc")
+# A case with "live_handles": N sets this, making the host report at exit how
+# many native resource handles are still open, and requires the total to be N.
+LIVE_HANDLES_ENV = "BASIC_CLI_LIVE_HANDLES"
 VALGRIND_ARGS = (
     "valgrind",
     "--error-exitcode=99",
@@ -76,6 +81,12 @@ def command(*args: str | Path, cwd: Path = ROOT) -> None:
     values = [str(arg) for arg in args]
     print(f"+ {' '.join(values)}", flush=True)
     subprocess.run(values, cwd=cwd, check=True)
+
+
+def binary_stem(source: Path) -> str:
+    """Name an app's binary; apps in nested directories are prefixed to stay unique."""
+    parts = source.relative_to(ROOT).with_suffix("").parts
+    return "-".join(parts[1:])
 
 
 def roc_extra_args() -> tuple[str, ...]:
@@ -364,6 +375,8 @@ def make_environment(run_spec: dict[str, object], source: Path) -> dict[str, str
         raise SystemExit(f"{source}: run.env must be an object")
     for name, value in values.items():
         env[str(name)] = expand(str(value), source)
+    if "live_handles" in run_spec:
+        env[LIVE_HANDLES_ENV] = "1"
     non_utf8 = run_spec.get("non_utf8_env", {})
     if non_utf8 and os.name == "posix":
         byte_env = {name.encode(): value.encode() for name, value in env.items()}
@@ -405,6 +418,19 @@ def verify_output(source: Path, case_name: str, stdout: str, stderr: str,
         "stdout_contains", "stdout_regex", "stderr_contains", "stderr_regex"
     )):
         raise SystemExit(f"{source} [{case_name}]: PTY cases cannot assert separate streams")
+    if "live_handles" in run_spec:
+        expected = run_spec["live_handles"]
+        if isinstance(expected, bool) or not isinstance(expected, int):
+            raise SystemExit(f"{source} [{case_name}]: live_handles must be an integer")
+        # The host writes the report to stderr, which a PTY merges into stdout.
+        # Child processes inherit the variable and may report too, so every
+        # report must match: one child's zero must not hide the app's leak.
+        reports = re.findall(r"^live handles: (\d+)\r?$", stdout if pty else stderr, re.MULTILINE)
+        if not reports or any(int(count) != expected for count in reports):
+            raise SystemExit(
+                f"{source} [{case_name}]: expected every live-handle report to be "
+                f"{expected}, got {reports or 'none'}"
+            )
     if not pty:
         verify_text(source, case_name, "stdout", stdout,
                     run_spec.get("stdout_contains", []), run_spec.get("stdout_regex", []),
@@ -439,6 +465,69 @@ def case_enabled(case: dict[str, object]) -> bool:
     return enabled
 
 
+def merged_rw_segment_patches(image: bytes) -> list[tuple[int, int]]:
+    """Find the `p_filesz` fields Valgrind needs widened to load an ELF's symbols.
+
+    Valgrind reads a binary's symbol table only once it has seen as many
+    writable mappings as it expects. Two writable PT_LOAD segments that are
+    adjacent in memory get mapped as one, and Valgrind allows for that only when
+    the first one's file size reaches the second (`p_vaddr + p_filesz`). lld
+    ends the first with `.relro_padding`, which occupies memory but not the
+    file, so Valgrind waits for a mapping that never comes, reports every frame
+    as `???`, and no `fun:` suppression can match.
+
+    The padding is zero-filled in memory and the bytes that follow the segment
+    in the file are zero too, so extending the file size over them loads the
+    same image. Returns (offset, value) pairs to write as little-endian u64.
+    """
+    if image[:6] != b"\x7fELF\x02\x01":
+        return []
+    program_headers, = struct.unpack_from("<Q", image, 32)
+    entry_size, entry_count = struct.unpack_from("<HH", image, 54)
+    patches: list[tuple[int, int]] = []
+    previous: tuple[int, int, int, int, int] | None = None
+    for index in range(entry_count):
+        entry = program_headers + index * entry_size
+        kind, flags, offset, address, _, file_size, memory_size, _ = struct.unpack_from("<IIQQQQQQ", image, entry)
+        # PT_LOAD, readable and writable but not executable.
+        if kind != 1 or flags & 7 != 6 or memory_size == 0:
+            continue
+        if previous is not None:
+            previous_entry, previous_offset, previous_address, previous_file_size, previous_memory_size = previous
+            padded = previous_file_size < previous_memory_size
+            adjacent = previous_address + previous_memory_size == address
+            in_file = previous_offset + previous_memory_size <= offset
+            padding = image[previous_offset + previous_file_size:previous_offset + previous_memory_size]
+            if padded and adjacent and in_file and not any(padding):
+                patches.append((previous_entry + 32, previous_memory_size))
+        previous = (entry, offset, address, file_size, memory_size)
+    return patches
+
+
+@functools.cache
+def valgrind_scratch_dir() -> Path:
+    directory = Path(tempfile.mkdtemp(prefix="basic-cli-valgrind-"))
+    atexit.register(shutil.rmtree, directory, ignore_errors=True)
+    return directory
+
+
+@functools.cache
+def valgrind_binary(binary: Path) -> Path:
+    """Return a binary Valgrind can read symbols from: `binary`, or a patched copy."""
+    image = bytearray(binary.read_bytes())
+    patches = merged_rw_segment_patches(bytes(image))
+    if not patches:
+        return binary
+    for offset, value in patches:
+        struct.pack_into("<Q", image, offset, value)
+    digest = hashlib.sha256(str(binary).encode()).hexdigest()[:16]
+    copy = valgrind_scratch_dir() / digest / binary.name
+    copy.parent.mkdir()
+    copy.write_bytes(image)
+    shutil.copymode(binary, copy)
+    return copy
+
+
 def run_binary(
     app: dict[str, object], binary: Path, run_spec: dict[str, object], *,
     valgrind: bool,
@@ -446,6 +535,8 @@ def run_binary(
     source = ROOT / str(app["path"])
     case_name = str(run_spec["name"])
     print(f"\n--- {app['path']} [{case_name}] ---")
+    if valgrind:
+        binary = valgrind_binary(binary)
     args = [str(binary), *(expand(str(value), source) for value in run_spec.get("args", []))]
     if valgrind:
         args = [*VALGRIND_ARGS, *args]
@@ -521,7 +612,7 @@ def run_stage(
             command(ROC, "test", source, *roc_extra_args())
         elif stage == "build":
             suffix = ".exe" if target == "x64win" else ""
-            binary = build_dir / target / f"{source.stem}{suffix}"
+            binary = build_dir / target / f"{binary_stem(source)}{suffix}"
             binary.parent.mkdir(parents=True, exist_ok=True)
             command(
                 ROC, "build", source, f"--target={target}",

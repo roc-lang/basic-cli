@@ -15,18 +15,20 @@
           "stdin": "someinput\n",
           "stdout_contains": ["someinput\n"],
           "stderr_contains": ["Copied 10 bytes from stdin to stdout."]
+        },
+        {
+          "name": "no-input",
+          "stderr_contains": ["Copied 0 bytes from stdin to stdout."]
         }
       ]
     },
     {
       "path": "examples/check-command.roc",
-      "platforms": { "windows": { "run": false } },
-      "reason": "Checks a Unix command is on the PATH",
       "cases": [
         {
           "name": "happy",
           "contains": [
-            "sh is available",
+            "git is available",
             "definitely-not-a-real-command-xyz is not available"
           ]
         }
@@ -40,6 +42,7 @@
           "args": ["foo"],
           "contains": [
             "program name:",
+            "verbose: False",
             "received argument: foo",
             "back to OsStr: OsStr.",
             "argument 1 is valid UTF-8: foo"
@@ -50,9 +53,19 @@
           ]
         },
         {
+          "name": "literal-equals-native-argument",
+          "args": ["foo", "--verbose"],
+          "contains": ["verbose: True", "received argument: foo"]
+        },
+        {
+          "name": "literal-differs-from-similar-argument",
+          "args": ["--verbos", "--verbose=1", "--VERBOSE"],
+          "contains": ["verbose: False", "received argument: --verbos"]
+        },
+        {
           "name": "missing-argument",
           "exit_code": 1,
-          "contains": ["Program exited with error: MissingArgument"]
+          "contains": ["verbose: False", "Program exited with error: MissingArgument"]
         }
       ]
     },
@@ -63,7 +76,16 @@
       "cases": [
         {
           "name": "happy",
-          "contains": ["Hello", "Command config: Cmd({", "Exit code: 1", "stdout_bytes: [72, 105, 10]"]
+          "live_handles": 0,
+          "stdout_contains": [
+            "Hello\nCaptured: Hi Roc\n",
+            "Command config: Cmd({ program: OsStr.utf8(\"/usr/bin/env\"), args: [], env_names: [OsStr.utf8(\"FOO\"), OsStr.utf8(\"BAZ\")], clear_envs: True,",
+            "FOO=BAR\n",
+            "BAZ=DUCK\n",
+            "Status: Exited(1)\nStderr: cat: ",
+            "Status again: Exited(1)\nFailed: cat non_existent.txt\nBytes: [72, 105, 10]\nNot installed: definitely-not-a-real-command-xyz\n"
+          ],
+          "stderr_regex": ["^cat: .*non_existent\\.txt"]
         }
       ]
     },
@@ -85,7 +107,18 @@
           "env": { "EDITOR": "nano", "LETTERS": "a,c,e,j" },
           "contains": [
             "Your favorite editor is nano!",
-            "Your favorite letters are: a c e j"
+            "No need to remember how to quit vim.",
+            "Your favorite letters are: a c e j",
+            "The environment dictionary agrees: a,c,e,j"
+          ]
+        },
+        {
+          "name": "literal-equals-native-value",
+          "env": { "EDITOR": "vim", "LETTERS": "x" },
+          "contains": [
+            "Your favorite editor is vim!",
+            "Remember: `:q!` gets you out.",
+            "The environment dictionary agrees: x"
           ]
         },
         {
@@ -124,7 +157,7 @@
           "name": "happy",
           "args": ["{root}/LICENSE"],
           "regex": [
-            "LICENSE file time metadata:\\n    Modified: [0-9]+ ms since epoch\\n    Accessed: [0-9]+ ms since epoch\\n    Created: ([0-9]+ ms since epoch|unsupported)"
+            "LICENSE file time metadata:\\n    Modified: [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z \\((stale|fresh)\\)\\n    Accessed: [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\\n    Created: ([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z|unsupported)$"
           ]
         }
       ]
@@ -161,6 +194,7 @@
       "cases": [
         {
           "name": "empty",
+          "live_handles": 0,
           "args": [
             "{root}/tests/fixtures/binary-reader/empty.bin"
           ],
@@ -171,6 +205,7 @@
         },
         {
           "name": "short",
+          "live_handles": 0,
           "args": [
             "{root}/tests/fixtures/binary-reader/short.bin"
           ],
@@ -181,6 +216,7 @@
         },
         {
           "name": "multi-chunk",
+          "live_handles": 0,
           "args": [
             "{root}/tests/fixtures/binary-reader/multi-chunk.bin"
           ],
@@ -191,6 +227,7 @@
         },
         {
           "name": "missing-argument",
+          "live_handles": 0,
           "exit_code": 1,
           "contains": [
             "MissingPathArgument"
@@ -198,6 +235,7 @@
         },
         {
           "name": "missing-file",
+          "live_handles": 0,
           "args": [
             "missing.bin"
           ],
@@ -214,9 +252,8 @@
       "cases": [
         {
           "name": "happy",
-          "regex": [
-            "Done reading file: \\{ bytes_read: [0-9]+, lines_read: [0-9]+ \\}"
-          ]
+          "live_handles": 0,
+          "regex": ["Done reading file: \\{ lines_read: [0-9]+, longest_line_bytes: [0-9]+ \\}"]
         }
       ]
     },
@@ -263,6 +300,17 @@
       ]
     },
     {
+      "path": "examples/file-write-stream.roc",
+      "cases": [
+        {
+          "name": "happy",
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["report.csv:\nname,total\napples,3\npears,12\nplums,240\nreport-redacted.csv:\nname,total\napples,#\npears,##\nplums,###\nRequireNew left the existing report alone.\n"]
+        }
+      ]
+    },
+    {
       "path": "examples/hello-world.roc",
       "cases": [{ "name": "happy", "contains": ["Hello, World!"] }]
     },
@@ -291,6 +339,26 @@
           "name": "connection-refused",
           "exit_code": 1,
           "contains": ["GetUtf8Failed"]
+        }
+      ]
+    },
+    {
+      "path": "examples/http-download.roc",
+      "cases": [
+        {
+          "name": "server-available",
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["Downloaded 200000 bytes to download.bin.\nThe server answered 404; download.bin was left alone.\ndownload.bin still holds 200000 bytes.\nReceived 200000 of 200000 bytes from /stream/sized.\nReceived 300000 bytes of unannounced length from /stream/chunked.\n"]
+        },
+        {
+          "name": "connection-refused",
+          "temp_cwd": true,
+          "live_handles": 0,
+          "exit_code": 1,
+          "contains": ["DownloadFailed(HttpErr(Other("]
         }
       ]
     },
@@ -364,14 +432,18 @@
       "cases": [
         {
           "name": "existing-database",
+          "live_handles": 0,
           "env": { "DB_PATH": "{root}/examples/todos.db" },
-          "contains": ["All Todos:", "Share my ❤️  for Roc", "Completed Todos:"]
+          "stdout_contains": [
+            "There are 3 todos.\n\nTodos still to do:\n    id: 3, task: Share my ❤️  for Roc, status: Todo\n\nCompleted Todos:\n    id: 1, task: Prepare for AoC, status: Completed\n"
+          ]
         },
         {
           "name": "cannot-open-database",
+          "live_handles": 0,
           "env": { "DB_PATH": "{root}/missing/sqlite.db" },
           "exit_code": 1,
-          "contains": ["QueryTodosFailed(SqliteErr(CanNotOpen"]
+          "contains": ["OpenDatabaseFailed(SqliteErr(Failed({ code: CanNotOpen, extended_code: 14, message: \"unable to open database file\" })))"]
         }
       ]
     },
@@ -380,6 +452,7 @@
       "cases": [
         {
           "name": "existing-database",
+          "live_handles": 0,
           "fixtures": [
             {
               "source": "examples/todos2.db",
@@ -387,16 +460,22 @@
             }
           ],
           "env": { "DB_PATH": "{root}/examples/todos2.e2e.db" },
-          "contains": [
-            "Row count: 3",
-            "Todos sorted by length of task description:"
+          "stdout_contains": [
+            "All Todos:\n    id: 1, task: Prepare for AoC, status: completed, edited: unknown\n    id: 2, task: Win all the Stars!, status: in-progress, edited: not-edited\n    id: 3, task: Share my ❤️  for Roc, status: todo, edited: not-edited\n",
+            "In-progress Todos:\n    In-progress task: Win all the Stars!\n",
+            "Todos until the first inserted one:\n    task: Prepare for AoC\n    task: Win all the Stars!\n    task: Share my ❤️  for Roc\n\n",
+            "Todos 1 and 3:\n    task: Prepare for AoC, status: completed\n    task: Share my ❤️  for Roc, status: todo\n",
+            "Adding the label \"urgent\" twice: Added, then AlreadyExists\n",
+            "Row count: 3\n",
+            "Todos sorted by length of task description:\n    task: Prepare for AoC, status: completed\n    task: Win all the Stars!, status: in-progress\n    task: Share my ❤️  for Roc, status: todo\n"
           ]
         },
         {
           "name": "cannot-open-database",
+          "live_handles": 0,
           "env": { "DB_PATH": "{root}/missing/sqlite.db" },
           "exit_code": 1,
-          "contains": ["QueryAllTodosFailed(SqliteErr(CanNotOpen"]
+          "contains": ["OpenDatabaseFailed(SqliteErr(Failed({ code: CanNotOpen, extended_code: 14, message: \"unable to open database file\" })))"]
         }
       ]
     },
@@ -416,6 +495,12 @@
           "name": "end-of-input",
           "exit_code": 1,
           "stderr_contains": ["MissingFirstName"]
+        },
+        {
+          "name": "empty-last-name",
+          "stdin": "John\n\n",
+          "exit_code": 1,
+          "stderr_contains": ["MissingLastName"]
         }
       ]
     },
@@ -423,15 +508,24 @@
       "path": "examples/stdin-pipe.roc",
       "cases": [
         {
-          "name": "valid-utf8",
+          "name": "unterminated-line",
           "stdin": "hey",
-          "contains": ["This is what you piped in: \"hey\""]
+          "stdout_contains": ["1: hey\nRead 1 line(s)\n"]
         },
         {
-          "name": "invalid-utf8",
-          "stdin_hex": "fffe",
-          "exit_code": 1,
-          "contains": ["BadUtf8({ index: 0, problem: InvalidStartByte })"]
+          "name": "crlf-and-empty-lines",
+          "stdin": "a\r\nb\n\nc",
+          "stdout_contains": ["1: a\n2: b\n3: \n4: c\nRead 4 line(s)\n"]
+        },
+        {
+          "name": "invalid-utf8-line",
+          "stdin_hex": "6f6b0afffe0a656e640a",
+          "stdout_contains": ["1: ok\n3: end\nRead 3 line(s)\n"],
+          "stderr_contains": ["2: invalid UTF-8 at byte 0"]
+        },
+        {
+          "name": "no-input",
+          "stdout_contains": ["Read 0 line(s)"]
         }
       ]
     },
@@ -440,14 +534,16 @@
       "cases": [
         {
           "name": "server-available",
+          "live_handles": 0,
           "helper": "tcp",
-          "stdin": "Hi\n",
-          "contains": ["Connected!", "< Hi"]
+          "stdin": "Hi\nthere\n",
+          "stdout_contains": ["Connected!\n> < Hi\n> < there\n> \n<< one\n<< two\n<< three\n"]
         },
         {
           "name": "connection-refused",
+          "live_handles": 0,
           "exit_code": 1,
-          "contains": ["ConnectFailed"]
+          "contains": ["Program exited with error: TcpErr(ConnectionRefused)"]
         }
       ]
     },
@@ -473,8 +569,9 @@
           "name": "one-second-sleep",
           "timeout": 10,
           "regex": [
-            "Started at [0-9]{4}-[0-9]{2}-[0-9]{2}T",
-            "Completed in [0-9]+ ms \\([0-9]+ ns\\)"
+            "^Started at 20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$",
+            "^Completed in [1-9][0-9]*(\\.[0-9]{1,3})?s$",
+            "^Waited out the 1\\.2s interval$"
           ]
         }
       ]
@@ -536,6 +633,7 @@
       "cases": [
         {
           "name": "successful-build",
+          "live_handles": 0,
           "args": [
             "{python}",
             "-c",
@@ -551,6 +649,7 @@
         },
         {
           "name": "failed-build",
+          "live_handles": 0,
           "args": [
             "{python}",
             "-c",
@@ -563,10 +662,334 @@
         },
         {
           "name": "missing-command",
+          "live_handles": 0,
           "exit_code": 1,
           "contains": [
             "MissingCommand"
           ]
+        },
+        {
+          "name": "missing-program",
+          "live_handles": 0,
+          "args": [
+            "definitely-not-a-real-command-xyz"
+          ],
+          "exit_code": 1,
+          "stderr_regex": [
+            "^Program exited with error: CmdErr\\(StartFailed\\(NotFound, OsStr\\.\\w+\\(\"definitely-not-a-real-command-xyz\"\\)\\)\\)$"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "tests/cmd-api.roc",
+      "cases": [
+        {
+          "name": "every-entry-point",
+          "live_handles": 0,
+          "timeout": 60,
+          "env": { "CMD_TEST_INHERITED": "yes" },
+          "stdout_contains": [
+            "exec: printed by the child\ncapture: Hi\n",
+            "run: Exited(0) \"to stdout\n\" \"to stderr\n\"\n",
+            "bad exit: Err(BadExitStatus({ command: \"<command>\", status: Exited(3), stdout: \"out\n\", stderr: \"err\n\" }))\n",
+            "exec: Exited(4) \"out\n\"\ncapture: Exited(5) \"out\n\"\n",
+            "inherit_stdio: printed by the child\ninherit_stdio: Exited(0)\n",
+            "bad utf8: Err(BadUtf8({ index: 1, problem: InvalidStartByte }))\n",
+            "lossy: { command: \"<command>\", status: Exited(0), stdout: \"H\ufffd\n\", stderr: \"\" }\n",
+            "running: ok\n",
+            "missing program: Err(CmdErr(StartFailed(NotFound, OsStr.utf8(\"definitely-not-a-real-command-xyz\"))))\n",
+            "missing program, in words: could not start definitely-not-a-real-command-xyz: entity was not found\n",
+            "missing program, spawned: definitely-not-a-real-command-xyz\n",
+            "environment values: hidden\n",
+            "output limit: Err(CmdErr(OutputLimitExceeded({ stdout: \"Hell\", stderr: \"\" })))\n",
+            "errors: ok\n",
+            "merged: \"out\nerr\n\" \"\"\n",
+            "tee: printed and captured\n",
+            "inherited environment: CMD_TEST_INHERITED=yes\n",
+            "streams: ok\n",
+            "read, zero wait: Err(CmdErr(IOErr(TimedOut)))\nread, short wait: Err(CmdErr(IOErr(TimedOut)))\n",
+            "write after close_stdin!: Err(CmdErr(IOErr(BrokenPipe)))\nread at the end: Err(EndOfInput)\n",
+            "after close!: read Err(Closed), write Err(Closed), wait Err(Closed), poll Err(Closed), kill Err(Closed), close_stdin Err(Closed)\n",
+            "child: ok\n",
+            "timed out: Err(CmdErr(TimedOut({ stdout: \"Hi\n\", stderr: \"\" })))\n",
+            "timed out, spawned: Err(CmdErr(TimedOut({ stdout: \"Hi\n\", stderr: \"\" })))\n",
+            "zero timeout: Err(CmdErr(TimedOut({ stdout: \"\", stderr: \"\" })))\n",
+            "deadlines: ok\n",
+            "function value: exec\nbad utf8 through ?: Err(BadUtf8({ index: 1, problem: InvalidStartByte })) Err(BadUtf8({ index: 1, problem: InvalidStartByte }))\nfunction values: ok\ncmd: ok\n"
+          ],
+          "stderr_contains": ["capture: stderr reaches the terminal\n"]
+        },
+        {
+          "name": "unhandled-timeout",
+          "live_handles": 0,
+          "timeout": 60,
+          "args": ["unhandled-timeout"],
+          "exit_code": 1,
+          "stderr_contains": [
+            "Program exited with error: CmdErr(TimedOut({ stdout: \"Hi\n\", stderr: \"\" }))\n"
+          ]
+        },
+        {
+          "name": "unhandled-start-failure",
+          "live_handles": 0,
+          "args": ["unhandled-start-failure"],
+          "exit_code": 1,
+          "stderr_contains": [
+            "Program exited with error: CmdErr(StartFailed(NotFound, OsStr.utf8(\"definitely-not-a-real-command-xyz\")))\n"
+          ]
+        },
+        {
+          "name": "unhandled-bad-exit",
+          "live_handles": 0,
+          "args": ["unhandled-bad-exit"],
+          "exit_code": 1,
+          "stderr_regex": [
+            "^Program exited with error: BadExitStatus\\(\\{ command: \"[^\\n]*cmd-api(\\.exe)? --helper exit 3\", status: Exited\\(3\\), stdout: \"out\n\", stderr: \"err\n\" \\}\\)$"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "tests/read-streams.roc",
+      "cases": [
+        {
+          "name": "stdin-lines",
+          "args": ["stdin-lines"],
+          "stdin": "a\r\nb\n\nc",
+          "stdout_contains": ["line: \"a\"\nline: \"b\"\nline: \"\"\nline: \"c\"\nstream ended\nline! after the end: Err(EndOfInput)\nbytes! after the end: Err(EndOfInput)\n"]
+        },
+        {
+          "name": "stdin-lines-one-carriage-return",
+          "args": ["stdin-lines"],
+          "stdin": "two\r\r\n\rmid\rdle\nlast\r",
+          "stdout_contains": ["line: \"two\\r\"\nline: \"\\rmid\\rdle\"\nline: \"last\\r\"\nstream ended\n"]
+        },
+        {
+          "name": "stdin-lines-bad-utf8",
+          "args": ["stdin-lines"],
+          "stdin_hex": "6f6b0afffe0d0a656e640a",
+          "stdout_contains": ["line: \"ok\"\nbad utf8 at byte 0\nline: \"end\"\nstream ended\n"]
+        },
+        {
+          "name": "stdin-lines-no-input",
+          "args": ["stdin-lines"],
+          "stdout_regex": ["\\Astream ended\nline! after the end: Err\\(EndOfInput\\)\n"]
+        },
+        {
+          "name": "stdin-line-calls",
+          "args": ["stdin-line-calls"],
+          "stdin_hex": "780d0a0aff7a0a6c617374",
+          "stdout_contains": ["first: \"x\"\nsecond: Ok(\"\")\nthird: Err(BadUtf8({ index: 0, problem: InvalidStartByte }))\nfourth: Ok(\"last\")\nfifth: end of input\n"]
+        },
+        {
+          "name": "stdin-line-calls-no-input",
+          "args": ["stdin-line-calls"],
+          "exit_code": 1,
+          "stderr_contains": ["EndOfInput"]
+        },
+        {
+          "name": "stdin-chunks",
+          "args": ["stdin-chunks"],
+          "stdin_hex": "00ff0d0a0a80",
+          "stdout_contains": ["chunks: [0, 255, 13, 10, 10, 128]\nbytes! after the end: Err(EndOfInput)\n"]
+        },
+        {
+          "name": "stdin-chunks-no-input",
+          "args": ["stdin-chunks"],
+          "stdout_contains": ["chunks: []\nbytes! after the end: Err(EndOfInput)\n"]
+        },
+        {
+          "name": "header-then-read-to-end",
+          "args": ["header-then-read-to-end"],
+          "stdin": "A: 1\r\nB: 2\r\n\r\nbody\r\nmore",
+          "stdout_contains": ["header: \"A: 1\"\nheader: \"B: 2\"\nrest: [98, 111, 100, 121, 13, 10, 109, 111, 114, 101]\n"]
+        },
+        {
+          "name": "header-then-chunks",
+          "args": ["header-then-chunks"],
+          "stdin": "A: 1\r\nB: 2\r\n\r\nbody\r\nmore",
+          "stdout_contains": ["header: \"A: 1\"\nheader: \"B: 2\"\nrest: [98, 111, 100, 121, 13, 10, 109, 111, 114, 101]\n"]
+        },
+        {
+          "name": "header-then-lines",
+          "args": ["header-then-lines"],
+          "stdin": "A: 1\r\nB: 2\r\n\r\nbody\r\nmore",
+          "stdout_contains": ["header: \"A: 1\"\nheader: \"B: 2\"\nline: \"body\"\nline: \"more\"\nstream ended\n"]
+        },
+        {
+          "name": "file-reader",
+          "args": ["file"],
+          "stdout_contains": [
+            "line: \"one\"\nline: \"\"\nbad utf8 at byte 0\nline: \"four\\r\"\nline: \"five\"\nstream ended at byte 20 of 20\n",
+            "read_line! at the end: Err(EndOfInput)\nread_until! at the end: Err(EndOfInput)\nread_up_to!(8) at the end: Err(EndOfInput)\nread_up_to!(0) at the end: Ok([])\nread_exactly!(1) at the end: Err(UnexpectedEndOfInput)\nread_exactly!(0) at the end: Ok([])\nchunks at the end: 0\n",
+            "after growth: Ok([33, 10])\nafter growth: Ok(\"six\")\nafter growth: Err(EndOfInput)\n",
+            "first pass: \"one\"\nfirst pass: \"\"\nposition after two lines: 6\nread_exactly!(3): [255, 254, 10]\nread_until!('\\n'): Ok([102, 111, 117, 114, 13, 13, 10])\nafter seek: \"six\"\n",
+            "chunk bytes: 26 from the start, 25 from byte 1\n"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "tests/file-writer.roc",
+      "cases": [
+        {
+          "name": "modes",
+          "args": ["modes"],
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": [
+            "RequireNew on a free path: \"new\n\"\nRequireNew on a file: Err(PathErr(AlreadyExists, Path.utf8(\"modes.txt\")))\nRequireNew on a directory: Err(PathErr(AlreadyExists, Path.utf8(\"a-directory\")))\nafter the refused opens: \"new\n\"\nAppend to a file: \"new\nappended\n\"\nTruncate a file: \"truncated\n\"\nTruncate without writing: \"\"\nAppend creates the file: \"first\nsecond\n\"\nTruncate creates the file: \"\"\n",
+            "missing parent, Truncate: Err(PathErr(NotFound, Path.utf8(\"no-such-directory/file.txt\")))\nmissing parent, Append: Err(PathErr(NotFound, Path.utf8(\"no-such-directory/file.txt\")))\nmissing parent, RequireNew: Err(PathErr(NotFound, Path.utf8(\"no-such-directory/file.txt\")))\nTruncate on a directory: Err(PathErr(IsADirectory, Path.utf8(\"a-directory\")))\n"
+          ]
+        },
+        {
+          "name": "buffering-flush-and-release",
+          "args": ["buffering"],
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["inspect: File.Writer(<opaque>)\nbefore flush!: \"\"\nafter flush!: \"one,two,three\"\nafter a second flush!: \"one,two,three\"\nafter a large write: 300015 bytes, ending [120, 124]\ndropped without flush!: \"kept kept \"\ndropped by an early return: \"kept kept kept kept \"\nappended through a temporary writer: 300023 bytes, ending [101, 100]\n"]
+        },
+        {
+          "name": "write-stream-source-errors",
+          "args": ["streams"],
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["stream without an error: Ok({})\n  wrote: \"abc\"\nstream with an error: Err(SourceErr(Boom(\"after two chunks\")))\n  wrote: \"first,second\"\ncopied 200000 bytes, equal: True\ndirect write_stream!: Err(SourceErr(Stopped))\n  wrote: \"first,second|x\"\n"]
+        },
+        {
+          "name": "with-writer",
+          "args": ["with-writer"],
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["callback value: 42\n  flushed: \"written\"\ncallback error: Err(Refused(\"by the callback\"))\n  flushed: \"partial\"\nwriter kept by the callback: \"partial and more\"\nannotated with PathErr and FileErr only: \"name,total\napples,3\n\"\n"]
+        },
+        {
+          "name": "error-rows",
+          "args": ["error-rows"],
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["error rows: \"value,value,qualified,qualified,method,method\"\n"]
+        },
+        {
+          "name": "error-rows-second-error",
+          "args": ["error-rows", "unexpected"],
+          "temp_cwd": true,
+          "live_handles": 0,
+          "exit_code": 1,
+          "contains": ["Program exited with error: UnexpectedArguments"]
+        },
+        {
+          "name": "stdin-chunks",
+          "args": ["stdin"],
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["copied from stdin: [97, 0, 255, 10]\n"],
+          "stdin_hex": "6100ff0a"
+        },
+        {
+          "name": "stdin-chunks-no-input",
+          "args": ["stdin"],
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["copied from stdin: []\n"]
+        }
+      ]
+    },
+    {
+      "path": "tests/http-streaming.roc",
+      "cases": [
+        {
+          "name": "status-and-headers-before-body",
+          "args": ["head"],
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["status: 404\ncontent-type: Ok(\"text/plain; charset=utf-8\")\ncontent_length: Known(13)\ninspect starts: True\ninspect hides the handle: True\n404 body: \"nothing here\n\"\nsized: 200, Known(200000)\nchunked: 200, Unknown\n"]
+        },
+        {
+          "name": "chunk-sizes-and-totals",
+          "args": ["chunks"],
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["/stream/sized: 200000 bytes, checksum 24995206\n  more than one chunk: True, empty chunks: 0, largest within 64 KiB: True\n  chunks after the end: 0, read_to_end! after the end: Ok([])\n/stream/chunked: 300000 bytes, checksum 37494610\n  more than one chunk: True, empty chunks: 0, largest within 64 KiB: True\n  chunks after the end: 0, read_to_end! after the end: Ok([])\nfirst chunk of a dropped stream is within 64 KiB: True\n"]
+        },
+        {
+          "name": "read-to-end-limit-and-remainder",
+          "args": ["read-to-end"],
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["MaxBytes(1000): Err(ReadLimitExceeded(1000))\nMaxBytes(199_999): Err(ReadLimitExceeded(199999))\na chunk and the remainder: 200000 bytes, checksum 24995206\nthe remainder is the larger part: True\nafter the end: Ok([])\nMaxBytes(300_000) of 300,000: 300000 bytes, checksum 37494610\nNoLimit: 300000 bytes, equal: True\n"]
+        },
+        {
+          "name": "idle-timeout-then-continue",
+          "args": ["idle-timeout"],
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["body across the idle timeouts: \"one,two\"\ntimed out at least once: True, then ended: True\nread_to_end! across the idle timeouts: Ok(\"one,two\"), timed out at least once: True\nwith a ten second idle timeout: \"one,two\"\n"]
+        },
+        {
+          "name": "zero-timeouts",
+          "args": ["zero-timeouts"],
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["After(Duration.zero): Err(HttpErr(Timeout))\nTimeoutMilliseconds(0) and NoTimeout: \"one,two\"\nNoTimeout and the default idle timeout: \"one,two\"\n"]
+        },
+        {
+          "name": "request-deadline-is-final",
+          "args": ["deadline"],
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["send!: Err(HttpErr(Timeout))\nsend_streaming!: status 200 before the deadline\ndownload: Err(SourceErr(HttpErr(Timeout)))\nwritten before the deadline: \"one,\"\na new stream: [Err(HttpErr(Timeout))]\nread_to_end!: Err(HttpErr(Timeout))\n"],
+          "valgrind": false
+        },
+        {
+          "name": "broken-body-source-error",
+          "args": ["broken-body"],
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["status: 200, Unknown\ndownload: Err(SourceErr(HttpErr(BadBody)))\nwritten before the failure: 70000 bytes, checksum 8746781\na new stream: [Err(HttpErr(BadBody))]\nread_to_end!: Err(HttpErr(BadBody))\n"]
+        },
+        {
+          "name": "download-to-disk",
+          "args": ["download"],
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["sized.bin: 200000 bytes, checksum 24995206\nchunked.bin: 300000 bytes, checksum 37494610\n"]
+        },
+        {
+          "name": "error-rows",
+          "args": ["error-rows"],
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["function values: \"Hello utf8\"\nqualified: \"Hello utf8\"\ninvalid URL: Err(InvalidUrl(UnsupportedScheme(\"ftp\")))\nrefused connection: Other with a message: True\n"]
+        },
+        {
+          "name": "error-rows-second-error",
+          "args": ["error-rows", "unexpected"],
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "exit_code": 1,
+          "contains": ["Program exited with error: UnexpectedArguments"]
         }
       ]
     },
@@ -634,6 +1057,238 @@
             "enable failed: ",
             "disable without enable: ok"
           ]
+        }
+      ]
+    },
+    {
+      "path": "tests/resource-lifetimes/binary-file-chunks.roc",
+      "cases": [
+        {
+          "name": "chunk-streams",
+          "live_handles": 0,
+          "stdout_contains": ["Binary chunk streams and resource cleanup passed"]
+        }
+      ]
+    },
+    {
+      "path": "tests/resource-lifetimes/binary-file-reader.roc",
+      "cases": [
+        {
+          "name": "reads-and-seeks",
+          "live_handles": 0,
+          "stdout_contains": ["Binary reads, seeks, and resource cleanup passed"]
+        }
+      ]
+    },
+    {
+      "path": "tests/resource-lifetimes/filesystem-tools.roc",
+      "cases": [
+        {
+          "name": "private-workspace",
+          "live_handles": 0,
+          "stdout_contains": ["Copied files in a private workspace"]
+        }
+      ]
+    },
+    {
+      "path": "tests/resource-lifetimes/process-control.roc",
+      "cases": [
+        {
+          "name": "pipes-and-reuse",
+          "live_handles": 0,
+          "stdout_contains": ["process control passed"]
+        }
+      ]
+    },
+    {
+      "path": "tests/resource-lifetimes/resource-lifetime.roc",
+      "cases": [
+        {
+          "name": "aliases-and-early-returns",
+          "live_handles": 0,
+          "stdout_contains": ["Resource aliases and early returns cleaned up"]
+        }
+      ]
+    },
+    {
+      "path": "tests/error-rows.roc",
+      "cases": [
+        {
+          "name": "function-values",
+          "env": { "ERROR_ROWS_GREETING": "hello" },
+          "stdout_contains": [
+            "stdout line\nstdout write\n",
+            "random seeds: ok\n",
+            "env: hello\n",
+            "error rows: ok\n"
+          ],
+          "stderr_contains": ["stderr line\nstderr write\n"]
+        },
+        {
+          "name": "second-error",
+          "args": ["unexpected"],
+          "exit_code": 1,
+          "contains": ["Program exited with error: UnexpectedArguments"]
+        }
+      ]
+    },
+    {
+      "path": "tests/tcp-server.roc",
+      "cases": [
+        {
+          "name": "server-and-client",
+          "live_handles": 0,
+          "stdout_contains": [
+            "listening: Tcp.Listener(<opaque>), port chosen: True\n",
+            "second listen: Err(TcpErr(AddrInUse))\n",
+            "zero listen timeout: Err(TcpErr(TimedOut))\n",
+            "bounded accept: Err(TcpErr(TimedOut)), equal to TimedOut: True\n",
+            "bounded accept waited: True\n",
+            "zero accept: Err(TcpErr(TimedOut))\n",
+            "connected: Tcp.Connection(<opaque>)\n",
+            "first read: Ok(\"hello\")\n",
+            "zero timeout: Err(TcpErr(TimedOut)), equal to TimedOut: True\n",
+            "same data: Ok(\"again\")\n",
+            "partial line: Err(TcpErr(TimedOut))\n",
+            "partial exact: Err(TcpErr(TimedOut))\n",
+            "whole line: Ok(\"partial\")\n",
+            "over the limit: Err(ReadLimitExceeded(8))\n",
+            "after it: Ok(\"short\")\n",
+            "at the limit: Ok(\"1234567\")\n",
+            "one over: Err(ReadLimitExceeded(8))\n",
+            "delimited: Ok(\"field|\")\n",
+            "delimited over: Err(ReadLimitExceeded(3))\n",
+            "exact: Ok([0, 255, 128])\n",
+            "up to: Ok([10])\n",
+            "none requested: Ok([]), Ok([])\n",
+            "chunks: 150000 bytes, sizes ok: True, last item: TcpErr(TimedOut)\n",
+            "lines: line \"a\"\n",
+            "lines: bad utf8 at byte 0\n",
+            "lines: longer than 8 bytes\n",
+            "lines: line \"\"\n",
+            "lines: line \"b\"\n",
+            "lines: TcpErr(TimedOut)\n",
+            "lines: ended\n",
+            "restarted lines: line \"unfinished\"\n",
+            "restarted lines: line \"last\"\n",
+            "restarted lines: ended\n",
+            "read_line after the end: Err(EndOfInput)\n",
+            "read_until after the end: Err(EndOfInput)\n",
+            "read_up_to after the end: Err(EndOfInput)\n",
+            "read_exactly after the end: Err(UnexpectedEndOfInput)\n",
+            "read_up_to zero after the end: Ok([])\n",
+            "chunks after the end: ended\n",
+            "accepted io timeout: Err(TcpErr(TimedOut)), waited: True\n",
+            "zero io timeout write: Err(TcpErr(TimedOut))\n",
+            "zero io timeout read: Err(TcpErr(TimedOut))\n",
+            "after with_timeout: Ok(\"kept\")\n",
+            "function values: (\"a\", \"b|\", \"cd|\", \"line\")\n",
+            "stream function values: TcpErr(TimedOut), chunk \"rest\", TcpErr(TimedOut), line \"end\"\n",
+            "local_port after close: Err(Closed)\n",
+            "accept after close: Err(Closed)\n",
+            "connect after close is refused: True\n",
+            "zero connect timeout: Err(TcpErr(TimedOut))\n",
+            "tcp server: ok\n"
+          ]
+        },
+        {
+          "name": "second-error",
+          "live_handles": 0,
+          "args": ["unexpected"],
+          "exit_code": 1,
+          "contains": ["Program exited with error: UnexpectedArguments"]
+        }
+      ]
+    },
+    {
+      "path": "tests/sqlite.roc",
+      "cases": [
+        {
+          "name": "rows",
+          "live_handles": 0,
+          "args": ["rows"],
+          "stdout_contains": [
+            "all row: { id: 1, payload: \"one\" }\nall bad row: UnexpectedType({ column: \"payload\", found: Real })\nall row: { id: 3, payload: \"three\" }\nall row: { id: 4, payload: \"four\" }\nall: end\nagain row: { id: 1, payload: \"one\" }\nagain row: { id: 3, payload: \"three\" }\nagain row: { id: 4, payload: \"four\" }\nagain: end\nearly row: { id: 1, payload: \"one\" }\ndrop after break: Ok({})\nmissing name sqlite error: ColumnNotFound(Name(\"payload\"))\nmissing name: end\nmissing index sqlite error: ColumnNotFound(Index(1))\nmissing index: end\noverflow row: 1\noverflow sqlite error: Failed({ code: Error, extended_code: 1, message: \"integer overflow\" })\noverflow: end\ndrop after failure: Ok({})\nno table sqlite error: Failed({ code: Error, extended_code: 1, message: \"no such table: nowhere\" })\nno table: end\nno value sqlite error: WrongParamCount({ expected: 1, given: 0 })\nno value: end\ntwo statements sqlite error: MultipleStatements\ntwo statements: end\nno statement: end\nno statement, a column sqlite error: ColumnNotFound(Index(0))\nno statement, a column: end\ninsert: end\nreturning row: \"y\"\nreturning: end\nlog: Ok([\"x\", \"y\"])\n"
+          ]
+        },
+        {
+          "name": "query",
+          "live_handles": 0,
+          "args": ["query"],
+          "stdout_contains": [
+            "one: Ok({ id: 3, payload: \"three\" })\nno rows: Err(NoRows)\nbad row: Err(BadRow(UnexpectedType({ column: \"payload\", found: Real })))\ntoo many: Err(TooManyRows)\ntoo many, first bad: Err(TooManyRows)\nby index: Ok({ count: 4, max: 4 })\nmissing name: Err(SqliteErr(ColumnNotFound(Name(\"payload\"))))\nmissing index: Err(SqliteErr(ColumnNotFound(Index(1))))\nall: Ok([{ id: 4, payload: \"four\" }, { id: 3, payload: \"three\" }, { id: 1, payload: \"one\" }])\nall, bad row: Err(BadRow(UnexpectedType({ column: \"payload\", found: Real })))\nall, none: Ok([])\nno statement, one: Err(NoRows)\nno statement, all: Ok([])\nno statement, a column: Err(SqliteErr(ColumnNotFound(Name(\"id\"))))\ntwo statements: Err(SqliteErr(MultipleStatements))\ndrop: Ok({})\n"
+          ]
+        },
+        {
+          "name": "execute",
+          "live_handles": 0,
+          "args": ["execute"],
+          "stdout_contains": [
+            "returning: Err(SqliteErr(ReturnsRows))\nselect: Err(SqliteErr(ReturnsRows))\ntwo statements: Err(SqliteErr(MultipleStatements))\ncount: Ok(0)\nempty: Ok({})\nwhite space: Ok({})\ncomment: Ok({})\ntrailing comment: Ok({})\nempty with a value: Err(SqliteErr(WrongParamCount({ expected: 0, given: 1 })))\ncount: Ok(1)\nscript: Ok({})\ncount: Ok(3)\nempty script: Ok({})\ncomment script: Ok({})\nfailing script: Err(SqliteErr(Failed({ code: Error, extended_code: 1, message: \"no such table: missing\" })))\ncount: Ok(4)\nsyntax: Err(SqliteErr(Failed({ code: Error, extended_code: 1, message: \"near \\\"INSRT\\\": syntax error\" })))\n"
+          ]
+        },
+        {
+          "name": "transaction",
+          "live_handles": 0,
+          "args": ["transaction"],
+          "stdout_contains": [
+            "committed: Ok(\"the body's value\")\nvalues: Ok([1, 2])\nown error: Err(ChangedMyMind(3))\nvalues: Ok([1, 2])\ndatabase error: Err(SqliteErr(Failed({ code: Constraint(NotNull), extended_code: 1299, message: \"NOT NULL constraint failed: t.x\" })))\nvalues: Ok([1, 2])\ninner: Err(SqliteErr(Failed({ code: Error, extended_code: 1, message: \"cannot start a transaction within a transaction\" })))\nnested: Ok({})\nvalues: Ok([1, 2, 5, 7])\nclosed: Err(Closed)\n"
+          ]
+        },
+        {
+          "name": "decoders",
+          "live_handles": 0,
+          "args": ["decoders"],
+          "stdout_contains": [
+            "i64: Ok([Ok(300), Err(Null), Ok(7)])\nf64: Ok([Ok(1.5), Err(Null), Err(Null)])\nbytes: Ok([Ok([0, 255]), Err(Null), Ok([])])\nbool: Ok([True, False, True])\nstr: Ok(\"text\")\nvalue: Ok([String(\"text\"), Null])\nvalue, bad utf8: Err(BadRow(BadUtf8({ index: 1, problem: ExpectedContinuation })))\nstr, bad utf8: Err(BadRow(BadUtf8({ index: 1, problem: ExpectedContinuation })))\nstr, bad utf8, nullable: Err(BadRow(BadUtf8({ index: 1, problem: ExpectedContinuation })))\nrow: Ok({ column_names: [\"id\", \"i\", \"r\", \"s\", \"b\", \"flag\"], values: [Integer(1), Integer(300), Real(1.5), String(\"text\"), Bytes([0, 255]), Integer(1)] })\nrow, bad utf8: Err(BadRow(BadUtf8({ index: 1, problem: ExpectedContinuation })))\nrow, nullable: Ok([Ok({ column_names: [\"i\", \"r\"], values: [Integer(300), Real(1.5)] }), Err(Null), Ok({ column_names: [\"i\", \"r\"], values: [Integer(7), Null] })])\ni64 of null: Err(BadRow(UnexpectedType({ column: \"i\", found: Null })))\ni64 of real: Err(BadRow(UnexpectedType({ column: \"r\", found: Real })))\nf64 of integer: Err(BadRow(UnexpectedType({ column: \"i\", found: Integer })))\nstr of bytes: Err(BadRow(UnexpectedType({ column: \"b\", found: Bytes })))\nbytes of text: Err(BadRow(UnexpectedType({ column: \"s\", found: String })))\nbool of text: Err(BadRow(UnexpectedType({ column: \"s\", found: String })))\npair, both: Ok(Ok({ i: 300, r: 1.5 }))\npair, neither: Ok(Err(Null))\npair, one: Err(BadRow(UnexpectedType({ column: \"r\", found: Null })))\nmap: Ok(600)\nmap_try, ok: Ok({ blob: Bytes([]), byte: 7 })\nmap_try, own error: Err(BadRow(OutOfRange))\nmap_try, decoder error: Err(BadRow(UnexpectedType({ column: \"i\", found: Null })))\nmap_try, own tag: Err(BadRow(TooBig(300)))\nsame name: Ok({ index: 2, name: 1 })\nshared, all: Ok([{ id: 1, payload: \"text\" }])\nshared, one: Ok({ id: 1, payload: \"text\" })\n"
+          ]
+        },
+        {
+          "name": "params",
+          "live_handles": 0,
+          "args": ["params"],
+          "stdout_contains": [
+            "too few: Err(SqliteErr(WrongParamCount({ expected: 2, given: 1 })))\ntoo many: Err(SqliteErr(WrongParamCount({ expected: 2, given: 3 })))\nnone wanted: Err(SqliteErr(WrongParamCount({ expected: 0, given: 1 })))\nnone given: Err(SqliteErr(WrongParamCount({ expected: 1, given: 0 })))\ncount: Ok(0)\nreused: Ok({ column_names: [\"x\", \"y\"], values: [String(\"same\"), String(\"same\")] })\nstored: Ok([{ a: String(\"'); DROP TABLE t; --\"), b: Bytes([0, 255]) }, { a: Real(2.5), b: Null }, { a: String(\"\"), b: Bytes([]) }])\nbound 400 times: 400\nstill intact: (True, True, 2)\n"
+          ]
+        },
+        {
+          "name": "errors",
+          "live_handles": 0,
+          "args": ["errors"],
+          "stdout_contains": [
+            "unique: \"Unique\"\nprimary key: \"PrimaryKey\"\nforeign key: \"ForeignKey\"\nnot null: \"NotNull\"\ncheck: \"Check\"\nnone: \"not a constraint violation: Ok({})\"\nfull: Err(SqliteErr(Failed({ code: Constraint(Unique), extended_code: 2067, message: \"UNIQUE constraint failed: child.email\" })))\nequal: True\nnot equal: False\nequal column: True\nnot equal column: False\nequal count: True\nequal failure: True\nnot equal failure: False\nto_str: UNIQUE constraint failed: child.email (Constraint(Unique), extended result code 2067)\nto_str: the statement returns rows; run it with query_one!, query_all! or rows\nto_str: the SQL text holds more than one statement; run it with execute_script!\nto_str: wrong number of parameter values: the statement needs 1, but 2 were given\nto_str: the query returns no column named \"b\"\nto_str: the query returns no column at index 3\n"
+          ]
+        },
+        {
+          "name": "close",
+          "live_handles": 0,
+          "args": ["close"],
+          "stdout_contains": [
+            "row: { id: 1, payload: \"one\" }\nclose: Ok({})\nclosed\nitems: 2\nclose again: Ok({})\nexecute: Err(Closed)\nexecute, no statement: Err(Closed)\nexecute_script: Err(Closed)\nquery_one: Err(Closed)\nquery_all: Err(Closed)\ntransaction: Err(Closed)\nrows: closed\nrows: end\ninspect: Sqlite.Db(<opaque>)\norphan row: { id: 1, payload: \"one\" }\norphan bad row: UnexpectedType({ column: \"payload\", found: Real })\ndone\n"
+          ]
+        },
+        {
+          "name": "files",
+          "live_handles": 0,
+          "args": ["files"],
+          "stdout_contains": [
+            "read-write, missing: \"CanNotOpen\"\nread-only, missing: \"CanNotOpen\"\ncreated by a failed open: False\ncreated: True\nread-only reads: Ok(1)\nread-only write: \"ReadOnly\"\nread-only script: \"ReadOnly\"\ninside: Ok(2)\noutside: Ok(1)\nlocked: \"Busy\"\nafter commit: Ok(2)\nfirst sees second: \"Error\"\nsecond sees first: \"Error\"\nthird sees second: \"Error\"\n"
+          ]
+        },
+        {
+          "name": "error-rows",
+          "live_handles": 0,
+          "args": ["error-rows"],
+          "stdout_contains": [
+            "error rows: (2, [1, 2])\n"
+          ]
+        },
+        {
+          "name": "error-rows-second-error",
+          "live_handles": 0,
+          "args": ["error-rows", "unexpected"],
+          "exit_code": 1,
+          "contains": ["Program exited with error: UnexpectedArguments"]
         }
       ]
     }
