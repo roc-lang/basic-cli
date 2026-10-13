@@ -29,7 +29,7 @@ struct SqliteConnection {
     raw: *mut libsqlite3_sys::sqlite3,
 }
 
-struct SqliteStatement {
+pub(crate) struct SqliteStatement {
     connection: Rc<SqliteConnection>,
     stmt: *mut libsqlite3_sys::sqlite3_stmt,
 }
@@ -158,7 +158,7 @@ thread_local! {
     };
 }
 
-fn box_sqlite_stmt(stmt: SqliteStatement, roc_host: &RocHost) -> *mut u64 {
+fn box_sqlite_stmt(stmt: SqliteStatement, roc_host: &RocHost) -> std::io::Result<*mut u64> {
     crate::resources::box_resource(stmt, roc_host)
 }
 
@@ -587,8 +587,14 @@ pub extern "C" fn hosted_sqlite_prepare(
         return try_sqlite_prepare_err(sqlite_error(err, &message, roc_host));
     }
 
-    let handle = box_sqlite_stmt(SqliteStatement { connection, stmt }, roc_host);
-    try_sqlite_prepare_ok(handle)
+    match box_sqlite_stmt(SqliteStatement { connection, stmt }, roc_host) {
+        Ok(handle) => try_sqlite_prepare_ok(handle),
+        Err(error) => try_sqlite_prepare_err(sqlite_error(
+            libsqlite3_sys::SQLITE_NOMEM,
+            &error.to_string(),
+            roc_host,
+        )),
+    }
 }
 
 #[no_mangle]

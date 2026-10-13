@@ -436,11 +436,13 @@ fn with_child<T>(handle: *mut u64, f: impl FnOnce(&crate::process_service::Child
 }
 #[no_mangle]
 pub extern "C" fn hosted_cmd_spawn(cmd: HostCmdSpawnArgs) -> HostCmdSpawnResult {
-    match managed_spawn(normalize_command!(cmd), false) {
-        Ok(child) => HostCmdSpawnResult {
+    match managed_spawn(normalize_command!(cmd), false)
+        .and_then(|child| crate::resources::box_resource(child, roc_host()))
+    {
+        Ok(handle) => HostCmdSpawnResult {
             tag: HostCmdSpawnResultTag::Ok,
             payload: HostCmdSpawnResultPayload {
-                ok: ManuallyDrop::new(crate::resources::box_resource(child, roc_host())),
+                ok: ManuallyDrop::new(handle),
             },
         },
         Err(err) => HostCmdSpawnResult {

@@ -1494,7 +1494,7 @@ pub extern "C" fn hosted_file_read_utf8(path: UnixBytesOrUtf8OrWindowsU16s) -> F
 // the last release, including final releases performed by compiled Roc.
 // ----------------------------------------------------------------------------
 
-fn box_file_reader(reader: BufReader<fs::File>, roc_host: &RocHost) -> *mut u64 {
+fn box_file_reader(reader: BufReader<fs::File>, roc_host: &RocHost) -> io::Result<*mut u64> {
     resources::box_resource(reader, roc_host)
 }
 
@@ -1523,7 +1523,10 @@ pub extern "C" fn hosted_file_open_reader(
             } else {
                 BufReader::with_capacity(capacity as usize, file)
             };
-            try_file_reader_ok(box_file_reader(reader, roc_host))
+            match box_file_reader(reader, roc_host) {
+                Ok(handle) => try_file_reader_ok(handle),
+                Err(error) => try_file_reader_err(file_io_err_from_io(&error, roc_host)),
+            }
         }
         Err(error) => try_file_reader_err(file_io_err_from_io(
             &normalize_file_kind_err(&path, error),
@@ -2300,7 +2303,7 @@ pub extern "C" fn roc_realloc(
     new_length: usize,
     alignment: usize,
 ) -> NonNull<c_void> {
-    DefaultAllocators::roc_realloc(roc_host_ptr(), ptr, new_length, alignment)
+    resources::realloc(roc_host_ptr(), ptr, new_length, alignment)
 }
 
 #[no_mangle]
@@ -2417,6 +2420,7 @@ pub fn rust_main(argc: i32, argv: *const *const c_char) -> i32 {
     }
     let mut roc_host = resources::make_host();
     set_roc_host(&mut roc_host);
+    resources::bind_host_thread();
 
     let (program_name, args) = split_program_name(collect_process_args(argc, argv));
     set_program_name(program_name);
@@ -2436,6 +2440,10 @@ pub fn rust_main(argc: i32, argv: *const *const c_char) -> i32 {
     tty::restore();
 
     process_service::shutdown();
+
+    // Everything `main!` opened should be released by now, whichever way it
+    // returned. A crash exits inside `roc_crashed` and is not reported.
+    resources::report_live_handles_if_requested();
 
     if DEBUG_OR_EXPECT_CALLED.load(Ordering::Acquire) && exit_code == 0 {
         exit_code = 1;

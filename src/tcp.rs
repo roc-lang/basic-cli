@@ -16,7 +16,10 @@ use crate::{roc_host, roc_u8_list_from_slice};
 // (mapped back to a tag union in Tcp.roc), "UnexpectedEof", or "LimitExceeded";
 // the Roc side parses them into the public TCP error tags.
 
-pub(crate) fn box_tcp_stream(stream: BufReader<TcpStream>, roc_host: &RocHost) -> *mut u64 {
+pub(crate) fn box_tcp_stream(
+    stream: BufReader<TcpStream>,
+    roc_host: &RocHost,
+) -> io::Result<*mut u64> {
     crate::resources::box_resource(stream, roc_host)
 }
 
@@ -390,10 +393,10 @@ pub extern "C" fn hosted_tcp_connect(
     unsafe { host.decref(roc_host) };
 
     match tcp_connect_with_timeout_impl(host_string, port, timeout_ms) {
-        Ok(stream) => {
-            let handle = box_tcp_stream(BufReader::new(stream), roc_host);
-            try_tcp_connect_ok(handle)
-        }
+        Ok(stream) => match box_tcp_stream(BufReader::new(stream), roc_host) {
+            Ok(handle) => try_tcp_connect_ok(handle),
+            Err(err) => try_tcp_connect_err(to_tcp_connect_err(err, roc_host)),
+        },
         Err(err) => try_tcp_connect_err(to_tcp_connect_err(err, roc_host)),
     }
 }

@@ -22,7 +22,7 @@ static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
         .build()
         .expect("TCP listener runtime")
 });
-struct Listener {
+pub(crate) struct Listener {
     socket: Option<tokio::net::TcpListener>,
 }
 
@@ -117,11 +117,13 @@ pub extern "C" fn hosted_tcp_listen(
     let roc_host = roc_host();
     let name = host.as_str().to_owned();
     unsafe { host.decref(roc_host) };
-    match listen(name, port, timeout_ms) {
-        Ok(listener) => HostTcpListenResult {
+    match listen(name, port, timeout_ms)
+        .and_then(|listener| resources::box_resource(listener, roc_host))
+    {
+        Ok(handle) => HostTcpListenResult {
             tag: HostTcpListenResultTag::Ok,
             payload: HostTcpListenResultPayload {
-                ok: ManuallyDrop::new(resources::box_resource(listener, roc_host)),
+                ok: ManuallyDrop::new(handle),
             },
         },
         Err(error) => HostTcpListenResult {
@@ -159,14 +161,14 @@ pub extern "C" fn hosted_tcp_local_port(handle: *mut u64) -> HostTcpLocalPortRes
 pub extern "C" fn hosted_tcp_accept(handle: *mut u64, timeout_ms: u64) -> HostTcpAcceptResult {
     let host = roc_host();
     let listener = unsafe { resources::resource_ref::<Listener>(handle) };
-    let result = match listener.accept(timeout_ms) {
+    let result = match listener
+        .accept(timeout_ms)
+        .and_then(|stream| crate::tcp::box_tcp_stream(std::io::BufReader::new(stream), host))
+    {
         Ok(stream) => HostTcpAcceptResult {
             tag: HostTcpAcceptResultTag::Ok,
             payload: HostTcpAcceptResultPayload {
-                ok: ManuallyDrop::new(crate::tcp::box_tcp_stream(
-                    std::io::BufReader::new(stream),
-                    host,
-                )),
+                ok: ManuallyDrop::new(stream),
             },
         },
         Err(error) => HostTcpAcceptResult {
@@ -224,7 +226,7 @@ mod tests {
         let host = resources::make_host();
         let listener = listen("127.0.0.1".into(), 0, 1000).unwrap();
         let address = listener.socket().unwrap().local_addr().unwrap();
-        let handle = resources::box_resource(listener, &host);
+        let handle = resources::box_resource(listener, &host).unwrap();
         unsafe { incref_box(handle.cast(), 1) };
         resources::release(handle, &host);
         assert!(TcpListener::bind(address).is_err());

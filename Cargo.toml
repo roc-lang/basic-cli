@@ -40,7 +40,7 @@ rustls = { version = "=0.23.45", default-features = false, features = ["std", "r
 sys-locale = "=0.3.2"
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "=0.59.0", features = ["Win32_Foundation", "Win32_Networking_WinSock", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console"] }
+windows-sys = { version = "=0.59.0", features = ["Win32_Foundation", "Win32_Networking_WinSock", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_Memory"] }
 
 [profile.release]
 lto = true
