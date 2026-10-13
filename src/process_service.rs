@@ -16,6 +16,7 @@ use tokio::{
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {
     Exited(i32),
+    #[cfg_attr(not(unix), allow(dead_code))]
     Signaled(i32),
 }
 #[derive(Clone, Debug, PartialEq, Eq)]

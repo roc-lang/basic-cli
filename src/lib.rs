@@ -2510,9 +2510,10 @@ mod tests {
             nanos_since_epoch(UNIX_EPOCH + Duration::new(1, 500_000_000)),
             Some(1_500_000_000)
         );
+        // 100 ns is the finest step a Windows `SystemTime` can hold.
         assert_eq!(
-            nanos_since_epoch(UNIX_EPOCH + Duration::from_nanos(1)),
-            Some(1)
+            nanos_since_epoch(UNIX_EPOCH + Duration::from_nanos(100)),
+            Some(100)
         );
         // 2026-10-13T09:30:00Z.
         assert_eq!(
