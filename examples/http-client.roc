@@ -28,7 +28,7 @@ main! = |_args| run_demo!()
 run_demo! : () => Try({}, _)
 run_demo! = || {
 	utf8 = Http.get_utf8!("http://localhost:9000/utf8test") ? |err| GetUtf8Failed(err)
-	write_line!("I received '${utf8}' from the server.")?
+	Stdout.line!("I received '${utf8}' from the server.")?
 
 	request = Request.from_method(GET).with_uri("http://localhost:9000/utf8test")
 	response = Http.send!(request) ? |err| SendFailed(err)
@@ -42,9 +42,9 @@ run_demo! = || {
 	echoed : { foo : Str }
 	echoed = Http.decode_json_response(echo_response) ? |err| EchoedJsonDecodeFailed(err)
 
-	write_line!("The json I received was: { foo: \"${decoded.foo}\" }")?
-	write_line!("send! returned status ${status}.")?
-	write_line!("send_json! echoed: { foo: \"${echoed.foo}\" }.")?
+	Stdout.line!("The json I received was: { foo: \"${decoded.foo}\" }")?
+	Stdout.line!("send! returned status ${status}.")?
+	Stdout.line!("send_json! echoed: { foo: \"${echoed.foo}\" }.")?
 	reject_invalid_json!()?
 	reject_invalid_utf8!()?
 	reject_invalid_url!()?
@@ -57,7 +57,7 @@ reject_invalid_url! = || {
 	result = Http.send!(Request.from_method(GET).with_uri("ftp://example.com"))
 
 	match result {
-		Err(InvalidUrl(UnsupportedScheme("ftp"))) => write_line!("invalid request URL was rejected.")
+		Err(InvalidUrl(UnsupportedScheme("ftp"))) => Stdout.line!("invalid request URL was rejected.")
 		Err(err) => Err(InvalidUrlRejectedWithWrongError(err))
 		Ok(_) => Err(InvalidUrlUnexpectedlySucceeded)
 	}
@@ -69,7 +69,7 @@ reject_invalid_json! = || {
 	result = Http.get!("http://localhost:9000/invalid-json")
 
 	match result {
-		Err(JsonErr(_)) => write_line!("invalid JSON was rejected.")
+		Err(JsonErr(_)) => Stdout.line!("invalid JSON was rejected.")
 		Err(err) => Err(InvalidJsonRejectedWithWrongError(err))
 		Ok(_) => Err(InvalidJsonUnexpectedlySucceeded)
 	}
@@ -80,15 +80,8 @@ reject_invalid_utf8! = || {
 	result = Http.get_utf8!("http://localhost:9000/invalid-utf8")
 
 	match result {
-		Err(BadBody(_)) => write_line!("invalid UTF-8 was rejected.")
+		Err(BadBody(_)) => Stdout.line!("invalid UTF-8 was rejected.")
 		Err(err) => Err(InvalidUtf8RejectedWithWrongError(err))
 		Ok(_) => Err(InvalidUtf8UnexpectedlySucceeded)
 	}
 }
-
-write_line! : Str => Try({}, _)
-write_line! = |message|
-	match Stdout.line!(message) {
-		Ok(value) => Ok(value)
-		Err(StdoutErr(err)) => Err(StdoutErr(err))
-	}

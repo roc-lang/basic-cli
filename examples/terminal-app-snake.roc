@@ -46,23 +46,15 @@ init_snake_len : U64
 init_snake_len = snake_len(initial_state.snake)
 
 main! : List(OsStr) => Try({}, _)
-main! = |args| {
+main! = |_args| {
 	Tty.enable_raw_mode!()?
 
 	# If the game fails, the platform restores the terminal when the app exits.
-	game_loop!(initial_state_from_os_strs(args))?
+	game_loop!(initial_state)?
 
 	Tty.disable_raw_mode!()?
 	Stdout.line!("\n--- Game Over ---")?
 	Ok({})
-}
-
-initial_state_from_os_strs : List(OsStr) -> GameState
-initial_state_from_os_strs = |args| {
-	# Avoid specializing the renderer with a fully known initial state; the
-	# current compiler postcheck panics on that path.
-	has_args = args.len() > 0
-	{ ..initial_state, game_over: has_args and Bool.not(has_args) }
 }
 
 game_loop! : GameState => Try({}, _)
@@ -80,28 +72,21 @@ game_loop! = |state| {
 }
 
 apply_input : GameState, List(U8) -> GameState
-apply_input = |state, input_bytes| {
-	for byte in input_bytes {
-		return apply_input_byte(state, byte)
+apply_input = |state, input_bytes|
+	match input_bytes.first() {
+		Ok(byte) => apply_input_byte(state, byte)
+		Err(ListWasEmpty) => state
 	}
-
-	state
-}
 
 apply_input_byte : GameState, U8 -> GameState
 apply_input_byte = |state, byte|
-	if byte == 119 {
-		{ ..state, direction: up }
-	} else if byte == 115 {
-		{ ..state, direction: down }
-	} else if byte == 97 {
-		{ ..state, direction: left }
-	} else if byte == 100 {
-		{ ..state, direction: right }
-	} else if byte == 113 {
-		{ ..state, game_over: True }
-	} else {
-		state
+	match byte {
+		'w' => { ..state, direction: up }
+		's' => { ..state, direction: down }
+		'a' => { ..state, direction: left }
+		'd' => { ..state, direction: right }
+		'q' => { ..state, game_over: True }
+		_ => state
 	}
 
 update_game : GameState -> GameState
