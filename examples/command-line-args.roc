@@ -11,6 +11,11 @@ main! = |args| {
 	program_name = Env.program_name!()?
 	Stdout.line!("program name: ${OsStr.display(program_name)}")?
 
+	# A literal is UTF-8 text, and the arguments are native units. `OsStr`
+	# compares by content, so a flag can be looked up by writing it out.
+	verbose = args.contains("--verbose")
+	Stdout.line!("verbose: ${Str.inspect(verbose)}")?
+
 	match args {
 		[first_arg, ..] => {
 			Stdout.line!("received argument: ${OsStr.display(first_arg)}")?

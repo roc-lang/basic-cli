@@ -350,18 +350,23 @@ Path := [
 				}
 		}
 
-	## Compare paths by their exact tagged representation.
+	## Compare paths by content, whichever representation holds it.
+	##
+	## A string literal is stored as UTF-8, while the operating system hands
+	## back native units, so `Path.list!("src")?.contains("src/main.roc")`
+	## compares text with native units. The rules are those of
+	## [`OsStr.is_eq`](OsStr#is_eq): valid Unicode is equal when it is the same
+	## text, and invalid native units equal only identical units of the same kind.
+	##
+	## Paths are not normalized. `a/b` and `a\b`, `./a` and `a`, and names that
+	## differ in case or Unicode normal form are all unequal, even where the
+	## file system would treat them as one file.
 	is_eq : Path, Path -> Bool
-	is_eq = |left, right| to_raw(left) == to_raw(right)
+	is_eq = |left, right| to_os_str(left) == to_os_str(right)
 
-	## Hash paths consistently with exact tagged equality.
+	## Hash paths consistently with [is_eq].
 	to_hash : Path, Hasher -> Hasher
-	to_hash = |path, hasher|
-		match to_raw(path) {
-			Utf8(str) => Str.to_hash(str, Hasher.write_u8(hasher, 0))
-			UnixBytes(bytes) => List.to_hash(bytes, Hasher.write_u8(hasher, 1))
-			WindowsU16s(u16s) => List.to_hash(u16s, Hasher.write_u8(hasher, 2))
-		}
+	to_hash = |path, hasher| to_os_str(path).to_hash(hasher)
 
 	## Returns everything after the last directory separator.
 	filename : Path -> Try(Path, [IsDirPath, EndsInDots])
@@ -547,32 +552,32 @@ path_identity : Path -> Path
 path_identity = |path| path
 
 ## Constructors preserve Unix, Windows, and UTF-8 path representations.
-expect Path.unix("abc") == UnixBytes([97, 98, 99])
-expect Path.unix_bytes([97, 98, 99]) == UnixBytes([97, 98, 99])
-expect Path.windows("abc") == WindowsU16s([97, 98, 99])
-expect Path.windows_u16s([97, 98, 99]) == WindowsU16s([97, 98, 99])
-expect Path.utf8("abc") == Utf8("abc")
+expect Path.to_raw(Path.unix("abc")) == UnixBytes([97, 98, 99])
+expect Path.to_raw(Path.unix_bytes([97, 98, 99])) == UnixBytes([97, 98, 99])
+expect Path.to_raw(Path.windows("abc")) == WindowsU16s([97, 98, 99])
+expect Path.to_raw(Path.windows_u16s([97, 98, 99])) == WindowsU16s([97, 98, 99])
+expect Path.to_raw(Path.utf8("abc")) == Utf8("abc")
 
 ## Quoted literals dispatch to UTF-8 paths through `from_quote`.
-expect Path.from_quote("config.txt") == Ok(Path.utf8("config.txt"))
-expect quoted_literal_path == Path.utf8("config.txt")
-expect path_identity("nested/config.txt") == Path.utf8("nested/config.txt")
+expect Path.from_quote("config.txt").map_ok(Path.to_raw) == Ok(Utf8("config.txt"))
+expect Path.to_raw(quoted_literal_path) == Utf8("config.txt")
+expect Path.to_raw(path_identity("nested/config.txt")) == Utf8("nested/config.txt")
 
 ## Interpolation creates a UTF-8 representation.
 expect {
 	directory = "config"
 	path : Path
 	path = "${directory}/app.toml"
-	path == Path.utf8("config/app.toml")
+	Path.to_raw(path) == Utf8("config/app.toml")
 }
 
 ## Raw conversion roundtrips every representation without validating raw OS data.
 expect Path.to_raw(Path.unix_bytes([97, 255, 98])) == UnixBytes([97, 255, 98])
 expect Path.to_raw(Path.windows_u16s([0xD800, 97])) == WindowsU16s([0xD800, 97])
 expect Path.to_raw(Path.utf8("abc")) == Utf8("abc")
-expect Path.from_raw(UnixBytes([97, 255, 98])) == Path.unix_bytes([97, 255, 98])
-expect Path.from_raw(WindowsU16s([97, 98, 99])) == Path.windows("abc")
-expect Path.from_raw(Utf8("abc")) == Path.utf8("abc")
+expect Path.to_raw(Path.from_raw(UnixBytes([97, 255, 98]))) == UnixBytes([97, 255, 98])
+expect Path.to_raw(Path.from_raw(WindowsU16s([97, 98, 99]))) == WindowsU16s([97, 98, 99])
+expect Path.to_raw(Path.from_raw(Utf8("abc"))) == Utf8("abc")
 
 ## `to_str` succeeds for valid text and reports the first invalid raw unit.
 expect Path.to_str(Path.unix("abc")) == Ok("abc")
@@ -596,9 +601,142 @@ expect Str.inspect(Path.unix_bytes([97, 255, 98])) == "Path.unix_bytes([97, 255,
 expect Str.inspect(Path.windows("abc")) == "Path.windows(\"abc\")"
 expect Str.inspect(Path.windows_u16s([0xD800, 97])) == "Path.windows_u16s([55296, 97])"
 
-## Equality and hashing preserve representation identity.
-expect Path.utf8("abc") != Path.unix("abc")
+## Equality follows the content, not the representation that holds it.
+expect Path.utf8("abc") == Path.unix("abc")
+expect Path.unix("abc") == Path.utf8("abc")
+expect Path.utf8("abc") == Path.windows("abc")
+expect Path.windows("abc") == Path.utf8("abc")
+expect Path.unix("abc") == Path.windows("abc")
+expect Path.windows("abc") == Path.unix("abc")
+
+## The same representation still compares its units.
+expect Path.utf8("abc") == Path.utf8("abc")
+expect Path.unix("abc") == Path.unix_bytes([97, 98, 99])
+expect Path.windows("abc") == Path.windows_u16s([97, 98, 99])
+expect Path.utf8("abc") != Path.utf8("abd")
+expect Path.unix("abc") != Path.unix("abd")
+expect Path.windows("abc") != Path.windows("abd")
+
+## Different text is unequal in every pairing, including a prefix.
+expect Path.utf8("abc") != Path.unix("abd")
+expect Path.utf8("abc") != Path.windows("abd")
+expect Path.unix("abc") != Path.windows("abd")
+expect Path.utf8("abc") != Path.unix("ab")
+expect Path.windows("ab") != Path.utf8("abc")
+expect Path.unix("ab") != Path.windows("abc")
+expect Path.utf8("") == Path.unix_bytes([])
+expect Path.utf8("") == Path.windows_u16s([])
+expect Path.unix_bytes([]) == Path.windows_u16s([])
+
+## A literal equals the native value the operating system returns for that text.
+expect {
+	literal : Path
+	literal = "--verbose"
+	literal == Path.unix("--verbose") and literal == Path.windows("--verbose")
+}
+
+## Text outside ASCII compares by code point: two, three and four byte UTF-8
+## sequences against one UTF-16 unit or a surrogate pair.
+expect Path.utf8("é€") == Path.unix_bytes([0xC3, 0xA9, 0xE2, 0x82, 0xAC])
+expect Path.utf8("é€") == Path.windows_u16s([0xE9, 0x20AC])
+expect Path.unix_bytes([0xC3, 0xA9, 0xE2, 0x82, 0xAC]) == Path.windows_u16s([0xE9, 0x20AC])
+expect Path.utf8("🐦") == Path.unix_bytes([0xF0, 0x9F, 0x90, 0xA6])
+expect Path.utf8("🐦") == Path.windows_u16s([0xD83D, 0xDC26])
+expect Path.unix_bytes([0xF0, 0x9F, 0x90, 0xA6]) == Path.windows_u16s([0xD83D, 0xDC26])
+expect Path.windows_u16s([0xD83D, 0xDC26]) == Path.unix_bytes([0xF0, 0x9F, 0x90, 0xA6])
+expect Path.utf8("🐦") != Path.windows_u16s([0xD83D, 0xDC27])
+
+## Invalid UTF-8 equals only the identical bytes. It is not the text `display`
+## shows for it, and not UTF-16 units with the same numbers.
+expect Path.unix_bytes([97, 255]) == Path.unix_bytes([97, 255])
+expect Path.unix_bytes([97, 255]) != Path.unix_bytes([97, 254])
+expect Path.unix_bytes([97, 255]) != Path.utf8(Path.display(Path.unix_bytes([97, 255])))
+expect Path.utf8("a") != Path.unix_bytes([97, 255])
+expect Path.unix_bytes([97, 255]) != Path.windows_u16s([97, 255])
+expect Path.windows_u16s([97, 255]) != Path.unix_bytes([97, 255])
+
+## An unpaired surrogate equals only the identical units. It is not the text
+## `display` shows for it, and not the bytes a lenient encoder would write.
+expect Path.windows_u16s([0xD800, 97]) == Path.windows_u16s([0xD800, 97])
+expect Path.windows_u16s([0xD800, 97]) != Path.windows_u16s([0xD801, 97])
+expect Path.windows_u16s([0xD800, 97]) != Path.utf8(Path.display(Path.windows_u16s([0xD800, 97])))
+expect Path.utf8("a") != Path.windows_u16s([0xD800, 97])
+expect Path.windows_u16s([0xD800, 97]) != Path.unix_bytes([0xEF, 0xBF, 0xBD, 97])
+expect Path.windows_u16s([0xD800, 97]) != Path.unix_bytes([0xED, 0xA0, 0x80, 97])
+expect Path.unix_bytes([0xED, 0xA0, 0x80, 97]) != Path.windows_u16s([0xD800, 97])
+
+## Invalid values of different kinds are never equal.
+expect Path.unix_bytes([255]) != Path.windows_u16s([0xD800])
+expect Path.windows_u16s([0xDC00]) != Path.unix_bytes([0xDC])
+
+## Nothing is normalized: case, Unicode normal forms and separators differ.
+expect Path.utf8("Abc") != Path.unix("abc")
+expect Path.utf8("é") != Path.unix("e\u(0301)")
+expect Path.utf8("a/b") != Path.windows("a\\b")
+expect Path.utf8("./a") != Path.unix("a")
+expect Path.utf8("a/") != Path.unix("a")
+
+## Equality is transitive across all three representations, and unequal
+## values stay unequal through a third.
+expect {
+	text = Path.utf8("naïve 🐦")
+	bytes = Path.unix("naïve 🐦")
+	units = Path.windows("naïve 🐦")
+	text == bytes and bytes == units and text == units and units == text and units == bytes and bytes == text
+}
+
+expect {
+	bytes = Path.unix_bytes([97, 255])
+	units = Path.windows_u16s([97, 255])
+	text = Path.utf8("aÿ")
+	# The units are valid text; the bytes are not, so they equal neither.
+	units == text and bytes != units and bytes != text
+}
+
+## Inspection still shows the representation of values that are equal.
+expect Path.utf8("abc") == Path.unix("abc") and Str.inspect(Path.utf8("abc")) != Str.inspect(Path.unix("abc"))
+expect Str.inspect(Path.windows("abc")) == "Path.windows(\"abc\")"
+
+## Hashing agrees with equality, so `Dict`, `Set` and `List.contains` find a
+## value through any representation.
+expect Dict.single(Path.unix("HOME"), "found").get(Path.utf8("HOME")) == Ok("found")
+expect Dict.single(Path.windows("HOME"), "found").get(Path.utf8("HOME")) == Ok("found")
+expect Dict.single(Path.utf8("HOME"), "found").get(Path.unix("HOME")) == Ok("found")
+expect Dict.single(Path.utf8("HOME"), "found").get(Path.windows("HOME")) == Ok("found")
+expect Dict.single(Path.unix("HOME"), "found").get(Path.windows("HOME")) == Ok("found")
+expect Dict.single(Path.windows("HOME"), "found").get(Path.unix("HOME")) == Ok("found")
+expect Dict.single(Path.windows("🐦"), "found").get(Path.unix_bytes([0xF0, 0x9F, 0x90, 0xA6])) == Ok("found")
+expect Dict.single(Path.unix("HOME"), "found").get(Path.utf8("home")) == Err(KeyNotFound)
+
+expect {
+	literal : Path
+	literal = "HOME"
+	Dict.from_list([(Path.unix("PATH"), 1), (Path.unix("HOME"), 2)]).get(literal) == Ok(2)
+}
+
+expect [Path.unix("--quiet"), Path.unix("--verbose")].contains("--verbose")
+expect [Path.windows("--quiet"), Path.windows("--verbose")].contains("--verbose")
+expect Bool.not([Path.unix("--quiet")].contains("--verbose"))
+
+## Values equal across representations collapse to one `Set` or `Dict` key.
+expect Set.from_list([Path.utf8("abc"), Path.unix("abc"), Path.windows("abc")]).len() == 1
+expect Set.from_list([Path.utf8("abc"), Path.unix("abc"), Path.windows("abd")]).len() == 2
+expect Set.from_list([Path.unix("abc")]).contains(Path.windows("abc"))
+expect Dict.from_list([(Path.utf8("k"), 1), (Path.unix("k"), 2), (Path.windows("k"), 3)]).len() == 1
+
+## Invalid native units are still usable keys, and stay apart from text and
+## from each other.
 expect Dict.single(Path.unix_bytes([97, 255]), "found").get(Path.unix_bytes([97, 255])) == Ok("found")
+expect Dict.single(Path.windows_u16s([0xD800, 97]), "found").get(Path.windows_u16s([0xD800, 97])) == Ok("found")
+expect Dict.single(Path.unix_bytes([97, 255]), "found").get(Path.windows_u16s([97, 255])) == Err(KeyNotFound)
+expect Dict.single(Path.windows_u16s([0xD800, 97]), "found").get(Path.utf8(Path.display(Path.windows_u16s([0xD800, 97])))) == Err(KeyNotFound)
+expect Set.from_list([Path.unix_bytes([97, 255]), Path.windows_u16s([97, 255]), Path.utf8("aÿ")]).len() == 2
+
+## A listed entry is found by the literal naming it.
+expect [Path.unix("src/lib.roc"), Path.unix("src/main.roc")].contains("src/main.roc")
+
+## A path and the OS string it converts to hash alike, as they compare alike.
+expect Path.to_os_str(Path.unix("abc")) == OsStr.utf8("abc")
 
 ## Generic codecs roundtrip non-text representations without loss.
 expect {
@@ -676,6 +814,17 @@ expect path_type_from_host(Other) == IsOther
 expect Path.join(Path.unix("foo"), "bar") == Path.unix("foo/bar")
 expect Path.join(Path.windows("foo"), "bar") == Path.windows("foo\\bar")
 expect Path.join(Path.utf8("foo"), "bar") == Path.utf8("foo/bar")
+
+## `filename`, `ext` and `join` answer in the representation they were given.
+expect Path.filename(Path.unix("a/b.c")).map_ok(Path.to_raw) == Ok(UnixBytes([98, 46, 99]))
+expect Path.filename(Path.windows("a\\b.c")).map_ok(Path.to_raw) == Ok(WindowsU16s([98, 46, 99]))
+expect Path.filename(Path.utf8("a/b.c")).map_ok(Path.to_raw) == Ok(Utf8("b.c"))
+expect Path.ext(Path.unix("a/b.c")).map_ok(Path.to_raw) == Ok(UnixBytes([99]))
+expect Path.ext(Path.windows("a\\b.c")).map_ok(Path.to_raw) == Ok(WindowsU16s([99]))
+expect Path.ext(Path.utf8("a/b.c")).map_ok(Path.to_raw) == Ok(Utf8("c"))
+expect Path.to_raw(Path.join(Path.unix("a"), "b")) == UnixBytes([97, 47, 98])
+expect Path.to_raw(Path.join(Path.windows("a"), "b")) == WindowsU16s([97, 92, 98])
+expect Path.to_raw(Path.join(Path.utf8("a"), "b")) == Utf8("a/b")
 
 ## Errors carry the path they were about, and successes pass through untouched.
 expect {

@@ -44,6 +44,7 @@
           "args": ["foo"],
           "contains": [
             "program name:",
+            "verbose: False",
             "received argument: foo",
             "back to OsStr: OsStr.",
             "argument 1 is valid UTF-8: foo"
@@ -54,9 +55,19 @@
           ]
         },
         {
+          "name": "literal-equals-native-argument",
+          "args": ["foo", "--verbose"],
+          "contains": ["verbose: True", "received argument: foo"]
+        },
+        {
+          "name": "literal-differs-from-similar-argument",
+          "args": ["--verbos", "--verbose=1", "--VERBOSE"],
+          "contains": ["verbose: False", "received argument: --verbos"]
+        },
+        {
           "name": "missing-argument",
           "exit_code": 1,
-          "contains": ["Program exited with error: MissingArgument"]
+          "contains": ["verbose: False", "Program exited with error: MissingArgument"]
         }
       ]
     },
@@ -89,7 +100,18 @@
           "env": { "EDITOR": "nano", "LETTERS": "a,c,e,j" },
           "contains": [
             "Your favorite editor is nano!",
-            "Your favorite letters are: a c e j"
+            "No need to remember how to quit vim.",
+            "Your favorite letters are: a c e j",
+            "The environment dictionary agrees: a,c,e,j"
+          ]
+        },
+        {
+          "name": "literal-equals-native-value",
+          "env": { "EDITOR": "vim", "LETTERS": "x" },
+          "contains": [
+            "Your favorite editor is vim!",
+            "Remember: `:q!` gets you out.",
+            "The environment dictionary agrees: x"
           ]
         },
         {
