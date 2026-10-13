@@ -44,15 +44,7 @@ Env :: [].{
 	## Reads the given environment variable as a string if its native value is valid text.
 	var_str! : OsStr => Try(Str, [VarNotFound(OsStr), EnvErr(IOErr), InvalidStr(U64)])
 	var_str! = |name|
-		match var!(name) {
-			Ok(value) =>
-				match OsStr.to_str_try(value) {
-					Ok(str) => Ok(str)
-					Err(InvalidStr(index)) => Err(InvalidStr(index))
-				}
-			Err(VarNotFound(raw_name)) => Err(VarNotFound(raw_name))
-			Err(EnvErr(err)) => Err(EnvErr(err))
-		}
+		var!(name)?.to_str_try()
 
 	## Reads the [current working directory](https://en.wikipedia.org/wiki/Working_directory)
 	## from the environment.
@@ -62,6 +54,9 @@ Env :: [].{
 	cwd! = ||
 		match Host.env_cwd!() {
 			Ok(raw) => Ok(Path.from_raw(raw))
+			# Hosted error rows are closed by design; rebuilding the tag gives app
+			# authors an open row, as `get! = Env.cwd!` then `get!()?` needs
+			# (`tests/error-rows.roc`).
 			Err(CwdUnavailable) => Err(CwdUnavailable)
 		}
 
@@ -81,6 +76,9 @@ Env :: [].{
 	exe_path! = ||
 		match Host.env_exe_path!() {
 			Ok(raw) => Ok(Path.from_raw(raw))
+			# Hosted error rows are closed by design; rebuilding the tag gives app
+			# authors an open row, as `get! = Env.exe_path!` then `get!()?` needs
+			# (`tests/error-rows.roc`).
 			Err(ExePathUnavailable) => Err(ExePathUnavailable)
 		}
 
@@ -94,6 +92,9 @@ Env :: [].{
 	program_name! = ||
 		match Host.env_program_name!() {
 			Ok(raw) => Ok(OsStr.from_raw(raw))
+			# Hosted error rows are closed by design; rebuilding the tag gives app
+			# authors an open row, as `get! = Env.program_name!` then `get!()?` needs
+			# (`tests/error-rows.roc`).
 			Err(ProgramNameUnavailable) => Err(ProgramNameUnavailable)
 		}
 

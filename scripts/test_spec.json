@@ -799,6 +799,28 @@
           "stdout_contains": ["Resource aliases and early returns cleaned up"]
         }
       ]
+    },
+    {
+      "path": "tests/error-rows.roc",
+      "cases": [
+        {
+          "name": "function-values",
+          "env": { "ERROR_ROWS_GREETING": "hello" },
+          "stdout_contains": [
+            "stdout line\nstdout write\n",
+            "random seeds: ok\n",
+            "env: hello\n",
+            "error rows: ok\n"
+          ],
+          "stderr_contains": ["stderr line\nstderr write\n"]
+        },
+        {
+          "name": "second-error",
+          "args": ["unexpected"],
+          "exit_code": 1,
+          "contains": ["Program exited with error: UnexpectedArguments"]
+        }
+      ]
     }
   ]
 }
