@@ -164,4 +164,9 @@ Host :: [].{
 	file_read_exactly! : Resource.FileReader, U64 => Try(List(U8), [FileErr(IOErr), UnexpectedEndOfInput])
 	file_reader_position! : Resource.FileReader => Try(U64, [FileErr(IOErr)])
 	file_reader_seek! : Resource.FileReader, [Start(U64), Current(I64), End(I64)] => Try(U64, [FileErr(IOErr)])
+
+	file_open_writer! : NativePath, [Truncate, Append, RequireNew] => Try(Resource.FileWriter, [FileErr(IOErr)])
+	file_writer_write_bytes! : Resource.FileWriter, List(U8) => Try({}, [FileErr(IOErr)])
+	file_writer_write_utf8! : Resource.FileWriter, Str => Try({}, [FileErr(IOErr)])
+	file_writer_flush! : Resource.FileWriter => Try({}, [FileErr(IOErr)])
 }

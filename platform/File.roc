@@ -3,7 +3,8 @@ import Resource
 import Path
 import IOErr
 
-## Read file bytes incrementally and seek within files.
+## Read file bytes incrementally, seek within files, and write to a file
+## piece by piece.
 ##
 ## Whole-file operations and filesystem metadata are available on [`Path`](Path).
 File :: [].{
@@ -186,6 +187,87 @@ File :: [].{
 			)
 	}
 
+	## What opening a [Writer] does to the file at the path.
+	##
+	## - `Truncate` creates the file, or empties it if it exists.
+	## - `Append` creates the file if it is missing and keeps what it holds;
+	##   every write goes to the end.
+	## - `RequireNew` creates the file and fails with `AlreadyExists` if
+	##   anything is at the path.
+	WriteMode : [Truncate, Append, RequireNew]
+
+	## A buffered file writer.
+	##
+	## Written bytes are held in a buffer in the host and reach the operating
+	## system when the buffer fills and on [flush!]. A write accepts all of
+	## its bytes or fails. Copies of a writer share one file and one buffer.
+	##
+	## There is no `close!`: the file is closed when the last reference to the
+	## writer is released. Bytes still buffered then are written, but a
+	## failure to write them cannot be reported, so call [flush!] after the
+	## last write, or use [File.with_writer!], which does it for you.
+	Writer :: { host : Resource.FileWriter }.{
+
+		# A tag union that crosses the host boundary is closed by design, so
+		# every method below rebuilds the error it forwards from the host. That
+		# gives callers an open union, which `?` can combine with other error
+		# types however the method is called.
+
+		## Render the writer without exposing its host handle.
+		to_inspect : Writer -> Str
+		to_inspect = |_| "File.Writer(<opaque>)"
+
+		## Write all of `bytes`, to the buffer or to the file.
+		write_bytes! : Writer, List(U8) => Try({}, [FileErr(IOErr)])
+		write_bytes! = |writer, bytes|
+			Host.file_writer_write_bytes!(writer.host, bytes)
+				.map_err(|FileErr(err)| FileErr(err))
+
+		## Write all of `text` as UTF-8, to the buffer or to the file. No line
+		## ending is added.
+		write_utf8! : Writer, Str => Try({}, [FileErr(IOErr)])
+		write_utf8! = |writer, text|
+			Host.file_writer_write_utf8!(writer.host, text)
+				.map_err(|FileErr(err)| FileErr(err))
+
+		## Write each chunk of a stream as it arrives, holding one chunk in
+		## memory at a time.
+		##
+		## Stops at the first `Err` item, which is returned as `SourceErr`; the
+		## chunks before it have been written. A failed write is `FileErr`.
+		## Nothing is flushed at the end.
+		##
+		## Any stream of byte chunks will do: `reader.chunks()`,
+		## `Stdin.chunks()`, or a stream mapped from one of them.
+		##
+		## ```roc
+		## reader = File.open_reader!(source)?
+		## File.with_writer!(destination, Truncate, |writer|
+		##     writer.write_stream!(reader.chunks().map(|chunk| chunk.map_ok(redact))))?
+		## ```
+		write_stream! : Writer, Stream(Try(List(U8), err)) => Try({}, [FileErr(IOErr), SourceErr(err)])
+		write_stream! = |writer, stream| {
+			for! item in stream {
+				match item {
+					Ok(bytes) => write_bytes!(writer, bytes)?
+					Err(err) => {
+						return Err(SourceErr(err))
+					}
+				}
+			}
+			Ok({})
+		}
+
+		## Hand every buffered byte to the operating system.
+		##
+		## This is the call that reports whether the bytes written so far
+		## reached the file. It does not force them to the storage device.
+		flush! : Writer => Try({}, [FileErr(IOErr)])
+		flush! = |writer|
+			Host.file_writer_flush!(writer.host)
+				.map_err(|FileErr(err)| FileErr(err))
+	}
+
 	## Open a file for buffered reading using the default buffer capacity.
 	##
 	## Failing to open reports the path, using the same `PathErr` as the
@@ -205,4 +287,57 @@ File :: [].{
 		Host.file_open_reader!(Path.to_raw(path), capacity)
 			.map_ok(|reader| Reader.{ host: reader })
 			.map_err(|FileErr(err)| PathErr(err, path))
+
+	## Open a file for buffered writing. The [WriteMode] decides whether
+	## existing data survives, so it has no default.
+	##
+	## Failing to open reports the path, as [File.open_reader!] does.
+	##
+	## Prefer [File.with_writer!]: with a writer opened here, a `?` on a write
+	## returns before the final [flush!](File.Writer.flush!), and the failure
+	## of the flush that happens on release is not reported.
+	##
+	## ```roc
+	## log = File.open_writer!("events.log", Append)?
+	## log.write_utf8!("started\n")?
+	## log.flush!()?
+	## ```
+	open_writer! : Path, WriteMode => Try(Writer, [PathErr(IOErr, Path)])
+	open_writer! = |path, mode|
+		Host.file_open_writer!(Path.to_raw(path), mode)
+			.map_ok(|writer| Writer.{ host: writer })
+			.map_err(|FileErr(err)| PathErr(err, path))
+
+	## Open a file for writing, run `callback` with the writer, then flush,
+	## whether the callback succeeded or failed.
+	##
+	## If the callback fails, its error is returned unchanged and a failure of
+	## the flush is discarded. If only the flush fails, that is the `FileErr`.
+	## The file is closed once no reference to the writer remains, normally
+	## when this function returns.
+	##
+	## ```roc
+	## File.with_writer!("report.csv", Truncate, |writer| {
+	##     writer.write_utf8!("name,total\n")?
+	##     for row in rows {
+	##         writer.write_utf8!("${row.name},${row.total.to_str()}\n")?
+	##     }
+	##     Ok({})
+	## })?
+	## ```
+	with_writer! :
+		Path, WriteMode, (Writer => Try(a, [PathErr(IOErr, Path), FileErr(IOErr), ..errs])) => Try(a, [PathErr(IOErr, Path), FileErr(IOErr), ..errs])
+	with_writer! = |path, mode, callback!| {
+		writer = open_writer!(path, mode)?
+		match callback!(writer) {
+			Ok(value) => {
+				writer.flush!()?
+				Ok(value)
+			}
+			Err(err) => {
+				_ = writer.flush!()
+				Err(err)
+			}
+		}
+	}
 }

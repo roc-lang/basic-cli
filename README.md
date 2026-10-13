@@ -54,6 +54,11 @@ These current host-level limitations may affect application design:
   connection's line limit (1 MiB unless changed with `with_line_limit`),
   preventing an untrusted peer from causing unbounded buffering. The rest of
   an over-long record is discarded before the next read returns.
+- `File.Writer` buffers written bytes in the host; they reach the operating
+  system when the buffer fills and on `flush!`. The file is closed when the
+  last reference to the writer is released, which writes what is still
+  buffered but cannot report a failure, so flush after the last write or use
+  `File.with_writer!`. A crash loses buffered bytes.
 - SQLite keeps up to 16 recently used ordinary path connections open. A live
   prepared statement keeps its connection open after cache eviction, and reused
   paths continue sharing that live connection. The exact `:memory:` path is kept

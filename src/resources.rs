@@ -92,6 +92,7 @@ macro_rules! resource_kinds {
 resource_kinds! {
     Child => crate::process_service::Child,
     FileReader => std::io::BufReader<std::fs::File>,
+    FileWriter => crate::file_writer::FileWriter,
     SqliteStmt => crate::sqlite::SqliteStatement,
     TcpConnection => crate::tcp::Connection,
     TcpListener => crate::listener::Listener,
@@ -117,7 +118,7 @@ const SLOTS_PER_KIND: usize = 1 << 20;
 // compiled Roc assumes: the payload follows a header that ends with the
 // refcount, and the allocation starts where the header does.
 const PAYLOAD_ALIGN: usize = align_of::<u64>();
-const HEADER_BYTES: usize = if size_of::<usize>() > PAYLOAD_ALIGN {
+pub(crate) const HEADER_BYTES: usize = if size_of::<usize>() > PAYLOAD_ALIGN {
     size_of::<usize>()
 } else {
     PAYLOAD_ALIGN

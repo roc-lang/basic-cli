@@ -293,6 +293,17 @@
       ]
     },
     {
+      "path": "examples/file-write-stream.roc",
+      "cases": [
+        {
+          "name": "happy",
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["report.csv:\nname,total\napples,3\npears,12\nplums,240\nreport-redacted.csv:\nname,total\napples,#\npears,##\nplums,###\nRequireNew left the existing report alone.\n"]
+        }
+      ]
+    },
+    {
       "path": "examples/hello-world.roc",
       "cases": [{ "name": "happy", "contains": ["Hello, World!"] }]
     },
@@ -702,6 +713,72 @@
             "first pass: \"one\"\nfirst pass: \"\"\nposition after two lines: 6\nread_exactly!(3): [255, 254, 10]\nread_until!('\\n'): Ok([102, 111, 117, 114, 13, 13, 10])\nafter seek: \"six\"\n",
             "chunk bytes: 26 from the start, 25 from byte 1\n"
           ]
+        }
+      ]
+    },
+    {
+      "path": "tests/file-writer.roc",
+      "cases": [
+        {
+          "name": "modes",
+          "args": ["modes"],
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": [
+            "RequireNew on a free path: \"new\n\"\nRequireNew on a file: Err(PathErr(AlreadyExists, Path.utf8(\"modes.txt\")))\nRequireNew on a directory: Err(PathErr(AlreadyExists, Path.utf8(\"a-directory\")))\nafter the refused opens: \"new\n\"\nAppend to a file: \"new\nappended\n\"\nTruncate a file: \"truncated\n\"\nTruncate without writing: \"\"\nAppend creates the file: \"first\nsecond\n\"\nTruncate creates the file: \"\"\n",
+            "missing parent, Truncate: Err(PathErr(NotFound, Path.utf8(\"no-such-directory/file.txt\")))\nmissing parent, Append: Err(PathErr(NotFound, Path.utf8(\"no-such-directory/file.txt\")))\nmissing parent, RequireNew: Err(PathErr(NotFound, Path.utf8(\"no-such-directory/file.txt\")))\nTruncate on a directory: Err(PathErr(IsADirectory, Path.utf8(\"a-directory\")))\n"
+          ]
+        },
+        {
+          "name": "buffering-flush-and-release",
+          "args": ["buffering"],
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["inspect: File.Writer(<opaque>)\nbefore flush!: \"\"\nafter flush!: \"one,two,three\"\nafter a second flush!: \"one,two,three\"\nafter a large write: 300015 bytes, ending [120, 124]\ndropped without flush!: \"kept kept \"\ndropped by an early return: \"kept kept kept kept \"\nappended through a temporary writer: 300023 bytes, ending [101, 100]\n"]
+        },
+        {
+          "name": "write-stream-source-errors",
+          "args": ["streams"],
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["stream without an error: Ok({})\n  wrote: \"abc\"\nstream with an error: Err(SourceErr(Boom(\"after two chunks\")))\n  wrote: \"first,second\"\ncopied 200000 bytes, equal: True\ndirect write_stream!: Err(SourceErr(Stopped))\n  wrote: \"first,second|x\"\n"]
+        },
+        {
+          "name": "with-writer",
+          "args": ["with-writer"],
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["callback value: 42\n  flushed: \"written\"\ncallback error: Err(Refused(\"by the callback\"))\n  flushed: \"partial\"\nwriter kept by the callback: \"partial and more\"\nannotated with PathErr and FileErr only: \"name,total\napples,3\n\"\n"]
+        },
+        {
+          "name": "error-rows",
+          "args": ["error-rows"],
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["error rows: \"value,value,qualified,qualified,method,method\"\n"]
+        },
+        {
+          "name": "error-rows-second-error",
+          "args": ["error-rows", "unexpected"],
+          "temp_cwd": true,
+          "live_handles": 0,
+          "exit_code": 1,
+          "contains": ["Program exited with error: UnexpectedArguments"]
+        },
+        {
+          "name": "stdin-chunks",
+          "args": ["stdin"],
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["copied from stdin: [97, 0, 255, 10]\n"],
+          "stdin_hex": "6100ff0a"
+        },
+        {
+          "name": "stdin-chunks-no-input",
+          "args": ["stdin"],
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["copied from stdin: []\n"]
         }
       ]
     },

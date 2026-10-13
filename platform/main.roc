@@ -69,6 +69,11 @@ platform ""
 		# type keeps its HostFileDeleteResult name in the generated glue.
 		"hosted_file_append_bytes": Host.file_append_bytes!,
 		"hosted_file_append_utf8": Host.file_append_utf8!,
+		# File.Writer: a buffered writer behind a handle.
+		"hosted_file_open_writer": Host.file_open_writer!,
+		"hosted_file_writer_flush": Host.file_writer_flush!,
+		"hosted_file_writer_write_bytes": Host.file_writer_write_bytes!,
+		"hosted_file_writer_write_utf8": Host.file_writer_write_utf8!,
 		# HTTP is likewise kept at the end to avoid renumbering glue types.
 		"hosted_http_send_request": Host.http_send_request!,
 		"hosted_locale_all": Host.locale_all!,

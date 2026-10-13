@@ -9155,6 +9155,151 @@ const _: () = assert!(core::mem::align_of::<CurrentOrEndOrStart>() == 8, "Curren
 #[cfg(target_pointer_width = "32")]
 const _: () = assert!(core::mem::offset_of!(CurrentOrEndOrStart, tag) == 8, "CurrentOrEndOrStart tag offset mismatch");
 
+/// Tag discriminant for Try.
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HostFileOpenWriterResultTag {
+    Err = 0,
+    Ok = 1,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub union HostFileOpenWriterResultPayload {
+    pub err: core::mem::ManuallyDrop<IOErr>,
+    pub ok: core::mem::ManuallyDrop<*mut u64>,
+}
+
+#[cfg(target_pointer_width = "32")]
+#[repr(align(4))]
+#[derive(Clone, Copy)]
+pub struct HostFileOpenWriterResultPayloadAlignment;
+
+/// Tag union: Try
+#[cfg(target_pointer_width = "32")]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostFileOpenWriterResult {
+    pub _payload_alignment: [HostFileOpenWriterResultPayloadAlignment; 0],
+    pub payload: [u8; 16],
+    pub tag: HostFileOpenWriterResultTag,
+}
+
+/// Tag union: Try
+#[cfg(not(target_pointer_width = "32"))]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostFileOpenWriterResult {
+    pub payload: HostFileOpenWriterResultPayload,
+    pub tag: HostFileOpenWriterResultTag,
+}
+
+impl HostFileOpenWriterResult {
+    /// Borrow the `Err` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostFileOpenWriterResultTag::Err` and the payload must still be initialized.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn borrow_payload_err_unchecked(&self) -> &IOErr {
+        unsafe { &*(self.payload.as_ptr() as *const IOErr) }
+    }
+
+    /// Borrow the `Err` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostFileOpenWriterResultTag::Err` and the payload must still be initialized.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn borrow_payload_err_unchecked(&self) -> &IOErr {
+        unsafe { &*(&self.payload.err as *const core::mem::ManuallyDrop<IOErr> as *const IOErr) }
+    }
+
+    /// Move the `Err` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostFileOpenWriterResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn take_payload_err_unchecked(&mut self) -> IOErr {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const IOErr) }
+    }
+
+    /// Move the `Err` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostFileOpenWriterResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn take_payload_err_unchecked(&mut self) -> IOErr {
+        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.err) }
+    }
+
+    /// Borrow the `Ok` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostFileOpenWriterResultTag::Ok` and the payload must still be initialized.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &*mut u64 {
+        unsafe { &*(self.payload.as_ptr() as *const *mut u64) }
+    }
+
+    /// Borrow the `Ok` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostFileOpenWriterResultTag::Ok` and the payload must still be initialized.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &*mut u64 {
+        unsafe { &*(&self.payload.ok as *const core::mem::ManuallyDrop<*mut u64> as *const *mut u64) }
+    }
+
+    /// Move the `Ok` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostFileOpenWriterResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn take_payload_ok_unchecked(&mut self) -> *mut u64 {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const *mut u64) }
+    }
+
+    /// Move the `Ok` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostFileOpenWriterResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn take_payload_ok_unchecked(&mut self) -> *mut u64 {
+        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.ok) }
+    }
+
+}
+
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::size_of::<HostFileOpenWriterResult>() == 40, "HostFileOpenWriterResult size mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::align_of::<HostFileOpenWriterResult>() == 8, "HostFileOpenWriterResult alignment mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::offset_of!(HostFileOpenWriterResult, tag) == 32, "HostFileOpenWriterResult tag offset mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::size_of::<HostFileOpenWriterResult>() == 20, "HostFileOpenWriterResult size mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::align_of::<HostFileOpenWriterResult>() == 4, "HostFileOpenWriterResult alignment mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::offset_of!(HostFileOpenWriterResult, tag) == 16, "HostFileOpenWriterResult tag offset mismatch");
+
+/// Tag union: AppendOrRequireNewOrTruncate
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AppendOrRequireNewOrTruncate {
+    Append = 0,
+    RequireNew = 1,
+    Truncate = 2,
+}
+
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::size_of::<AppendOrRequireNewOrTruncate>() == 1, "AppendOrRequireNewOrTruncate size mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::align_of::<AppendOrRequireNewOrTruncate>() == 1, "AppendOrRequireNewOrTruncate alignment mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::size_of::<AppendOrRequireNewOrTruncate>() == 1, "AppendOrRequireNewOrTruncate size mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::align_of::<AppendOrRequireNewOrTruncate>() == 1, "AppendOrRequireNewOrTruncate alignment mismatch");
+
 /// Tag discriminant for OsStr.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -10084,6 +10229,45 @@ pub struct HostFileAppendUtf8Args {
     pub arg1: RocStr,
 }
 
+/// Arguments for Host.file_open_writer!
+/// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], [Append, RequireNew, Truncate] => Try(Resource.Handle([FileWriterKind]), [FileErr(IOErr)])
+/// Refcounted fields are owned by the hosted function.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostFileOpenWriterArgs {
+    pub arg0: UnixBytesOrUtf8OrWindowsU16s,
+    pub arg1: AppendOrRequireNewOrTruncate,
+}
+
+/// Arguments for Host.file_writer_flush!
+/// Roc signature: Resource.Handle([FileWriterKind]) => Try({}, [FileErr(IOErr)])
+/// Refcounted fields are owned by the hosted function.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostFileWriterFlushArgs {
+    pub arg0: *mut u64,
+}
+
+/// Arguments for Host.file_writer_write_bytes!
+/// Roc signature: Resource.Handle([FileWriterKind]), List(U8) => Try({}, [FileErr(IOErr)])
+/// Refcounted fields are owned by the hosted function.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostFileWriterWriteBytesArgs {
+    pub arg0: *mut u64,
+    pub arg1: RocListWith<u8, false>,
+}
+
+/// Arguments for Host.file_writer_write_utf8!
+/// Roc signature: Resource.Handle([FileWriterKind]), Str => Try({}, [FileErr(IOErr)])
+/// Refcounted fields are owned by the hosted function.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostFileWriterWriteUtf8Args {
+    pub arg0: *mut u64,
+    pub arg1: RocStr,
+}
+
 /// Arguments for Host.http_send_request!
 /// Roc signature: { body : List(U8), headers : List((Str, Str)), method : U8, method_ext : Str, timeout_ms : U64, uri : Str } => Try({ body : List(U8), headers : List((Str, Str)), status : U16 }, [BadBody, NetworkError, Other(List(U8)), Timeout])
 /// Refcounted fields are owned by the hosted function.
@@ -10591,6 +10775,15 @@ pub type HostFileAppendBytesResultTag = HostFileDeleteResultTag;
 pub type HostFileAppendUtf8Result = HostFileDeleteResult;
 pub type HostFileAppendUtf8ResultPayload = HostFileDeleteResultPayload;
 pub type HostFileAppendUtf8ResultTag = HostFileDeleteResultTag;
+pub type HostFileWriterFlushResult = HostFileDeleteResult;
+pub type HostFileWriterFlushResultPayload = HostFileDeleteResultPayload;
+pub type HostFileWriterFlushResultTag = HostFileDeleteResultTag;
+pub type HostFileWriterWriteBytesResult = HostFileDeleteResult;
+pub type HostFileWriterWriteBytesResultPayload = HostFileDeleteResultPayload;
+pub type HostFileWriterWriteBytesResultTag = HostFileDeleteResultTag;
+pub type HostFileWriterWriteUtf8Result = HostFileDeleteResult;
+pub type HostFileWriterWriteUtf8ResultPayload = HostFileDeleteResultPayload;
+pub type HostFileWriterWriteUtf8ResultTag = HostFileDeleteResultTag;
 pub type HostHttpSendRequestArg0 = AnonStruct8bbc5017d7a8cb36;
 pub type HostHttpSendRequestArg0Headers = AnonStruct77eaba63dfee299d;
 pub type HostHttpSendRequestErr = BadBodyOrNetworkErrorOrOtherOrTimeout;
@@ -14252,6 +14445,84 @@ unsafe impl RocRelease<CurrentOrEndOrStart> for CurrentOrEndOrStartRelease {
     }
 }
 
+impl HostFileOpenWriterResult {
+    /// Recursively decrement Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must own one live Roc reference for each refcounted payload.
+    pub unsafe fn decref(self, roc_host: &RocHost) {
+        let mut value = self;
+        let _ = roc_host;
+        match value.tag {
+            HostFileOpenWriterResultTag::Err => {
+                let payload = unsafe { value.take_payload_err_unchecked() };
+                unsafe { payload.decref(roc_host); }
+            },
+            HostFileOpenWriterResultTag::Ok => {
+                let payload = unsafe { value.take_payload_ok_unchecked() };
+                unsafe { decref_box_with(payload as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
+            },
+        }
+    }
+
+    /// Increment Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must point at live Roc allocations. The retained references must
+    /// be balanced by later decrefs.
+    pub unsafe fn incref(self, amount: isize) {
+        let value = self;
+        let _ = amount;
+        match value.tag {
+            HostFileOpenWriterResultTag::Err => {
+                let payload = unsafe { core::ptr::read(value.borrow_payload_err_unchecked()) };
+                unsafe { payload.incref(amount); }
+            },
+            HostFileOpenWriterResultTag::Ok => {
+                let payload = unsafe { core::ptr::read(value.borrow_payload_ok_unchecked()) };
+                unsafe { incref_box(payload as RocBox, amount); }
+            },
+        }
+    }
+}
+
+pub struct HostFileOpenWriterResultRelease;
+
+unsafe impl RocRelease<HostFileOpenWriterResult> for HostFileOpenWriterResultRelease {
+    unsafe fn release(value: HostFileOpenWriterResult, roc_host: &RocHost) {
+        unsafe { value.decref(roc_host); }
+    }
+}
+
+impl AppendOrRequireNewOrTruncate {
+    /// Recursively decrement Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must own one live Roc reference for each refcounted payload.
+    pub unsafe fn decref(self, roc_host: &RocHost) {
+        let _ = self;
+        let _ = roc_host;
+    }
+
+    /// Increment Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must point at live Roc allocations. The retained references must
+    /// be balanced by later decrefs.
+    pub unsafe fn incref(self, amount: isize) {
+        let _ = self;
+        let _ = amount;
+    }
+}
+
+pub struct AppendOrRequireNewOrTruncateRelease;
+
+unsafe impl RocRelease<AppendOrRequireNewOrTruncate> for AppendOrRequireNewOrTruncateRelease {
+    unsafe fn release(value: AppendOrRequireNewOrTruncate, roc_host: &RocHost) {
+        unsafe { value.decref(roc_host); }
+    }
+}
+
 impl OsStr {
     /// Recursively decrement Roc-owned payloads.
     ///
@@ -14832,6 +15103,41 @@ unsafe extern "C" {
     ///     unsafe { arg1.decref(roc_host); }
     /// The result is owned by Roc: return exactly one owned reference.
     pub fn hosted_file_append_utf8(arg0: UnixBytesOrUtf8OrWindowsU16s, arg1: RocStr) -> HostFileDeleteResult;
+
+    /// Hosted symbol for Host.file_open_writer!
+    /// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], [Append, RequireNew, Truncate] => Try(Resource.Handle([FileWriterKind]), [FileErr(IOErr)])
+    /// Owned arguments. Release each exactly once before returning, unless it is
+    /// moved into storage or into the result:
+    ///     unsafe { arg0.decref(roc_host); }
+    ///     unsafe { arg1.decref(roc_host); }
+    /// The result is owned by Roc: return exactly one owned reference.
+    pub fn hosted_file_open_writer(arg0: UnixBytesOrUtf8OrWindowsU16s, arg1: AppendOrRequireNewOrTruncate) -> HostFileOpenWriterResult;
+
+    /// Hosted symbol for Host.file_writer_flush!
+    /// Roc signature: Resource.Handle([FileWriterKind]) => Try({}, [FileErr(IOErr)])
+    /// Owned arguments. Release each exactly once before returning, unless it is
+    /// moved into storage or into the result:
+    ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
+    /// The result is owned by Roc: return exactly one owned reference.
+    pub fn hosted_file_writer_flush(arg0: *mut u64) -> HostFileDeleteResult;
+
+    /// Hosted symbol for Host.file_writer_write_bytes!
+    /// Roc signature: Resource.Handle([FileWriterKind]), List(U8) => Try({}, [FileErr(IOErr)])
+    /// Owned arguments. Release each exactly once before returning, unless it is
+    /// moved into storage or into the result:
+    ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
+    ///     unsafe { arg1.decref(roc_host); }
+    /// The result is owned by Roc: return exactly one owned reference.
+    pub fn hosted_file_writer_write_bytes(arg0: *mut u64, arg1: RocListWith<u8, false>) -> HostFileDeleteResult;
+
+    /// Hosted symbol for Host.file_writer_write_utf8!
+    /// Roc signature: Resource.Handle([FileWriterKind]), Str => Try({}, [FileErr(IOErr)])
+    /// Owned arguments. Release each exactly once before returning, unless it is
+    /// moved into storage or into the result:
+    ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
+    ///     unsafe { arg1.decref(roc_host); }
+    /// The result is owned by Roc: return exactly one owned reference.
+    pub fn hosted_file_writer_write_utf8(arg0: *mut u64, arg1: RocStr) -> HostFileDeleteResult;
 
     /// Hosted symbol for Host.http_send_request!
     /// Roc signature: { body : List(U8), headers : List((Str, Str)), method : U8, method_ext : Str, timeout_ms : U64, uri : Str } => Try({ body : List(U8), headers : List((Str, Str)), status : U16 }, [BadBody, NetworkError, Other(List(U8)), Timeout])

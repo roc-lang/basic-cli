@@ -14,6 +14,7 @@ use std::sync::Mutex;
 
 mod cmd;
 mod file_reader;
+mod file_writer;
 mod filesystem;
 mod http;
 mod listener;
