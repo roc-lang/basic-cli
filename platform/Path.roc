@@ -288,9 +288,9 @@ Path := [
 	from_interpolation = |segments|
 		Str.from_interpolation(segments).map_ok(|assemble| |values| Utf8(assemble(values)))
 
-	## TODO: Restore generic parser_for and encoder_for helpers when the compiler
-	## no longer treats auto-derived `_` declarations in platforms as hosted:
-	## https://github.com/roc-lang/roc/issues/10162
+	## Parse and encode every path representation as a lossless tagged value.
+	parser_for : _
+	encoder_for : _
 
 	## Create a Unix path from a Roc string by storing its UTF-8 bytes.
 	unix : Str -> Path
@@ -599,6 +599,23 @@ expect Str.inspect(Path.windows_u16s([0xD800, 97])) == "Path.windows_u16s([55296
 ## Equality and hashing preserve representation identity.
 expect Path.utf8("abc") != Path.unix("abc")
 expect Dict.single(Path.unix_bytes([97, 255]), "found").get(Path.unix_bytes([97, 255])) == Ok("found")
+
+## Generic codecs roundtrip non-text representations without loss.
+expect {
+	original = Path.windows_u16s([0xD800, 97])
+	decoded : Try(Path, _)
+	decoded = Json.parse(Json.to_str(original))
+	decoded == Ok(original)
+}
+
+expect {
+	original = Path.unix_bytes([97, 255])
+	decoded : Try(Path, _)
+	decoded = Json.parse(Json.to_str(original))
+	decoded == Ok(original)
+}
+
+expect Json.to_str(Path.utf8("a.txt")) == Json.to_str(OsStr.utf8("a.txt"))
 
 ## `filename` returns everything after the last separator.
 expect Path.filename(Path.unix("foo/bar.txt")) == Ok(Path.unix("bar.txt"))
