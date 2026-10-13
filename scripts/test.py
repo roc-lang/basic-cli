@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import atexit
 import contextlib
 import functools
 import hashlib
@@ -13,6 +14,7 @@ import select
 import shutil
 import signal
 import socket
+import struct
 import subprocess
 import sys
 import tempfile
@@ -463,6 +465,69 @@ def case_enabled(case: dict[str, object]) -> bool:
     return enabled
 
 
+def merged_rw_segment_patches(image: bytes) -> list[tuple[int, int]]:
+    """Find the `p_filesz` fields Valgrind needs widened to load an ELF's symbols.
+
+    Valgrind reads a binary's symbol table only once it has seen as many
+    writable mappings as it expects. Two writable PT_LOAD segments that are
+    adjacent in memory get mapped as one, and Valgrind allows for that only when
+    the first one's file size reaches the second (`p_vaddr + p_filesz`). lld
+    ends the first with `.relro_padding`, which occupies memory but not the
+    file, so Valgrind waits for a mapping that never comes, reports every frame
+    as `???`, and no `fun:` suppression can match.
+
+    The padding is zero-filled in memory and the bytes that follow the segment
+    in the file are zero too, so extending the file size over them loads the
+    same image. Returns (offset, value) pairs to write as little-endian u64.
+    """
+    if image[:6] != b"\x7fELF\x02\x01":
+        return []
+    program_headers, = struct.unpack_from("<Q", image, 32)
+    entry_size, entry_count = struct.unpack_from("<HH", image, 54)
+    patches: list[tuple[int, int]] = []
+    previous: tuple[int, int, int, int, int] | None = None
+    for index in range(entry_count):
+        entry = program_headers + index * entry_size
+        kind, flags, offset, address, _, file_size, memory_size, _ = struct.unpack_from("<IIQQQQQQ", image, entry)
+        # PT_LOAD, readable and writable but not executable.
+        if kind != 1 or flags & 7 != 6 or memory_size == 0:
+            continue
+        if previous is not None:
+            previous_entry, previous_offset, previous_address, previous_file_size, previous_memory_size = previous
+            padded = previous_file_size < previous_memory_size
+            adjacent = previous_address + previous_memory_size == address
+            in_file = previous_offset + previous_memory_size <= offset
+            padding = image[previous_offset + previous_file_size:previous_offset + previous_memory_size]
+            if padded and adjacent and in_file and not any(padding):
+                patches.append((previous_entry + 32, previous_memory_size))
+        previous = (entry, offset, address, file_size, memory_size)
+    return patches
+
+
+@functools.cache
+def valgrind_scratch_dir() -> Path:
+    directory = Path(tempfile.mkdtemp(prefix="basic-cli-valgrind-"))
+    atexit.register(shutil.rmtree, directory, ignore_errors=True)
+    return directory
+
+
+@functools.cache
+def valgrind_binary(binary: Path) -> Path:
+    """Return a binary Valgrind can read symbols from: `binary`, or a patched copy."""
+    image = bytearray(binary.read_bytes())
+    patches = merged_rw_segment_patches(bytes(image))
+    if not patches:
+        return binary
+    for offset, value in patches:
+        struct.pack_into("<Q", image, offset, value)
+    digest = hashlib.sha256(str(binary).encode()).hexdigest()[:16]
+    copy = valgrind_scratch_dir() / digest / binary.name
+    copy.parent.mkdir()
+    copy.write_bytes(image)
+    shutil.copymode(binary, copy)
+    return copy
+
+
 def run_binary(
     app: dict[str, object], binary: Path, run_spec: dict[str, object], *,
     valgrind: bool,
@@ -470,6 +535,8 @@ def run_binary(
     source = ROOT / str(app["path"])
     case_name = str(run_spec["name"])
     print(f"\n--- {app['path']} [{case_name}] ---")
+    if valgrind:
+        binary = valgrind_binary(binary)
     args = [str(binary), *(expand(str(value), source) for value in run_spec.get("args", []))]
     if valgrind:
         args = [*VALGRIND_ARGS, *args]
