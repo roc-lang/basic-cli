@@ -15,7 +15,8 @@ Resource :: [].{
 	FileReader : Handle([FileReaderKind])
 	FileWriter : Handle([FileWriterKind])
 	HttpResponse : Handle([HttpResponseKind])
-	SqliteStmt : Handle([SqliteStmtKind])
+	SqliteDb : Handle([SqliteDbKind])
+	SqliteRows : Handle([SqliteRowsKind])
 	TcpConnection : Handle([TcpConnectionKind])
 	TcpListener : Handle([TcpListenerKind])
 }

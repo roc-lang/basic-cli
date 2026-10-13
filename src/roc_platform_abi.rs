@@ -1192,59 +1192,59 @@ const _: () = assert!(core::mem::size_of::<AnonStruct8bbc5017d7a8cb36>() == 64, 
 #[cfg(target_pointer_width = "32")]
 const _: () = assert!(core::mem::align_of::<AnonStruct8bbc5017d7a8cb36>() == 8, "AnonStruct8bbc5017d7a8cb36 alignment mismatch");
 
-/// Element type for __AnonStruct_22cf486058afc711
+/// Element type for __AnonStruct_8dda646697632dbf
 #[cfg(target_pointer_width = "32")]
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct AnonStruct22cf486058afc711 {
-    pub code: i64,
+pub struct AnonStruct8dda646697632dbf {
+    pub extended_code: i64,
     pub message: RocStr,
 }
 
-/// Element type for __AnonStruct_22cf486058afc711
+/// Element type for __AnonStruct_8dda646697632dbf
 #[cfg(not(target_pointer_width = "32"))]
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct AnonStruct22cf486058afc711 {
-    pub code: i64,
+pub struct AnonStruct8dda646697632dbf {
+    pub extended_code: i64,
     pub message: RocStr,
 }
 
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::size_of::<AnonStruct22cf486058afc711>() == 32, "AnonStruct22cf486058afc711 size mismatch");
+const _: () = assert!(core::mem::size_of::<AnonStruct8dda646697632dbf>() == 32, "AnonStruct8dda646697632dbf size mismatch");
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::align_of::<AnonStruct22cf486058afc711>() == 8, "AnonStruct22cf486058afc711 alignment mismatch");
+const _: () = assert!(core::mem::align_of::<AnonStruct8dda646697632dbf>() == 8, "AnonStruct8dda646697632dbf alignment mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::size_of::<AnonStruct22cf486058afc711>() == 24, "AnonStruct22cf486058afc711 size mismatch");
+const _: () = assert!(core::mem::size_of::<AnonStruct8dda646697632dbf>() == 24, "AnonStruct8dda646697632dbf size mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::align_of::<AnonStruct22cf486058afc711>() == 8, "AnonStruct22cf486058afc711 alignment mismatch");
+const _: () = assert!(core::mem::align_of::<AnonStruct8dda646697632dbf>() == 8, "AnonStruct8dda646697632dbf alignment mismatch");
 
-/// Element type for __AnonStruct_2782504baf739389
+/// Element type for __AnonStruct_ab3a8761b3660309
 #[cfg(target_pointer_width = "32")]
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct AnonStruct2782504baf739389 {
-    pub value: BytesOrIntegerOrNullOrRealOrString,
-    pub name: RocStr,
+pub struct AnonStructAb3a8761b3660309 {
+    pub expected: u64,
+    pub given: u64,
 }
 
-/// Element type for __AnonStruct_2782504baf739389
+/// Element type for __AnonStruct_ab3a8761b3660309
 #[cfg(not(target_pointer_width = "32"))]
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct AnonStruct2782504baf739389 {
-    pub value: BytesOrIntegerOrNullOrRealOrString,
-    pub name: RocStr,
+pub struct AnonStructAb3a8761b3660309 {
+    pub expected: u64,
+    pub given: u64,
 }
 
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::size_of::<AnonStruct2782504baf739389>() == 56, "AnonStruct2782504baf739389 size mismatch");
+const _: () = assert!(core::mem::size_of::<AnonStructAb3a8761b3660309>() == 16, "AnonStructAb3a8761b3660309 size mismatch");
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::align_of::<AnonStruct2782504baf739389>() == 8, "AnonStruct2782504baf739389 alignment mismatch");
+const _: () = assert!(core::mem::align_of::<AnonStructAb3a8761b3660309>() == 8, "AnonStructAb3a8761b3660309 alignment mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::size_of::<AnonStruct2782504baf739389>() == 32, "AnonStruct2782504baf739389 size mismatch");
+const _: () = assert!(core::mem::size_of::<AnonStructAb3a8761b3660309>() == 16, "AnonStructAb3a8761b3660309 size mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::align_of::<AnonStruct2782504baf739389>() == 8, "AnonStruct2782504baf739389 alignment mismatch");
+const _: () = assert!(core::mem::align_of::<AnonStructAb3a8761b3660309>() == 8, "AnonStructAb3a8761b3660309 alignment mismatch");
 
 /// Element type for __AnonStruct_bca0d23b5d625934
 #[cfg(target_pointer_width = "32")]
@@ -4215,83 +4215,83 @@ const _: () = assert!(core::mem::offset_of!(HostRandomSeedU32Result, tag) == 16,
 /// Tag discriminant for Try.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HostSqlitePrepareResultTag {
+pub enum HostSqliteOpenResultTag {
     Err = 0,
     Ok = 1,
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub union HostSqlitePrepareResultPayload {
-    pub err: core::mem::ManuallyDrop<AnonStruct22cf486058afc711>,
+pub union HostSqliteOpenResultPayload {
+    pub err: core::mem::ManuallyDrop<AnonStruct8dda646697632dbf>,
     pub ok: core::mem::ManuallyDrop<*mut u64>,
 }
 
 #[cfg(target_pointer_width = "32")]
 #[repr(align(8))]
 #[derive(Clone, Copy)]
-pub struct HostSqlitePrepareResultPayloadAlignment;
+pub struct HostSqliteOpenResultPayloadAlignment;
 
 /// Tag union: Try
 #[cfg(target_pointer_width = "32")]
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct HostSqlitePrepareResult {
-    pub _payload_alignment: [HostSqlitePrepareResultPayloadAlignment; 0],
+pub struct HostSqliteOpenResult {
+    pub _payload_alignment: [HostSqliteOpenResultPayloadAlignment; 0],
     pub payload: [u8; 24],
-    pub tag: HostSqlitePrepareResultTag,
+    pub tag: HostSqliteOpenResultTag,
 }
 
 /// Tag union: Try
 #[cfg(not(target_pointer_width = "32"))]
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct HostSqlitePrepareResult {
-    pub payload: HostSqlitePrepareResultPayload,
-    pub tag: HostSqlitePrepareResultTag,
+pub struct HostSqliteOpenResult {
+    pub payload: HostSqliteOpenResultPayload,
+    pub tag: HostSqliteOpenResultTag,
 }
 
-impl HostSqlitePrepareResult {
+impl HostSqliteOpenResult {
     /// Borrow the `Err` payload without creating another owner.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqlitePrepareResultTag::Err` and the payload must still be initialized.
+    /// `self.tag` must be `HostSqliteOpenResultTag::Err` and the payload must still be initialized.
     #[cfg(target_pointer_width = "32")]
-    pub unsafe fn borrow_payload_err_unchecked(&self) -> &AnonStruct22cf486058afc711 {
-        unsafe { &*(self.payload.as_ptr() as *const AnonStruct22cf486058afc711) }
+    pub unsafe fn borrow_payload_err_unchecked(&self) -> &AnonStruct8dda646697632dbf {
+        unsafe { &*(self.payload.as_ptr() as *const AnonStruct8dda646697632dbf) }
     }
 
     /// Borrow the `Err` payload without creating another owner.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqlitePrepareResultTag::Err` and the payload must still be initialized.
+    /// `self.tag` must be `HostSqliteOpenResultTag::Err` and the payload must still be initialized.
     #[cfg(not(target_pointer_width = "32"))]
-    pub unsafe fn borrow_payload_err_unchecked(&self) -> &AnonStruct22cf486058afc711 {
-        unsafe { &*(&self.payload.err as *const core::mem::ManuallyDrop<AnonStruct22cf486058afc711> as *const AnonStruct22cf486058afc711) }
+    pub unsafe fn borrow_payload_err_unchecked(&self) -> &AnonStruct8dda646697632dbf {
+        unsafe { &*(&self.payload.err as *const core::mem::ManuallyDrop<AnonStruct8dda646697632dbf> as *const AnonStruct8dda646697632dbf) }
     }
 
     /// Move the `Err` payload out of one owned tag-union shell.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqlitePrepareResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    /// `self.tag` must be `HostSqliteOpenResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(target_pointer_width = "32")]
-    pub unsafe fn take_payload_err_unchecked(&mut self) -> AnonStruct22cf486058afc711 {
-        unsafe { core::ptr::read(self.payload.as_ptr() as *const AnonStruct22cf486058afc711) }
+    pub unsafe fn take_payload_err_unchecked(&mut self) -> AnonStruct8dda646697632dbf {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const AnonStruct8dda646697632dbf) }
     }
 
     /// Move the `Err` payload out of one owned tag-union shell.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqlitePrepareResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    /// `self.tag` must be `HostSqliteOpenResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(not(target_pointer_width = "32"))]
-    pub unsafe fn take_payload_err_unchecked(&mut self) -> AnonStruct22cf486058afc711 {
+    pub unsafe fn take_payload_err_unchecked(&mut self) -> AnonStruct8dda646697632dbf {
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.err) }
     }
 
     /// Borrow the `Ok` payload without creating another owner.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqlitePrepareResultTag::Ok` and the payload must still be initialized.
+    /// `self.tag` must be `HostSqliteOpenResultTag::Ok` and the payload must still be initialized.
     #[cfg(target_pointer_width = "32")]
     pub unsafe fn borrow_payload_ok_unchecked(&self) -> &*mut u64 {
         unsafe { &*(self.payload.as_ptr() as *const *mut u64) }
@@ -4300,7 +4300,7 @@ impl HostSqlitePrepareResult {
     /// Borrow the `Ok` payload without creating another owner.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqlitePrepareResultTag::Ok` and the payload must still be initialized.
+    /// `self.tag` must be `HostSqliteOpenResultTag::Ok` and the payload must still be initialized.
     #[cfg(not(target_pointer_width = "32"))]
     pub unsafe fn borrow_payload_ok_unchecked(&self) -> &*mut u64 {
         unsafe { &*(&self.payload.ok as *const core::mem::ManuallyDrop<*mut u64> as *const *mut u64) }
@@ -4309,7 +4309,7 @@ impl HostSqlitePrepareResult {
     /// Move the `Ok` payload out of one owned tag-union shell.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqlitePrepareResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    /// `self.tag` must be `HostSqliteOpenResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(target_pointer_width = "32")]
     pub unsafe fn take_payload_ok_unchecked(&mut self) -> *mut u64 {
         unsafe { core::ptr::read(self.payload.as_ptr() as *const *mut u64) }
@@ -4318,7 +4318,7 @@ impl HostSqlitePrepareResult {
     /// Move the `Ok` payload out of one owned tag-union shell.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqlitePrepareResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    /// `self.tag` must be `HostSqliteOpenResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(not(target_pointer_width = "32"))]
     pub unsafe fn take_payload_ok_unchecked(&mut self) -> *mut u64 {
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.ok) }
@@ -4327,108 +4327,350 @@ impl HostSqlitePrepareResult {
 }
 
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::size_of::<HostSqlitePrepareResult>() == 40, "HostSqlitePrepareResult size mismatch");
+const _: () = assert!(core::mem::size_of::<HostSqliteOpenResult>() == 40, "HostSqliteOpenResult size mismatch");
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::align_of::<HostSqlitePrepareResult>() == 8, "HostSqlitePrepareResult alignment mismatch");
+const _: () = assert!(core::mem::align_of::<HostSqliteOpenResult>() == 8, "HostSqliteOpenResult alignment mismatch");
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::offset_of!(HostSqlitePrepareResult, tag) == 32, "HostSqlitePrepareResult tag offset mismatch");
+const _: () = assert!(core::mem::offset_of!(HostSqliteOpenResult, tag) == 32, "HostSqliteOpenResult tag offset mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::size_of::<HostSqlitePrepareResult>() == 32, "HostSqlitePrepareResult size mismatch");
+const _: () = assert!(core::mem::size_of::<HostSqliteOpenResult>() == 32, "HostSqliteOpenResult size mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::align_of::<HostSqlitePrepareResult>() == 8, "HostSqlitePrepareResult alignment mismatch");
+const _: () = assert!(core::mem::align_of::<HostSqliteOpenResult>() == 8, "HostSqliteOpenResult alignment mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::offset_of!(HostSqlitePrepareResult, tag) == 24, "HostSqlitePrepareResult tag offset mismatch");
+const _: () = assert!(core::mem::offset_of!(HostSqliteOpenResult, tag) == 24, "HostSqliteOpenResult tag offset mismatch");
+
+/// Tag union: ReadOnlyOrReadWriteOrReadWriteCreate
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReadOnlyOrReadWriteOrReadWriteCreate {
+    ReadOnly = 0,
+    ReadWrite = 1,
+    ReadWriteCreate = 2,
+}
+
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::size_of::<ReadOnlyOrReadWriteOrReadWriteCreate>() == 1, "ReadOnlyOrReadWriteOrReadWriteCreate size mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::align_of::<ReadOnlyOrReadWriteOrReadWriteCreate>() == 1, "ReadOnlyOrReadWriteOrReadWriteCreate alignment mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::size_of::<ReadOnlyOrReadWriteOrReadWriteCreate>() == 1, "ReadOnlyOrReadWriteOrReadWriteCreate size mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::align_of::<ReadOnlyOrReadWriteOrReadWriteCreate>() == 1, "ReadOnlyOrReadWriteOrReadWriteCreate alignment mismatch");
 
 /// Tag discriminant for Try.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HostSqliteBindResultTag {
+pub enum HostSqliteCloseResultTag {
     Err = 0,
     Ok = 1,
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub union HostSqliteBindResultPayload {
-    pub err: core::mem::ManuallyDrop<AnonStruct22cf486058afc711>,
+pub union HostSqliteCloseResultPayload {
+    pub err: core::mem::ManuallyDrop<AnonStruct8dda646697632dbf>,
     pub ok: [u8; 0],
 }
 
 #[cfg(target_pointer_width = "32")]
 #[repr(align(8))]
 #[derive(Clone, Copy)]
-pub struct HostSqliteBindResultPayloadAlignment;
+pub struct HostSqliteCloseResultPayloadAlignment;
 
 /// Tag union: Try
 #[cfg(target_pointer_width = "32")]
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct HostSqliteBindResult {
-    pub _payload_alignment: [HostSqliteBindResultPayloadAlignment; 0],
+pub struct HostSqliteCloseResult {
+    pub _payload_alignment: [HostSqliteCloseResultPayloadAlignment; 0],
     pub payload: [u8; 24],
-    pub tag: HostSqliteBindResultTag,
+    pub tag: HostSqliteCloseResultTag,
 }
 
 /// Tag union: Try
 #[cfg(not(target_pointer_width = "32"))]
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct HostSqliteBindResult {
-    pub payload: HostSqliteBindResultPayload,
-    pub tag: HostSqliteBindResultTag,
+pub struct HostSqliteCloseResult {
+    pub payload: HostSqliteCloseResultPayload,
+    pub tag: HostSqliteCloseResultTag,
 }
 
-impl HostSqliteBindResult {
+impl HostSqliteCloseResult {
     /// Borrow the `Err` payload without creating another owner.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqliteBindResultTag::Err` and the payload must still be initialized.
+    /// `self.tag` must be `HostSqliteCloseResultTag::Err` and the payload must still be initialized.
     #[cfg(target_pointer_width = "32")]
-    pub unsafe fn borrow_payload_err_unchecked(&self) -> &AnonStruct22cf486058afc711 {
-        unsafe { &*(self.payload.as_ptr() as *const AnonStruct22cf486058afc711) }
+    pub unsafe fn borrow_payload_err_unchecked(&self) -> &AnonStruct8dda646697632dbf {
+        unsafe { &*(self.payload.as_ptr() as *const AnonStruct8dda646697632dbf) }
     }
 
     /// Borrow the `Err` payload without creating another owner.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqliteBindResultTag::Err` and the payload must still be initialized.
+    /// `self.tag` must be `HostSqliteCloseResultTag::Err` and the payload must still be initialized.
     #[cfg(not(target_pointer_width = "32"))]
-    pub unsafe fn borrow_payload_err_unchecked(&self) -> &AnonStruct22cf486058afc711 {
-        unsafe { &*(&self.payload.err as *const core::mem::ManuallyDrop<AnonStruct22cf486058afc711> as *const AnonStruct22cf486058afc711) }
+    pub unsafe fn borrow_payload_err_unchecked(&self) -> &AnonStruct8dda646697632dbf {
+        unsafe { &*(&self.payload.err as *const core::mem::ManuallyDrop<AnonStruct8dda646697632dbf> as *const AnonStruct8dda646697632dbf) }
     }
 
     /// Move the `Err` payload out of one owned tag-union shell.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqliteBindResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    /// `self.tag` must be `HostSqliteCloseResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(target_pointer_width = "32")]
-    pub unsafe fn take_payload_err_unchecked(&mut self) -> AnonStruct22cf486058afc711 {
-        unsafe { core::ptr::read(self.payload.as_ptr() as *const AnonStruct22cf486058afc711) }
+    pub unsafe fn take_payload_err_unchecked(&mut self) -> AnonStruct8dda646697632dbf {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const AnonStruct8dda646697632dbf) }
     }
 
     /// Move the `Err` payload out of one owned tag-union shell.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqliteBindResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    /// `self.tag` must be `HostSqliteCloseResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(not(target_pointer_width = "32"))]
-    pub unsafe fn take_payload_err_unchecked(&mut self) -> AnonStruct22cf486058afc711 {
+    pub unsafe fn take_payload_err_unchecked(&mut self) -> AnonStruct8dda646697632dbf {
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.err) }
     }
 
 }
 
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::size_of::<HostSqliteBindResult>() == 40, "HostSqliteBindResult size mismatch");
+const _: () = assert!(core::mem::size_of::<HostSqliteCloseResult>() == 40, "HostSqliteCloseResult size mismatch");
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::align_of::<HostSqliteBindResult>() == 8, "HostSqliteBindResult alignment mismatch");
+const _: () = assert!(core::mem::align_of::<HostSqliteCloseResult>() == 8, "HostSqliteCloseResult alignment mismatch");
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::offset_of!(HostSqliteBindResult, tag) == 32, "HostSqliteBindResult tag offset mismatch");
+const _: () = assert!(core::mem::offset_of!(HostSqliteCloseResult, tag) == 32, "HostSqliteCloseResult tag offset mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::size_of::<HostSqliteBindResult>() == 32, "HostSqliteBindResult size mismatch");
+const _: () = assert!(core::mem::size_of::<HostSqliteCloseResult>() == 32, "HostSqliteCloseResult size mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::align_of::<HostSqliteBindResult>() == 8, "HostSqliteBindResult alignment mismatch");
+const _: () = assert!(core::mem::align_of::<HostSqliteCloseResult>() == 8, "HostSqliteCloseResult alignment mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::offset_of!(HostSqliteBindResult, tag) == 24, "HostSqliteBindResult tag offset mismatch");
+const _: () = assert!(core::mem::offset_of!(HostSqliteCloseResult, tag) == 24, "HostSqliteCloseResult tag offset mismatch");
+
+/// Tag discriminant for Try.
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HostSqliteExecuteResultTag {
+    Err = 0,
+    Ok = 1,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub union HostSqliteExecuteResultPayload {
+    pub err: core::mem::ManuallyDrop<ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount>,
+    pub ok: [u8; 0],
+}
+
+#[cfg(target_pointer_width = "32")]
+#[repr(align(8))]
+#[derive(Clone, Copy)]
+pub struct HostSqliteExecuteResultPayloadAlignment;
+
+/// Tag union: Try
+#[cfg(target_pointer_width = "32")]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostSqliteExecuteResult {
+    pub _payload_alignment: [HostSqliteExecuteResultPayloadAlignment; 0],
+    pub payload: [u8; 32],
+    pub tag: HostSqliteExecuteResultTag,
+}
+
+/// Tag union: Try
+#[cfg(not(target_pointer_width = "32"))]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostSqliteExecuteResult {
+    pub payload: HostSqliteExecuteResultPayload,
+    pub tag: HostSqliteExecuteResultTag,
+}
+
+impl HostSqliteExecuteResult {
+    /// Borrow the `Err` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostSqliteExecuteResultTag::Err` and the payload must still be initialized.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn borrow_payload_err_unchecked(&self) -> &ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount {
+        unsafe { &*(self.payload.as_ptr() as *const ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount) }
+    }
+
+    /// Borrow the `Err` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostSqliteExecuteResultTag::Err` and the payload must still be initialized.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn borrow_payload_err_unchecked(&self) -> &ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount {
+        unsafe { &*(&self.payload.err as *const core::mem::ManuallyDrop<ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount> as *const ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount) }
+    }
+
+    /// Move the `Err` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostSqliteExecuteResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn take_payload_err_unchecked(&mut self) -> ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount) }
+    }
+
+    /// Move the `Err` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostSqliteExecuteResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn take_payload_err_unchecked(&mut self) -> ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount {
+        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.err) }
+    }
+
+}
+
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::size_of::<HostSqliteExecuteResult>() == 48, "HostSqliteExecuteResult size mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::align_of::<HostSqliteExecuteResult>() == 8, "HostSqliteExecuteResult alignment mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::offset_of!(HostSqliteExecuteResult, tag) == 40, "HostSqliteExecuteResult tag offset mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::size_of::<HostSqliteExecuteResult>() == 40, "HostSqliteExecuteResult size mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::align_of::<HostSqliteExecuteResult>() == 8, "HostSqliteExecuteResult alignment mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::offset_of!(HostSqliteExecuteResult, tag) == 32, "HostSqliteExecuteResult tag offset mismatch");
+
+/// Tag discriminant for ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount.
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag {
+    Closed = 0,
+    Failed = 1,
+    MultipleStatements = 2,
+    ReturnsRows = 3,
+    WrongParamCount = 4,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub union ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountPayload {
+    pub closed: [u8; 0],
+    pub failed: core::mem::ManuallyDrop<AnonStruct8dda646697632dbf>,
+    pub multiple_statements: [u8; 0],
+    pub returns_rows: [u8; 0],
+    pub wrong_param_count: core::mem::ManuallyDrop<AnonStructAb3a8761b3660309>,
+}
+
+#[cfg(target_pointer_width = "32")]
+#[repr(align(8))]
+#[derive(Clone, Copy)]
+pub struct ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountPayloadAlignment;
+
+/// Tag union: ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount
+#[cfg(target_pointer_width = "32")]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount {
+    pub _payload_alignment: [ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountPayloadAlignment; 0],
+    pub payload: [u8; 24],
+    pub tag: ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag,
+}
+
+/// Tag union: ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount
+#[cfg(not(target_pointer_width = "32"))]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount {
+    pub payload: ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountPayload,
+    pub tag: ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag,
+}
+
+impl ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount {
+    /// Borrow the `Failed` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag::Failed` and the payload must still be initialized.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn borrow_payload_failed_unchecked(&self) -> &AnonStruct8dda646697632dbf {
+        unsafe { &*(self.payload.as_ptr() as *const AnonStruct8dda646697632dbf) }
+    }
+
+    /// Borrow the `Failed` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag::Failed` and the payload must still be initialized.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn borrow_payload_failed_unchecked(&self) -> &AnonStruct8dda646697632dbf {
+        unsafe { &*(&self.payload.failed as *const core::mem::ManuallyDrop<AnonStruct8dda646697632dbf> as *const AnonStruct8dda646697632dbf) }
+    }
+
+    /// Move the `Failed` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag::Failed`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn take_payload_failed_unchecked(&mut self) -> AnonStruct8dda646697632dbf {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const AnonStruct8dda646697632dbf) }
+    }
+
+    /// Move the `Failed` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag::Failed`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn take_payload_failed_unchecked(&mut self) -> AnonStruct8dda646697632dbf {
+        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.failed) }
+    }
+
+    /// Borrow the `WrongParamCount` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag::WrongParamCount` and the payload must still be initialized.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn borrow_payload_wrong_param_count_unchecked(&self) -> &AnonStructAb3a8761b3660309 {
+        unsafe { &*(self.payload.as_ptr() as *const AnonStructAb3a8761b3660309) }
+    }
+
+    /// Borrow the `WrongParamCount` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag::WrongParamCount` and the payload must still be initialized.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn borrow_payload_wrong_param_count_unchecked(&self) -> &AnonStructAb3a8761b3660309 {
+        unsafe { &*(&self.payload.wrong_param_count as *const core::mem::ManuallyDrop<AnonStructAb3a8761b3660309> as *const AnonStructAb3a8761b3660309) }
+    }
+
+    /// Move the `WrongParamCount` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag::WrongParamCount`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn take_payload_wrong_param_count_unchecked(&mut self) -> AnonStructAb3a8761b3660309 {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const AnonStructAb3a8761b3660309) }
+    }
+
+    /// Move the `WrongParamCount` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag::WrongParamCount`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn take_payload_wrong_param_count_unchecked(&mut self) -> AnonStructAb3a8761b3660309 {
+        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.wrong_param_count) }
+    }
+
+}
+
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::size_of::<ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount>() == 40, "ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount size mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::align_of::<ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount>() == 8, "ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount alignment mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::offset_of!(ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount, tag) == 32, "ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount tag offset mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::size_of::<ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount>() == 32, "ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount size mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::align_of::<ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount>() == 8, "ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount alignment mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::offset_of!(ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount, tag) == 24, "ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount tag offset mismatch");
 
 /// Tag discriminant for BytesOrIntegerOrNullOrRealOrString.
 #[repr(u8)]
@@ -4638,256 +4880,554 @@ const _: () = assert!(core::mem::offset_of!(BytesOrIntegerOrNullOrRealOrString, 
 /// Tag discriminant for Try.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HostSqliteColumnValueResultTag {
+pub enum HostSqliteQueryResultTag {
     Err = 0,
     Ok = 1,
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub union HostSqliteColumnValueResultPayload {
-    pub err: core::mem::ManuallyDrop<AnonStruct22cf486058afc711>,
-    pub ok: core::mem::ManuallyDrop<BytesOrIntegerOrNullOrRealOrString>,
+pub union HostSqliteQueryResultPayload {
+    pub err: core::mem::ManuallyDrop<ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount>,
+    pub ok: core::mem::ManuallyDrop<*mut u64>,
 }
 
 #[cfg(target_pointer_width = "32")]
 #[repr(align(8))]
 #[derive(Clone, Copy)]
-pub struct HostSqliteColumnValueResultPayloadAlignment;
+pub struct HostSqliteQueryResultPayloadAlignment;
 
 /// Tag union: Try
 #[cfg(target_pointer_width = "32")]
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct HostSqliteColumnValueResult {
-    pub _payload_alignment: [HostSqliteColumnValueResultPayloadAlignment; 0],
-    pub payload: [u8; 24],
-    pub tag: HostSqliteColumnValueResultTag,
+pub struct HostSqliteQueryResult {
+    pub _payload_alignment: [HostSqliteQueryResultPayloadAlignment; 0],
+    pub payload: [u8; 32],
+    pub tag: HostSqliteQueryResultTag,
 }
 
 /// Tag union: Try
 #[cfg(not(target_pointer_width = "32"))]
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct HostSqliteColumnValueResult {
-    pub payload: HostSqliteColumnValueResultPayload,
-    pub tag: HostSqliteColumnValueResultTag,
+pub struct HostSqliteQueryResult {
+    pub payload: HostSqliteQueryResultPayload,
+    pub tag: HostSqliteQueryResultTag,
 }
 
-impl HostSqliteColumnValueResult {
+impl HostSqliteQueryResult {
     /// Borrow the `Err` payload without creating another owner.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqliteColumnValueResultTag::Err` and the payload must still be initialized.
+    /// `self.tag` must be `HostSqliteQueryResultTag::Err` and the payload must still be initialized.
     #[cfg(target_pointer_width = "32")]
-    pub unsafe fn borrow_payload_err_unchecked(&self) -> &AnonStruct22cf486058afc711 {
-        unsafe { &*(self.payload.as_ptr() as *const AnonStruct22cf486058afc711) }
+    pub unsafe fn borrow_payload_err_unchecked(&self) -> &ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount {
+        unsafe { &*(self.payload.as_ptr() as *const ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount) }
     }
 
     /// Borrow the `Err` payload without creating another owner.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqliteColumnValueResultTag::Err` and the payload must still be initialized.
+    /// `self.tag` must be `HostSqliteQueryResultTag::Err` and the payload must still be initialized.
     #[cfg(not(target_pointer_width = "32"))]
-    pub unsafe fn borrow_payload_err_unchecked(&self) -> &AnonStruct22cf486058afc711 {
-        unsafe { &*(&self.payload.err as *const core::mem::ManuallyDrop<AnonStruct22cf486058afc711> as *const AnonStruct22cf486058afc711) }
+    pub unsafe fn borrow_payload_err_unchecked(&self) -> &ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount {
+        unsafe { &*(&self.payload.err as *const core::mem::ManuallyDrop<ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount> as *const ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount) }
     }
 
     /// Move the `Err` payload out of one owned tag-union shell.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqliteColumnValueResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    /// `self.tag` must be `HostSqliteQueryResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(target_pointer_width = "32")]
-    pub unsafe fn take_payload_err_unchecked(&mut self) -> AnonStruct22cf486058afc711 {
-        unsafe { core::ptr::read(self.payload.as_ptr() as *const AnonStruct22cf486058afc711) }
+    pub unsafe fn take_payload_err_unchecked(&mut self) -> ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount) }
     }
 
     /// Move the `Err` payload out of one owned tag-union shell.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqliteColumnValueResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    /// `self.tag` must be `HostSqliteQueryResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(not(target_pointer_width = "32"))]
-    pub unsafe fn take_payload_err_unchecked(&mut self) -> AnonStruct22cf486058afc711 {
+    pub unsafe fn take_payload_err_unchecked(&mut self) -> ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount {
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.err) }
     }
 
     /// Borrow the `Ok` payload without creating another owner.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqliteColumnValueResultTag::Ok` and the payload must still be initialized.
+    /// `self.tag` must be `HostSqliteQueryResultTag::Ok` and the payload must still be initialized.
     #[cfg(target_pointer_width = "32")]
-    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &BytesOrIntegerOrNullOrRealOrString {
-        unsafe { &*(self.payload.as_ptr() as *const BytesOrIntegerOrNullOrRealOrString) }
+    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &*mut u64 {
+        unsafe { &*(self.payload.as_ptr() as *const *mut u64) }
     }
 
     /// Borrow the `Ok` payload without creating another owner.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqliteColumnValueResultTag::Ok` and the payload must still be initialized.
+    /// `self.tag` must be `HostSqliteQueryResultTag::Ok` and the payload must still be initialized.
     #[cfg(not(target_pointer_width = "32"))]
-    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &BytesOrIntegerOrNullOrRealOrString {
-        unsafe { &*(&self.payload.ok as *const core::mem::ManuallyDrop<BytesOrIntegerOrNullOrRealOrString> as *const BytesOrIntegerOrNullOrRealOrString) }
+    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &*mut u64 {
+        unsafe { &*(&self.payload.ok as *const core::mem::ManuallyDrop<*mut u64> as *const *mut u64) }
     }
 
     /// Move the `Ok` payload out of one owned tag-union shell.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqliteColumnValueResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    /// `self.tag` must be `HostSqliteQueryResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(target_pointer_width = "32")]
-    pub unsafe fn take_payload_ok_unchecked(&mut self) -> BytesOrIntegerOrNullOrRealOrString {
-        unsafe { core::ptr::read(self.payload.as_ptr() as *const BytesOrIntegerOrNullOrRealOrString) }
+    pub unsafe fn take_payload_ok_unchecked(&mut self) -> *mut u64 {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const *mut u64) }
     }
 
     /// Move the `Ok` payload out of one owned tag-union shell.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqliteColumnValueResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    /// `self.tag` must be `HostSqliteQueryResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(not(target_pointer_width = "32"))]
-    pub unsafe fn take_payload_ok_unchecked(&mut self) -> BytesOrIntegerOrNullOrRealOrString {
+    pub unsafe fn take_payload_ok_unchecked(&mut self) -> *mut u64 {
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.ok) }
     }
 
 }
 
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::size_of::<HostSqliteColumnValueResult>() == 40, "HostSqliteColumnValueResult size mismatch");
+const _: () = assert!(core::mem::size_of::<HostSqliteQueryResult>() == 48, "HostSqliteQueryResult size mismatch");
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::align_of::<HostSqliteColumnValueResult>() == 8, "HostSqliteColumnValueResult alignment mismatch");
+const _: () = assert!(core::mem::align_of::<HostSqliteQueryResult>() == 8, "HostSqliteQueryResult alignment mismatch");
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::offset_of!(HostSqliteColumnValueResult, tag) == 32, "HostSqliteColumnValueResult tag offset mismatch");
+const _: () = assert!(core::mem::offset_of!(HostSqliteQueryResult, tag) == 40, "HostSqliteQueryResult tag offset mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::size_of::<HostSqliteColumnValueResult>() == 32, "HostSqliteColumnValueResult size mismatch");
+const _: () = assert!(core::mem::size_of::<HostSqliteQueryResult>() == 40, "HostSqliteQueryResult size mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::align_of::<HostSqliteColumnValueResult>() == 8, "HostSqliteColumnValueResult alignment mismatch");
+const _: () = assert!(core::mem::align_of::<HostSqliteQueryResult>() == 8, "HostSqliteQueryResult alignment mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::offset_of!(HostSqliteColumnValueResult, tag) == 24, "HostSqliteColumnValueResult tag offset mismatch");
+const _: () = assert!(core::mem::offset_of!(HostSqliteQueryResult, tag) == 32, "HostSqliteQueryResult tag offset mismatch");
 
 /// Tag discriminant for Try.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HostSqliteStepResultTag {
+pub enum HostSqliteNextResultTag {
     Err = 0,
     Ok = 1,
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub union HostSqliteStepResultPayload {
-    pub err: core::mem::ManuallyDrop<AnonStruct22cf486058afc711>,
-    pub ok: core::mem::ManuallyDrop<bool>,
+pub union HostSqliteNextResultPayload {
+    pub err: core::mem::ManuallyDrop<ClosedOrDoneOrFailed>,
+    pub ok: core::mem::ManuallyDrop<RocList<BytesOrIntegerOrNullOrRealOrText>>,
 }
 
 #[cfg(target_pointer_width = "32")]
 #[repr(align(8))]
 #[derive(Clone, Copy)]
-pub struct HostSqliteStepResultPayloadAlignment;
+pub struct HostSqliteNextResultPayloadAlignment;
 
 /// Tag union: Try
 #[cfg(target_pointer_width = "32")]
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct HostSqliteStepResult {
-    pub _payload_alignment: [HostSqliteStepResultPayloadAlignment; 0],
-    pub payload: [u8; 24],
-    pub tag: HostSqliteStepResultTag,
+pub struct HostSqliteNextResult {
+    pub _payload_alignment: [HostSqliteNextResultPayloadAlignment; 0],
+    pub payload: [u8; 32],
+    pub tag: HostSqliteNextResultTag,
 }
 
 /// Tag union: Try
 #[cfg(not(target_pointer_width = "32"))]
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct HostSqliteStepResult {
-    pub payload: HostSqliteStepResultPayload,
-    pub tag: HostSqliteStepResultTag,
+pub struct HostSqliteNextResult {
+    pub payload: HostSqliteNextResultPayload,
+    pub tag: HostSqliteNextResultTag,
 }
 
-impl HostSqliteStepResult {
+impl HostSqliteNextResult {
     /// Borrow the `Err` payload without creating another owner.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqliteStepResultTag::Err` and the payload must still be initialized.
+    /// `self.tag` must be `HostSqliteNextResultTag::Err` and the payload must still be initialized.
     #[cfg(target_pointer_width = "32")]
-    pub unsafe fn borrow_payload_err_unchecked(&self) -> &AnonStruct22cf486058afc711 {
-        unsafe { &*(self.payload.as_ptr() as *const AnonStruct22cf486058afc711) }
+    pub unsafe fn borrow_payload_err_unchecked(&self) -> &ClosedOrDoneOrFailed {
+        unsafe { &*(self.payload.as_ptr() as *const ClosedOrDoneOrFailed) }
     }
 
     /// Borrow the `Err` payload without creating another owner.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqliteStepResultTag::Err` and the payload must still be initialized.
+    /// `self.tag` must be `HostSqliteNextResultTag::Err` and the payload must still be initialized.
     #[cfg(not(target_pointer_width = "32"))]
-    pub unsafe fn borrow_payload_err_unchecked(&self) -> &AnonStruct22cf486058afc711 {
-        unsafe { &*(&self.payload.err as *const core::mem::ManuallyDrop<AnonStruct22cf486058afc711> as *const AnonStruct22cf486058afc711) }
+    pub unsafe fn borrow_payload_err_unchecked(&self) -> &ClosedOrDoneOrFailed {
+        unsafe { &*(&self.payload.err as *const core::mem::ManuallyDrop<ClosedOrDoneOrFailed> as *const ClosedOrDoneOrFailed) }
     }
 
     /// Move the `Err` payload out of one owned tag-union shell.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqliteStepResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    /// `self.tag` must be `HostSqliteNextResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(target_pointer_width = "32")]
-    pub unsafe fn take_payload_err_unchecked(&mut self) -> AnonStruct22cf486058afc711 {
-        unsafe { core::ptr::read(self.payload.as_ptr() as *const AnonStruct22cf486058afc711) }
+    pub unsafe fn take_payload_err_unchecked(&mut self) -> ClosedOrDoneOrFailed {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const ClosedOrDoneOrFailed) }
     }
 
     /// Move the `Err` payload out of one owned tag-union shell.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqliteStepResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    /// `self.tag` must be `HostSqliteNextResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(not(target_pointer_width = "32"))]
-    pub unsafe fn take_payload_err_unchecked(&mut self) -> AnonStruct22cf486058afc711 {
+    pub unsafe fn take_payload_err_unchecked(&mut self) -> ClosedOrDoneOrFailed {
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.err) }
     }
 
     /// Borrow the `Ok` payload without creating another owner.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqliteStepResultTag::Ok` and the payload must still be initialized.
+    /// `self.tag` must be `HostSqliteNextResultTag::Ok` and the payload must still be initialized.
     #[cfg(target_pointer_width = "32")]
-    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &bool {
-        unsafe { &*(self.payload.as_ptr() as *const bool) }
+    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &RocList<BytesOrIntegerOrNullOrRealOrText> {
+        unsafe { &*(self.payload.as_ptr() as *const RocList<BytesOrIntegerOrNullOrRealOrText>) }
     }
 
     /// Borrow the `Ok` payload without creating another owner.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqliteStepResultTag::Ok` and the payload must still be initialized.
+    /// `self.tag` must be `HostSqliteNextResultTag::Ok` and the payload must still be initialized.
     #[cfg(not(target_pointer_width = "32"))]
-    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &bool {
-        unsafe { &*(&self.payload.ok as *const core::mem::ManuallyDrop<bool> as *const bool) }
+    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &RocList<BytesOrIntegerOrNullOrRealOrText> {
+        unsafe { &*(&self.payload.ok as *const core::mem::ManuallyDrop<RocList<BytesOrIntegerOrNullOrRealOrText>> as *const RocList<BytesOrIntegerOrNullOrRealOrText>) }
     }
 
     /// Move the `Ok` payload out of one owned tag-union shell.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqliteStepResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    /// `self.tag` must be `HostSqliteNextResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(target_pointer_width = "32")]
-    pub unsafe fn take_payload_ok_unchecked(&mut self) -> bool {
-        unsafe { core::ptr::read(self.payload.as_ptr() as *const bool) }
+    pub unsafe fn take_payload_ok_unchecked(&mut self) -> RocList<BytesOrIntegerOrNullOrRealOrText> {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const RocList<BytesOrIntegerOrNullOrRealOrText>) }
     }
 
     /// Move the `Ok` payload out of one owned tag-union shell.
     ///
     /// # Safety
-    /// `self.tag` must be `HostSqliteStepResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    /// `self.tag` must be `HostSqliteNextResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(not(target_pointer_width = "32"))]
-    pub unsafe fn take_payload_ok_unchecked(&mut self) -> bool {
+    pub unsafe fn take_payload_ok_unchecked(&mut self) -> RocList<BytesOrIntegerOrNullOrRealOrText> {
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.ok) }
     }
 
 }
 
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::size_of::<HostSqliteStepResult>() == 40, "HostSqliteStepResult size mismatch");
+const _: () = assert!(core::mem::size_of::<HostSqliteNextResult>() == 48, "HostSqliteNextResult size mismatch");
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::align_of::<HostSqliteStepResult>() == 8, "HostSqliteStepResult alignment mismatch");
+const _: () = assert!(core::mem::align_of::<HostSqliteNextResult>() == 8, "HostSqliteNextResult alignment mismatch");
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::offset_of!(HostSqliteStepResult, tag) == 32, "HostSqliteStepResult tag offset mismatch");
+const _: () = assert!(core::mem::offset_of!(HostSqliteNextResult, tag) == 40, "HostSqliteNextResult tag offset mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::size_of::<HostSqliteStepResult>() == 32, "HostSqliteStepResult size mismatch");
+const _: () = assert!(core::mem::size_of::<HostSqliteNextResult>() == 40, "HostSqliteNextResult size mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::align_of::<HostSqliteStepResult>() == 8, "HostSqliteStepResult alignment mismatch");
+const _: () = assert!(core::mem::align_of::<HostSqliteNextResult>() == 8, "HostSqliteNextResult alignment mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::offset_of!(HostSqliteStepResult, tag) == 24, "HostSqliteStepResult tag offset mismatch");
+const _: () = assert!(core::mem::offset_of!(HostSqliteNextResult, tag) == 32, "HostSqliteNextResult tag offset mismatch");
+
+/// Tag discriminant for ClosedOrDoneOrFailed.
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClosedOrDoneOrFailedTag {
+    Closed = 0,
+    Done = 1,
+    Failed = 2,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub union ClosedOrDoneOrFailedPayload {
+    pub closed: [u8; 0],
+    pub done: [u8; 0],
+    pub failed: core::mem::ManuallyDrop<AnonStruct8dda646697632dbf>,
+}
+
+#[cfg(target_pointer_width = "32")]
+#[repr(align(8))]
+#[derive(Clone, Copy)]
+pub struct ClosedOrDoneOrFailedPayloadAlignment;
+
+/// Tag union: ClosedOrDoneOrFailed
+#[cfg(target_pointer_width = "32")]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ClosedOrDoneOrFailed {
+    pub _payload_alignment: [ClosedOrDoneOrFailedPayloadAlignment; 0],
+    pub payload: [u8; 24],
+    pub tag: ClosedOrDoneOrFailedTag,
+}
+
+/// Tag union: ClosedOrDoneOrFailed
+#[cfg(not(target_pointer_width = "32"))]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ClosedOrDoneOrFailed {
+    pub payload: ClosedOrDoneOrFailedPayload,
+    pub tag: ClosedOrDoneOrFailedTag,
+}
+
+impl ClosedOrDoneOrFailed {
+    /// Borrow the `Failed` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `ClosedOrDoneOrFailedTag::Failed` and the payload must still be initialized.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn borrow_payload_failed_unchecked(&self) -> &AnonStruct8dda646697632dbf {
+        unsafe { &*(self.payload.as_ptr() as *const AnonStruct8dda646697632dbf) }
+    }
+
+    /// Borrow the `Failed` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `ClosedOrDoneOrFailedTag::Failed` and the payload must still be initialized.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn borrow_payload_failed_unchecked(&self) -> &AnonStruct8dda646697632dbf {
+        unsafe { &*(&self.payload.failed as *const core::mem::ManuallyDrop<AnonStruct8dda646697632dbf> as *const AnonStruct8dda646697632dbf) }
+    }
+
+    /// Move the `Failed` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `ClosedOrDoneOrFailedTag::Failed`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn take_payload_failed_unchecked(&mut self) -> AnonStruct8dda646697632dbf {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const AnonStruct8dda646697632dbf) }
+    }
+
+    /// Move the `Failed` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `ClosedOrDoneOrFailedTag::Failed`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn take_payload_failed_unchecked(&mut self) -> AnonStruct8dda646697632dbf {
+        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.failed) }
+    }
+
+}
+
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::size_of::<ClosedOrDoneOrFailed>() == 40, "ClosedOrDoneOrFailed size mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::align_of::<ClosedOrDoneOrFailed>() == 8, "ClosedOrDoneOrFailed alignment mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::offset_of!(ClosedOrDoneOrFailed, tag) == 32, "ClosedOrDoneOrFailed tag offset mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::size_of::<ClosedOrDoneOrFailed>() == 32, "ClosedOrDoneOrFailed size mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::align_of::<ClosedOrDoneOrFailed>() == 8, "ClosedOrDoneOrFailed alignment mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::offset_of!(ClosedOrDoneOrFailed, tag) == 24, "ClosedOrDoneOrFailed tag offset mismatch");
+
+/// Tag discriminant for BytesOrIntegerOrNullOrRealOrText.
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BytesOrIntegerOrNullOrRealOrTextTag {
+    Bytes = 0,
+    Integer = 1,
+    Null = 2,
+    Real = 3,
+    Text = 4,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub union BytesOrIntegerOrNullOrRealOrTextPayload {
+    pub bytes: core::mem::ManuallyDrop<RocListWith<u8, false>>,
+    pub integer: core::mem::ManuallyDrop<i64>,
+    pub null: [u8; 0],
+    pub real: core::mem::ManuallyDrop<f64>,
+    pub text: core::mem::ManuallyDrop<RocListWith<u8, false>>,
+}
+
+#[cfg(target_pointer_width = "32")]
+#[repr(align(8))]
+#[derive(Clone, Copy)]
+pub struct BytesOrIntegerOrNullOrRealOrTextPayloadAlignment;
+
+/// Tag union: BytesOrIntegerOrNullOrRealOrText
+#[cfg(target_pointer_width = "32")]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct BytesOrIntegerOrNullOrRealOrText {
+    pub _payload_alignment: [BytesOrIntegerOrNullOrRealOrTextPayloadAlignment; 0],
+    pub payload: [u8; 12],
+    pub tag: BytesOrIntegerOrNullOrRealOrTextTag,
+}
+
+/// Tag union: BytesOrIntegerOrNullOrRealOrText
+#[cfg(not(target_pointer_width = "32"))]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct BytesOrIntegerOrNullOrRealOrText {
+    pub payload: BytesOrIntegerOrNullOrRealOrTextPayload,
+    pub tag: BytesOrIntegerOrNullOrRealOrTextTag,
+}
+
+impl BytesOrIntegerOrNullOrRealOrText {
+    /// Borrow the `Bytes` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `BytesOrIntegerOrNullOrRealOrTextTag::Bytes` and the payload must still be initialized.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn borrow_payload_bytes_unchecked(&self) -> &RocListWith<u8, false> {
+        unsafe { &*(self.payload.as_ptr() as *const RocListWith<u8, false>) }
+    }
+
+    /// Borrow the `Bytes` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `BytesOrIntegerOrNullOrRealOrTextTag::Bytes` and the payload must still be initialized.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn borrow_payload_bytes_unchecked(&self) -> &RocListWith<u8, false> {
+        unsafe { &*(&self.payload.bytes as *const core::mem::ManuallyDrop<RocListWith<u8, false>> as *const RocListWith<u8, false>) }
+    }
+
+    /// Move the `Bytes` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `BytesOrIntegerOrNullOrRealOrTextTag::Bytes`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn take_payload_bytes_unchecked(&mut self) -> RocListWith<u8, false> {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const RocListWith<u8, false>) }
+    }
+
+    /// Move the `Bytes` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `BytesOrIntegerOrNullOrRealOrTextTag::Bytes`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn take_payload_bytes_unchecked(&mut self) -> RocListWith<u8, false> {
+        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.bytes) }
+    }
+
+    /// Borrow the `Integer` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `BytesOrIntegerOrNullOrRealOrTextTag::Integer` and the payload must still be initialized.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn borrow_payload_integer_unchecked(&self) -> &i64 {
+        unsafe { &*(self.payload.as_ptr() as *const i64) }
+    }
+
+    /// Borrow the `Integer` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `BytesOrIntegerOrNullOrRealOrTextTag::Integer` and the payload must still be initialized.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn borrow_payload_integer_unchecked(&self) -> &i64 {
+        unsafe { &*(&self.payload.integer as *const core::mem::ManuallyDrop<i64> as *const i64) }
+    }
+
+    /// Move the `Integer` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `BytesOrIntegerOrNullOrRealOrTextTag::Integer`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn take_payload_integer_unchecked(&mut self) -> i64 {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const i64) }
+    }
+
+    /// Move the `Integer` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `BytesOrIntegerOrNullOrRealOrTextTag::Integer`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn take_payload_integer_unchecked(&mut self) -> i64 {
+        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.integer) }
+    }
+
+    /// Borrow the `Real` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `BytesOrIntegerOrNullOrRealOrTextTag::Real` and the payload must still be initialized.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn borrow_payload_real_unchecked(&self) -> &f64 {
+        unsafe { &*(self.payload.as_ptr() as *const f64) }
+    }
+
+    /// Borrow the `Real` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `BytesOrIntegerOrNullOrRealOrTextTag::Real` and the payload must still be initialized.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn borrow_payload_real_unchecked(&self) -> &f64 {
+        unsafe { &*(&self.payload.real as *const core::mem::ManuallyDrop<f64> as *const f64) }
+    }
+
+    /// Move the `Real` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `BytesOrIntegerOrNullOrRealOrTextTag::Real`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn take_payload_real_unchecked(&mut self) -> f64 {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const f64) }
+    }
+
+    /// Move the `Real` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `BytesOrIntegerOrNullOrRealOrTextTag::Real`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn take_payload_real_unchecked(&mut self) -> f64 {
+        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.real) }
+    }
+
+    /// Borrow the `Text` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `BytesOrIntegerOrNullOrRealOrTextTag::Text` and the payload must still be initialized.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn borrow_payload_text_unchecked(&self) -> &RocListWith<u8, false> {
+        unsafe { &*(self.payload.as_ptr() as *const RocListWith<u8, false>) }
+    }
+
+    /// Borrow the `Text` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `BytesOrIntegerOrNullOrRealOrTextTag::Text` and the payload must still be initialized.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn borrow_payload_text_unchecked(&self) -> &RocListWith<u8, false> {
+        unsafe { &*(&self.payload.text as *const core::mem::ManuallyDrop<RocListWith<u8, false>> as *const RocListWith<u8, false>) }
+    }
+
+    /// Move the `Text` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `BytesOrIntegerOrNullOrRealOrTextTag::Text`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn take_payload_text_unchecked(&mut self) -> RocListWith<u8, false> {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const RocListWith<u8, false>) }
+    }
+
+    /// Move the `Text` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `BytesOrIntegerOrNullOrRealOrTextTag::Text`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn take_payload_text_unchecked(&mut self) -> RocListWith<u8, false> {
+        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.text) }
+    }
+
+}
+
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::size_of::<BytesOrIntegerOrNullOrRealOrText>() == 32, "BytesOrIntegerOrNullOrRealOrText size mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::align_of::<BytesOrIntegerOrNullOrRealOrText>() == 8, "BytesOrIntegerOrNullOrRealOrText alignment mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::offset_of!(BytesOrIntegerOrNullOrRealOrText, tag) == 24, "BytesOrIntegerOrNullOrRealOrText tag offset mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::size_of::<BytesOrIntegerOrNullOrRealOrText>() == 16, "BytesOrIntegerOrNullOrRealOrText size mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::align_of::<BytesOrIntegerOrNullOrRealOrText>() == 8, "BytesOrIntegerOrNullOrRealOrText alignment mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::offset_of!(BytesOrIntegerOrNullOrRealOrText, tag) == 12, "BytesOrIntegerOrNullOrRealOrText tag offset mismatch");
 
 /// Tag discriminant for Try.
 #[repr(u8)]
@@ -11680,28 +12220,17 @@ pub struct HostSleepNanosArgs {
     pub arg0: u64,
 }
 
-/// Arguments for Host.sqlite_bind!
-/// Roc signature: Resource.Handle([SqliteStmtKind]), List({ name : Str, value : [Bytes(List(U8)), Integer(I64), Null, Real(F64), String(Str)] }) => Try({}, { code : I64, message : Str })
+/// Arguments for Host.sqlite_close!
+/// Roc signature: Resource.Handle([SqliteDbKind]) => Try({}, { extended_code : I64, message : Str })
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct HostSqliteBindArgs {
+pub struct HostSqliteCloseArgs {
     pub arg0: *mut u64,
-    pub arg1: RocList<AnonStruct2782504baf739389>,
-}
-
-/// Arguments for Host.sqlite_column_value!
-/// Roc signature: Resource.Handle([SqliteStmtKind]), U64 => Try([Bytes(List(U8)), Integer(I64), Null, Real(F64), String(Str)], { code : I64, message : Str })
-/// Refcounted fields are owned by the hosted function.
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub struct HostSqliteColumnValueArgs {
-    pub arg0: *mut u64,
-    pub arg1: u64,
 }
 
 /// Arguments for Host.sqlite_columns!
-/// Roc signature: Resource.Handle([SqliteStmtKind]) => List(Str)
+/// Roc signature: Resource.Handle([SqliteRowsKind]) => List(Str)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -11709,32 +12238,56 @@ pub struct HostSqliteColumnsArgs {
     pub arg0: *mut u64,
 }
 
-/// Arguments for Host.sqlite_prepare!
-/// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], Str => Try(Resource.Handle([SqliteStmtKind]), { code : I64, message : Str })
+/// Arguments for Host.sqlite_execute!
+/// Roc signature: Resource.Handle([SqliteDbKind]), Str, List([Bytes(List(U8)), Integer(I64), Null, Real(F64), String(Str)]) => Try({}, [Closed, Failed({ extended_code : I64, message : Str }), MultipleStatements, ReturnsRows, WrongParamCount({ expected : U64, given : U64 })])
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct HostSqlitePrepareArgs {
-    pub arg0: UnixBytesOrUtf8OrWindowsU16s,
+pub struct HostSqliteExecuteArgs {
+    pub arg0: *mut u64,
+    pub arg1: RocStr,
+    pub arg2: RocList<BytesOrIntegerOrNullOrRealOrString>,
+}
+
+/// Arguments for Host.sqlite_execute_script!
+/// Roc signature: Resource.Handle([SqliteDbKind]), Str => Try({}, [Closed, Failed({ extended_code : I64, message : Str }), MultipleStatements, ReturnsRows, WrongParamCount({ expected : U64, given : U64 })])
+/// Refcounted fields are owned by the hosted function.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostSqliteExecuteScriptArgs {
+    pub arg0: *mut u64,
     pub arg1: RocStr,
 }
 
-/// Arguments for Host.sqlite_reset!
-/// Roc signature: Resource.Handle([SqliteStmtKind]) => Try({}, { code : I64, message : Str })
+/// Arguments for Host.sqlite_next!
+/// Roc signature: Resource.Handle([SqliteRowsKind]) => Try(List([Bytes(List(U8)), Integer(I64), Null, Real(F64), Text(List(U8))]), [Closed, Done, Failed({ extended_code : I64, message : Str })])
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct HostSqliteResetArgs {
+pub struct HostSqliteNextArgs {
     pub arg0: *mut u64,
 }
 
-/// Arguments for Host.sqlite_step!
-/// Roc signature: Resource.Handle([SqliteStmtKind]) => Try(Bool, { code : I64, message : Str })
+/// Arguments for Host.sqlite_open!
+/// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], [ReadOnly, ReadWrite, ReadWriteCreate], U64 => Try(Resource.Handle([SqliteDbKind]), { extended_code : I64, message : Str })
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct HostSqliteStepArgs {
+pub struct HostSqliteOpenArgs {
+    pub arg0: UnixBytesOrUtf8OrWindowsU16s,
+    pub arg1: ReadOnlyOrReadWriteOrReadWriteCreate,
+    pub arg2: u64,
+}
+
+/// Arguments for Host.sqlite_query!
+/// Roc signature: Resource.Handle([SqliteDbKind]), Str, List([Bytes(List(U8)), Integer(I64), Null, Real(F64), String(Str)]) => Try(Resource.Handle([SqliteRowsKind]), [Closed, Failed({ extended_code : I64, message : Str }), MultipleStatements, ReturnsRows, WrongParamCount({ expected : U64, given : U64 })])
+/// Refcounted fields are owned by the hosted function.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostSqliteQueryArgs {
     pub arg0: *mut u64,
+    pub arg1: RocStr,
+    pub arg2: RocList<BytesOrIntegerOrNullOrRealOrString>,
 }
 
 /// Arguments for Host.stderr_line!
@@ -12150,18 +12703,42 @@ pub type HostPathCopyDirResultPayload = HostPathCopyResultPayload;
 pub type HostPathCopyDirResultTag = HostPathCopyResultTag;
 pub type HostPathCopyDirErr = AnonStruct75cf0dfdbccd3932;
 pub type HostPathTypeOk = DirOrFileOrOtherOrSymLink;
-pub type HostSqliteBindArg1 = AnonStruct2782504baf739389;
-pub type HostSqliteBindErr = AnonStruct22cf486058afc711;
-pub type HostSqliteColumnValueErr = AnonStruct22cf486058afc711;
-pub type HostSqliteColumnValueOk = BytesOrIntegerOrNullOrRealOrString;
-pub type HostSqliteColumnValueOkPayload = BytesOrIntegerOrNullOrRealOrStringPayload;
-pub type HostSqliteColumnValueOkTag = BytesOrIntegerOrNullOrRealOrStringTag;
-pub type HostSqlitePrepareErr = AnonStruct22cf486058afc711;
-pub type HostSqliteResetResult = HostSqliteBindResult;
-pub type HostSqliteResetResultPayload = HostSqliteBindResultPayload;
-pub type HostSqliteResetResultTag = HostSqliteBindResultTag;
-pub type HostSqliteResetErr = AnonStruct22cf486058afc711;
-pub type HostSqliteStepErr = AnonStruct22cf486058afc711;
+pub type HostSqliteCloseErr = AnonStruct8dda646697632dbf;
+pub type HostSqliteExecuteArg2 = BytesOrIntegerOrNullOrRealOrString;
+pub type HostSqliteExecuteArg2Payload = BytesOrIntegerOrNullOrRealOrStringPayload;
+pub type HostSqliteExecuteArg2Tag = BytesOrIntegerOrNullOrRealOrStringTag;
+pub type HostSqliteExecuteErr = ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount;
+pub type HostSqliteExecuteErrPayload = ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountPayload;
+pub type HostSqliteExecuteErrTag = ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag;
+pub type HostSqliteExecuteErrFailed = AnonStruct8dda646697632dbf;
+pub type HostSqliteExecuteErrWrongParamCount = AnonStructAb3a8761b3660309;
+pub type ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountFailed = AnonStruct8dda646697632dbf;
+pub type ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountWrongParamCount = AnonStructAb3a8761b3660309;
+pub type HostSqliteExecuteScriptResult = HostSqliteExecuteResult;
+pub type HostSqliteExecuteScriptResultPayload = HostSqliteExecuteResultPayload;
+pub type HostSqliteExecuteScriptResultTag = HostSqliteExecuteResultTag;
+pub type HostSqliteExecuteScriptErr = ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount;
+pub type HostSqliteExecuteScriptErrPayload = ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountPayload;
+pub type HostSqliteExecuteScriptErrTag = ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag;
+pub type HostSqliteExecuteScriptErrFailed = AnonStruct8dda646697632dbf;
+pub type HostSqliteExecuteScriptErrWrongParamCount = AnonStructAb3a8761b3660309;
+pub type HostSqliteNextErr = ClosedOrDoneOrFailed;
+pub type HostSqliteNextErrPayload = ClosedOrDoneOrFailedPayload;
+pub type HostSqliteNextErrTag = ClosedOrDoneOrFailedTag;
+pub type HostSqliteNextErrFailed = AnonStruct8dda646697632dbf;
+pub type HostSqliteNextOk = BytesOrIntegerOrNullOrRealOrText;
+pub type HostSqliteNextOkPayload = BytesOrIntegerOrNullOrRealOrTextPayload;
+pub type HostSqliteNextOkTag = BytesOrIntegerOrNullOrRealOrTextTag;
+pub type ClosedOrDoneOrFailedFailed = AnonStruct8dda646697632dbf;
+pub type HostSqliteOpenErr = AnonStruct8dda646697632dbf;
+pub type HostSqliteQueryArg2 = BytesOrIntegerOrNullOrRealOrString;
+pub type HostSqliteQueryArg2Payload = BytesOrIntegerOrNullOrRealOrStringPayload;
+pub type HostSqliteQueryArg2Tag = BytesOrIntegerOrNullOrRealOrStringTag;
+pub type HostSqliteQueryErr = ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount;
+pub type HostSqliteQueryErrPayload = ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountPayload;
+pub type HostSqliteQueryErrTag = ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag;
+pub type HostSqliteQueryErrFailed = AnonStruct8dda646697632dbf;
+pub type HostSqliteQueryErrWrongParamCount = AnonStructAb3a8761b3660309;
 pub type HostStderrWriteResult = HostStderrLineResult;
 pub type HostStderrWriteResultPayload = HostStderrLineResultPayload;
 pub type HostStderrWriteResultTag = HostStderrLineResultTag;
@@ -13432,7 +14009,7 @@ unsafe impl RocRelease<HostRandomSeedU32Result> for HostRandomSeedU32ResultRelea
     }
 }
 
-impl HostSqlitePrepareResult {
+impl HostSqliteOpenResult {
     /// Recursively decrement Roc-owned payloads.
     ///
     /// # Safety
@@ -13441,11 +14018,11 @@ impl HostSqlitePrepareResult {
         let mut value = self;
         let _ = roc_host;
         match value.tag {
-            HostSqlitePrepareResultTag::Err => {
+            HostSqliteOpenResultTag::Err => {
                 let payload = unsafe { value.take_payload_err_unchecked() };
                 unsafe { payload.decref(roc_host); }
             },
-            HostSqlitePrepareResultTag::Ok => {
+            HostSqliteOpenResultTag::Ok => {
                 let payload = unsafe { value.take_payload_ok_unchecked() };
                 unsafe { decref_box_with(payload as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
             },
@@ -13461,11 +14038,11 @@ impl HostSqlitePrepareResult {
         let value = self;
         let _ = amount;
         match value.tag {
-            HostSqlitePrepareResultTag::Err => {
+            HostSqliteOpenResultTag::Err => {
                 let payload = unsafe { core::ptr::read(value.borrow_payload_err_unchecked()) };
                 unsafe { payload.incref(amount); }
             },
-            HostSqlitePrepareResultTag::Ok => {
+            HostSqliteOpenResultTag::Ok => {
                 let payload = unsafe { core::ptr::read(value.borrow_payload_ok_unchecked()) };
                 unsafe { incref_box(payload as RocBox, amount); }
             },
@@ -13473,15 +14050,15 @@ impl HostSqlitePrepareResult {
     }
 }
 
-pub struct HostSqlitePrepareResultRelease;
+pub struct HostSqliteOpenResultRelease;
 
-unsafe impl RocRelease<HostSqlitePrepareResult> for HostSqlitePrepareResultRelease {
-    unsafe fn release(value: HostSqlitePrepareResult, roc_host: &RocHost) {
+unsafe impl RocRelease<HostSqliteOpenResult> for HostSqliteOpenResultRelease {
+    unsafe fn release(value: HostSqliteOpenResult, roc_host: &RocHost) {
         unsafe { value.decref(roc_host); }
     }
 }
 
-impl AnonStruct22cf486058afc711 {
+impl AnonStruct8dda646697632dbf {
     /// Recursively decrement Roc-owned fields.
     ///
     /// # Safety
@@ -13502,15 +14079,44 @@ impl AnonStruct22cf486058afc711 {
     }
 }
 
-pub struct AnonStruct22cf486058afc711Release;
+pub struct AnonStruct8dda646697632dbfRelease;
 
-unsafe impl RocRelease<AnonStruct22cf486058afc711> for AnonStruct22cf486058afc711Release {
-    unsafe fn release(value: AnonStruct22cf486058afc711, roc_host: &RocHost) {
+unsafe impl RocRelease<AnonStruct8dda646697632dbf> for AnonStruct8dda646697632dbfRelease {
+    unsafe fn release(value: AnonStruct8dda646697632dbf, roc_host: &RocHost) {
         unsafe { value.decref(roc_host); }
     }
 }
 
-impl HostSqliteBindResult {
+impl ReadOnlyOrReadWriteOrReadWriteCreate {
+    /// Recursively decrement Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must own one live Roc reference for each refcounted payload.
+    pub unsafe fn decref(self, roc_host: &RocHost) {
+        let _ = self;
+        let _ = roc_host;
+    }
+
+    /// Increment Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must point at live Roc allocations. The retained references must
+    /// be balanced by later decrefs.
+    pub unsafe fn incref(self, amount: isize) {
+        let _ = self;
+        let _ = amount;
+    }
+}
+
+pub struct ReadOnlyOrReadWriteOrReadWriteCreateRelease;
+
+unsafe impl RocRelease<ReadOnlyOrReadWriteOrReadWriteCreate> for ReadOnlyOrReadWriteOrReadWriteCreateRelease {
+    unsafe fn release(value: ReadOnlyOrReadWriteOrReadWriteCreate, roc_host: &RocHost) {
+        unsafe { value.decref(roc_host); }
+    }
+}
+
+impl HostSqliteCloseResult {
     /// Recursively decrement Roc-owned payloads.
     ///
     /// # Safety
@@ -13519,11 +14125,11 @@ impl HostSqliteBindResult {
         let mut value = self;
         let _ = roc_host;
         match value.tag {
-            HostSqliteBindResultTag::Err => {
+            HostSqliteCloseResultTag::Err => {
                 let payload = unsafe { value.take_payload_err_unchecked() };
                 unsafe { payload.decref(roc_host); }
             },
-            HostSqliteBindResultTag::Ok => {},
+            HostSqliteCloseResultTag::Ok => {},
         }
     }
 
@@ -13536,32 +14142,130 @@ impl HostSqliteBindResult {
         let value = self;
         let _ = amount;
         match value.tag {
-            HostSqliteBindResultTag::Err => {
+            HostSqliteCloseResultTag::Err => {
                 let payload = unsafe { core::ptr::read(value.borrow_payload_err_unchecked()) };
                 unsafe { payload.incref(amount); }
             },
-            HostSqliteBindResultTag::Ok => {},
+            HostSqliteCloseResultTag::Ok => {},
         }
     }
 }
 
-pub struct HostSqliteBindResultRelease;
+pub struct HostSqliteCloseResultRelease;
 
-unsafe impl RocRelease<HostSqliteBindResult> for HostSqliteBindResultRelease {
-    unsafe fn release(value: HostSqliteBindResult, roc_host: &RocHost) {
+unsafe impl RocRelease<HostSqliteCloseResult> for HostSqliteCloseResultRelease {
+    unsafe fn release(value: HostSqliteCloseResult, roc_host: &RocHost) {
         unsafe { value.decref(roc_host); }
     }
 }
 
-impl AnonStruct2782504baf739389 {
+impl HostSqliteExecuteResult {
+    /// Recursively decrement Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must own one live Roc reference for each refcounted payload.
+    pub unsafe fn decref(self, roc_host: &RocHost) {
+        let mut value = self;
+        let _ = roc_host;
+        match value.tag {
+            HostSqliteExecuteResultTag::Err => {
+                let payload = unsafe { value.take_payload_err_unchecked() };
+                unsafe { payload.decref(roc_host); }
+            },
+            HostSqliteExecuteResultTag::Ok => {},
+        }
+    }
+
+    /// Increment Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must point at live Roc allocations. The retained references must
+    /// be balanced by later decrefs.
+    pub unsafe fn incref(self, amount: isize) {
+        let value = self;
+        let _ = amount;
+        match value.tag {
+            HostSqliteExecuteResultTag::Err => {
+                let payload = unsafe { core::ptr::read(value.borrow_payload_err_unchecked()) };
+                unsafe { payload.incref(amount); }
+            },
+            HostSqliteExecuteResultTag::Ok => {},
+        }
+    }
+}
+
+pub struct HostSqliteExecuteResultRelease;
+
+unsafe impl RocRelease<HostSqliteExecuteResult> for HostSqliteExecuteResultRelease {
+    unsafe fn release(value: HostSqliteExecuteResult, roc_host: &RocHost) {
+        unsafe { value.decref(roc_host); }
+    }
+}
+
+impl ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount {
+    /// Recursively decrement Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must own one live Roc reference for each refcounted payload.
+    pub unsafe fn decref(self, roc_host: &RocHost) {
+        let mut value = self;
+        let _ = roc_host;
+        match value.tag {
+            ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag::Closed => {},
+            ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag::Failed => {
+                let payload = unsafe { value.take_payload_failed_unchecked() };
+                unsafe { payload.decref(roc_host); }
+            },
+            ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag::MultipleStatements => {},
+            ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag::ReturnsRows => {},
+            ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag::WrongParamCount => {
+                let payload = unsafe { value.take_payload_wrong_param_count_unchecked() };
+                unsafe { payload.decref(roc_host); }
+            },
+        }
+    }
+
+    /// Increment Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must point at live Roc allocations. The retained references must
+    /// be balanced by later decrefs.
+    pub unsafe fn incref(self, amount: isize) {
+        let value = self;
+        let _ = amount;
+        match value.tag {
+            ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag::Closed => {},
+            ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag::Failed => {
+                let payload = unsafe { core::ptr::read(value.borrow_payload_failed_unchecked()) };
+                unsafe { payload.incref(amount); }
+            },
+            ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag::MultipleStatements => {},
+            ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag::ReturnsRows => {},
+            ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag::WrongParamCount => {
+                let payload = unsafe { core::ptr::read(value.borrow_payload_wrong_param_count_unchecked()) };
+                unsafe { payload.incref(amount); }
+            },
+        }
+    }
+}
+
+pub struct ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountRelease;
+
+unsafe impl RocRelease<ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount> for ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountRelease {
+    unsafe fn release(value: ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount, roc_host: &RocHost) {
+        unsafe { value.decref(roc_host); }
+    }
+}
+
+impl AnonStructAb3a8761b3660309 {
     /// Recursively decrement Roc-owned fields.
     ///
     /// # Safety
     /// `self` must own one live Roc reference for each refcounted field.
     pub unsafe fn decref(self, roc_host: &RocHost) {
         let value = self;
-        unsafe { value.value.decref(roc_host); }
-        unsafe { value.name.decref(roc_host); }
+        let _ = value;
+        let _ = roc_host;
     }
 
     /// Increment Roc-owned fields.
@@ -13571,15 +14275,15 @@ impl AnonStruct2782504baf739389 {
     /// be balanced by later decrefs.
     pub unsafe fn incref(self, amount: isize) {
         let value = self;
-        unsafe { value.value.incref(amount); }
-        unsafe { value.name.incref(amount); }
+        let _ = value;
+        let _ = amount;
     }
 }
 
-pub struct AnonStruct2782504baf739389Release;
+pub struct AnonStructAb3a8761b3660309Release;
 
-unsafe impl RocRelease<AnonStruct2782504baf739389> for AnonStruct2782504baf739389Release {
-    unsafe fn release(value: AnonStruct2782504baf739389, roc_host: &RocHost) {
+unsafe impl RocRelease<AnonStructAb3a8761b3660309> for AnonStructAb3a8761b3660309Release {
+    unsafe fn release(value: AnonStructAb3a8761b3660309, roc_host: &RocHost) {
         unsafe { value.decref(roc_host); }
     }
 }
@@ -13639,7 +14343,7 @@ unsafe impl RocRelease<BytesOrIntegerOrNullOrRealOrString> for BytesOrIntegerOrN
     }
 }
 
-impl HostSqliteColumnValueResult {
+impl HostSqliteQueryResult {
     /// Recursively decrement Roc-owned payloads.
     ///
     /// # Safety
@@ -13648,13 +14352,13 @@ impl HostSqliteColumnValueResult {
         let mut value = self;
         let _ = roc_host;
         match value.tag {
-            HostSqliteColumnValueResultTag::Err => {
+            HostSqliteQueryResultTag::Err => {
                 let payload = unsafe { value.take_payload_err_unchecked() };
                 unsafe { payload.decref(roc_host); }
             },
-            HostSqliteColumnValueResultTag::Ok => {
+            HostSqliteQueryResultTag::Ok => {
                 let payload = unsafe { value.take_payload_ok_unchecked() };
-                unsafe { payload.decref(roc_host); }
+                unsafe { decref_box_with(payload as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
             },
         }
     }
@@ -13668,11 +14372,60 @@ impl HostSqliteColumnValueResult {
         let value = self;
         let _ = amount;
         match value.tag {
-            HostSqliteColumnValueResultTag::Err => {
+            HostSqliteQueryResultTag::Err => {
                 let payload = unsafe { core::ptr::read(value.borrow_payload_err_unchecked()) };
                 unsafe { payload.incref(amount); }
             },
-            HostSqliteColumnValueResultTag::Ok => {
+            HostSqliteQueryResultTag::Ok => {
+                let payload = unsafe { core::ptr::read(value.borrow_payload_ok_unchecked()) };
+                unsafe { incref_box(payload as RocBox, amount); }
+            },
+        }
+    }
+}
+
+pub struct HostSqliteQueryResultRelease;
+
+unsafe impl RocRelease<HostSqliteQueryResult> for HostSqliteQueryResultRelease {
+    unsafe fn release(value: HostSqliteQueryResult, roc_host: &RocHost) {
+        unsafe { value.decref(roc_host); }
+    }
+}
+
+impl HostSqliteNextResult {
+    /// Recursively decrement Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must own one live Roc reference for each refcounted payload.
+    pub unsafe fn decref(self, roc_host: &RocHost) {
+        let mut value = self;
+        let _ = roc_host;
+        match value.tag {
+            HostSqliteNextResultTag::Err => {
+                let payload = unsafe { value.take_payload_err_unchecked() };
+                unsafe { payload.decref(roc_host); }
+            },
+            HostSqliteNextResultTag::Ok => {
+                let payload = unsafe { value.take_payload_ok_unchecked() };
+                unsafe { decref_list_of_bytes_or_integer_or_null_or_real_or_text(payload, roc_host); }
+            },
+        }
+    }
+
+    /// Increment Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must point at live Roc allocations. The retained references must
+    /// be balanced by later decrefs.
+    pub unsafe fn incref(self, amount: isize) {
+        let value = self;
+        let _ = amount;
+        match value.tag {
+            HostSqliteNextResultTag::Err => {
+                let payload = unsafe { core::ptr::read(value.borrow_payload_err_unchecked()) };
+                unsafe { payload.incref(amount); }
+            },
+            HostSqliteNextResultTag::Ok => {
                 let payload = unsafe { core::ptr::read(value.borrow_payload_ok_unchecked()) };
                 unsafe { payload.incref(amount); }
             },
@@ -13680,15 +14433,15 @@ impl HostSqliteColumnValueResult {
     }
 }
 
-pub struct HostSqliteColumnValueResultRelease;
+pub struct HostSqliteNextResultRelease;
 
-unsafe impl RocRelease<HostSqliteColumnValueResult> for HostSqliteColumnValueResultRelease {
-    unsafe fn release(value: HostSqliteColumnValueResult, roc_host: &RocHost) {
+unsafe impl RocRelease<HostSqliteNextResult> for HostSqliteNextResultRelease {
+    unsafe fn release(value: HostSqliteNextResult, roc_host: &RocHost) {
         unsafe { value.decref(roc_host); }
     }
 }
 
-impl HostSqliteStepResult {
+impl ClosedOrDoneOrFailed {
     /// Recursively decrement Roc-owned payloads.
     ///
     /// # Safety
@@ -13697,11 +14450,12 @@ impl HostSqliteStepResult {
         let mut value = self;
         let _ = roc_host;
         match value.tag {
-            HostSqliteStepResultTag::Err => {
-                let payload = unsafe { value.take_payload_err_unchecked() };
+            ClosedOrDoneOrFailedTag::Closed => {},
+            ClosedOrDoneOrFailedTag::Done => {},
+            ClosedOrDoneOrFailedTag::Failed => {
+                let payload = unsafe { value.take_payload_failed_unchecked() };
                 unsafe { payload.decref(roc_host); }
             },
-            HostSqliteStepResultTag::Ok => {},
         }
     }
 
@@ -13714,19 +14468,75 @@ impl HostSqliteStepResult {
         let value = self;
         let _ = amount;
         match value.tag {
-            HostSqliteStepResultTag::Err => {
-                let payload = unsafe { core::ptr::read(value.borrow_payload_err_unchecked()) };
+            ClosedOrDoneOrFailedTag::Closed => {},
+            ClosedOrDoneOrFailedTag::Done => {},
+            ClosedOrDoneOrFailedTag::Failed => {
+                let payload = unsafe { core::ptr::read(value.borrow_payload_failed_unchecked()) };
                 unsafe { payload.incref(amount); }
             },
-            HostSqliteStepResultTag::Ok => {},
         }
     }
 }
 
-pub struct HostSqliteStepResultRelease;
+pub struct ClosedOrDoneOrFailedRelease;
 
-unsafe impl RocRelease<HostSqliteStepResult> for HostSqliteStepResultRelease {
-    unsafe fn release(value: HostSqliteStepResult, roc_host: &RocHost) {
+unsafe impl RocRelease<ClosedOrDoneOrFailed> for ClosedOrDoneOrFailedRelease {
+    unsafe fn release(value: ClosedOrDoneOrFailed, roc_host: &RocHost) {
+        unsafe { value.decref(roc_host); }
+    }
+}
+
+impl BytesOrIntegerOrNullOrRealOrText {
+    /// Recursively decrement Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must own one live Roc reference for each refcounted payload.
+    pub unsafe fn decref(self, roc_host: &RocHost) {
+        let mut value = self;
+        let _ = roc_host;
+        match value.tag {
+            BytesOrIntegerOrNullOrRealOrTextTag::Bytes => {
+                let payload = unsafe { value.take_payload_bytes_unchecked() };
+                unsafe { payload.decref(roc_host); }
+            },
+            BytesOrIntegerOrNullOrRealOrTextTag::Integer => {},
+            BytesOrIntegerOrNullOrRealOrTextTag::Null => {},
+            BytesOrIntegerOrNullOrRealOrTextTag::Real => {},
+            BytesOrIntegerOrNullOrRealOrTextTag::Text => {
+                let payload = unsafe { value.take_payload_text_unchecked() };
+                unsafe { payload.decref(roc_host); }
+            },
+        }
+    }
+
+    /// Increment Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must point at live Roc allocations. The retained references must
+    /// be balanced by later decrefs.
+    pub unsafe fn incref(self, amount: isize) {
+        let value = self;
+        let _ = amount;
+        match value.tag {
+            BytesOrIntegerOrNullOrRealOrTextTag::Bytes => {
+                let payload = unsafe { core::ptr::read(value.borrow_payload_bytes_unchecked()) };
+                unsafe { payload.incref(amount); }
+            },
+            BytesOrIntegerOrNullOrRealOrTextTag::Integer => {},
+            BytesOrIntegerOrNullOrRealOrTextTag::Null => {},
+            BytesOrIntegerOrNullOrRealOrTextTag::Real => {},
+            BytesOrIntegerOrNullOrRealOrTextTag::Text => {
+                let payload = unsafe { core::ptr::read(value.borrow_payload_text_unchecked()) };
+                unsafe { payload.incref(amount); }
+            },
+        }
+    }
+}
+
+pub struct BytesOrIntegerOrNullOrRealOrTextRelease;
+
+unsafe impl RocRelease<BytesOrIntegerOrNullOrRealOrText> for BytesOrIntegerOrNullOrRealOrTextRelease {
+    unsafe fn release(value: BytesOrIntegerOrNullOrRealOrText, roc_host: &RocHost) {
         unsafe { value.decref(roc_host); }
     }
 }
@@ -16608,15 +17418,26 @@ pub unsafe fn decref_list_of_str(value: RocList<RocStr>, roc_host: &RocHost) {
     unsafe { value.release_with::<RocStrRelease>(roc_host); }
 }
 
-/// Release one owned reference to a `RocList<AnonStruct2782504baf739389>`.
+/// Release one owned reference to a `RocList<BytesOrIntegerOrNullOrRealOrString>`.
 ///
 /// The allocation's final reference is claimed atomically before any element
 /// is read, so concurrent owners cannot skip or duplicate element teardown.
 ///
 /// # Safety
 /// `value` must own one live Roc list reference.
-pub unsafe fn decref_list_of_anon_struct2782504baf739389(value: RocList<AnonStruct2782504baf739389>, roc_host: &RocHost) {
-    unsafe { value.release_with::<AnonStruct2782504baf739389Release>(roc_host); }
+pub unsafe fn decref_list_of_bytes_or_integer_or_null_or_real_or_string(value: RocList<BytesOrIntegerOrNullOrRealOrString>, roc_host: &RocHost) {
+    unsafe { value.release_with::<BytesOrIntegerOrNullOrRealOrStringRelease>(roc_host); }
+}
+
+/// Release one owned reference to a `RocList<BytesOrIntegerOrNullOrRealOrText>`.
+///
+/// The allocation's final reference is claimed atomically before any element
+/// is read, so concurrent owners cannot skip or duplicate element teardown.
+///
+/// # Safety
+/// `value` must own one live Roc list reference.
+pub unsafe fn decref_list_of_bytes_or_integer_or_null_or_real_or_text(value: RocList<BytesOrIntegerOrNullOrRealOrText>, roc_host: &RocHost) {
+    unsafe { value.release_with::<BytesOrIntegerOrNullOrRealOrTextRelease>(roc_host); }
 }
 
 /// Release one owned reference to a `RocList<AnonStruct69eee2ff6c448fed>`.
@@ -17203,55 +18024,67 @@ unsafe extern "C" {
     /// Roc signature: U64 => {}
     pub fn hosted_sleep_nanos(arg0: u64);
 
-    /// Hosted symbol for Host.sqlite_bind!
-    /// Roc signature: Resource.Handle([SqliteStmtKind]), List({ name : Str, value : [Bytes(List(U8)), Integer(I64), Null, Real(F64), String(Str)] }) => Try({}, { code : I64, message : Str })
-    /// Owned arguments. Release each exactly once before returning, unless it is
-    /// moved into storage or into the result:
-    ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
-    ///     unsafe { decref_list_of_anon_struct2782504baf739389(arg1, roc_host); }
-    /// The result is owned by Roc: return exactly one owned reference.
-    pub fn hosted_sqlite_bind(arg0: *mut u64, arg1: RocList<AnonStruct2782504baf739389>) -> HostSqliteBindResult;
-
-    /// Hosted symbol for Host.sqlite_column_value!
-    /// Roc signature: Resource.Handle([SqliteStmtKind]), U64 => Try([Bytes(List(U8)), Integer(I64), Null, Real(F64), String(Str)], { code : I64, message : Str })
+    /// Hosted symbol for Host.sqlite_close!
+    /// Roc signature: Resource.Handle([SqliteDbKind]) => Try({}, { extended_code : I64, message : Str })
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
     /// The result is owned by Roc: return exactly one owned reference.
-    pub fn hosted_sqlite_column_value(arg0: *mut u64, arg1: u64) -> HostSqliteColumnValueResult;
+    pub fn hosted_sqlite_close(arg0: *mut u64) -> HostSqliteCloseResult;
 
     /// Hosted symbol for Host.sqlite_columns!
-    /// Roc signature: Resource.Handle([SqliteStmtKind]) => List(Str)
+    /// Roc signature: Resource.Handle([SqliteRowsKind]) => List(Str)
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
     /// The result is owned by Roc: return exactly one owned reference.
     pub fn hosted_sqlite_columns(arg0: *mut u64) -> RocList<RocStr>;
 
-    /// Hosted symbol for Host.sqlite_prepare!
-    /// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], Str => Try(Resource.Handle([SqliteStmtKind]), { code : I64, message : Str })
+    /// Hosted symbol for Host.sqlite_execute!
+    /// Roc signature: Resource.Handle([SqliteDbKind]), Str, List([Bytes(List(U8)), Integer(I64), Null, Real(F64), String(Str)]) => Try({}, [Closed, Failed({ extended_code : I64, message : Str }), MultipleStatements, ReturnsRows, WrongParamCount({ expected : U64, given : U64 })])
+    /// Owned arguments. Release each exactly once before returning, unless it is
+    /// moved into storage or into the result:
+    ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
+    ///     unsafe { arg1.decref(roc_host); }
+    ///     unsafe { decref_list_of_bytes_or_integer_or_null_or_real_or_string(arg2, roc_host); }
+    /// The result is owned by Roc: return exactly one owned reference.
+    pub fn hosted_sqlite_execute(arg0: *mut u64, arg1: RocStr, arg2: RocList<BytesOrIntegerOrNullOrRealOrString>) -> HostSqliteExecuteResult;
+
+    /// Hosted symbol for Host.sqlite_execute_script!
+    /// Roc signature: Resource.Handle([SqliteDbKind]), Str => Try({}, [Closed, Failed({ extended_code : I64, message : Str }), MultipleStatements, ReturnsRows, WrongParamCount({ expected : U64, given : U64 })])
+    /// Owned arguments. Release each exactly once before returning, unless it is
+    /// moved into storage or into the result:
+    ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
+    ///     unsafe { arg1.decref(roc_host); }
+    /// The result is owned by Roc: return exactly one owned reference.
+    pub fn hosted_sqlite_execute_script(arg0: *mut u64, arg1: RocStr) -> HostSqliteExecuteResult;
+
+    /// Hosted symbol for Host.sqlite_next!
+    /// Roc signature: Resource.Handle([SqliteRowsKind]) => Try(List([Bytes(List(U8)), Integer(I64), Null, Real(F64), Text(List(U8))]), [Closed, Done, Failed({ extended_code : I64, message : Str })])
+    /// Owned arguments. Release each exactly once before returning, unless it is
+    /// moved into storage or into the result:
+    ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
+    /// The result is owned by Roc: return exactly one owned reference.
+    pub fn hosted_sqlite_next(arg0: *mut u64) -> HostSqliteNextResult;
+
+    /// Hosted symbol for Host.sqlite_open!
+    /// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], [ReadOnly, ReadWrite, ReadWriteCreate], U64 => Try(Resource.Handle([SqliteDbKind]), { extended_code : I64, message : Str })
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { arg0.decref(roc_host); }
     ///     unsafe { arg1.decref(roc_host); }
     /// The result is owned by Roc: return exactly one owned reference.
-    pub fn hosted_sqlite_prepare(arg0: UnixBytesOrUtf8OrWindowsU16s, arg1: RocStr) -> HostSqlitePrepareResult;
+    pub fn hosted_sqlite_open(arg0: UnixBytesOrUtf8OrWindowsU16s, arg1: ReadOnlyOrReadWriteOrReadWriteCreate, arg2: u64) -> HostSqliteOpenResult;
 
-    /// Hosted symbol for Host.sqlite_reset!
-    /// Roc signature: Resource.Handle([SqliteStmtKind]) => Try({}, { code : I64, message : Str })
+    /// Hosted symbol for Host.sqlite_query!
+    /// Roc signature: Resource.Handle([SqliteDbKind]), Str, List([Bytes(List(U8)), Integer(I64), Null, Real(F64), String(Str)]) => Try(Resource.Handle([SqliteRowsKind]), [Closed, Failed({ extended_code : I64, message : Str }), MultipleStatements, ReturnsRows, WrongParamCount({ expected : U64, given : U64 })])
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
+    ///     unsafe { arg1.decref(roc_host); }
+    ///     unsafe { decref_list_of_bytes_or_integer_or_null_or_real_or_string(arg2, roc_host); }
     /// The result is owned by Roc: return exactly one owned reference.
-    pub fn hosted_sqlite_reset(arg0: *mut u64) -> HostSqliteBindResult;
-
-    /// Hosted symbol for Host.sqlite_step!
-    /// Roc signature: Resource.Handle([SqliteStmtKind]) => Try(Bool, { code : I64, message : Str })
-    /// Owned arguments. Release each exactly once before returning, unless it is
-    /// moved into storage or into the result:
-    ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
-    /// The result is owned by Roc: return exactly one owned reference.
-    pub fn hosted_sqlite_step(arg0: *mut u64) -> HostSqliteStepResult;
+    pub fn hosted_sqlite_query(arg0: *mut u64, arg1: RocStr, arg2: RocList<BytesOrIntegerOrNullOrRealOrString>) -> HostSqliteQueryResult;
 
     /// Hosted symbol for Host.stderr_line!
     /// Roc signature: Str => Try({}, [StderrErr(IOErr)])

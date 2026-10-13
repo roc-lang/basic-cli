@@ -94,7 +94,8 @@ resource_kinds! {
     FileReader => std::io::BufReader<std::fs::File>,
     FileWriter => crate::file_writer::FileWriter,
     HttpResponse => crate::http::StreamingBody,
-    SqliteStmt => crate::sqlite::SqliteStatement,
+    SqliteDb => crate::sqlite::SqliteDb,
+    SqliteRows => crate::sqlite::SqliteRows,
     TcpConnection => crate::tcp::Connection,
     TcpListener => crate::listener::Listener,
     #[cfg(test)]

@@ -68,11 +68,13 @@ These current host-level limitations may affect application design:
   last reference to the writer is released, which writes what is still
   buffered but cannot report a failure, so flush after the last write or use
   `File.with_writer!`. A crash loses buffered bytes.
-- SQLite keeps up to 16 recently used ordinary path connections open. A live
-  prepared statement keeps its connection open after cache eviction, and reused
-  paths continue sharing that live connection. The exact `:memory:` path is kept
-  open for the lifetime of its host thread, so repeated use accesses the same
-  in-memory database.
+- Every `Sqlite.open!` call opens its own connection; `Sqlite.open_in_memory!`
+  and the path `":memory:"` open a new, private in-memory database each time.
+  A connection waits up to five seconds for another connection's lock unless
+  `busy_timeout` says otherwise. It is closed by `close!`, or when the `Db` and
+  every unfinished `rows` stream made from it have been released. Each
+  connection keeps up to 32 prepared statements, keyed by their SQL text, and
+  drops the least recently used.
 
 ## Examples
 

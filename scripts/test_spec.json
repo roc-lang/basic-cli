@@ -436,14 +436,16 @@
           "name": "existing-database",
           "live_handles": 0,
           "env": { "DB_PATH": "{root}/examples/todos.db" },
-          "contains": ["All Todos:", "Share my ❤️  for Roc", "Completed Todos:"]
+          "stdout_contains": [
+            "There are 3 todos.\n\nTodos still to do:\n    id: 3, task: Share my ❤️  for Roc, status: Todo\n\nCompleted Todos:\n    id: 1, task: Prepare for AoC, status: Completed\n"
+          ]
         },
         {
           "name": "cannot-open-database",
           "live_handles": 0,
           "env": { "DB_PATH": "{root}/missing/sqlite.db" },
           "exit_code": 1,
-          "contains": ["QueryTodosFailed(SqliteErr(CanNotOpen"]
+          "contains": ["OpenDatabaseFailed(SqliteErr(Failed({ code: CanNotOpen, extended_code: 14, message: \"unable to open database file\" })))"]
         }
       ]
     },
@@ -460,9 +462,14 @@
             }
           ],
           "env": { "DB_PATH": "{root}/examples/todos2.e2e.db" },
-          "contains": [
-            "Row count: 3",
-            "Todos sorted by length of task description:"
+          "stdout_contains": [
+            "All Todos:\n    id: 1, task: Prepare for AoC, status: completed, edited: unknown\n    id: 2, task: Win all the Stars!, status: in-progress, edited: not-edited\n    id: 3, task: Share my ❤️  for Roc, status: todo, edited: not-edited\n",
+            "In-progress Todos:\n    In-progress task: Win all the Stars!\n",
+            "Todos until the first inserted one:\n    task: Prepare for AoC\n    task: Win all the Stars!\n    task: Share my ❤️  for Roc\n\n",
+            "Todos 1 and 3:\n    task: Prepare for AoC, status: completed\n    task: Share my ❤️  for Roc, status: todo\n",
+            "Adding the label \"urgent\" twice: Added, then AlreadyExists\n",
+            "Row count: 3\n",
+            "Todos sorted by length of task description:\n    task: Prepare for AoC, status: completed\n    task: Win all the Stars!, status: in-progress\n    task: Share my ❤️  for Roc, status: todo\n"
           ]
         },
         {
@@ -470,7 +477,7 @@
           "live_handles": 0,
           "env": { "DB_PATH": "{root}/missing/sqlite.db" },
           "exit_code": 1,
-          "contains": ["QueryAllTodosFailed(SqliteErr(CanNotOpen"]
+          "contains": ["OpenDatabaseFailed(SqliteErr(Failed({ code: CanNotOpen, extended_code: 14, message: \"unable to open database file\" })))"]
         }
       ]
     },
@@ -1190,6 +1197,98 @@
           "name": "second-error",
           "live_handles": 0,
           "args": ["unexpected"],
+          "exit_code": 1,
+          "contains": ["Program exited with error: UnexpectedArguments"]
+        }
+      ]
+    },
+    {
+      "path": "tests/sqlite.roc",
+      "cases": [
+        {
+          "name": "rows",
+          "live_handles": 0,
+          "args": ["rows"],
+          "stdout_contains": [
+            "all row: { id: 1, payload: \"one\" }\nall bad row: UnexpectedType({ column: \"payload\", found: Real })\nall row: { id: 3, payload: \"three\" }\nall row: { id: 4, payload: \"four\" }\nall: end\nagain row: { id: 1, payload: \"one\" }\nagain row: { id: 3, payload: \"three\" }\nagain row: { id: 4, payload: \"four\" }\nagain: end\nearly row: { id: 1, payload: \"one\" }\ndrop after break: Ok({})\nmissing name sqlite error: ColumnNotFound(Name(\"payload\"))\nmissing name: end\nmissing index sqlite error: ColumnNotFound(Index(1))\nmissing index: end\noverflow row: 1\noverflow sqlite error: Failed({ code: Error, extended_code: 1, message: \"integer overflow\" })\noverflow: end\ndrop after failure: Ok({})\nno table sqlite error: Failed({ code: Error, extended_code: 1, message: \"no such table: nowhere\" })\nno table: end\nno value sqlite error: WrongParamCount({ expected: 1, given: 0 })\nno value: end\ntwo statements sqlite error: MultipleStatements\ntwo statements: end\nno statement: end\nno statement, a column sqlite error: ColumnNotFound(Index(0))\nno statement, a column: end\ninsert: end\nreturning row: \"y\"\nreturning: end\nlog: Ok([\"x\", \"y\"])\n"
+          ]
+        },
+        {
+          "name": "query",
+          "live_handles": 0,
+          "args": ["query"],
+          "stdout_contains": [
+            "one: Ok({ id: 3, payload: \"three\" })\nno rows: Err(NoRows)\nbad row: Err(BadRow(UnexpectedType({ column: \"payload\", found: Real })))\ntoo many: Err(TooManyRows)\ntoo many, first bad: Err(TooManyRows)\nby index: Ok({ count: 4, max: 4 })\nmissing name: Err(SqliteErr(ColumnNotFound(Name(\"payload\"))))\nmissing index: Err(SqliteErr(ColumnNotFound(Index(1))))\nall: Ok([{ id: 4, payload: \"four\" }, { id: 3, payload: \"three\" }, { id: 1, payload: \"one\" }])\nall, bad row: Err(BadRow(UnexpectedType({ column: \"payload\", found: Real })))\nall, none: Ok([])\nno statement, one: Err(NoRows)\nno statement, all: Ok([])\nno statement, a column: Err(SqliteErr(ColumnNotFound(Name(\"id\"))))\ntwo statements: Err(SqliteErr(MultipleStatements))\ndrop: Ok({})\n"
+          ]
+        },
+        {
+          "name": "execute",
+          "live_handles": 0,
+          "args": ["execute"],
+          "stdout_contains": [
+            "returning: Err(SqliteErr(ReturnsRows))\nselect: Err(SqliteErr(ReturnsRows))\ntwo statements: Err(SqliteErr(MultipleStatements))\ncount: Ok(0)\nempty: Ok({})\nwhite space: Ok({})\ncomment: Ok({})\ntrailing comment: Ok({})\nempty with a value: Err(SqliteErr(WrongParamCount({ expected: 0, given: 1 })))\ncount: Ok(1)\nscript: Ok({})\ncount: Ok(3)\nempty script: Ok({})\ncomment script: Ok({})\nfailing script: Err(SqliteErr(Failed({ code: Error, extended_code: 1, message: \"no such table: missing\" })))\ncount: Ok(4)\nsyntax: Err(SqliteErr(Failed({ code: Error, extended_code: 1, message: \"near \\\"INSRT\\\": syntax error\" })))\n"
+          ]
+        },
+        {
+          "name": "transaction",
+          "live_handles": 0,
+          "args": ["transaction"],
+          "stdout_contains": [
+            "committed: Ok(\"the body's value\")\nvalues: Ok([1, 2])\nown error: Err(ChangedMyMind(3))\nvalues: Ok([1, 2])\ndatabase error: Err(SqliteErr(Failed({ code: Constraint(NotNull), extended_code: 1299, message: \"NOT NULL constraint failed: t.x\" })))\nvalues: Ok([1, 2])\ninner: Err(SqliteErr(Failed({ code: Error, extended_code: 1, message: \"cannot start a transaction within a transaction\" })))\nnested: Ok({})\nvalues: Ok([1, 2, 5, 7])\nclosed: Err(Closed)\n"
+          ]
+        },
+        {
+          "name": "decoders",
+          "live_handles": 0,
+          "args": ["decoders"],
+          "stdout_contains": [
+            "i64: Ok([Ok(300), Err(Null), Ok(7)])\nf64: Ok([Ok(1.5), Err(Null), Err(Null)])\nbytes: Ok([Ok([0, 255]), Err(Null), Ok([])])\nbool: Ok([True, False, True])\nstr: Ok(\"text\")\nvalue: Ok([String(\"text\"), Null])\nvalue, bad utf8: Err(BadRow(BadUtf8({ index: 1, problem: ExpectedContinuation })))\nstr, bad utf8: Err(BadRow(BadUtf8({ index: 1, problem: ExpectedContinuation })))\nstr, bad utf8, nullable: Err(BadRow(BadUtf8({ index: 1, problem: ExpectedContinuation })))\nrow: Ok({ column_names: [\"id\", \"i\", \"r\", \"s\", \"b\", \"flag\"], values: [Integer(1), Integer(300), Real(1.5), String(\"text\"), Bytes([0, 255]), Integer(1)] })\nrow, bad utf8: Err(BadRow(BadUtf8({ index: 1, problem: ExpectedContinuation })))\nrow, nullable: Ok([Ok({ column_names: [\"i\", \"r\"], values: [Integer(300), Real(1.5)] }), Err(Null), Ok({ column_names: [\"i\", \"r\"], values: [Integer(7), Null] })])\ni64 of null: Err(BadRow(UnexpectedType({ column: \"i\", found: Null })))\ni64 of real: Err(BadRow(UnexpectedType({ column: \"r\", found: Real })))\nf64 of integer: Err(BadRow(UnexpectedType({ column: \"i\", found: Integer })))\nstr of bytes: Err(BadRow(UnexpectedType({ column: \"b\", found: Bytes })))\nbytes of text: Err(BadRow(UnexpectedType({ column: \"s\", found: String })))\nbool of text: Err(BadRow(UnexpectedType({ column: \"s\", found: String })))\npair, both: Ok(Ok({ i: 300, r: 1.5 }))\npair, neither: Ok(Err(Null))\npair, one: Err(BadRow(UnexpectedType({ column: \"r\", found: Null })))\nmap: Ok(600)\nmap_try, ok: Ok({ blob: Bytes([]), byte: 7 })\nmap_try, own error: Err(BadRow(OutOfRange))\nmap_try, decoder error: Err(BadRow(UnexpectedType({ column: \"i\", found: Null })))\nmap_try, own tag: Err(BadRow(TooBig(300)))\nsame name: Ok({ index: 2, name: 1 })\nshared, all: Ok([{ id: 1, payload: \"text\" }])\nshared, one: Ok({ id: 1, payload: \"text\" })\n"
+          ]
+        },
+        {
+          "name": "params",
+          "live_handles": 0,
+          "args": ["params"],
+          "stdout_contains": [
+            "too few: Err(SqliteErr(WrongParamCount({ expected: 2, given: 1 })))\ntoo many: Err(SqliteErr(WrongParamCount({ expected: 2, given: 3 })))\nnone wanted: Err(SqliteErr(WrongParamCount({ expected: 0, given: 1 })))\nnone given: Err(SqliteErr(WrongParamCount({ expected: 1, given: 0 })))\ncount: Ok(0)\nreused: Ok({ column_names: [\"x\", \"y\"], values: [String(\"same\"), String(\"same\")] })\nstored: Ok([{ a: String(\"'); DROP TABLE t; --\"), b: Bytes([0, 255]) }, { a: Real(2.5), b: Null }, { a: String(\"\"), b: Bytes([]) }])\nbound 400 times: 400\nstill intact: (True, True, 2)\n"
+          ]
+        },
+        {
+          "name": "errors",
+          "live_handles": 0,
+          "args": ["errors"],
+          "stdout_contains": [
+            "unique: \"Unique\"\nprimary key: \"PrimaryKey\"\nforeign key: \"ForeignKey\"\nnot null: \"NotNull\"\ncheck: \"Check\"\nnone: \"not a constraint violation: Ok({})\"\nfull: Err(SqliteErr(Failed({ code: Constraint(Unique), extended_code: 2067, message: \"UNIQUE constraint failed: child.email\" })))\nequal: True\nnot equal: False\nequal column: True\nnot equal column: False\nequal count: True\nequal failure: True\nnot equal failure: False\nto_str: UNIQUE constraint failed: child.email (Constraint(Unique), extended result code 2067)\nto_str: the statement returns rows; run it with query_one!, query_all! or rows\nto_str: the SQL text holds more than one statement; run it with execute_script!\nto_str: wrong number of parameter values: the statement needs 1, but 2 were given\nto_str: the query returns no column named \"b\"\nto_str: the query returns no column at index 3\n"
+          ]
+        },
+        {
+          "name": "close",
+          "live_handles": 0,
+          "args": ["close"],
+          "stdout_contains": [
+            "row: { id: 1, payload: \"one\" }\nclose: Ok({})\nclosed\nitems: 2\nclose again: Ok({})\nexecute: Err(Closed)\nexecute, no statement: Err(Closed)\nexecute_script: Err(Closed)\nquery_one: Err(Closed)\nquery_all: Err(Closed)\ntransaction: Err(Closed)\nrows: closed\nrows: end\ninspect: Sqlite.Db(<opaque>)\norphan row: { id: 1, payload: \"one\" }\norphan bad row: UnexpectedType({ column: \"payload\", found: Real })\ndone\n"
+          ]
+        },
+        {
+          "name": "files",
+          "live_handles": 0,
+          "args": ["files"],
+          "stdout_contains": [
+            "read-write, missing: \"CanNotOpen\"\nread-only, missing: \"CanNotOpen\"\ncreated by a failed open: False\ncreated: True\nread-only reads: Ok(1)\nread-only write: \"ReadOnly\"\nread-only script: \"ReadOnly\"\ninside: Ok(2)\noutside: Ok(1)\nlocked: \"Busy\"\nafter commit: Ok(2)\nfirst sees second: \"Error\"\nsecond sees first: \"Error\"\nthird sees second: \"Error\"\n"
+          ]
+        },
+        {
+          "name": "error-rows",
+          "live_handles": 0,
+          "args": ["error-rows"],
+          "stdout_contains": [
+            "error rows: (2, [1, 2])\n"
+          ]
+        },
+        {
+          "name": "error-rows-second-error",
+          "live_handles": 0,
+          "args": ["error-rows", "unexpected"],
           "exit_code": 1,
           "contains": ["Program exited with error: UnexpectedArguments"]
         }

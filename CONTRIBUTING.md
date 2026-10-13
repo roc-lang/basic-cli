@@ -192,7 +192,7 @@ output assertions used by CI:
 ```
 
 Native resource handles (file readers, sockets, listeners, child processes,
-SQLite statements) are checked on every OS by the suite itself. A run case with
+SQLite connections and row streams) are checked on every OS by the suite itself. A run case with
 `"live_handles": 0` in `scripts/test_spec.json` sets `BASIC_CLI_LIVE_HANDLES`,
 which makes the host print how many handles are still open after `main!`
 returns, and requires the total to be zero:

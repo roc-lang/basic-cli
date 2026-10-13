@@ -68,12 +68,13 @@ Host :: [].{
 
 	sleep_nanos! : U64 => {}
 
-	sqlite_prepare! : NativePath, Str => Try(Resource.SqliteStmt, InternalSqlite.SqliteError)
-	sqlite_bind! : Resource.SqliteStmt, List(InternalSqlite.SqliteBindings) => Try({}, InternalSqlite.SqliteError)
-	sqlite_columns! : Resource.SqliteStmt => List(Str)
-	sqlite_column_value! : Resource.SqliteStmt, U64 => Try(InternalSqlite.SqliteValue, InternalSqlite.SqliteError)
-	sqlite_step! : Resource.SqliteStmt => Try(Bool, InternalSqlite.SqliteError)
-	sqlite_reset! : Resource.SqliteStmt => Try({}, InternalSqlite.SqliteError)
+	sqlite_open! : NativePath, [ReadWriteCreate, ReadWrite, ReadOnly], U64 => Try(Resource.SqliteDb, InternalSqlite.Failure)
+	sqlite_close! : Resource.SqliteDb => Try({}, InternalSqlite.Failure)
+	sqlite_execute! : Resource.SqliteDb, Str, List(InternalSqlite.Value) => Try({}, InternalSqlite.Problem)
+	sqlite_execute_script! : Resource.SqliteDb, Str => Try({}, InternalSqlite.Problem)
+	sqlite_query! : Resource.SqliteDb, Str, List(InternalSqlite.Value) => Try(Resource.SqliteRows, InternalSqlite.Problem)
+	sqlite_columns! : Resource.SqliteRows => List(Str)
+	sqlite_next! : Resource.SqliteRows => Try(List(InternalSqlite.Cell), [Done, Closed, Failed(InternalSqlite.Failure)])
 
 	stderr_line! : Str => Try({}, [StderrErr(IOErr)])
 	stderr_write! : Str => Try({}, [StderrErr(IOErr)])
