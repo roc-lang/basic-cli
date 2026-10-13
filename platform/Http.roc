@@ -171,8 +171,9 @@ Http :: [].{
 	## The status and headers of a response, and its body still to be read.
 	##
 	## The body arrives over the response's own connection as it is read.
-	## [chunks] and [read_to_end!] read from one shared cursor, as do copies of
-	## the response, so each byte of the body is returned once.
+	## [StreamingResponse.chunks] and [read_to_end!] read from one shared
+	## cursor, as do copies of the response, so each byte of the body is
+	## returned once.
 	##
 	## The connection is closed when the body ends, when a failure other than
 	## an idle timeout ends it, or when the last reference to the response and
@@ -250,8 +251,9 @@ Http :: [].{
 					},
 			)
 
-		## Read the rest of the body: everything [chunks] and earlier reads
-		## have not returned. At the end of the body that is `Ok([])`.
+		## Read the rest of the body: everything [StreamingResponse.chunks]
+		## and earlier reads have not returned. At the end of the body that is
+		## `Ok([])`.
 		##
 		## With `MaxBytes(max)` this fails with `ReadLimitExceeded(max)` as
 		## soon as more than `max` unread bytes have arrived, without waiting
@@ -259,8 +261,8 @@ Http :: [].{
 		##
 		## A failed call consumes nothing it could keep: after
 		## `ReadLimitExceeded` or an idle timeout the bytes that had arrived
-		## are still unread, so [chunks] or another call continues from the
-		## same place.
+		## are still unread, so [StreamingResponse.chunks] or another call
+		## continues from the same place.
 		##
 		## ```roc
 		## body = response.read_to_end!(MaxBytes(1_048_576))?

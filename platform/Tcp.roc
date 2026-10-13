@@ -127,8 +127,9 @@ Tcp :: [].{
 	## The connection is closed when the last reference to it is released.
 	## Copies of a connection share one socket and one buffer, so every read,
 	## whether of lines, delimited bytes or binary data, continues where the
-	## previous one stopped. [with_timeout] and [with_line_limit] change the
-	## settings of the copy they return, not the socket.
+	## previous one stopped. [Connection.with_timeout] and
+	## [Connection.with_line_limit] change the settings of the copy they return,
+	## not the socket.
 	##
 	## Every read ends the same way: once the peer has closed its side and all
 	## data has been returned, the next read is `Err(EndOfInput)`. An empty
@@ -159,8 +160,9 @@ Tcp :: [].{
 		with_timeout = |conn, timeout| Connection.{ host: conn.host, timeout, line_limit: conn.line_limit }
 
 		## The same connection with another limit, in bytes, on one record read
-		## by [read_until!], [read_line!] or [lines]. The delimiter or line
-		## terminator counts towards the limit. The default is 1,048,576 (1 MiB).
+		## by [read_until!], [read_line!] or [Connection.lines]. The delimiter
+		## or line terminator counts towards the limit. The default is
+		## 1,048,576 (1 MiB).
 		with_line_limit : Connection, U64 -> Connection
 		with_line_limit = |conn, max_bytes| Connection.{ host: conn.host, timeout: conn.timeout, line_limit: max_bytes }
 
