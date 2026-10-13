@@ -611,6 +611,10 @@ async fn spawn(mut config: Config) -> io::Result<Child> {
         };
         let expiry = async {
             match deadline {
+                // The timer rounds up to its next tick, so a deadline that
+                // has already passed is decided here and not by a sleep the
+                // command could finish before.
+                Some(deadline) if deadline <= tokio::time::Instant::now() => {}
                 Some(deadline) => tokio::time::sleep_until(deadline).await,
                 None => std::future::pending::<()>().await,
             }
