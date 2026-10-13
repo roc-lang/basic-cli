@@ -5,6 +5,7 @@
 app [main!] { pf: platform "../platform/main.roc" }
 
 import pf.Env
+import pf.Locale
 import pf.OsStr
 import pf.Random
 import pf.Stderr
@@ -21,6 +22,14 @@ main! = |args| {
 	stderr!()?
 	random!()?
 	env!()?
+
+	# Whether the machine reports a locale is not what this file is about.
+	match locale!(args.len()) {
+		Ok(_) | Err(NotAvailable) => {}
+		Err(UnexpectedArguments) => {
+			return Err(UnexpectedArguments)
+		}
+	}
 
 	Stdout.line!("error rows: ok")
 }
@@ -75,4 +84,15 @@ env! = || {
 	greeting = var_str!("ERROR_ROWS_GREETING")?
 
 	Stdout.line!("env: ${greeting}")
+}
+
+locale! : U64 => Try(Locale, _)
+locale! = |args_len| {
+	if args_len > 0 {
+		return Err(UnexpectedArguments)
+	}
+
+	get! = Locale.get!
+
+	Ok(get!()?)
 }
