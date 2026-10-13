@@ -59,6 +59,10 @@ as_helper! = |args|
 			Sleep.millis!(30_000)
 			Ok({})
 		}
+		["hang-silently"] => {
+			Sleep.millis!(30_000)
+			Ok({})
+		}
 		["echo"] => Stdout.write_bytes!(Stdin.read_to_end!()?)
 		["env", name] =>
 			match Env.var!(OsStr.from_str(name)) {
@@ -316,10 +320,12 @@ deadlines! = || {
 	check!("the stream ends at the deadline", piped.read!(Duration.seconds(5)) == Err(EndOfInput))?
 	check!("piped output is not in the partial output", piped.wait!() == Err(CmdErr(TimedOut({ stdout_bytes: [], stderr_bytes: [] }))))?
 
-	# Zero is a deadline that has already passed, not the absence of one.
-	instant = helper!(["print", "never seen"]).timeout(Duration.zero).run!()
+	# Zero is a deadline that has already passed, not the absence of one. The
+	# child writes nothing: one that did could get its output in before a slow
+	# parent stopped it, and that output would be in the error.
+	instant = helper!(["hang-silently"]).timeout(Duration.zero).run!()
 	Stdout.line!("zero timeout: ${Str.inspect(instant)}")?
-	check!("exec! and capture! have the deadline too", helper!(["hang"]).timeout(Duration.zero).stdout(Null).exec!() == Err(CmdErr(TimedOut({ stdout_bytes: [], stderr_bytes: [] }))) and helper!(["hang"]).timeout(Duration.zero).capture!() == Err(CmdErr(TimedOut({ stdout_bytes: [], stderr_bytes: [] }))))?
+	check!("exec! and capture! have the deadline too", helper!(["hang-silently"]).timeout(Duration.zero).stdout(Null).exec!() == Err(CmdErr(TimedOut({ stdout_bytes: [], stderr_bytes: [] }))) and helper!(["hang-silently"]).timeout(Duration.zero).capture!() == Err(CmdErr(TimedOut({ stdout_bytes: [], stderr_bytes: [] }))))?
 
 	unhurried = helper!(["print", "in time"]).timeout(Duration.seconds(60)).capture!()?
 	check!("a deadline that is not reached changes nothing", unhurried == "in time\n")?
