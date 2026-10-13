@@ -236,6 +236,115 @@ Use `ci/regenerate_glue.sh --check` separately when reviewing platform ABI chang
 
 Do not edit generated glue by hand.
 
+## API conventions
+
+New public API is reviewed against these rules. A proposal states its
+decisions and assumptions, not open questions.
+
+### Methods
+
+- An operation on a value is a method on that value's type, called with
+  receiver syntax: `reader.lines()`. Module-level functions are for
+  constructors and entry points (`Tcp.connect!`, `Duration.seconds(5)`) and
+  process-global things (`Stdin.line!()`).
+- Prefer the dispatched names: `to_str`, `to_inspect`, `is_eq`, operators, `map`.
+
+### Options
+
+- One function per operation. Tuning goes in a trailing nominal options record
+  with defaulted fields (`{}` for all defaults); no `_with` twins, no options
+  argument where nothing needs tuning.
+- Positional arguments are the subject, the data and the amount requested. One
+  mandatory value is positional.
+- A setting that outlives one call (a timeout, a line limit) is held by the
+  handle and changed with a pure `with_…` method.
+
+### Timeouts and limits
+
+- A timeout is a `Duration`; zero expires immediately. Mandatory: positional.
+  Optional: `timeout : [NoTimeout, After(Duration)] ?? NoTimeout`, or a finite
+  default where waiting forever is a bad one.
+- Builders take `timeout(Duration)`; uncalled means no deadline.
+- The wait to connect or accept is separate from the resulting connection's
+  I/O timeout.
+- Expiry is never a bare `TimedOut` beside a wrapper. Where the cause is
+  `IOErr` it is that variant, `TcpErr(TimedOut)`. Inside a module's nominal
+  error it is `IOErr(TimedOut)`; a whole-operation deadline may be its own
+  variant (`Cmd.Err.TimedOut(PartialOutput)`). Http follows
+  [#438](https://github.com/roc-lang/basic-cli/issues/438).
+- A byte limit is `max_bytes : U64`, or `[NoLimit, MaxBytes(U64)]` where
+  unlimited is legal; exceeding one is `ReadLimitExceeded(U64)`. Only network
+  reads have a default line limit.
+
+### End of input and streams
+
+- A single read ends with `Err(EndOfInput)`; a short fixed-size read is
+  `Err(UnexpectedEndOfInput)`; an empty `Ok` is real data. Lines exclude the
+  terminator and one trailing `\r`.
+- `BadUtf8` is always the builtin's
+  `BadUtf8({ problem : Str.Utf8Problem, index : U64 })`, produced by
+  `Str.from_utf8(bytes)?`, never re-wrapped.
+- `chunks`, `lines` and `rows` are pure, infallible and do no I/O. `chunks`
+  takes no argument on any source; the host picks the size, at most 64 KiB.
+- Items are `Try(value, err)`. A source error, including a timeout, is the last
+  item; the handle stays usable and a new stream may be started. An error about
+  one item (`BadUtf8`, `ReadLimitExceeded` on one network line, a row whose
+  values do not decode) is not terminal. One that would recur on every item (a
+  missing column) is a source error, reported once.
+- Examples name every per-item tag; none writes `Err(_) => {}` on a stream item.
+- No read-ahead in Roc: a stream over a source other calls also read (`Stdin`,
+  `File.Reader`, `Tcp.Connection`) buffers nothing a later direct read would
+  miss; batch in the host.
+
+### Naming
+
+- `!` if and only if effectful. `_utf8` / `_bytes` only distinguish two
+  existing forms of one operation.
+- Builtin names keep their builtin meaning; unit constructors
+  (`Duration.seconds(5)`) omit `from_`.
+- No `..` in a result type: the compiler warns.
+
+### Errors
+
+- The `err` of every public `Try` is a structural tag union; nominal types are
+  payloads only. Only typed values cross the host boundary.
+- A module's failures arrive under `<Module>Err(cause)`; the cause is `IOErr`
+  or the module's nominal error, in which an OS failure is `IOErr(IOErr)`. A
+  second wrapper needs a different payload and a stated reason:
+  `PathErr(IOErr, Path)` carries the path, `SourceErr(err)` a caller's stream
+  error.
+- Every nominal error type declares `is_eq : _` and `to_str`, and may declare
+  `to_inspect`.
+- Conditions callers match on sit bare beside the wrapper: `EndOfInput`,
+  `UnexpectedEndOfInput`, `BadUtf8`, `ReadLimitExceeded`, `Closed`, `NoRows`,
+  `BadExitStatus`.
+
+### Handles
+
+- Handles are cleaned up on last release; `close!` exists only where closing
+  can fail or its timing matters.
+- `Closed` is one bare tag, only on types with `close!`: no `DbClosed`. A
+  scoped function that closes for the caller (`File.with_writer!`) does not
+  return it.
+
+### At a call site
+
+A module that follows the rules reads like this:
+
+```roc
+conn = Demo.connect!("example.org", { connect_timeout: Duration.seconds(1), io_timeout: Duration.seconds(5) })?
+expect conn.with_timeout(Duration.zero).read_line!() == Err(DemoErr(TimedOut))
+
+for! item in conn.lines() {
+    match item {
+        Ok(line) => Stdout.line!(line)?
+        Err(BadUtf8(_)) => {}
+        Err(ReadLimitExceeded(_)) => {}
+        Err(DemoErr(err)) => { return Err(DemoErr(err)) }
+    }
+}
+```
+
 ## Examples
 
 Every checked-in example should pass `roc check`, `roc test`, and `roc build`
