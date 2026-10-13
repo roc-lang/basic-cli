@@ -37,11 +37,20 @@ These current host-level limitations may affect application design:
   operating system trust store. A certificate trusted only through a locally
   installed OS root will therefore be rejected. [Issue #454](https://github.com/roc-lang/basic-cli/issues/454)
   tracks research into the appropriate trust configuration for basic-cli.
-- The timeout configured on an HTTP `Request` covers the request and response;
-  `NoTimeout` leaves it unbounded. Responses are buffered completely without a
-  configurable size limit ([issue #436](https://github.com/roc-lang/basic-cli/issues/436)),
-  and several network and TLS failures currently use a generic transport error
-  ([issue #438](https://github.com/roc-lang/basic-cli/issues/438)).
+- The timeout configured on an HTTP `Request` is the deadline for the whole
+  exchange, response body included; `NoTimeout` leaves it unbounded.
+  `Http.send!` and the functions built on it buffer the response completely
+  without a configurable size limit ([issue #436](https://github.com/roc-lang/basic-cli/issues/436)).
+- `Http.send_streaming!` returns once the status and headers have arrived and
+  hands the body over in chunks of at most 64 KiB, so a download need not fit
+  in memory. Its `idle_timeout` (30 seconds unless set) bounds each single
+  wait, for the headers and for each part of the body, so a large download can
+  leave the `Request` at `NoTimeout`. After an idle timeout the response can
+  still be read; the `Request` deadline passing is final. Each streaming
+  response has its own connection, closed when the body ends or fails, or when
+  the response and its streams are released. Request bodies are not streamed.
+- Several network and TLS failures currently use a generic HTTP transport
+  error ([issue #438](https://github.com/roc-lang/basic-cli/issues/438)).
 - TCP reads and writes always have a timeout: a `Tcp.Connection` holds the
   `io_timeout` it was created with, which bounds each read or write as a
   whole, and `with_timeout` returns the same connection with another. The wait

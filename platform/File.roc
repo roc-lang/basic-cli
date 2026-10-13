@@ -238,7 +238,9 @@ File :: [].{
 		## Nothing is flushed at the end.
 		##
 		## Any stream of byte chunks will do: `reader.chunks()`,
-		## `Stdin.chunks()`, or a stream mapped from one of them.
+		## `Stdin.chunks()`, the `response.chunks()` of an
+		## [Http.send_streaming!](Http.send_streaming!) response, or a stream
+		## mapped from one of them.
 		##
 		## ```roc
 		## reader = File.open_reader!(source)?

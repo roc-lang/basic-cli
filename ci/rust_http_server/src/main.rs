@@ -3,21 +3,83 @@
 /// Thank you, hyper contributors!
 use bytes::Bytes;
 use http_body_util::{BodyExt, Full};
-use hyper::body::Incoming;
+use hyper::body::{Body, Frame, Incoming};
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Method, Request, Response, StatusCode};
 use hyper_util::rt::TokioTimer;
+use std::collections::VecDeque;
+use std::future::Future;
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::pin::Pin;
+use std::task::{Context, Poll};
+use std::time::Duration;
 use tokio::net::TcpListener;
 
 type GenericError = Box<dyn std::error::Error + Send + Sync>;
-type BoxBody = http_body_util::combinators::BoxBody<Bytes, hyper::Error>;
+type BoxBody = http_body_util::combinators::BoxBody<Bytes, GenericError>;
 
 fn full<T: Into<Bytes>>(chunk: T) -> BoxBody {
     Full::new(chunk.into())
         .map_err(|never| match never {})
         .boxed()
+}
+
+/// One step of a body that is sent piece by piece, without a Content-Length.
+enum Part {
+    Data(Bytes),
+    /// Send nothing for a while. What came before has reached the client.
+    Pause(Duration),
+    /// Abort the connection, leaving the body incomplete.
+    Fail,
+}
+
+/// The body behind the `/stream/...` routes that examples/http-download.roc
+/// and tests/http-streaming.roc read as it arrives.
+struct Parts {
+    parts: VecDeque<Part>,
+    pause: Option<Pin<Box<tokio::time::Sleep>>>,
+}
+
+fn parts(parts: impl IntoIterator<Item = Part>) -> BoxBody {
+    Parts {
+        parts: parts.into_iter().collect(),
+        pause: None,
+    }
+    .boxed()
+}
+
+impl Body for Parts {
+    type Data = Bytes;
+    type Error = GenericError;
+
+    fn poll_frame(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Option<Result<Frame<Bytes>, GenericError>>> {
+        loop {
+            if let Some(pause) = self.pause.as_mut() {
+                if pause.as_mut().poll(cx).is_pending() {
+                    return Poll::Pending;
+                }
+                self.pause = None;
+            }
+            match self.parts.pop_front() {
+                Some(Part::Data(bytes)) => return Poll::Ready(Some(Ok(Frame::data(bytes)))),
+                Some(Part::Pause(duration)) => {
+                    self.pause = Some(Box::pin(tokio::time::sleep(duration)))
+                }
+                Some(Part::Fail) => return Poll::Ready(Some(Err("body aborted".into()))),
+                None => return Poll::Ready(None),
+            }
+        }
+    }
+}
+
+/// `len` bytes starting `start` bytes into a fixed pattern, so a client can
+/// check a body by its length and the sum of its bytes.
+fn pattern(start: usize, len: usize) -> Bytes {
+    (start..start + len).map(|i| (i % 251) as u8).collect()
 }
 
 async fn handle_request(req: Request<Incoming>) -> Result<Response<BoxBody>, GenericError> {
@@ -45,6 +107,43 @@ async fn handle_request(req: Request<Incoming>) -> Result<Response<BoxBody>, Gen
             .status(StatusCode::OK)
             .header("Content-Type", "application/octet-stream")
             .body(full(Bytes::from_static(&[0xff])))?,
+        // 200,000 bytes with a Content-Length.
+        (&Method::GET, "/stream/sized") => Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "application/octet-stream")
+            .body(full(pattern(0, 200_000)))?,
+        // 300,000 bytes with chunked transfer encoding, in pieces larger than
+        // the 64 KiB the platform hands out at a time.
+        (&Method::GET, "/stream/chunked") => Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "application/octet-stream")
+            .body(parts([
+                Part::Data(pattern(0, 100_000)),
+                Part::Data(pattern(100_000, 150_000)),
+                Part::Data(pattern(250_000, 50_000)),
+            ]))?,
+        // Goes quiet for a second in the middle of the body.
+        (&Method::GET, "/stream/slow") => Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "text/plain; charset=utf-8")
+            .body(parts([
+                Part::Data(Bytes::from_static(b"one,")),
+                Part::Pause(Duration::from_secs(1)),
+                Part::Data(Bytes::from_static(b"two")),
+            ]))?,
+        // Sends 70,000 bytes, then drops the connection mid-body.
+        (&Method::GET, "/stream/broken") => Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "application/octet-stream")
+            .body(parts([
+                Part::Data(pattern(0, 70_000)),
+                Part::Pause(Duration::from_millis(300)),
+                Part::Fail,
+            ]))?,
+        (&Method::GET, "/not-found") => Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .header("Content-Type", "text/plain; charset=utf-8")
+            .body(full(Bytes::from_static(b"nothing here\n")))?,
         (&Method::POST, "/echo-json") => {
             let body = req.into_body().collect().await?.to_bytes();
 

@@ -76,6 +76,8 @@ platform ""
 		"hosted_file_writer_write_utf8": Host.file_writer_write_utf8!,
 		# HTTP is likewise kept at the end to avoid renumbering glue types.
 		"hosted_http_send_request": Host.http_send_request!,
+		"hosted_http_read_body": Host.http_read_body!,
+		"hosted_http_send_streaming": Host.http_send_streaming!,
 		"hosted_locale_all": Host.locale_all!,
 		"hosted_locale_get": Host.locale_get!,
 		"hosted_monotonic_now": Host.monotonic_now!,

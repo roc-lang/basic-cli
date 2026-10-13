@@ -169,4 +169,12 @@ Host :: [].{
 	file_writer_write_bytes! : Resource.FileWriter, List(U8) => Try({}, [FileErr(IOErr)])
 	file_writer_write_utf8! : Resource.FileWriter, Str => Try({}, [FileErr(IOErr)])
 	file_writer_flush! : Resource.FileWriter => Try({}, [FileErr(IOErr)])
+
+	# `http_send_streaming!` returns once the status and headers have arrived;
+	# the second argument is the idle timeout in nanoseconds. `http_read_body!`
+	# reads from the one cursor the response's streams share: `Chunk` is the
+	# next non-empty chunk of at most 64 KiB, `ToEnd(max)` is everything unread,
+	# or `ReadLimitExceeded` once more than `max` bytes of it have arrived.
+	http_send_streaming! : InternalHttp.RequestToAndFromHost, [NoTimeout, After(U64)] => Try(InternalHttp.StreamingResponseFromHost, InternalHttp.TransportErr)
+	http_read_body! : Resource.HttpResponse, [Chunk, ToEnd(U64)] => Try(List(U8), [EndOfBody, ReadLimitExceeded, HttpErr(InternalHttp.TransportErr)])
 }

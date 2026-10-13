@@ -336,6 +336,26 @@
       ]
     },
     {
+      "path": "examples/http-download.roc",
+      "cases": [
+        {
+          "name": "server-available",
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["Downloaded 200000 bytes to download.bin.\nThe server answered 404; download.bin was left alone.\ndownload.bin still holds 200000 bytes.\nReceived 200000 of 200000 bytes from /stream/sized.\nReceived 300000 bytes of unannounced length from /stream/chunked.\n"]
+        },
+        {
+          "name": "connection-refused",
+          "temp_cwd": true,
+          "live_handles": 0,
+          "exit_code": 1,
+          "contains": ["DownloadFailed(HttpErr(Other("]
+        }
+      ]
+    },
+    {
       "path": "examples/http-simple.roc",
       "cases": [
         {
@@ -779,6 +799,103 @@
           "temp_cwd": true,
           "live_handles": 0,
           "stdout_contains": ["copied from stdin: []\n"]
+        }
+      ]
+    },
+    {
+      "path": "tests/http-streaming.roc",
+      "cases": [
+        {
+          "name": "status-and-headers-before-body",
+          "args": ["head"],
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["status: 404\ncontent-type: Ok(\"text/plain; charset=utf-8\")\ncontent_length: Known(13)\ninspect starts: True\ninspect hides the handle: True\n404 body: \"nothing here\n\"\nsized: 200, Known(200000)\nchunked: 200, Unknown\n"]
+        },
+        {
+          "name": "chunk-sizes-and-totals",
+          "args": ["chunks"],
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["/stream/sized: 200000 bytes, checksum 24995206\n  more than one chunk: True, empty chunks: 0, largest within 64 KiB: True\n  chunks after the end: 0, read_to_end! after the end: Ok([])\n/stream/chunked: 300000 bytes, checksum 37494610\n  more than one chunk: True, empty chunks: 0, largest within 64 KiB: True\n  chunks after the end: 0, read_to_end! after the end: Ok([])\nfirst chunk of a dropped stream is within 64 KiB: True\n"]
+        },
+        {
+          "name": "read-to-end-limit-and-remainder",
+          "args": ["read-to-end"],
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["MaxBytes(1000): Err(ReadLimitExceeded(1000))\nMaxBytes(199_999): Err(ReadLimitExceeded(199999))\na chunk and the remainder: 200000 bytes, checksum 24995206\nthe remainder is the larger part: True\nafter the end: Ok([])\nMaxBytes(300_000) of 300,000: 300000 bytes, checksum 37494610\nNoLimit: 300000 bytes, equal: True\n"]
+        },
+        {
+          "name": "idle-timeout-then-continue",
+          "args": ["idle-timeout"],
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["body across the idle timeouts: \"one,two\"\ntimed out at least once: True, then ended: True\nread_to_end! across the idle timeouts: Ok(\"one,two\"), timed out at least once: True\nwith a ten second idle timeout: \"one,two\"\n"]
+        },
+        {
+          "name": "zero-timeouts",
+          "args": ["zero-timeouts"],
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["After(Duration.zero): Err(HttpErr(Timeout))\nTimeoutMilliseconds(0) and NoTimeout: \"one,two\"\nNoTimeout and the default idle timeout: \"one,two\"\n"]
+        },
+        {
+          "name": "request-deadline-is-final",
+          "args": ["deadline"],
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["send!: Err(HttpErr(Timeout))\nsend_streaming!: status 200 before the deadline\ndownload: Err(SourceErr(HttpErr(Timeout)))\nwritten before the deadline: \"one,\"\na new stream: [Err(HttpErr(Timeout))]\nread_to_end!: Err(HttpErr(Timeout))\n"],
+          "valgrind": false
+        },
+        {
+          "name": "broken-body-source-error",
+          "args": ["broken-body"],
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["status: 200, Unknown\ndownload: Err(SourceErr(HttpErr(BadBody)))\nwritten before the failure: 70000 bytes, checksum 8746781\na new stream: [Err(HttpErr(BadBody))]\nread_to_end!: Err(HttpErr(BadBody))\n"]
+        },
+        {
+          "name": "download-to-disk",
+          "args": ["download"],
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["sized.bin: 200000 bytes, checksum 24995206\nchunked.bin: 300000 bytes, checksum 37494610\n"]
+        },
+        {
+          "name": "error-rows",
+          "args": ["error-rows"],
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["function values: \"Hello utf8\"\nqualified: \"Hello utf8\"\ninvalid URL: Err(InvalidUrl(UnsupportedScheme(\"ftp\")))\nrefused connection: Other with a message: True\n"]
+        },
+        {
+          "name": "error-rows-second-error",
+          "args": ["error-rows", "unexpected"],
+          "helper": "http",
+          "timeout": 15,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "exit_code": 1,
+          "contains": ["Program exited with error: UnexpectedArguments"]
         }
       ]
     },
