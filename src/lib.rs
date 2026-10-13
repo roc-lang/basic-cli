@@ -698,7 +698,7 @@ fn try_file_bool_err(error: IOErr) -> FileBoolResult {
     }
 }
 
-fn try_file_time_ok(value: u128) -> FileTimeResult {
+fn try_file_time_ok(value: i128) -> FileTimeResult {
     FileTimeResult {
         payload: FileTimeResultPayload {
             ok: ManuallyDrop::new(value),
@@ -716,7 +716,7 @@ fn try_file_time_err(error: IOErr) -> FileTimeResult {
     }
 }
 
-fn try_utc_now_ok(nanos: u128) -> HostUtcNowResult {
+fn try_utc_now_ok(nanos: i128) -> HostUtcNowResult {
     HostUtcNowResult {
         payload: HostUtcNowResultPayload {
             ok: ManuallyDrop::new(nanos),
@@ -1829,19 +1829,26 @@ pub extern "C" fn hosted_file_is_writable(path: UnixBytesOrUtf8OrWindowsU16s) ->
     }
 }
 
-fn nanos_since_epoch(time: std::time::SystemTime) -> io::Result<u128> {
-    time.duration_since(std::time::UNIX_EPOCH)
-        .map(|duration| duration.as_nanos())
-        .map_err(|error| io::Error::other(error.to_string()))
+/// Signed nanoseconds from the Unix epoch to `time`: negative for a time
+/// before 1970. `None` only if the count does not fit in an `i128`, which no
+/// supported operating system's clock or filesystem can represent.
+fn nanos_since_epoch(time: std::time::SystemTime) -> Option<i128> {
+    match time.duration_since(std::time::UNIX_EPOCH) {
+        Ok(after_epoch) => i128::try_from(after_epoch.as_nanos()).ok(),
+        Err(before_epoch) => i128::try_from(before_epoch.duration().as_nanos())
+            .ok()
+            .map(|nanos| -nanos),
+    }
 }
 
 fn file_time(
     path: UnixBytesOrUtf8OrWindowsU16s,
     roc_host: &RocHost,
     read_time: fn(&fs::Metadata) -> io::Result<std::time::SystemTime>,
-) -> io::Result<u128> {
+) -> io::Result<i128> {
     let metadata = file_metadata(path, roc_host)?;
-    read_time(&metadata).and_then(nanos_since_epoch)
+    nanos_since_epoch(read_time(&metadata)?)
+        .ok_or_else(|| io::Error::other("file time is out of range"))
 }
 
 #[no_mangle]
@@ -2268,14 +2275,12 @@ pub extern "C" fn hosted_tty_enable_raw_mode() -> TtyUnitResult {
     try_tty_unit(tty::enable_raw_mode())
 }
 
-// TODO(https://github.com/roc-lang/roc/issues/10163): revert to a bare u128
-// return once the compiler emits the clang/Rust u128 return convention on
-// x86_64-windows; bare u128 returns are currently misread there.
+// A clock set before 1970 reads as a negative count, not an error.
 #[no_mangle]
 pub extern "C" fn hosted_utc_now() -> HostUtcNowResult {
-    match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
-        Ok(duration) => try_utc_now_ok(duration.as_nanos()),
-        Err(_) => try_utc_now_err(),
+    match nanos_since_epoch(std::time::SystemTime::now()) {
+        Some(nanos) => try_utc_now_ok(nanos),
+        None => try_utc_now_err(),
     }
 }
 
@@ -2470,6 +2475,61 @@ mod tests {
             collect_directory_entries(entries).unwrap_err().kind(),
             io::ErrorKind::PermissionDenied
         );
+    }
+
+    #[test]
+    fn nanos_since_epoch_is_signed_around_the_epoch() {
+        use std::time::{Duration, UNIX_EPOCH};
+
+        assert_eq!(nanos_since_epoch(UNIX_EPOCH), Some(0));
+        assert_eq!(
+            nanos_since_epoch(UNIX_EPOCH + Duration::new(1, 500_000_000)),
+            Some(1_500_000_000)
+        );
+        assert_eq!(
+            nanos_since_epoch(UNIX_EPOCH + Duration::from_nanos(1)),
+            Some(1)
+        );
+        // 2026-10-13T09:30:00Z.
+        assert_eq!(
+            nanos_since_epoch(UNIX_EPOCH + Duration::from_secs(1_791_883_800)),
+            Some(1_791_883_800_000_000_000)
+        );
+    }
+
+    #[test]
+    fn nanos_since_epoch_is_negative_before_the_epoch() {
+        use std::time::{Duration, UNIX_EPOCH};
+
+        assert_eq!(
+            nanos_since_epoch(UNIX_EPOCH - Duration::from_secs(1)),
+            Some(-1_000_000_000)
+        );
+        assert_eq!(
+            nanos_since_epoch(UNIX_EPOCH - Duration::new(1, 500_000_000)),
+            Some(-1_500_000_000)
+        );
+        // 1900-01-01T00:00:00Z.
+        assert_eq!(
+            nanos_since_epoch(UNIX_EPOCH - Duration::from_secs(2_208_988_800)),
+            Some(-2_208_988_800_000_000_000)
+        );
+    }
+
+    #[test]
+    fn file_time_before_the_epoch_is_negative_not_an_error() {
+        let test_dir = TestDir::new();
+        let path = test_dir.join("old.txt");
+        fs::write(&path, b"old").unwrap();
+
+        // 1969-12-31T00:00:00Z, one day before the epoch.
+        let before_epoch = std::time::UNIX_EPOCH - std::time::Duration::from_secs(86_400);
+        let file = fs::File::options().write(true).open(&path).unwrap();
+        file.set_modified(before_epoch).unwrap();
+        drop(file);
+
+        let modified = fs::metadata(&path).unwrap().modified().unwrap();
+        assert_eq!(nanos_since_epoch(modified), Some(-86_400_000_000_000));
     }
 
     struct TestDir(PathBuf);

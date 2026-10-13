@@ -3798,7 +3798,7 @@ pub enum HostFileTimeAccessedResultTag {
 #[derive(Clone, Copy)]
 pub union HostFileTimeAccessedResultPayload {
     pub err: core::mem::ManuallyDrop<IOErr>,
-    pub ok: core::mem::ManuallyDrop<u128>,
+    pub ok: core::mem::ManuallyDrop<i128>,
 }
 
 #[cfg(target_pointer_width = "32")]
@@ -3867,8 +3867,8 @@ impl HostFileTimeAccessedResult {
     /// # Safety
     /// `self.tag` must be `HostFileTimeAccessedResultTag::Ok` and the payload must still be initialized.
     #[cfg(target_pointer_width = "32")]
-    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &u128 {
-        unsafe { &*(self.payload.as_ptr() as *const u128) }
+    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &i128 {
+        unsafe { &*(self.payload.as_ptr() as *const i128) }
     }
 
     /// Borrow the `Ok` payload without creating another owner.
@@ -3876,8 +3876,8 @@ impl HostFileTimeAccessedResult {
     /// # Safety
     /// `self.tag` must be `HostFileTimeAccessedResultTag::Ok` and the payload must still be initialized.
     #[cfg(not(target_pointer_width = "32"))]
-    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &u128 {
-        unsafe { &*(&self.payload.ok as *const core::mem::ManuallyDrop<u128> as *const u128) }
+    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &i128 {
+        unsafe { &*(&self.payload.ok as *const core::mem::ManuallyDrop<i128> as *const i128) }
     }
 
     /// Move the `Ok` payload out of one owned tag-union shell.
@@ -3885,8 +3885,8 @@ impl HostFileTimeAccessedResult {
     /// # Safety
     /// `self.tag` must be `HostFileTimeAccessedResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(target_pointer_width = "32")]
-    pub unsafe fn take_payload_ok_unchecked(&mut self) -> u128 {
-        unsafe { core::ptr::read(self.payload.as_ptr() as *const u128) }
+    pub unsafe fn take_payload_ok_unchecked(&mut self) -> i128 {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const i128) }
     }
 
     /// Move the `Ok` payload out of one owned tag-union shell.
@@ -3894,7 +3894,7 @@ impl HostFileTimeAccessedResult {
     /// # Safety
     /// `self.tag` must be `HostFileTimeAccessedResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(not(target_pointer_width = "32"))]
-    pub unsafe fn take_payload_ok_unchecked(&mut self) -> u128 {
+    pub unsafe fn take_payload_ok_unchecked(&mut self) -> i128 {
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.ok) }
     }
 
@@ -6395,7 +6395,7 @@ pub enum HostUtcNowResultTag {
 #[derive(Clone, Copy)]
 pub union HostUtcNowResultPayload {
     pub err: [u8; 0],
-    pub ok: core::mem::ManuallyDrop<u128>,
+    pub ok: core::mem::ManuallyDrop<i128>,
 }
 
 #[cfg(target_pointer_width = "32")]
@@ -6428,8 +6428,8 @@ impl HostUtcNowResult {
     /// # Safety
     /// `self.tag` must be `HostUtcNowResultTag::Ok` and the payload must still be initialized.
     #[cfg(target_pointer_width = "32")]
-    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &u128 {
-        unsafe { &*(self.payload.as_ptr() as *const u128) }
+    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &i128 {
+        unsafe { &*(self.payload.as_ptr() as *const i128) }
     }
 
     /// Borrow the `Ok` payload without creating another owner.
@@ -6437,8 +6437,8 @@ impl HostUtcNowResult {
     /// # Safety
     /// `self.tag` must be `HostUtcNowResultTag::Ok` and the payload must still be initialized.
     #[cfg(not(target_pointer_width = "32"))]
-    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &u128 {
-        unsafe { &*(&self.payload.ok as *const core::mem::ManuallyDrop<u128> as *const u128) }
+    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &i128 {
+        unsafe { &*(&self.payload.ok as *const core::mem::ManuallyDrop<i128> as *const i128) }
     }
 
     /// Move the `Ok` payload out of one owned tag-union shell.
@@ -6446,8 +6446,8 @@ impl HostUtcNowResult {
     /// # Safety
     /// `self.tag` must be `HostUtcNowResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(target_pointer_width = "32")]
-    pub unsafe fn take_payload_ok_unchecked(&mut self) -> u128 {
-        unsafe { core::ptr::read(self.payload.as_ptr() as *const u128) }
+    pub unsafe fn take_payload_ok_unchecked(&mut self) -> i128 {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const i128) }
     }
 
     /// Move the `Ok` payload out of one owned tag-union shell.
@@ -6455,7 +6455,7 @@ impl HostUtcNowResult {
     /// # Safety
     /// `self.tag` must be `HostUtcNowResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(not(target_pointer_width = "32"))]
-    pub unsafe fn take_payload_ok_unchecked(&mut self) -> u128 {
+    pub unsafe fn take_payload_ok_unchecked(&mut self) -> i128 {
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.ok) }
     }
 
@@ -9144,7 +9144,7 @@ pub struct HostFileSizeInBytesArgs {
 }
 
 /// Arguments for Host.file_time_accessed!
-/// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))] => Try(U128, [FileErr(IOErr)])
+/// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))] => Try(I128, [FileErr(IOErr)])
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9153,7 +9153,7 @@ pub struct HostFileTimeAccessedArgs {
 }
 
 /// Arguments for Host.file_time_created!
-/// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))] => Try(U128, [FileErr(IOErr)])
+/// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))] => Try(I128, [FileErr(IOErr)])
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9162,7 +9162,7 @@ pub struct HostFileTimeCreatedArgs {
 }
 
 /// Arguments for Host.file_time_modified!
-/// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))] => Try(U128, [FileErr(IOErr)])
+/// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))] => Try(I128, [FileErr(IOErr)])
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -13519,7 +13519,7 @@ unsafe extern "C" {
     pub fn hosted_file_size_in_bytes(arg0: UnixBytesOrUtf8OrWindowsU16s) -> HostFileReaderPositionResult;
 
     /// Hosted symbol for Host.file_time_accessed!
-    /// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))] => Try(U128, [FileErr(IOErr)])
+    /// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))] => Try(I128, [FileErr(IOErr)])
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { arg0.decref(roc_host); }
@@ -13527,7 +13527,7 @@ unsafe extern "C" {
     pub fn hosted_file_time_accessed(arg0: UnixBytesOrUtf8OrWindowsU16s) -> HostFileTimeAccessedResult;
 
     /// Hosted symbol for Host.file_time_created!
-    /// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))] => Try(U128, [FileErr(IOErr)])
+    /// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))] => Try(I128, [FileErr(IOErr)])
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { arg0.decref(roc_host); }
@@ -13535,7 +13535,7 @@ unsafe extern "C" {
     pub fn hosted_file_time_created(arg0: UnixBytesOrUtf8OrWindowsU16s) -> HostFileTimeAccessedResult;
 
     /// Hosted symbol for Host.file_time_modified!
-    /// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))] => Try(U128, [FileErr(IOErr)])
+    /// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))] => Try(I128, [FileErr(IOErr)])
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { arg0.decref(roc_host); }
@@ -13854,7 +13854,7 @@ unsafe extern "C" {
     pub fn hosted_tty_enable_raw_mode() -> HostChildCloseResult;
 
     /// Hosted symbol for Host.utc_now!
-    /// Roc signature: {} => Try(U128, [ClockBeforeEpoch])
+    /// Roc signature: {} => Try(I128, [ClockOutOfRange])
     pub fn hosted_utc_now() -> HostUtcNowResult;
 
 }

@@ -71,9 +71,9 @@ Host :: [].{
 	file_is_executable! : NativePath => Try(Bool, [FileErr(IOErr)])
 	file_is_readable! : NativePath => Try(Bool, [FileErr(IOErr)])
 	file_is_writable! : NativePath => Try(Bool, [FileErr(IOErr)])
-	file_time_accessed! : NativePath => Try(U128, [FileErr(IOErr)])
-	file_time_modified! : NativePath => Try(U128, [FileErr(IOErr)])
-	file_time_created! : NativePath => Try(U128, [FileErr(IOErr)])
+	file_time_accessed! : NativePath => Try(I128, [FileErr(IOErr)])
+	file_time_modified! : NativePath => Try(I128, [FileErr(IOErr)])
+	file_time_created! : NativePath => Try(I128, [FileErr(IOErr)])
 
 	http_send_request! : InternalHttp.RequestToAndFromHost => Try(InternalHttp.ResponseToAndFromHost, InternalHttp.TransportErr)
 
@@ -115,11 +115,12 @@ Host :: [].{
 	tty_enable_raw_mode! : () => Try({}, IOErr)
 	tty_disable_raw_mode! : () => Try({}, IOErr)
 
-	# TODO(https://github.com/roc-lang/roc/issues/10163): revert to a bare U128
-	# return once the compiler emits the clang/Rust u128 return convention on
-	# x86_64-windows; bare U128 returns are currently misread there, while
-	# Try-wrapped results cross the boundary correctly on every target.
-	utc_now! : () => Try(U128, [ClockBeforeEpoch])
+	# The reading is signed nanoseconds since the Unix epoch, negative before
+	# 1970. It crosses inside a `Try` because a bare 128-bit integer return is not
+	# known to cross correctly on x86_64-windows with every compiler backend; a
+	# `Try` result is returned through memory on every target. The host reports
+	# `ClockOutOfRange` only for a reading that does not fit in an `I128`.
+	utc_now! : () => Try(I128, [ClockOutOfRange])
 
 	# New hosted functions are kept at the end to avoid renumbering existing
 	# generated glue more than necessary.

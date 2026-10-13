@@ -1,6 +1,7 @@
 import IOErr
 import Host
 import OsStr
+import Utc
 
 path_type_from_host : Host.PathType -> [IsFile, IsDir, IsSymLink, IsOther]
 path_type_from_host = |path_type|
@@ -202,17 +203,31 @@ Path := [
 	is_writable! : Path => Try(Bool, [PathErr(IOErr, Path)])
 	is_writable! = |path| map_file_result(Host.file_is_writable!(to_raw(path)), path)
 
-	## Return the last accessed time as nanoseconds since the Unix epoch.
-	time_accessed! : Path => Try(U128, [PathErr(IOErr, Path)])
-	time_accessed! = |path| map_file_result(Host.file_time_accessed!(to_raw(path)), path)
+	## Return when the file at this path was last accessed.
+	##
+	## Times before 1970 are returned as negative instants, not errors.
+	time_accessed! : Path => Try(Utc, [PathErr(IOErr, Path)])
+	time_accessed! = |path|
+		map_file_result(Host.file_time_accessed!(to_raw(path)), path).map_ok(Utc.from_nanos_since_epoch)
 
-	## Return the last modified time as nanoseconds since the Unix epoch.
-	time_modified! : Path => Try(U128, [PathErr(IOErr, Path)])
-	time_modified! = |path| map_file_result(Host.file_time_modified!(to_raw(path)), path)
+	## Return when the file at this path was last modified.
+	##
+	## Times before 1970 are returned as negative instants, not errors.
+	##
+	## ```roc
+	## stale = Utc.now!().since(path.time_modified!()?) > Duration.minutes(5)
+	## ```
+	time_modified! : Path => Try(Utc, [PathErr(IOErr, Path)])
+	time_modified! = |path|
+		map_file_result(Host.file_time_modified!(to_raw(path)), path).map_ok(Utc.from_nanos_since_epoch)
 
-	## Return the creation time as nanoseconds since the Unix epoch.
-	time_created! : Path => Try(U128, [PathErr(IOErr, Path)])
-	time_created! = |path| map_file_result(Host.file_time_created!(to_raw(path)), path)
+	## Return when the file at this path was created.
+	##
+	## Times before 1970 are returned as negative instants, not errors. Fails
+	## with `Unsupported` where the filesystem does not record a creation time.
+	time_created! : Path => Try(Utc, [PathErr(IOErr, Path)])
+	time_created! = |path|
+		map_file_result(Host.file_time_created!(to_raw(path)), path).map_ok(Utc.from_nanos_since_epoch)
 
 	## Create a hard link at `link` pointing to `original`.
 	##
