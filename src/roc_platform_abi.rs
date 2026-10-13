@@ -8476,7 +8476,7 @@ const _: () = assert!(core::mem::size_of::<HostEnvPlatformRetRecord>() == 32, "H
 const _: () = assert!(core::mem::align_of::<HostEnvPlatformRetRecord>() == 4, "HostEnvPlatformRetRecord alignment mismatch");
 
 /// Arguments for Host.child_close!
-/// Roc signature: Host.Child => Try({}, IOErr)
+/// Roc signature: Resource.Handle([ChildKind]) => Try({}, IOErr)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -8485,7 +8485,7 @@ pub struct HostChildCloseArgs {
 }
 
 /// Arguments for Host.child_close_stdin!
-/// Roc signature: Host.Child => Try({}, IOErr)
+/// Roc signature: Resource.Handle([ChildKind]) => Try({}, IOErr)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -8494,7 +8494,7 @@ pub struct HostChildCloseStdinArgs {
 }
 
 /// Arguments for Host.child_kill!
-/// Roc signature: Host.Child => Try({}, IOErr)
+/// Roc signature: Resource.Handle([ChildKind]) => Try({}, IOErr)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -8503,7 +8503,7 @@ pub struct HostChildKillArgs {
 }
 
 /// Arguments for Host.child_pid!
-/// Roc signature: Host.Child => Try(U32, IOErr)
+/// Roc signature: Resource.Handle([ChildKind]) => Try(U32, IOErr)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -8512,7 +8512,7 @@ pub struct HostChildPidArgs {
 }
 
 /// Arguments for Host.child_read!
-/// Roc signature: Host.Child, U64, U64 => Try({ bytes : List(U8), stream : U8 }, IOErr)
+/// Roc signature: Resource.Handle([ChildKind]), U64, U64 => Try({ bytes : List(U8), stream : U8 }, IOErr)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -8523,7 +8523,7 @@ pub struct HostChildReadArgs {
 }
 
 /// Arguments for Host.child_try_wait!
-/// Roc signature: Host.Child => Try(List({ exit_code : I32, failure : U8, signal : I32, stderr_bytes : List(U8), stdout_bytes : List(U8) }), IOErr)
+/// Roc signature: Resource.Handle([ChildKind]) => Try(List({ exit_code : I32, failure : U8, signal : I32, stderr_bytes : List(U8), stdout_bytes : List(U8) }), IOErr)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -8532,7 +8532,7 @@ pub struct HostChildTryWaitArgs {
 }
 
 /// Arguments for Host.child_wait!
-/// Roc signature: Host.Child => Try({ exit_code : I32, failure : U8, signal : I32, stderr_bytes : List(U8), stdout_bytes : List(U8) }, IOErr)
+/// Roc signature: Resource.Handle([ChildKind]) => Try({ exit_code : I32, failure : U8, signal : I32, stderr_bytes : List(U8), stdout_bytes : List(U8) }, IOErr)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -8541,7 +8541,7 @@ pub struct HostChildWaitArgs {
 }
 
 /// Arguments for Host.child_write!
-/// Roc signature: Host.Child, List(U8), U64 => Try({}, IOErr)
+/// Roc signature: Resource.Handle([ChildKind]), List(U8), U64 => Try({}, IOErr)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -8828,7 +8828,7 @@ unsafe impl RocRelease<HostCmdRunArgs> for HostCmdRunArgsRelease {
 }
 
 /// Arguments for Host.cmd_spawn!
-/// Roc signature: { args : List([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))]), clear_envs : Bool, cwd : List([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))]), envs : List([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))]), manage_tree : Bool, merge_stderr : Bool, output_limit : U64, pending_limit : U64, program : [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], stderr_mode : U8, stdin_bytes : List(U8), stdin_mode : U8, stdout_mode : U8, timeout_ms : U64 } => Try(Host.Child, IOErr)
+/// Roc signature: { args : List([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))]), clear_envs : Bool, cwd : List([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))]), envs : List([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))]), manage_tree : Bool, merge_stderr : Bool, output_limit : U64, pending_limit : U64, program : [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], stderr_mode : U8, stdin_bytes : List(U8), stdin_mode : U8, stdout_mode : U8, timeout_ms : U64 } => Try(Resource.Handle([ChildKind]), IOErr)
 /// Refcounted fields are owned by the hosted function.
 #[cfg(target_pointer_width = "32")]
 #[repr(C)]
@@ -8851,7 +8851,7 @@ pub struct HostCmdSpawnArgs {
 }
 
 /// Arguments for Host.cmd_spawn!
-/// Roc signature: { args : List([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))]), clear_envs : Bool, cwd : List([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))]), envs : List([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))]), manage_tree : Bool, merge_stderr : Bool, output_limit : U64, pending_limit : U64, program : [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], stderr_mode : U8, stdin_bytes : List(U8), stdin_mode : U8, stdout_mode : U8, timeout_ms : U64 } => Try(Host.Child, IOErr)
+/// Roc signature: { args : List([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))]), clear_envs : Bool, cwd : List([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))]), envs : List([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))]), manage_tree : Bool, merge_stderr : Bool, output_limit : U64, pending_limit : U64, program : [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], stderr_mode : U8, stdin_bytes : List(U8), stdin_mode : U8, stdout_mode : U8, timeout_ms : U64 } => Try(Resource.Handle([ChildKind]), IOErr)
 /// Refcounted fields are owned by the hosted function.
 #[cfg(not(target_pointer_width = "32"))]
 #[repr(C)]
@@ -9039,7 +9039,7 @@ pub struct HostFileIsWritableArgs {
 }
 
 /// Arguments for Host.file_open_reader!
-/// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], U64 => Try(Host.FileReader, [FileErr(IOErr)])
+/// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], U64 => Try(Resource.Handle([FileReaderKind]), [FileErr(IOErr)])
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9058,7 +9058,7 @@ pub struct HostFileReadBytesArgs {
 }
 
 /// Arguments for Host.file_read_exactly!
-/// Roc signature: Host.FileReader, U64 => Try(List(U8), [FileErr(IOErr), UnexpectedEndOfInput])
+/// Roc signature: Resource.Handle([FileReaderKind]), U64 => Try(List(U8), [FileErr(IOErr), UnexpectedEndOfInput])
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9068,7 +9068,7 @@ pub struct HostFileReadExactlyArgs {
 }
 
 /// Arguments for Host.file_read_line!
-/// Roc signature: Host.FileReader => Try(List(U8), [EndOfInput, FileErr(IOErr)])
+/// Roc signature: Resource.Handle([FileReaderKind]) => Try(List(U8), [EndOfInput, FileErr(IOErr)])
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9077,7 +9077,7 @@ pub struct HostFileReadLineArgs {
 }
 
 /// Arguments for Host.file_read_until!
-/// Roc signature: Host.FileReader, U8 => Try(List(U8), [EndOfInput, FileErr(IOErr)])
+/// Roc signature: Resource.Handle([FileReaderKind]), U8 => Try(List(U8), [EndOfInput, FileErr(IOErr)])
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9087,7 +9087,7 @@ pub struct HostFileReadUntilArgs {
 }
 
 /// Arguments for Host.file_read_up_to!
-/// Roc signature: Host.FileReader, U64 => Try(List(U8), [EndOfInput, FileErr(IOErr)])
+/// Roc signature: Resource.Handle([FileReaderKind]), U64 => Try(List(U8), [EndOfInput, FileErr(IOErr)])
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9106,7 +9106,7 @@ pub struct HostFileReadUtf8Args {
 }
 
 /// Arguments for Host.file_reader_position!
-/// Roc signature: Host.FileReader => Try(U64, [FileErr(IOErr)])
+/// Roc signature: Resource.Handle([FileReaderKind]) => Try(U64, [FileErr(IOErr)])
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9115,7 +9115,7 @@ pub struct HostFileReaderPositionArgs {
 }
 
 /// Arguments for Host.file_reader_seek!
-/// Roc signature: Host.FileReader, [Current(I64), End(I64), Start(U64)] => Try(U64, [FileErr(IOErr)])
+/// Roc signature: Resource.Handle([FileReaderKind]), [Current(I64), End(I64), Start(U64)] => Try(U64, [FileErr(IOErr)])
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9342,7 +9342,7 @@ pub struct HostSleepNanosArgs {
 }
 
 /// Arguments for Host.sqlite_bind!
-/// Roc signature: Host.SqliteStmt, List({ name : Str, value : [Bytes(List(U8)), Integer(I64), Null, Real(F64), String(Str)] }) => Try({}, { code : I64, message : Str })
+/// Roc signature: Resource.Handle([SqliteStmtKind]), List({ name : Str, value : [Bytes(List(U8)), Integer(I64), Null, Real(F64), String(Str)] }) => Try({}, { code : I64, message : Str })
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9352,7 +9352,7 @@ pub struct HostSqliteBindArgs {
 }
 
 /// Arguments for Host.sqlite_column_value!
-/// Roc signature: Host.SqliteStmt, U64 => Try([Bytes(List(U8)), Integer(I64), Null, Real(F64), String(Str)], { code : I64, message : Str })
+/// Roc signature: Resource.Handle([SqliteStmtKind]), U64 => Try([Bytes(List(U8)), Integer(I64), Null, Real(F64), String(Str)], { code : I64, message : Str })
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9362,7 +9362,7 @@ pub struct HostSqliteColumnValueArgs {
 }
 
 /// Arguments for Host.sqlite_columns!
-/// Roc signature: Host.SqliteStmt => List(Str)
+/// Roc signature: Resource.Handle([SqliteStmtKind]) => List(Str)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9371,7 +9371,7 @@ pub struct HostSqliteColumnsArgs {
 }
 
 /// Arguments for Host.sqlite_prepare!
-/// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], Str => Try(Host.SqliteStmt, { code : I64, message : Str })
+/// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], Str => Try(Resource.Handle([SqliteStmtKind]), { code : I64, message : Str })
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9381,7 +9381,7 @@ pub struct HostSqlitePrepareArgs {
 }
 
 /// Arguments for Host.sqlite_reset!
-/// Roc signature: Host.SqliteStmt => Try({}, { code : I64, message : Str })
+/// Roc signature: Resource.Handle([SqliteStmtKind]) => Try({}, { code : I64, message : Str })
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9390,7 +9390,7 @@ pub struct HostSqliteResetArgs {
 }
 
 /// Arguments for Host.sqlite_step!
-/// Roc signature: Host.SqliteStmt => Try(Bool, { code : I64, message : Str })
+/// Roc signature: Resource.Handle([SqliteStmtKind]) => Try(Bool, { code : I64, message : Str })
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9453,7 +9453,7 @@ pub struct HostStdoutWriteBytesArgs {
 }
 
 /// Arguments for Host.tcp_accept!
-/// Roc signature: Host.TcpListener, U64 => Try(Host.TcpStream, Str)
+/// Roc signature: Resource.Handle([TcpListenerKind]), U64 => Try(Resource.Handle([TcpStreamKind]), Str)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9463,7 +9463,7 @@ pub struct HostTcpAcceptArgs {
 }
 
 /// Arguments for Host.tcp_connect!
-/// Roc signature: Str, U16, U64 => Try(Host.TcpStream, Str)
+/// Roc signature: Str, U16, U64 => Try(Resource.Handle([TcpStreamKind]), Str)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9474,7 +9474,7 @@ pub struct HostTcpConnectArgs {
 }
 
 /// Arguments for Host.tcp_listen!
-/// Roc signature: Str, U16, U64 => Try(Host.TcpListener, Str)
+/// Roc signature: Str, U16, U64 => Try(Resource.Handle([TcpListenerKind]), Str)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9485,7 +9485,7 @@ pub struct HostTcpListenArgs {
 }
 
 /// Arguments for Host.tcp_listener_close!
-/// Roc signature: Host.TcpListener => Try({}, Str)
+/// Roc signature: Resource.Handle([TcpListenerKind]) => Try({}, Str)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9494,7 +9494,7 @@ pub struct HostTcpListenerCloseArgs {
 }
 
 /// Arguments for Host.tcp_local_port!
-/// Roc signature: Host.TcpListener => Try(U16, Str)
+/// Roc signature: Resource.Handle([TcpListenerKind]) => Try(U16, Str)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9503,7 +9503,7 @@ pub struct HostTcpLocalPortArgs {
 }
 
 /// Arguments for Host.tcp_read_exactly!
-/// Roc signature: Host.TcpStream, U64, U64 => Try(List(U8), Str)
+/// Roc signature: Resource.Handle([TcpStreamKind]), U64, U64 => Try(List(U8), Str)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9514,7 +9514,7 @@ pub struct HostTcpReadExactlyArgs {
 }
 
 /// Arguments for Host.tcp_read_until!
-/// Roc signature: Host.TcpStream, U8, U64, U64 => Try(List(U8), Str)
+/// Roc signature: Resource.Handle([TcpStreamKind]), U8, U64, U64 => Try(List(U8), Str)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9526,7 +9526,7 @@ pub struct HostTcpReadUntilArgs {
 }
 
 /// Arguments for Host.tcp_read_up_to!
-/// Roc signature: Host.TcpStream, U64, U64 => Try(List(U8), Str)
+/// Roc signature: Resource.Handle([TcpStreamKind]), U64, U64 => Try(List(U8), Str)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -9537,7 +9537,7 @@ pub struct HostTcpReadUpToArgs {
 }
 
 /// Arguments for Host.tcp_write!
-/// Roc signature: Host.TcpStream, List(U8), U64 => Try({}, Str)
+/// Roc signature: Resource.Handle([TcpStreamKind]), List(U8), U64 => Try({}, Str)
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -13196,7 +13196,7 @@ fn direct_roc_host() -> RocHost {
 #[allow(improper_ctypes)]
 unsafe extern "C" {
     /// Hosted symbol for Host.child_close!
-    /// Roc signature: Host.Child => Try({}, IOErr)
+    /// Roc signature: Resource.Handle([ChildKind]) => Try({}, IOErr)
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13204,7 +13204,7 @@ unsafe extern "C" {
     pub fn hosted_child_close(arg0: *mut u64) -> HostChildCloseResult;
 
     /// Hosted symbol for Host.child_close_stdin!
-    /// Roc signature: Host.Child => Try({}, IOErr)
+    /// Roc signature: Resource.Handle([ChildKind]) => Try({}, IOErr)
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13212,7 +13212,7 @@ unsafe extern "C" {
     pub fn hosted_child_close_stdin(arg0: *mut u64) -> HostChildCloseResult;
 
     /// Hosted symbol for Host.child_kill!
-    /// Roc signature: Host.Child => Try({}, IOErr)
+    /// Roc signature: Resource.Handle([ChildKind]) => Try({}, IOErr)
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13220,7 +13220,7 @@ unsafe extern "C" {
     pub fn hosted_child_kill(arg0: *mut u64) -> HostChildCloseResult;
 
     /// Hosted symbol for Host.child_pid!
-    /// Roc signature: Host.Child => Try(U32, IOErr)
+    /// Roc signature: Resource.Handle([ChildKind]) => Try(U32, IOErr)
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13228,7 +13228,7 @@ unsafe extern "C" {
     pub fn hosted_child_pid(arg0: *mut u64) -> HostChildPidResult;
 
     /// Hosted symbol for Host.child_read!
-    /// Roc signature: Host.Child, U64, U64 => Try({ bytes : List(U8), stream : U8 }, IOErr)
+    /// Roc signature: Resource.Handle([ChildKind]), U64, U64 => Try({ bytes : List(U8), stream : U8 }, IOErr)
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13236,7 +13236,7 @@ unsafe extern "C" {
     pub fn hosted_child_read(arg0: *mut u64, arg1: u64, arg2: u64) -> HostChildReadResult;
 
     /// Hosted symbol for Host.child_try_wait!
-    /// Roc signature: Host.Child => Try(List({ exit_code : I32, failure : U8, signal : I32, stderr_bytes : List(U8), stdout_bytes : List(U8) }), IOErr)
+    /// Roc signature: Resource.Handle([ChildKind]) => Try(List({ exit_code : I32, failure : U8, signal : I32, stderr_bytes : List(U8), stdout_bytes : List(U8) }), IOErr)
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13244,7 +13244,7 @@ unsafe extern "C" {
     pub fn hosted_child_try_wait(arg0: *mut u64) -> HostChildTryWaitResult;
 
     /// Hosted symbol for Host.child_wait!
-    /// Roc signature: Host.Child => Try({ exit_code : I32, failure : U8, signal : I32, stderr_bytes : List(U8), stdout_bytes : List(U8) }, IOErr)
+    /// Roc signature: Resource.Handle([ChildKind]) => Try({ exit_code : I32, failure : U8, signal : I32, stderr_bytes : List(U8), stdout_bytes : List(U8) }, IOErr)
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13252,7 +13252,7 @@ unsafe extern "C" {
     pub fn hosted_child_wait(arg0: *mut u64) -> HostChildWaitResult;
 
     /// Hosted symbol for Host.child_write!
-    /// Roc signature: Host.Child, List(U8), U64 => Try({}, IOErr)
+    /// Roc signature: Resource.Handle([ChildKind]), List(U8), U64 => Try({}, IOErr)
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13285,7 +13285,7 @@ unsafe extern "C" {
     pub fn hosted_cmd_run(arg0: HostCmdRunArgs) -> HostChildWaitResult;
 
     /// Hosted symbol for Host.cmd_spawn!
-    /// Roc signature: { args : List([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))]), clear_envs : Bool, cwd : List([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))]), envs : List([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))]), manage_tree : Bool, merge_stderr : Bool, output_limit : U64, pending_limit : U64, program : [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], stderr_mode : U8, stdin_bytes : List(U8), stdin_mode : U8, stdout_mode : U8, timeout_ms : U64 } => Try(Host.Child, IOErr)
+    /// Roc signature: { args : List([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))]), clear_envs : Bool, cwd : List([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))]), envs : List([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))]), manage_tree : Bool, merge_stderr : Bool, output_limit : U64, pending_limit : U64, program : [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], stderr_mode : U8, stdin_bytes : List(U8), stdin_mode : U8, stdout_mode : U8, timeout_ms : U64 } => Try(Resource.Handle([ChildKind]), IOErr)
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { arg0.decref(roc_host); }
@@ -13429,7 +13429,7 @@ unsafe extern "C" {
     pub fn hosted_file_is_writable(arg0: UnixBytesOrUtf8OrWindowsU16s) -> HostFileIsExecutableResult;
 
     /// Hosted symbol for Host.file_open_reader!
-    /// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], U64 => Try(Host.FileReader, [FileErr(IOErr)])
+    /// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], U64 => Try(Resource.Handle([FileReaderKind]), [FileErr(IOErr)])
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { arg0.decref(roc_host); }
@@ -13445,7 +13445,7 @@ unsafe extern "C" {
     pub fn hosted_file_read_bytes(arg0: UnixBytesOrUtf8OrWindowsU16s) -> HostFileReadBytesResult;
 
     /// Hosted symbol for Host.file_read_exactly!
-    /// Roc signature: Host.FileReader, U64 => Try(List(U8), [FileErr(IOErr), UnexpectedEndOfInput])
+    /// Roc signature: Resource.Handle([FileReaderKind]), U64 => Try(List(U8), [FileErr(IOErr), UnexpectedEndOfInput])
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13453,7 +13453,7 @@ unsafe extern "C" {
     pub fn hosted_file_read_exactly(arg0: *mut u64, arg1: u64) -> HostFileReadExactlyResult;
 
     /// Hosted symbol for Host.file_read_line!
-    /// Roc signature: Host.FileReader => Try(List(U8), [EndOfInput, FileErr(IOErr)])
+    /// Roc signature: Resource.Handle([FileReaderKind]) => Try(List(U8), [EndOfInput, FileErr(IOErr)])
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13461,7 +13461,7 @@ unsafe extern "C" {
     pub fn hosted_file_read_line(arg0: *mut u64) -> HostFileReadLineResult;
 
     /// Hosted symbol for Host.file_read_until!
-    /// Roc signature: Host.FileReader, U8 => Try(List(U8), [EndOfInput, FileErr(IOErr)])
+    /// Roc signature: Resource.Handle([FileReaderKind]), U8 => Try(List(U8), [EndOfInput, FileErr(IOErr)])
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13469,7 +13469,7 @@ unsafe extern "C" {
     pub fn hosted_file_read_until(arg0: *mut u64, arg1: u8) -> HostFileReadLineResult;
 
     /// Hosted symbol for Host.file_read_up_to!
-    /// Roc signature: Host.FileReader, U64 => Try(List(U8), [EndOfInput, FileErr(IOErr)])
+    /// Roc signature: Resource.Handle([FileReaderKind]), U64 => Try(List(U8), [EndOfInput, FileErr(IOErr)])
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13485,7 +13485,7 @@ unsafe extern "C" {
     pub fn hosted_file_read_utf8(arg0: UnixBytesOrUtf8OrWindowsU16s) -> HostFileReadUtf8Result;
 
     /// Hosted symbol for Host.file_reader_position!
-    /// Roc signature: Host.FileReader => Try(U64, [FileErr(IOErr)])
+    /// Roc signature: Resource.Handle([FileReaderKind]) => Try(U64, [FileErr(IOErr)])
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13493,7 +13493,7 @@ unsafe extern "C" {
     pub fn hosted_file_reader_position(arg0: *mut u64) -> HostFileReaderPositionResult;
 
     /// Hosted symbol for Host.file_reader_seek!
-    /// Roc signature: Host.FileReader, [Current(I64), End(I64), Start(U64)] => Try(U64, [FileErr(IOErr)])
+    /// Roc signature: Resource.Handle([FileReaderKind]), [Current(I64), End(I64), Start(U64)] => Try(U64, [FileErr(IOErr)])
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13658,7 +13658,7 @@ unsafe extern "C" {
     pub fn hosted_sleep_nanos(arg0: u64);
 
     /// Hosted symbol for Host.sqlite_bind!
-    /// Roc signature: Host.SqliteStmt, List({ name : Str, value : [Bytes(List(U8)), Integer(I64), Null, Real(F64), String(Str)] }) => Try({}, { code : I64, message : Str })
+    /// Roc signature: Resource.Handle([SqliteStmtKind]), List({ name : Str, value : [Bytes(List(U8)), Integer(I64), Null, Real(F64), String(Str)] }) => Try({}, { code : I64, message : Str })
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13667,7 +13667,7 @@ unsafe extern "C" {
     pub fn hosted_sqlite_bind(arg0: *mut u64, arg1: RocList<AnonStruct2782504baf739389>) -> HostSqliteBindResult;
 
     /// Hosted symbol for Host.sqlite_column_value!
-    /// Roc signature: Host.SqliteStmt, U64 => Try([Bytes(List(U8)), Integer(I64), Null, Real(F64), String(Str)], { code : I64, message : Str })
+    /// Roc signature: Resource.Handle([SqliteStmtKind]), U64 => Try([Bytes(List(U8)), Integer(I64), Null, Real(F64), String(Str)], { code : I64, message : Str })
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13675,7 +13675,7 @@ unsafe extern "C" {
     pub fn hosted_sqlite_column_value(arg0: *mut u64, arg1: u64) -> HostSqliteColumnValueResult;
 
     /// Hosted symbol for Host.sqlite_columns!
-    /// Roc signature: Host.SqliteStmt => List(Str)
+    /// Roc signature: Resource.Handle([SqliteStmtKind]) => List(Str)
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13683,7 +13683,7 @@ unsafe extern "C" {
     pub fn hosted_sqlite_columns(arg0: *mut u64) -> RocList<RocStr>;
 
     /// Hosted symbol for Host.sqlite_prepare!
-    /// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], Str => Try(Host.SqliteStmt, { code : I64, message : Str })
+    /// Roc signature: [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], Str => Try(Resource.Handle([SqliteStmtKind]), { code : I64, message : Str })
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { arg0.decref(roc_host); }
@@ -13692,7 +13692,7 @@ unsafe extern "C" {
     pub fn hosted_sqlite_prepare(arg0: UnixBytesOrUtf8OrWindowsU16s, arg1: RocStr) -> HostSqlitePrepareResult;
 
     /// Hosted symbol for Host.sqlite_reset!
-    /// Roc signature: Host.SqliteStmt => Try({}, { code : I64, message : Str })
+    /// Roc signature: Resource.Handle([SqliteStmtKind]) => Try({}, { code : I64, message : Str })
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13700,7 +13700,7 @@ unsafe extern "C" {
     pub fn hosted_sqlite_reset(arg0: *mut u64) -> HostSqliteBindResult;
 
     /// Hosted symbol for Host.sqlite_step!
-    /// Roc signature: Host.SqliteStmt => Try(Bool, { code : I64, message : Str })
+    /// Roc signature: Resource.Handle([SqliteStmtKind]) => Try(Bool, { code : I64, message : Str })
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13771,7 +13771,7 @@ unsafe extern "C" {
     pub fn hosted_stdout_write_bytes(arg0: RocListWith<u8, false>) -> HostStdoutLineResult;
 
     /// Hosted symbol for Host.tcp_accept!
-    /// Roc signature: Host.TcpListener, U64 => Try(Host.TcpStream, Str)
+    /// Roc signature: Resource.Handle([TcpListenerKind]), U64 => Try(Resource.Handle([TcpStreamKind]), Str)
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13779,7 +13779,7 @@ unsafe extern "C" {
     pub fn hosted_tcp_accept(arg0: *mut u64, arg1: u64) -> HostTcpAcceptResult;
 
     /// Hosted symbol for Host.tcp_connect!
-    /// Roc signature: Str, U16, U64 => Try(Host.TcpStream, Str)
+    /// Roc signature: Str, U16, U64 => Try(Resource.Handle([TcpStreamKind]), Str)
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { arg0.decref(roc_host); }
@@ -13787,7 +13787,7 @@ unsafe extern "C" {
     pub fn hosted_tcp_connect(arg0: RocStr, arg1: u16, arg2: u64) -> HostTcpAcceptResult;
 
     /// Hosted symbol for Host.tcp_listen!
-    /// Roc signature: Str, U16, U64 => Try(Host.TcpListener, Str)
+    /// Roc signature: Str, U16, U64 => Try(Resource.Handle([TcpListenerKind]), Str)
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { arg0.decref(roc_host); }
@@ -13795,7 +13795,7 @@ unsafe extern "C" {
     pub fn hosted_tcp_listen(arg0: RocStr, arg1: u16, arg2: u64) -> HostTcpListenResult;
 
     /// Hosted symbol for Host.tcp_listener_close!
-    /// Roc signature: Host.TcpListener => Try({}, Str)
+    /// Roc signature: Resource.Handle([TcpListenerKind]) => Try({}, Str)
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13803,7 +13803,7 @@ unsafe extern "C" {
     pub fn hosted_tcp_listener_close(arg0: *mut u64) -> HostTcpListenerCloseResult;
 
     /// Hosted symbol for Host.tcp_local_port!
-    /// Roc signature: Host.TcpListener => Try(U16, Str)
+    /// Roc signature: Resource.Handle([TcpListenerKind]) => Try(U16, Str)
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13811,7 +13811,7 @@ unsafe extern "C" {
     pub fn hosted_tcp_local_port(arg0: *mut u64) -> HostTcpLocalPortResult;
 
     /// Hosted symbol for Host.tcp_read_exactly!
-    /// Roc signature: Host.TcpStream, U64, U64 => Try(List(U8), Str)
+    /// Roc signature: Resource.Handle([TcpStreamKind]), U64, U64 => Try(List(U8), Str)
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13819,7 +13819,7 @@ unsafe extern "C" {
     pub fn hosted_tcp_read_exactly(arg0: *mut u64, arg1: u64, arg2: u64) -> HostTcpReadExactlyResult;
 
     /// Hosted symbol for Host.tcp_read_until!
-    /// Roc signature: Host.TcpStream, U8, U64, U64 => Try(List(U8), Str)
+    /// Roc signature: Resource.Handle([TcpStreamKind]), U8, U64, U64 => Try(List(U8), Str)
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13827,7 +13827,7 @@ unsafe extern "C" {
     pub fn hosted_tcp_read_until(arg0: *mut u64, arg1: u8, arg2: u64, arg3: u64) -> HostTcpReadExactlyResult;
 
     /// Hosted symbol for Host.tcp_read_up_to!
-    /// Roc signature: Host.TcpStream, U64, U64 => Try(List(U8), Str)
+    /// Roc signature: Resource.Handle([TcpStreamKind]), U64, U64 => Try(List(U8), Str)
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
@@ -13835,7 +13835,7 @@ unsafe extern "C" {
     pub fn hosted_tcp_read_up_to(arg0: *mut u64, arg1: u64, arg2: u64) -> HostTcpReadExactlyResult;
 
     /// Hosted symbol for Host.tcp_write!
-    /// Roc signature: Host.TcpStream, List(U8), U64 => Try({}, Str)
+    /// Roc signature: Resource.Handle([TcpStreamKind]), List(U8), U64 => Try({}, Str)
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }

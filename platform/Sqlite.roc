@@ -1,5 +1,6 @@
 import InternalSqlite
 import Host
+import Resource
 import Path
 
 # Porting notes for the new (zig) compiler: the decoder combinator API is written
@@ -46,7 +47,7 @@ Sqlite :: [].{
 	}
 
 	## Represents a prepared statement that can be executed many times.
-	Stmt :: { host : Host.SqliteStmt }.{
+	Stmt :: { host : Resource.SqliteStmt }.{
 
 		## Render the statement without exposing its host handle.
 		to_inspect : Stmt -> Str
@@ -344,14 +345,14 @@ Sqlite :: [].{
 
 # ---- internal helpers (module-private) -----------------------------------------
 
-stmt_to_host : Sqlite.Stmt -> Host.SqliteStmt
+stmt_to_host : Sqlite.Stmt -> Resource.SqliteStmt
 stmt_to_host = |stmt| stmt.host
 
 sqlite_prepare! = |raw_path, query|
 	Host.sqlite_prepare!(raw_path, query)
 		.map_err(|{ code, message }| SqliteErr(code_from_i64(code), message))
 
-sqlite_bind! : Host.SqliteStmt, List({ name : Str, value : [Null, Real(F64), Integer(I64), String(Str), Bytes(List(U8))] }) => Try({}, [SqliteErr(Sqlite.ErrCode, Str)])
+sqlite_bind! : Resource.SqliteStmt, List({ name : Str, value : [Null, Real(F64), Integer(I64), String(Str), Bytes(List(U8))] }) => Try({}, [SqliteErr(Sqlite.ErrCode, Str)])
 sqlite_bind! = |stmt, bindings|
 	Host.sqlite_bind!(stmt, bindings)
 		.map_err(|{ code, message }| SqliteErr(code_from_i64(code), message))
@@ -362,7 +363,7 @@ sqlite_column_value! = |stmt, index|
 	Host.sqlite_column_value!(stmt, index)
 		.map_err(|{ code, message }| SqliteErr(code_from_i64(code), message))
 
-sqlite_step! : Host.SqliteStmt => Try([Row, Done], [SqliteErr(Sqlite.ErrCode, Str)])
+sqlite_step! : Resource.SqliteStmt => Try([Row, Done], [SqliteErr(Sqlite.ErrCode, Str)])
 sqlite_step! = |stmt|
 	match Host.sqlite_step!(stmt) {
 		Ok(has_row) => if has_row {
@@ -373,7 +374,7 @@ sqlite_step! = |stmt|
 		Err({ code, message }) => Err(SqliteErr(code_from_i64(code), message))
 	}
 
-sqlite_reset! : Host.SqliteStmt => Try({}, [SqliteErr(Sqlite.ErrCode, Str)])
+sqlite_reset! : Resource.SqliteStmt => Try({}, [SqliteErr(Sqlite.ErrCode, Str)])
 sqlite_reset! = |stmt|
 	Host.sqlite_reset!(stmt)
 		.map_err(|{ code, message }| SqliteErr(code_from_i64(code), message))

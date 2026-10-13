@@ -1,4 +1,5 @@
 import Host
+import Resource
 
 ## Connect to TCP servers and exchange buffered byte streams.
 ##
@@ -18,7 +19,7 @@ import Host
 Tcp :: [].{
 
 	## A listening socket. Final ARC release closes it; close! affects all aliases.
-	Listener :: { host : Host.TcpListener }.{
+	Listener :: { host : Resource.TcpListener }.{
 		to_inspect : Listener -> Str
 		to_inspect = |_| "Tcp.Listener(<opaque>)"
 
@@ -51,7 +52,7 @@ Tcp :: [].{
 	## The connection is automatically closed when the last reference to the
 	## stream is dropped. It wraps an opaque host-side `BufReader<TcpStream>`
 	## handle.
-	Stream :: { host : Host.TcpStream }.{
+	Stream :: { host : Resource.TcpStream }.{
 
 		## Render the stream without exposing its host handle.
 		to_inspect : Stream -> Str

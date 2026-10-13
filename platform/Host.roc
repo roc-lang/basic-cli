@@ -1,6 +1,7 @@
 import IOErr
 import InternalHttp
 import InternalSqlite
+import Resource
 
 ## Declare the hosted effects and ABI-safe data exchanged with the native host.
 Host :: [].{
@@ -35,13 +36,7 @@ Host :: [].{
 		exit_code : I32,
 	}
 
-	FileReader :: Box(U64)
-
 	PathType : [File, Dir, SymLink, Other]
-
-	SqliteStmt :: Box(U64)
-
-	TcpStream :: Box(U64)
 
 	cmd_exec_exit_code! : Cmd => Try(I32, IOErr)
 	cmd_exec_output! : Cmd => Try(CmdOutputSuccess, [NonZeroExitCode(CmdOutputFailure), FailedToGetExitCode(IOErr)])
@@ -63,9 +58,9 @@ Host :: [].{
 	file_write_utf8! : NativePath, Str => Try({}, [FileErr(IOErr)])
 	file_append_bytes! : NativePath, List(U8) => Try({}, [FileErr(IOErr)])
 	file_append_utf8! : NativePath, Str => Try({}, [FileErr(IOErr)])
-	file_open_reader! : NativePath, U64 => Try(FileReader, [FileErr(IOErr)])
-	file_read_line! : FileReader => Try(List(U8), [EndOfInput, FileErr(IOErr)])
-	file_read_until! : FileReader, U8 => Try(List(U8), [EndOfInput, FileErr(IOErr)])
+	file_open_reader! : NativePath, U64 => Try(Resource.FileReader, [FileErr(IOErr)])
+	file_read_line! : Resource.FileReader => Try(List(U8), [EndOfInput, FileErr(IOErr)])
+	file_read_until! : Resource.FileReader, U8 => Try(List(U8), [EndOfInput, FileErr(IOErr)])
 	file_delete! : NativePath => Try({}, [FileErr(IOErr)])
 	file_size_in_bytes! : NativePath => Try(U64, [FileErr(IOErr)])
 	file_is_executable! : NativePath => Try(Bool, [FileErr(IOErr)])
@@ -87,12 +82,12 @@ Host :: [].{
 
 	sleep_nanos! : U64 => {}
 
-	sqlite_prepare! : NativePath, Str => Try(SqliteStmt, InternalSqlite.SqliteError)
-	sqlite_bind! : SqliteStmt, List(InternalSqlite.SqliteBindings) => Try({}, InternalSqlite.SqliteError)
-	sqlite_columns! : SqliteStmt => List(Str)
-	sqlite_column_value! : SqliteStmt, U64 => Try(InternalSqlite.SqliteValue, InternalSqlite.SqliteError)
-	sqlite_step! : SqliteStmt => Try(Bool, InternalSqlite.SqliteError)
-	sqlite_reset! : SqliteStmt => Try({}, InternalSqlite.SqliteError)
+	sqlite_prepare! : NativePath, Str => Try(Resource.SqliteStmt, InternalSqlite.SqliteError)
+	sqlite_bind! : Resource.SqliteStmt, List(InternalSqlite.SqliteBindings) => Try({}, InternalSqlite.SqliteError)
+	sqlite_columns! : Resource.SqliteStmt => List(Str)
+	sqlite_column_value! : Resource.SqliteStmt, U64 => Try(InternalSqlite.SqliteValue, InternalSqlite.SqliteError)
+	sqlite_step! : Resource.SqliteStmt => Try(Bool, InternalSqlite.SqliteError)
+	sqlite_reset! : Resource.SqliteStmt => Try({}, InternalSqlite.SqliteError)
 
 	stderr_line! : Str => Try({}, [StderrErr(IOErr)])
 	stderr_write! : Str => Try({}, [StderrErr(IOErr)])
@@ -106,11 +101,11 @@ Host :: [].{
 	stdout_write! : Str => Try({}, [StdoutErr(IOErr)])
 	stdout_write_bytes! : List(U8) => Try({}, [StdoutErr(IOErr)])
 
-	tcp_connect! : Str, U16, U64 => Try(TcpStream, Str)
-	tcp_read_up_to! : TcpStream, U64, U64 => Try(List(U8), Str)
-	tcp_read_exactly! : TcpStream, U64, U64 => Try(List(U8), Str)
-	tcp_read_until! : TcpStream, U8, U64, U64 => Try(List(U8), Str)
-	tcp_write! : TcpStream, List(U8), U64 => Try({}, Str)
+	tcp_connect! : Str, U16, U64 => Try(Resource.TcpStream, Str)
+	tcp_read_up_to! : Resource.TcpStream, U64, U64 => Try(List(U8), Str)
+	tcp_read_exactly! : Resource.TcpStream, U64, U64 => Try(List(U8), Str)
+	tcp_read_until! : Resource.TcpStream, U8, U64, U64 => Try(List(U8), Str)
+	tcp_write! : Resource.TcpStream, List(U8), U64 => Try({}, Str)
 
 	tty_enable_raw_mode! : () => Try({}, IOErr)
 	tty_disable_raw_mode! : () => Try({}, IOErr)
@@ -142,30 +137,28 @@ Host :: [].{
 	env_create_temp_dir! : NativePath, Str => Try(NativePath, IOErr)
 	monotonic_now! : () => U64
 
-	Child :: Box(U64)
 	CmdRunResult : { exit_code : I32, signal : I32, stdout_bytes : List(U8), stderr_bytes : List(U8), failure : U8 }
 	ChildEvent : { stream : U8, bytes : List(U8) }
-	cmd_spawn! : Cmd => Try(Child, IOErr)
+	cmd_spawn! : Cmd => Try(Resource.Child, IOErr)
 	cmd_run! : Cmd => Try(CmdRunResult, IOErr)
-	child_pid! : Child => Try(U32, IOErr)
-	child_wait! : Child => Try(CmdRunResult, IOErr)
-	child_try_wait! : Child => Try(List(CmdRunResult), IOErr)
-	child_kill! : Child => Try({}, IOErr)
-	child_close! : Child => Try({}, IOErr)
-	child_close_stdin! : Child => Try({}, IOErr)
-	child_write! : Child, List(U8), U64 => Try({}, IOErr)
-	child_read! : Child, U64, U64 => Try(ChildEvent, IOErr)
+	child_pid! : Resource.Child => Try(U32, IOErr)
+	child_wait! : Resource.Child => Try(CmdRunResult, IOErr)
+	child_try_wait! : Resource.Child => Try(List(CmdRunResult), IOErr)
+	child_kill! : Resource.Child => Try({}, IOErr)
+	child_close! : Resource.Child => Try({}, IOErr)
+	child_close_stdin! : Resource.Child => Try({}, IOErr)
+	child_write! : Resource.Child, List(U8), U64 => Try({}, IOErr)
+	child_read! : Resource.Child, U64, U64 => Try(ChildEvent, IOErr)
 
-	TcpListener :: Box(U64)
-	tcp_listen! : Str, U16, U64 => Try(TcpListener, Str)
-	tcp_local_port! : TcpListener => Try(U16, Str)
-	tcp_accept! : TcpListener, U64 => Try(TcpStream, Str)
-	tcp_listener_close! : TcpListener => Try({}, Str)
+	tcp_listen! : Str, U16, U64 => Try(Resource.TcpListener, Str)
+	tcp_local_port! : Resource.TcpListener => Try(U16, Str)
+	tcp_accept! : Resource.TcpListener, U64 => Try(Resource.TcpStream, Str)
+	tcp_listener_close! : Resource.TcpListener => Try({}, Str)
 
 	env_program_name! : () => Try(NativeOsStr, [ProgramNameUnavailable])
 
-	file_read_up_to! : FileReader, U64 => Try(List(U8), [EndOfInput, FileErr(IOErr)])
-	file_read_exactly! : FileReader, U64 => Try(List(U8), [FileErr(IOErr), UnexpectedEndOfInput])
-	file_reader_position! : FileReader => Try(U64, [FileErr(IOErr)])
-	file_reader_seek! : FileReader, [Start(U64), Current(I64), End(I64)] => Try(U64, [FileErr(IOErr)])
+	file_read_up_to! : Resource.FileReader, U64 => Try(List(U8), [EndOfInput, FileErr(IOErr)])
+	file_read_exactly! : Resource.FileReader, U64 => Try(List(U8), [FileErr(IOErr), UnexpectedEndOfInput])
+	file_reader_position! : Resource.FileReader => Try(U64, [FileErr(IOErr)])
+	file_reader_seek! : Resource.FileReader, [Start(U64), Current(I64), End(I64)] => Try(U64, [FileErr(IOErr)])
 }

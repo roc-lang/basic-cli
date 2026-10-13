@@ -1,4 +1,5 @@
 import Host
+import Resource
 import Path
 import IOErr
 
@@ -21,7 +22,7 @@ File :: [].{
 	## read is `Err(EndOfInput)`. An empty `Ok` is real data, such as an empty
 	## line. A read may be repeated after `EndOfInput`; if the file has grown
 	## it returns the new data.
-	Reader :: { host : Host.FileReader }.{
+	Reader :: { host : Resource.FileReader }.{
 
 		# A tag union that crosses the host boundary is closed by design, so
 		# every method below rebuilds the error it forwards from the host. That

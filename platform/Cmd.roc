@@ -1,5 +1,6 @@
 import IOErr
 import Host
+import Resource
 import OsStr
 import Env
 import Path
@@ -387,7 +388,7 @@ Cmd :: {
 
 	## A managed child. Final reference release terminates and reaps the process.
 	## Use close! for deterministic cleanup before the last reference is released.
-	Child :: { host : Host.Child }.{
+	Child :: { host : Resource.Child }.{
 
 		## Return the operating-system process identifier while the child is open.
 		pid! : Child => Try(U32, IOErr)
