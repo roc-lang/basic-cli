@@ -41,7 +41,7 @@ Http :: [].{
 	##
 	## This uses Roc's builtin JSON encoder, so the value's type determines the
 	## encoder through static dispatch.
-	with_json_body : Request, _ => Try(Request, [JsonErr(_)])
+	with_json_body : Request, _ -> Try(Request, [JsonErr(_)])
 	with_json_body = |request, value| {
 		body = Json.to_str_try(value) ? JsonErr
 
@@ -80,7 +80,7 @@ Http :: [].{
 	##
 	## This uses Roc's builtin JSON parser, so the expected result type
 	## determines the parser through static dispatch.
-	decode_json_response : Response => Try(_, [BadBody(Str), JsonErr(_)])
+	decode_json_response : Response -> Try(_, [BadBody(Str), JsonErr(_)])
 	decode_json_response = |response| {
 		body = Str.from_utf8(Response.body(response)) ? |_| BadBody("decode_json_response: response body was not valid UTF-8")
 		decoded = Json.parse(body) ? JsonErr
