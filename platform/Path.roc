@@ -26,8 +26,8 @@ path_type_from_host = |path_type|
 ## ```
 Path := [
 	Utf8(Str),
-	Unix(List(U8)),
-	Windows(List(U16)),
+	UnixBytes(List(U8)),
+	WindowsU16s(List(U16)),
 ].{
 
 	## Create a path from an OS string value, preserving raw OS units.
@@ -294,19 +294,19 @@ Path := [
 
 	## Create a Unix path from a Roc string by storing its UTF-8 bytes.
 	unix : Str -> Path
-	unix = |str| Unix(Str.to_utf8(str))
+	unix = |str| UnixBytes(Str.to_utf8(str))
 
 	## Create a Unix path from raw bytes without validating UTF-8.
 	unix_bytes : List(U8) -> Path
-	unix_bytes = |bytes| Unix(bytes)
+	unix_bytes = |bytes| UnixBytes(bytes)
 
 	## Create a Windows path from a Roc string by storing its UTF-16 code units.
 	windows : Str -> Path
-	windows = |str| Windows(InternalUtf16.from_str(str))
+	windows = |str| WindowsU16s(InternalUtf16.from_str(str))
 
 	## Create a Windows path from raw UTF-16 code units.
 	windows_u16s : List(U16) -> Path
-	windows_u16s = |list| Windows(list)
+	windows_u16s = |list| WindowsU16s(list)
 
 	## Convert a path to a string if its raw representation is valid text.
 	to_str : Path -> Try(Str, [InvalidStr(U64)])
@@ -314,13 +314,13 @@ Path := [
 		match path {
 			Utf8(str) => Ok(str)
 
-			Unix(bytes) =>
+			UnixBytes(bytes) =>
 				match Str.from_utf8(bytes) {
 					Ok(str) => Ok(str)
 					Err(BadUtf8({ index, problem: _ })) => Err(InvalidStr(index))
 				}
 
-			Windows(u16s) => InternalUtf16.to_str(u16s)
+			WindowsU16s(u16s) => InternalUtf16.to_str(u16s)
 		}
 
 	## Convert a path to a best-effort display string, replacing invalid text with
@@ -329,8 +329,8 @@ Path := [
 	display = |path|
 		match path {
 			Utf8(str) => str
-			Unix(bytes) => Str.from_utf8_lossy(bytes)
-			Windows(u16s) => Str.from_utf8_lossy(InternalUtf16.to_utf8_lossy(u16s))
+			UnixBytes(bytes) => Str.from_utf8_lossy(bytes)
+			WindowsU16s(u16s) => Str.from_utf8_lossy(InternalUtf16.to_utf8_lossy(u16s))
 		}
 
 	## Render a path for debugging without losing raw OS units.
@@ -338,12 +338,12 @@ Path := [
 	to_inspect = |path|
 		match path {
 			Utf8(str) => "Path.utf8(${Json.to_str(str)})"
-			Unix(bytes) =>
+			UnixBytes(bytes) =>
 				match Str.from_utf8(bytes) {
 					Ok(str) => "Path.unix(${Json.to_str(str)})"
 					Err(_) => "Path.unix_bytes(${Str.inspect(bytes)})"
 				}
-			Windows(u16s) =>
+			WindowsU16s(u16s) =>
 				match InternalUtf16.to_str(u16s) {
 					Ok(str) => "Path.windows(${Json.to_str(str)})"
 					Err(_) => "Path.windows_u16s(${Str.inspect(u16s)})"
@@ -382,26 +382,26 @@ Path := [
 				}
 			}
 
-			Unix(bytes) =>
+			UnixBytes(bytes) =>
 				if ends_with_u8(bytes, '/') {
 					Err(IsDirPath)
 				} else if ends_with_two_u8(bytes, '.', '.') {
 					Err(EndsInDots)
 				} else {
 					match List.find_last_index(bytes, |byte| byte == '/') {
-						Ok(last_sep_index) => Ok(Unix(after_index_u8(bytes, last_sep_index)))
+						Ok(last_sep_index) => Ok(UnixBytes(after_index_u8(bytes, last_sep_index)))
 						Err(NotFound) => Ok(path)
 					}
 				}
 
-			Windows(u16s) =>
+			WindowsU16s(u16s) =>
 				if ends_with_u16(u16s, '/') or ends_with_u16(u16s, '\\') {
 					Err(IsDirPath)
 				} else if ends_with_two_u16(u16s, '.', '.') {
 					Err(EndsInDots)
 				} else {
 					match List.find_last_index(u16s, |u16| u16 == '/' or u16 == '\\') {
-						Ok(last_sep_index) => Ok(Windows(after_index_u16(u16s, last_sep_index)))
+						Ok(last_sep_index) => Ok(WindowsU16s(after_index_u16(u16s, last_sep_index)))
 						Err(NotFound) => Ok(path)
 					}
 				}
@@ -415,8 +415,8 @@ Path := [
 		match filename(path) {
 			Err(err) => Err(err)
 			Ok(Utf8(str)) => Ok(Utf8(str_from_valid_utf8(ext_units_u8(Str.to_utf8(str)))))
-			Ok(Unix(bytes)) => Ok(Unix(ext_units_u8(bytes)))
-			Ok(Windows(u16s)) => Ok(Windows(ext_units_u16(u16s)))
+			Ok(UnixBytes(bytes)) => Ok(UnixBytes(ext_units_u8(bytes)))
+			Ok(WindowsU16s(u16s)) => Ok(WindowsU16s(ext_units_u16(u16s)))
 		}
 
 	## Adds a separator and a string component to the path.
@@ -424,8 +424,8 @@ Path := [
 	join = |path, str|
 		match path {
 			Utf8(path_str) => Utf8(path_str.concat("/").concat(str))
-			Unix(bytes) => Unix(bytes.append('/').concat(Str.to_utf8(str)))
-			Windows(u16s) => Windows(u16s.append('\\').concat(InternalUtf16.from_str(str)))
+			UnixBytes(bytes) => UnixBytes(bytes.append('/').concat(Str.to_utf8(str)))
+			WindowsU16s(u16s) => WindowsU16s(u16s.append('\\').concat(InternalUtf16.from_str(str)))
 		}
 
 	## Expose the raw OS-specific representation.
@@ -433,8 +433,8 @@ Path := [
 	to_raw = |path|
 		match path {
 			Utf8(str) => Utf8(str)
-			Unix(bytes) => UnixBytes(bytes)
-			Windows(u16s) => WindowsU16s(u16s)
+			UnixBytes(bytes) => UnixBytes(bytes)
+			WindowsU16s(u16s) => WindowsU16s(u16s)
 		}
 
 	## Build a path from the raw OS-specific representation.
@@ -442,8 +442,8 @@ Path := [
 	from_raw = |raw|
 		match raw {
 			Utf8(str) => Utf8(str)
-			UnixBytes(bytes) => Unix(bytes)
-			WindowsU16s(u16s) => Windows(u16s)
+			UnixBytes(bytes) => UnixBytes(bytes)
+			WindowsU16s(u16s) => WindowsU16s(u16s)
 		}
 }
 
@@ -547,10 +547,10 @@ path_identity : Path -> Path
 path_identity = |path| path
 
 ## Constructors preserve Unix, Windows, and UTF-8 path representations.
-expect Path.unix("abc") == Unix([97, 98, 99])
-expect Path.unix_bytes([97, 98, 99]) == Unix([97, 98, 99])
-expect Path.windows("abc") == Windows([97, 98, 99])
-expect Path.windows_u16s([97, 98, 99]) == Windows([97, 98, 99])
+expect Path.unix("abc") == UnixBytes([97, 98, 99])
+expect Path.unix_bytes([97, 98, 99]) == UnixBytes([97, 98, 99])
+expect Path.windows("abc") == WindowsU16s([97, 98, 99])
+expect Path.windows_u16s([97, 98, 99]) == WindowsU16s([97, 98, 99])
 expect Path.utf8("abc") == Utf8("abc")
 
 ## Quoted literals dispatch to UTF-8 paths through `from_quote`.
