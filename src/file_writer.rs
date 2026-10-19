@@ -52,7 +52,7 @@ fn open_file(path: &Path, mode: WriteMode, policy: Policy) -> io::Result<File> {
                 if policy != Policy::Default {
                     file_security::regular(&file)?;
                 }
-                if mode == WriteMode::Truncate {
+                if mode == WriteMode::Truncate && file.metadata()?.is_file() {
                     file.set_len(0)?;
                 }
                 return Ok(file);
@@ -199,6 +199,9 @@ mod tests {
         let mut file =
             super::open_file(path, super::WriteMode::Append, super::Policy::Default).unwrap();
         std::io::Write::write_all(&mut file, b"discarded").unwrap();
+        let mut file =
+            super::open_file(path, super::WriteMode::Truncate, super::Policy::Default).unwrap();
+        std::io::Write::write_all(&mut file, b"also discarded").unwrap();
         for policy in [super::Policy::OwnerOnly, super::Policy::PublicRead] {
             assert_eq!(
                 super::open_file(path, super::WriteMode::Append, policy)

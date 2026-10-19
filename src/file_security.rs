@@ -54,7 +54,10 @@ mod native {
         fs::{OpenOptions, Permissions},
         os::{
             fd::AsRawFd,
-            unix::fs::{OpenOptionsExt, PermissionsExt},
+            unix::{
+                ffi::OsStrExt,
+                fs::{OpenOptionsExt, PermissionsExt},
+            },
         },
     };
     pub(super) fn create(path: &Path, append: bool, policy: Policy) -> io::Result<File> {
@@ -66,27 +69,62 @@ mod native {
         options.open(path)
     }
     pub(super) fn open_existing(path: &Path) -> io::Result<File> {
-        OpenOptions::new()
+        match OpenOptions::new()
             .read(true)
             .custom_flags(libc::O_NONBLOCK)
             .open(path)
+        {
+            Err(error) if error.kind() == io::ErrorKind::PermissionDenied => {
+                // A metadata handle lets the owner repair even a mode-000 file.
+                OpenOptions::new()
+                    .read(true)
+                    .custom_flags(libc::O_PATH)
+                    .open(path)
+            }
+            result => result,
+        }
     }
     pub(super) fn apply(file: &File, policy: Policy) -> io::Result<()> {
         let key = c"system.posix_acl_access";
-        let result = unsafe { libc::fremovexattr(file.as_raw_fd(), key.as_ptr()) };
+        // Linux's fd-based chmod/xattr APIs reject O_PATH descriptors. A
+        // procfs magic link addresses the held inode, so a rename cannot
+        // redirect this operation to another file.
+        let metadata_handle =
+            unsafe { libc::fcntl(file.as_raw_fd(), libc::F_GETFL) } & libc::O_PATH != 0;
+        let proc_path = std::ffi::CString::new(format!("/proc/self/fd/{}", file.as_raw_fd()))
+            .expect("numeric file descriptor");
+        let result = unsafe {
+            if metadata_handle {
+                libc::removexattr(proc_path.as_ptr(), key.as_ptr())
+            } else {
+                libc::fremovexattr(file.as_raw_fd(), key.as_ptr())
+            }
+        };
         if result != 0 {
             let error = io::Error::last_os_error();
             if !matches!(error.raw_os_error(), Some(libc::ENODATA | libc::EOPNOTSUPP)) {
                 return Err(error);
             }
         }
-        file.set_permissions(Permissions::from_mode(mode(policy)))?;
+        if metadata_handle {
+            std::fs::set_permissions(
+                Path::new(std::ffi::OsStr::from_bytes(proc_path.as_bytes())),
+                Permissions::from_mode(mode(policy)),
+            )?;
+        } else {
+            file.set_permissions(Permissions::from_mode(mode(policy)))?;
+        }
         if file.metadata()?.permissions().mode() & 0o7777 != mode(policy) {
             return Err(unsupported("filesystem did not enforce file permissions"));
         }
         // A named entry with no rights would deny PublicRead even with other=r.
-        let size =
-            unsafe { libc::fgetxattr(file.as_raw_fd(), key.as_ptr(), std::ptr::null_mut(), 0) };
+        let size = unsafe {
+            if metadata_handle {
+                libc::getxattr(proc_path.as_ptr(), key.as_ptr(), std::ptr::null_mut(), 0)
+            } else {
+                libc::fgetxattr(file.as_raw_fd(), key.as_ptr(), std::ptr::null_mut(), 0)
+            }
+        };
         if size >= 0 {
             return Err(unsupported("filesystem retained an extended access ACL"));
         }
@@ -559,6 +597,48 @@ mod native {
 mod tests {
     use super::*;
     use std::io::Write;
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn owner_can_restore_access_to_a_mode_zero_file() {
+        use std::os::unix::fs::PermissionsExt;
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("inaccessible");
+        std::fs::write(&path, b"preserved").unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0)).unwrap();
+        let result = set_permissions(&path, Policy::OwnerOnly);
+        // Restore access even if the assertion fails, so cleanup can succeed.
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)).unwrap();
+        result.unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"preserved");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn metadata_handle_permissions_follow_the_held_inode_after_rename() {
+        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+        let directory = tempfile::tempdir().unwrap();
+        let original = directory.path().join("original");
+        let moved = directory.path().join("moved");
+        std::fs::write(&original, b"held").unwrap();
+        let file = std::fs::OpenOptions::new()
+            .read(true)
+            .custom_flags(libc::O_PATH)
+            .open(&original)
+            .unwrap();
+        std::fs::rename(&original, &moved).unwrap();
+        std::fs::write(&original, b"replacement").unwrap();
+        std::fs::set_permissions(&original, std::fs::Permissions::from_mode(0o644)).unwrap();
+        native::apply(&file, Policy::OwnerOnly).unwrap();
+        assert_eq!(
+            std::fs::metadata(&moved).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        assert_eq!(
+            std::fs::metadata(&original).unwrap().permissions().mode() & 0o777,
+            0o644
+        );
+    }
+
     #[cfg(windows)]
     #[test]
     fn embedded_nul_paths_do_not_create_or_change_a_truncated_target() {

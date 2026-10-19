@@ -113,6 +113,9 @@ Path := [
 	## ownership and contents. Symbolic links are followed. OwnerOnly grants
 	## owner read/write; PublicRead additionally grants everyone read. Neither
 	## grants execute. Existing handles and privileged OS access are unaffected.
+	## On macOS the target must currently be readable to open a handle for
+	## replacing its ACL. On Linux repairing an unreadable file requires
+	## /proc/self/fd.
 	set_permissions! : Path, [OwnerOnly, PublicRead] => Try({}, [PathErr(IOErr, Path)])
 	set_permissions! = |path, permissions|
 		Host.path_set_permissions!(to_raw(path), permissions).map_err(|err| PathErr(err, path))
