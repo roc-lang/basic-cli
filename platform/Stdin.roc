@@ -7,6 +7,8 @@ import Host
 ## read is `Err(EndOfInput)`. An empty `Ok` is real data, such as an empty line.
 ## All reads share one buffer, so they can be mixed freely: reading a few lines
 ## and then calling [read_to_end!] loses nothing.
+## Interrupted reads retain bytes already buffered by the platform. A terminal
+## may discard an unsubmitted input line on Ctrl-C before delivering any bytes.
 Stdin :: [].{
 
 	## Read a line from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).

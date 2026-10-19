@@ -37,11 +37,10 @@ def main() -> None:
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
             )
             deadline = time.monotonic() + 10
-            while not marker.exists():
+            while not marker.exists() or marker.read_text() != "acquired":
                 if runner.poll() is not None or time.monotonic() >= deadline:
                     raise AssertionError("Service did not acquire its resource")
                 time.sleep(0.02)
-            assert marker.read_text() == "acquired"
             run("systemctl", "stop", unit)
             assert marker.read_text() == "cleaned", "Stop skipped application cleanup"
             # --wait retains the result even if the inactive transient unit
