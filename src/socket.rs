@@ -48,7 +48,7 @@ pub(crate) fn wait_ready(
             };
             let mut fd = WSAPOLLFD {
                 fd: socket.as_raw_socket() as _,
-                events: if write { POLLWRNORM } else { POLLRDNORM } as i16,
+                events: if write { POLLWRNORM } else { POLLRDNORM },
                 revents: 0,
             };
             let count = unsafe { WSAPoll(&mut fd, 1, millis) };
