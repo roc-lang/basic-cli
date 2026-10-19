@@ -65,6 +65,7 @@ fn input(handle: HANDLE, text: &str) {
 }
 
 fn console_child(mode: &str) {
+    eprintln!("{mode}: allocating isolated console");
     // Never broadcast Ctrl-C into the parent test runner's console.
     unsafe { FreeConsole() };
     assert_ne!(
@@ -96,6 +97,7 @@ fn console_child(mode: &str) {
     let (ready, worker_ready) = mpsc::channel();
     let (acknowledged, acknowledgement) = mpsc::channel();
     let (release, released) = mpsc::channel();
+    let (recovered, recovery) = mpsc::channel();
     let worker = std::thread::spawn(move || {
         let thread = thread().unwrap();
         ready
@@ -105,6 +107,7 @@ fn console_child(mode: &str) {
         let mut bytes = [0u8; 8192];
         let error = native.read(&mut bytes, &cancellation).unwrap_err();
         assert_eq!(error.kind(), io::ErrorKind::Interrupted);
+        eprintln!("console worker: cancellation acknowledged");
         acknowledged.send(()).unwrap();
         released.recv_timeout(LIMIT).unwrap();
         cancellation.store(false, Ordering::Release);
@@ -112,6 +115,7 @@ fn console_child(mode: &str) {
         while !next.ends_with(b"\n") && !next.ends_with(b"\r") {
             let count = native.read(&mut bytes, &cancellation).unwrap();
             assert_ne!(count, 0);
+            eprintln!("console worker: recovered {} bytes", count);
             next.extend_from_slice(&bytes[..count]);
         }
         assert_eq!(
@@ -119,6 +123,7 @@ fn console_child(mode: &str) {
             "after cancellation"
         );
         unsafe { CloseHandle(thread as HANDLE) };
+        recovered.send(()).unwrap();
     });
     let (thread, id) = worker_ready.recv_timeout(LIMIT).unwrap();
     let query = ConsoleInput(unsafe { OpenThread(THREAD_QUERY_INFORMATION, 0, id) });
@@ -136,6 +141,7 @@ fn console_child(mode: &str) {
     if signal {
         assert_ne!(unsafe { GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0) }, 0);
     }
+    eprintln!("{mode}: native read pending; requesting cancellation");
     loop {
         if !signal || crate::signals::is_pending() {
             token.store(true, Ordering::Release);
@@ -155,8 +161,12 @@ fn console_child(mode: &str) {
     if signal {
         assert_eq!(crate::signals::poll(), crate::signals::INTERRUPT);
     }
+    eprintln!("{mode}: cancellation completed; queueing recovery input");
     input(stdin.0, "after cancellation\r");
     release.send(()).unwrap();
+    recovery
+        .recv_timeout(LIMIT)
+        .unwrap_or_else(|error| panic!("{mode}: console recovery did not finish: {error}"));
     worker.join().unwrap();
     eprintln!("console cancellation case completed: {mode}");
 }
@@ -186,24 +196,31 @@ fn console_cancellation_releases_raw_and_cooked_reads_without_consuming_the_next
             .spawn()
             .unwrap();
         let started = Instant::now();
+        // Drain while the child runs: a panic's diagnostic can exceed the
+        // Windows anonymous pipe buffer and otherwise prevent child exit.
+        let mut stderr = child.stderr.take().unwrap();
+        let diagnostic = std::thread::spawn(move || {
+            let mut diagnostic = String::new();
+            stderr.read_to_string(&mut diagnostic).unwrap();
+            diagnostic
+        });
+        let mut timed_out = false;
         let status = loop {
             if let Some(status) = child.try_wait().unwrap() {
                 break status;
             }
             if started.elapsed() > LIMIT * 2 {
                 let _ = child.kill();
-                let _ = child.wait();
-                panic!("{mode}: console cancellation helper timed out");
+                timed_out = true;
+                break child.wait().unwrap();
             }
             std::thread::sleep(Duration::from_millis(10));
         };
-        let mut diagnostic = String::new();
-        child
-            .stderr
-            .take()
-            .unwrap()
-            .read_to_string(&mut diagnostic)
-            .unwrap();
+        let diagnostic = diagnostic.join().unwrap();
+        assert!(
+            !timed_out,
+            "{mode}: console cancellation helper timed out\n{diagnostic}"
+        );
         assert!(status.success(), "{mode}: {status}\n{diagnostic}");
         assert!(
             diagnostic.contains(&format!("console cancellation case completed: {mode}")),
