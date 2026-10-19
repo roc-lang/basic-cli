@@ -62,11 +62,14 @@ fn cancelled(token: &AtomicBool) -> io::Result<()> {
         Ok(())
     }
 }
-fn native_error() -> io::Error {
-    error_from_code(unsafe { GetLastError() })
+fn native_error(token: &AtomicBool) -> io::Error {
+    error_from_code(unsafe { GetLastError() }, token)
 }
-fn error_from_code(error: u32) -> io::Error {
-    if error == ERROR_OPERATION_ABORTED {
+fn error_from_code(error: u32, token: &AtomicBool) -> io::Error {
+    // Cancellation can race setup I/O as well as ReadConsole/ReadFile. The
+    // native failure is not always ERROR_OPERATION_ABORTED (console setup can
+    // report a timeout), but our request's cancellation still wins.
+    if error == ERROR_OPERATION_ABORTED || token.load(Ordering::Acquire) {
         io::ErrorKind::Interrupted.into()
     } else {
         io::Error::from_raw_os_error(error as i32)
@@ -106,7 +109,7 @@ impl Output {
                 )
             } == 0
             {
-                return Err(native_error());
+                return Err(native_error(token));
             }
             return Ok(written as usize);
         }
@@ -138,7 +141,7 @@ impl Output {
                     )
                 } == 0
                 {
-                    return Err(native_error());
+                    return Err(native_error(token));
                 }
                 if written == 0 {
                     return Err(io::ErrorKind::WriteZero.into());
@@ -227,7 +230,7 @@ impl Input {
                 )
             } == 0
             {
-                let error = native_error();
+                let error = native_error(token);
                 // End of a redirected pipe is EOF, as with Rust's stdin backend.
                 if error.raw_os_error() == Some(109) {
                     return Ok(0);
@@ -241,7 +244,13 @@ impl Input {
         // line. A separate handle lets us close that server-side read after
         // the native call returns, without closing inherited standard input.
         // Keep it across successful reads: long-line remainder is per handle.
-        let handle = self.console_handle()?;
+        let handle = match self.console_handle() {
+            Ok(handle) => handle,
+            Err(error) => {
+                cancelled(token)?;
+                return Err(error);
+            }
+        };
         loop {
             cancelled(token)?;
             let mut units = [0u16; 4096];
@@ -263,7 +272,7 @@ impl Input {
                 )
             };
             let error = unsafe { GetLastError() };
-            let aborted = error == ERROR_OPERATION_ABORTED;
+            let aborted = error == ERROR_OPERATION_ABORTED || token.load(Ordering::Acquire);
             if aborted {
                 // HandleClosing completes both raw and cooked server waits.
                 // Closing happens after ReadConsole returns, so the native call
@@ -271,7 +280,7 @@ impl Input {
                 self.console.take();
             }
             if success == 0 {
-                return Err(error_from_code(error));
+                return Err(error_from_code(error, token));
             }
             if count == 0 && aborted {
                 return Err(io::ErrorKind::Interrupted.into());

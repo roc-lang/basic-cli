@@ -15,6 +15,22 @@ use windows_sys::Win32::System::Threading::{GetThreadIOPendingFlag, THREAD_QUERY
 const CHILD_MODE: &str = "BASIC_CLI_NATIVE_CONSOLE_TEST";
 const LIMIT: Duration = Duration::from_secs(8);
 
+#[test]
+fn canceled_requests_normalize_other_native_failures_without_hiding_uncanceled_errors() {
+    use windows_sys::Win32::Foundation::ERROR_TIMEOUT;
+
+    let token = AtomicBool::new(false);
+    assert_eq!(
+        error_from_code(ERROR_TIMEOUT, &token).kind(),
+        io::ErrorKind::TimedOut
+    );
+    token.store(true, Ordering::Release);
+    assert_eq!(
+        error_from_code(ERROR_TIMEOUT, &token).kind(),
+        io::ErrorKind::Interrupted
+    );
+}
+
 fn open_console(name: &str) -> ConsoleInput {
     let name: Vec<u16> = name.encode_utf16().chain([0]).collect();
     let handle = unsafe {
@@ -100,13 +116,17 @@ fn console_child(mode: &str) {
     let (recovered, recovery) = mpsc::channel();
     let worker = std::thread::spawn(move || {
         let thread = thread().unwrap();
+        let mut native = Input::default();
+        // CONIN$ setup is itself synchronous I/O. Complete it before publishing
+        // readiness, so GetThreadIOPendingFlag observes the read we mean to
+        // cancel rather than an unrelated handle-open request.
+        native.console_handle().unwrap();
         ready
             .send((thread, unsafe { GetCurrentThreadId() }))
             .unwrap();
-        let mut native = Input::default();
         let mut bytes = [0u8; 8192];
         let error = native.read(&mut bytes, &cancellation).unwrap_err();
-        assert_eq!(error.kind(), io::ErrorKind::Interrupted);
+        assert_eq!(error.kind(), io::ErrorKind::Interrupted, "{error:?}");
         eprintln!("console worker: cancellation acknowledged");
         acknowledged.send(()).unwrap();
         released.recv_timeout(LIMIT).unwrap();
