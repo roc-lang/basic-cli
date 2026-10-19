@@ -19,4 +19,6 @@ Resource :: [].{
 	SqliteRows : Handle([SqliteRowsKind])
 	TcpConnection : Handle([TcpConnectionKind])
 	TcpListener : Handle([TcpListenerKind])
+	UnixSocketConnection : Handle([UnixSocketConnectionKind])
+	UnixSocketListener : Handle([UnixSocketListenerKind])
 }

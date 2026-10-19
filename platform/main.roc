@@ -4,9 +4,9 @@ platform ""
 	requires {
 		## The application entry point receives command-line arguments only; the
 		## launcher-supplied program name is available from Env.program_name!.
-		main! : List([Utf8(Str), UnixBytes(List(U8)), WindowsU16s(List(U16))]) => Try({}, [Exit(I32), ..])
+		main! : List([Utf8(Str), UnixBytes(List(U8)), WindowsU16s(List(U16))]) => Try({}, [Exit(I32), Interrupted, ..])
 	}
-	exposes [Cmd, Duration, Env, File, Http, IOErr, Locale, Monotonic, OsStr, Path, Random, Sleep, Sqlite, Stderr, Stdin, Stdout, Tcp, Tty, Url, Utc]
+	exposes [Cmd, Duration, Env, File, Http, IOErr, Locale, Monotonic, OsStr, Path, Random, Signal, Sleep, Sqlite, Stderr, Stdin, Stdout, System, Tcp, Tty, UnixSocket, Url, Utc]
 	packages {
 		# HTTP data types (Method, Request, Response) come from the shared
 		# roc-lang/http package so apps and other packages using it see the same
@@ -23,6 +23,7 @@ platform ""
 		"hosted_child_read": Host.child_read!,
 		"hosted_child_wait": Host.child_wait!,
 		"hosted_child_write": Host.child_write!,
+		"hosted_cmd_exec": Host.cmd_exec!,
 		"hosted_cmd_run": Host.cmd_run!,
 		"hosted_cmd_spawn": Host.cmd_spawn!,
 		"hosted_dir_create": Host.dir_create!,
@@ -35,11 +36,14 @@ platform ""
 		"hosted_env_dict": Host.env_dict!,
 		"hosted_env_exe_path": Host.env_exe_path!,
 		# Environment additions are appended to preserve existing hosted ABI numbering.
-		"hosted_env_platform": Host.env_platform!,
 		"hosted_env_program_name": Host.env_program_name!,
 		"hosted_env_set_cwd": Host.env_set_cwd!,
 		"hosted_env_temp_dir": Host.env_temp_dir!,
 		"hosted_env_var": Host.env_var!,
+		# Appends follow the writes, not alphabetical order, so the shared result
+		# type keeps its HostFileDeleteResult name in the generated glue.
+		"hosted_file_append_bytes": Host.file_append_bytes!,
+		"hosted_file_append_utf8": Host.file_append_utf8!,
 		"hosted_file_delete": Host.file_delete!,
 		# New file hosted functions are kept at the end so adding them does not
 		# renumber the generated glue types for existing modules.
@@ -48,6 +52,8 @@ platform ""
 		"hosted_file_is_readable": Host.file_is_readable!,
 		"hosted_file_is_writable": Host.file_is_writable!,
 		"hosted_file_open_reader": Host.file_open_reader!,
+		# File.Writer: a buffered writer behind a handle.
+		"hosted_file_open_writer": Host.file_open_writer!,
 		"hosted_file_read_bytes": Host.file_read_bytes!,
 		"hosted_file_read_exactly": Host.file_read_exactly!,
 		"hosted_file_read_line": Host.file_read_line!,
@@ -63,18 +69,13 @@ platform ""
 		"hosted_file_time_modified": Host.file_time_modified!,
 		"hosted_file_write_bytes": Host.file_write_bytes!,
 		"hosted_file_write_utf8": Host.file_write_utf8!,
-		# Appends follow the writes, not alphabetical order, so the shared result
-		# type keeps its HostFileDeleteResult name in the generated glue.
-		"hosted_file_append_bytes": Host.file_append_bytes!,
-		"hosted_file_append_utf8": Host.file_append_utf8!,
-		# File.Writer: a buffered writer behind a handle.
-		"hosted_file_open_writer": Host.file_open_writer!,
 		"hosted_file_writer_flush": Host.file_writer_flush!,
 		"hosted_file_writer_write_bytes": Host.file_writer_write_bytes!,
 		"hosted_file_writer_write_utf8": Host.file_writer_write_utf8!,
+		"hosted_http_close_body": Host.http_close_body!,
+		"hosted_http_read_body": Host.http_read_body!,
 		# HTTP is likewise kept at the end to avoid renumbering glue types.
 		"hosted_http_send_request": Host.http_send_request!,
-		"hosted_http_read_body": Host.http_read_body!,
 		"hosted_http_send_streaming": Host.http_send_streaming!,
 		"hosted_locale_all": Host.locale_all!,
 		"hosted_locale_get": Host.locale_get!,
@@ -83,9 +84,14 @@ platform ""
 		"hosted_path_canonicalize": Host.path_canonicalize!,
 		"hosted_path_copy": Host.path_copy!,
 		"hosted_path_copy_dir": Host.path_copy_dir!,
+		"hosted_path_read_link": Host.path_read_link!,
+		"hosted_path_set_permissions": Host.path_set_permissions!,
+		"hosted_path_symlink": Host.path_symlink!,
 		"hosted_path_type": Host.path_type!,
 		"hosted_random_seed_u32": Host.random_seed_u32!,
 		"hosted_random_seed_u64": Host.random_seed_u64!,
+		"hosted_signal_catch": Host.signal_catch!,
+		"hosted_signal_poll": Host.signal_poll!,
 		"hosted_sleep_nanos": Host.sleep_nanos!,
 		"hosted_sqlite_close": Host.sqlite_close!,
 		"hosted_sqlite_columns": Host.sqlite_columns!,
@@ -94,6 +100,7 @@ platform ""
 		"hosted_sqlite_next": Host.sqlite_next!,
 		"hosted_sqlite_open": Host.sqlite_open!,
 		"hosted_sqlite_query": Host.sqlite_query!,
+		"hosted_sqlite_rollback_cleanup": Host.sqlite_rollback_cleanup!,
 		"hosted_stderr_line": Host.stderr_line!,
 		"hosted_stderr_write": Host.stderr_write!,
 		"hosted_stderr_write_bytes": Host.stderr_write_bytes!,
@@ -103,6 +110,7 @@ platform ""
 		"hosted_stdout_line": Host.stdout_line!,
 		"hosted_stdout_write": Host.stdout_write!,
 		"hosted_stdout_write_bytes": Host.stdout_write_bytes!,
+		"hosted_system_target": System.target!,
 		"hosted_tcp_accept": Host.tcp_accept!,
 		# TCP hosted functions are likewise kept at the end to avoid renumbering.
 		"hosted_tcp_connect": Host.tcp_connect!,
@@ -116,6 +124,15 @@ platform ""
 		"hosted_tcp_write": Host.tcp_write!,
 		"hosted_tty_disable_raw_mode": Host.tty_disable_raw_mode!,
 		"hosted_tty_enable_raw_mode": Host.tty_enable_raw_mode!,
+		"hosted_unix_socket_accept": Host.unix_socket_accept!,
+		"hosted_unix_socket_connect": Host.unix_socket_connect!,
+		"hosted_unix_socket_listen": Host.unix_socket_listen!,
+		"hosted_unix_socket_listener_close": Host.unix_socket_listener_close!,
+		"hosted_unix_socket_read_exactly": Host.unix_socket_read_exactly!,
+		"hosted_unix_socket_read_line": Host.unix_socket_read_line!,
+		"hosted_unix_socket_read_until": Host.unix_socket_read_until!,
+		"hosted_unix_socket_read_up_to": Host.unix_socket_read_up_to!,
+		"hosted_unix_socket_write": Host.unix_socket_write!,
 		"hosted_utc_now": Host.utc_now!,
 	}
 	targets: {
@@ -140,13 +157,16 @@ import Monotonic
 import OsStr
 import Path
 import Random
+import Signal
 import Sleep
+import System
 import Sqlite
 import Stdin
 import Stdout
 import Stderr
 import Tcp
 import Tty
+import UnixSocket
 import Url
 import Utc
 
@@ -157,6 +177,10 @@ main_for_host! = |args|
 	match main!(args) {
 		Ok({}) => 0
 		Err(Exit(code)) => code
+		Err(Interrupted) => {
+			Tty.disable_raw_mode!() ?? {}
+			if Signal.poll!().contains(Terminate) 143 else 130
+		}
 		Err(other) => {
 			# Leave raw mode first, so the message is not printed without line breaks.
 			Tty.disable_raw_mode!() ?? {}

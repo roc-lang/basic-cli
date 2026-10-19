@@ -98,6 +98,8 @@ resource_kinds! {
     SqliteRows => crate::sqlite::SqliteRows,
     TcpConnection => crate::tcp::Connection,
     TcpListener => crate::listener::Listener,
+    UnixSocketConnection => crate::unix_socket::Connection,
+    UnixSocketListener => crate::unix_socket::Listener,
     #[cfg(test)]
     TestA => tests::Probe<0>,
     #[cfg(test)]

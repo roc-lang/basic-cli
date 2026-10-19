@@ -104,8 +104,11 @@ Duration :: { nanos : U64 }.{
 	## Use this for a wait that was computed, such as
 	## `interval.minus(start.elapsed!()).sleep!()`; `Sleep.millis!(250)` reads
 	## better for a literal one. `Duration.zero` returns immediately.
-	sleep! : Duration => {}
-	sleep! = |duration| Host.sleep_nanos!(duration.nanos)
+	sleep! : Duration => Try({}, [Interrupted])
+	sleep! = |duration| match Host.sleep_nanos!(duration.nanos) {
+		Ok({}) => Ok({})
+		Err(Interrupted) => Err(Interrupted)
+	}
 
 	## Add two durations (`a + b`), clamped to the longest representable duration.
 	plus : Duration, Duration -> Duration

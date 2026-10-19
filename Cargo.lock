@@ -501,6 +501,7 @@ dependencies = [
  "sys-locale",
  "tempfile",
  "tokio",
+ "tower-service",
  "windows-sys 0.59.0",
 ]
 

@@ -29,6 +29,7 @@ InternalSqlite :: [].{
 
 	## Why a statement was not run.
 	Problem : [
+		Interrupted,
 		Failed(Failure),
 		Closed,
 		WrongParamCount({ expected : U64, given : U64 }),

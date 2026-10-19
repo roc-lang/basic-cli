@@ -13,13 +13,13 @@ type HttpHeader = HostHttpSendRequestArg0Headers;
 type HttpResult = HostHttpSendRequestResult;
 type HttpResultPayload = HostHttpSendRequestResultPayload;
 type HttpResultTag = HostHttpSendRequestResultTag;
-type HttpTransportErr = BadBodyOrNetworkErrorOrOtherOrTimeout;
-type HttpTransportErrPayload = BadBodyOrNetworkErrorOrOtherOrTimeoutPayload;
-type HttpTransportErrTag = BadBodyOrNetworkErrorOrOtherOrTimeoutTag;
+type HttpTransportErr = BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeout;
+type HttpTransportErrPayload = BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeoutPayload;
+type HttpTransportErrTag = BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeoutTag;
 
 // Deliberately a `static`, so this runtime is never dropped.
 //
-// hyper resolves host names with `getaddrinfo` on tokio's blocking pool, whose
+// Hyper previously resolved names with `getaddrinfo` on tokio's blocking pool, whose
 // threads linger for ten seconds after their last job, and dropping a runtime
 // waits for each of them to acknowledge the shutdown. This used to be a thread
 // local, which is dropped when its thread exits. On Windows the main thread's
@@ -31,8 +31,8 @@ type HttpTransportErrTag = BadBodyOrNetworkErrorOrOtherOrTimeoutTag;
 // So: do not give this runtime an owner that drops it, and do not shut it down
 // from `lib.rs` alongside `process_service::shutdown`. Either reintroduces the
 // hang. `examples/http-client.roc` guards the exit path by reaching the test
-// server by host name; an IP literal skips the resolver, and with it the
-// blocking pool, so it cannot reproduce this.
+// server by host name. DNS now uses our bounded broker, whose native workers
+// are also process-owned and never joined during host teardown.
 static TOKIO_RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
     tokio::runtime::Builder::new_current_thread()
         .enable_io()
@@ -73,6 +73,13 @@ fn http_err(error: HttpTransportErr) -> HttpResult {
             err: ManuallyDrop::new(error),
         },
         tag: HttpResultTag::Err,
+    }
+}
+
+fn http_err_interrupted() -> HttpTransportErr {
+    HttpTransportErr {
+        payload: HttpTransportErrPayload { interrupted: [] },
+        tag: HttpTransportErrTag::Interrupted,
     }
 }
 
@@ -141,16 +148,9 @@ fn build_hyper_request(parts: RequestParts<'_>) -> Result<HyperRequest, String> 
         .ok_or_else(|| "invalid HTTP method".to_string())?;
     let mut builder = hyper::Request::builder().method(method).uri(parts.uri);
 
-    // Default to text/plain unless the caller already set a Content-Type.
-    let mut has_content_type = false;
+    // Defaults are resolved once in Roc. Never resurrect body headers after redirects.
     for header in parts.headers {
         builder = builder.header(header._0.as_str(), header._1.as_str());
-        if header._0.as_str().eq_ignore_ascii_case("Content-Type") {
-            has_content_type = true;
-        }
-    }
-    if !has_content_type {
-        builder = builder.header("Content-Type", "text/plain");
     }
 
     let body = http_body_util::Full::new(bytes::Bytes::from(parts.body.to_vec()));
@@ -163,10 +163,23 @@ fn header_pairs(headers: &hyper::HeaderMap) -> Vec<(String, String)> {
         .map(|(name, value)| {
             (
                 name.as_str().to_string(),
-                value.to_str().unwrap_or_default().to_string(),
+                std::str::from_utf8(value.as_bytes())
+                    .unwrap_or_default()
+                    .to_string(),
             )
         })
         .collect()
+}
+
+fn invalid_location(headers: &hyper::HeaderMap) -> Option<u8> {
+    headers
+        .get_all(hyper::header::LOCATION)
+        .iter()
+        .find_map(|value| {
+            std::str::from_utf8(value.as_bytes())
+                .err()
+                .map(|error| value.as_bytes()[error.valid_up_to()])
+        })
 }
 
 fn build_roc_headers(pairs: &[(String, String)], roc_host: &RocHost) -> RocList<HttpHeader> {
@@ -183,13 +196,18 @@ fn build_roc_headers(pairs: &[(String, String)], roc_host: &RocHost) -> RocList<
     list
 }
 
-fn https_connector(
-) -> hyper_rustls::HttpsConnector<hyper_util::client::legacy::connect::HttpConnector> {
+fn https_connector() -> hyper_rustls::HttpsConnector<
+    hyper_util::client::legacy::connect::HttpConnector<crate::dns::HttpResolver>,
+> {
+    let mut http = hyper_util::client::legacy::connect::HttpConnector::new_with_resolver(
+        crate::dns::HttpResolver,
+    );
+    http.enforce_http(false);
     hyper_rustls::HttpsConnectorBuilder::new()
         .with_webpki_roots()
         .https_or_http()
         .enable_http1()
-        .build()
+        .wrap_connector(http)
 }
 
 async fn async_send_request(request: HyperRequest, roc_host: &RocHost) -> HttpResult {
@@ -250,21 +268,15 @@ pub extern "C" fn hosted_http_send_request(args: HostHttpSendRequestArgs) -> Htt
 
 // A zero timeout means the caller did not set one.
 fn send_request(request: HyperRequest, timeout_ms: u64, roc_host: &RocHost) -> HttpResult {
-    if timeout_ms > 0 {
-        TOKIO_RUNTIME.block_on(async {
-            match tokio::time::timeout(
-                std::time::Duration::from_millis(timeout_ms),
-                async_send_request(request, roc_host),
-            )
-            .await
-            {
-                Ok(response) => response,
-                Err(_) => http_err(http_err_timeout()),
-            }
-        })
-    } else {
-        TOKIO_RUNTIME.block_on(async_send_request(request, roc_host))
+    if crate::signals::is_pending() {
+        return http_err(http_err_interrupted());
     }
+    let until = (timeout_ms > 0)
+        .then(|| Instant::now().checked_add(Duration::from_millis(timeout_ms)))
+        .flatten();
+    TOKIO_RUNTIME
+        .block_on(await_io(until, async_send_request(request, roc_host)))
+        .unwrap_or_else(|failure| http_err(failure.to_roc(roc_host)))
 }
 
 // ============================================================================
@@ -293,6 +305,7 @@ const SETTLE_TURNS: usize = 4;
 /// A transport failure, as `Http.TransportErr` names it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Failure {
+    Interrupted,
     Timeout,
     BadBody,
     Other(String),
@@ -301,10 +314,37 @@ enum Failure {
 impl Failure {
     fn to_roc(&self, roc_host: &RocHost) -> HttpTransportErr {
         match self {
+            Failure::Interrupted => http_err_interrupted(),
             Failure::Timeout => http_err_timeout(),
             Failure::BadBody => http_err_bad_body(),
             Failure::Other(message) => http_err_other(message, roc_host),
         }
+    }
+}
+
+/// Poll cancellation, then the clock, then readiness. `tokio::time::timeout`
+/// polls its inner future first, which would let ready I/O beat an expired
+/// timeout. Use an absolute clock so constructing a connector costs time too.
+async fn await_io<T>(
+    until: Option<Instant>,
+    operation: impl std::future::Future<Output = T>,
+) -> Result<T, Failure> {
+    if crate::signals::is_pending() {
+        return Err(Failure::Interrupted);
+    }
+    if until.is_some_and(|until| until <= Instant::now()) {
+        return Err(Failure::Timeout);
+    }
+    tokio::select! {
+        biased;
+        _ = crate::signals::cancelled() => Err(Failure::Interrupted),
+        _ = async {
+            match until {
+                Some(until) => tokio::time::sleep_until(tokio::time::Instant::from_std(until)).await,
+                None => std::future::pending::<()>().await,
+            }
+        } => Err(Failure::Timeout),
+        result = operation => Ok(result),
     }
 }
 
@@ -340,6 +380,7 @@ pub struct StreamingBody {
 
 /// Why a wait for the next frame stopped without one.
 enum Stalled {
+    Interrupted,
     /// Nothing arrived within the idle timeout. The body is intact and the
     /// wait can be repeated.
     Idle,
@@ -393,6 +434,23 @@ fn declared_content_length(headers: &hyper::HeaderMap) -> Option<u64> {
 }
 
 impl StreamingBody {
+    fn check_read(&mut self) -> Result<(), Failure> {
+        if crate::signals::is_pending() {
+            return Err(Failure::Interrupted);
+        }
+        if let BodyState::Failed(failure) = &self.state {
+            return Err(failure.clone());
+        }
+        if matches!(self.state, BodyState::Open(_))
+            && self
+                .deadline
+                .is_some_and(|deadline| deadline <= Instant::now())
+        {
+            return Err(self.fail(Failure::Timeout));
+        }
+        Ok(())
+    }
+
     /// Give up the connection and remember how the body finished.
     fn close(&mut self, state: BodyState) {
         let was_open = matches!(self.state, BodyState::Open(_));
@@ -414,40 +472,59 @@ impl StreamingBody {
         use http_body_util::BodyExt;
 
         loop {
+            if crate::signals::is_pending() {
+                return Err(Stalled::Interrupted);
+            }
             let body = match &mut self.state {
                 BodyState::Open(body) => body,
                 BodyState::Ended => return Ok(None),
                 BodyState::Failed(failure) => return Err(Stalled::Failed(failure.clone())),
             };
-            let Ok(budget) = wait_budget(self.idle_timeout, self.deadline, Instant::now()) else {
+            let now = Instant::now();
+            let Ok(budget) = wait_budget(self.idle_timeout, self.deadline, now) else {
                 return Err(Stalled::Failed(self.fail(Failure::Timeout)));
             };
             // Abandoning `frame()` at a timeout loses nothing: the future holds
             // no data, and a frame that was not returned stays in the body.
-            let frame = TOKIO_RUNTIME.block_on(async {
-                match budget {
-                    Some(budget) => tokio::time::timeout(budget, body.frame()).await.ok(),
-                    None => Some(body.frame().await),
+            let until = budget.and_then(|budget| now.checked_add(budget));
+            let frame = match TOKIO_RUNTIME.block_on(await_io(until, body.frame())) {
+                Ok(frame) => frame,
+                Err(Failure::Interrupted) => return Err(Stalled::Interrupted),
+                Err(Failure::Timeout)
+                    if !self
+                        .deadline
+                        .is_some_and(|deadline| deadline <= Instant::now()) =>
+                {
+                    return Err(Stalled::Idle);
                 }
-            });
+                Err(failure) => return Err(Stalled::Failed(self.fail(failure))),
+            };
             match frame {
-                Some(Some(Ok(frame))) => match frame.into_data() {
+                Some(Ok(frame)) => match frame.into_data() {
                     Ok(data) if !data.is_empty() => return Ok(Some(data)),
                     // An empty frame carries nothing, and trailers are not exposed.
                     _ => continue,
                 },
-                Some(Some(Err(_))) => return Err(Stalled::Failed(self.fail(Failure::BadBody))),
-                Some(None) => {
+                Some(Err(_)) => {
+                    if crate::signals::is_pending() {
+                        // Remember the native failure for the next read without
+                        // exposing it ahead of the pending interruption.
+                        self.close(BodyState::Failed(Failure::BadBody));
+                        return Err(Stalled::Interrupted);
+                    }
+                    self.check_read().map_err(Stalled::Failed)?;
+                    return Err(Stalled::Failed(self.fail(Failure::BadBody)));
+                }
+                None => {
+                    // EOF can be polled again. Leave the body open if an
+                    // interruption wins, so its deadline remains effective.
+                    self.check_read().map_err(|failure| match failure {
+                        Failure::Interrupted => Stalled::Interrupted,
+                        failure => Stalled::Failed(failure),
+                    })?;
                     self.close(BodyState::Ended);
                     return Ok(None);
                 }
-                None if self
-                    .deadline
-                    .is_some_and(|deadline| deadline <= Instant::now()) =>
-                {
-                    return Err(Stalled::Failed(self.fail(Failure::Timeout)));
-                }
-                None => return Err(Stalled::Idle),
             }
         }
     }
@@ -455,18 +532,17 @@ impl StreamingBody {
     /// The next non-empty chunk of at most `MAX_CHUNK_BYTES`, or `None` at the
     /// end of the body.
     fn read_chunk(&mut self) -> Result<Option<bytes::Bytes>, Failure> {
-        if let BodyState::Failed(failure) = &self.state {
-            return Err(failure.clone());
-        }
+        self.check_read()?;
         if self.pending.is_empty() {
             match self.next_frame() {
-                Ok(Some(frame)) if frame.len() <= MAX_CHUNK_BYTES => return Ok(Some(frame)),
                 Ok(Some(frame)) => self.pending.extend_from_slice(&frame),
                 Ok(None) => return Ok(None),
+                Err(Stalled::Interrupted) => return Err(Failure::Interrupted),
                 Err(Stalled::Idle) => return Err(Failure::Timeout),
                 Err(Stalled::Failed(failure)) => return Err(failure),
             }
         }
+        self.check_read()?;
         let len = self.pending.len().min(MAX_CHUNK_BYTES);
         Ok(Some(self.pending.split_to(len).freeze()))
     }
@@ -478,15 +554,19 @@ impl StreamingBody {
     /// stays unread, so a later read continues from the same place.
     fn read_to_end(&mut self, max: u64) -> Result<bytes::Bytes, ReadToEndErr> {
         loop {
-            if let BodyState::Failed(failure) = &self.state {
-                return Err(ReadToEndErr::Failed(failure.clone()));
-            }
+            self.check_read().map_err(ReadToEndErr::Failed)?;
             if self.pending.len() as u64 > max {
                 return Err(ReadToEndErr::LimitExceeded);
             }
             match self.next_frame() {
                 Ok(Some(frame)) => self.pending.extend_from_slice(&frame),
-                Ok(None) => return Ok(self.pending.split().freeze()),
+                Ok(None) => {
+                    self.check_read().map_err(ReadToEndErr::Failed)?;
+                    return Ok(self.pending.split().freeze());
+                }
+                Err(Stalled::Interrupted) => {
+                    return Err(ReadToEndErr::Failed(Failure::Interrupted))
+                }
                 Err(Stalled::Idle) => return Err(ReadToEndErr::Failed(Failure::Timeout)),
                 Err(Stalled::Failed(failure)) => return Err(ReadToEndErr::Failed(failure)),
             }
@@ -505,6 +585,7 @@ impl Drop for StreamingBody {
 struct StreamingHead {
     status: u16,
     headers: Vec<(String, String)>,
+    invalid_location: Option<u8>,
     content_length: Option<u64>,
 }
 
@@ -513,24 +594,35 @@ struct StreamingHead {
 /// `timeout_ms` is the `Request` timeout, the deadline for the whole exchange,
 /// where zero means none. `idle_timeout` bounds this wait and each later wait
 /// for part of the body; zero expires before anything is sent.
+#[cfg(test)]
 fn send_streaming(
     request: HyperRequest,
     timeout_ms: u64,
     idle_timeout: Option<Duration>,
 ) -> Result<(StreamingHead, StreamingBody), Failure> {
+    let deadline = match timeout_ms {
+        0 => None,
+        ms => Instant::now().checked_add(Duration::from_millis(ms)),
+    };
+    send_streaming_at(request, idle_timeout, deadline)
+}
+
+fn send_streaming_at(
+    request: HyperRequest,
+    idle_timeout: Option<Duration>,
+    deadline: Option<Instant>,
+) -> Result<(StreamingHead, StreamingBody), Failure> {
     use hyper_util::client::legacy::Client;
     use hyper_util::rt::TokioExecutor;
-
+    if crate::signals::is_pending() {
+        return Err(Failure::Interrupted);
+    }
     if idle_timeout == Some(Duration::ZERO) {
         return Err(Failure::Timeout);
     }
-    let deadline = match timeout_ms {
-        0 => None,
-        // A deadline too far away to represent is no deadline.
-        ms => Instant::now().checked_add(Duration::from_millis(ms)),
-    };
-    let budget =
-        wait_budget(idle_timeout, deadline, Instant::now()).map_err(|()| Failure::Timeout)?;
+    let now = Instant::now();
+    let budget = wait_budget(idle_timeout, deadline, now).map_err(|()| Failure::Timeout)?;
+    let until = budget.and_then(|budget| now.checked_add(budget));
 
     let response = TOKIO_RUNTIME.block_on(async {
         // The same client as `async_send_request`, so both entry points put
@@ -541,27 +633,37 @@ fn send_streaming(
             Client::builder(TokioExecutor::new())
                 .pool_max_idle_per_host(0)
                 .build(https_connector());
-        match budget {
-            Some(budget) => tokio::time::timeout(budget, client.request(request))
-                .await
-                .ok(),
-            None => Some(client.request(request).await),
-        }
+        await_io(until, client.request(request)).await
     });
     let response = match response {
-        Some(Ok(response)) => response,
-        Some(Err(error)) => return Err(Failure::Other(error.to_string())),
-        None => {
-            // The abandoned request may have left a connection task behind.
+        Ok(Ok(response)) => response,
+        Ok(Err(error)) => return Err(Failure::Other(error.to_string())),
+        Err(failure) => {
             settle();
-            return Err(Failure::Timeout);
+            return Err(failure);
         }
     };
+
+    // The result has not crossed to Roc yet. An event that arrived while the
+    // ready response was being polled must still win over its headers.
+    let stopped = if crate::signals::is_pending() {
+        Some(Failure::Interrupted)
+    } else if until.is_some_and(|until| until <= Instant::now()) {
+        Some(Failure::Timeout)
+    } else {
+        None
+    };
+    if let Some(failure) = stopped {
+        drop(response);
+        settle();
+        return Err(failure);
+    }
 
     let (parts, body) = response.into_parts();
     let head = StreamingHead {
         status: parts.status.as_u16(),
         headers: header_pairs(&parts.headers),
+        invalid_location: invalid_location(&parts.headers),
         content_length: declared_content_length(&parts.headers),
     };
     let body = StreamingBody {
@@ -586,9 +688,14 @@ fn streaming_err(failure: &Failure, roc_host: &RocHost) -> HostHttpSendStreaming
 pub extern "C" fn hosted_http_send_streaming(
     request: HostHttpSendStreamingArg0,
     idle_timeout: AfterOrNoTimeout,
+    deadline: AtOrNoTimeout,
 ) -> HostHttpSendStreamingResult {
     let roc_host = roc_host();
-    let timeout_ms = request.timeout_ms;
+    let deadline = match deadline.tag {
+        AtOrNoTimeoutTag::At => crate::monotonic_origin()
+            .checked_add(Duration::from_nanos(unsafe { *deadline.payload.at })),
+        AtOrNoTimeoutTag::NoTimeout => None,
+    };
     let idle_timeout = match idle_timeout.tag {
         AfterOrNoTimeoutTag::After => {
             Some(Duration::from_nanos(unsafe { *idle_timeout.payload.after }))
@@ -602,7 +709,7 @@ pub extern "C" fn hosted_http_send_streaming(
 
     let sent = hyper_request
         .map_err(Failure::Other)
-        .and_then(|request| send_streaming(request, timeout_ms, idle_timeout));
+        .and_then(|request| send_streaming_at(request, idle_timeout, deadline));
     let (head, body) = match sent {
         Ok(sent) => sent,
         Err(failure) => return streaming_err(&failure, roc_host),
@@ -623,10 +730,23 @@ pub extern "C" fn hosted_http_send_streaming(
             tag: KnownOrUnknownTag::Unknown,
         },
     };
+    let invalid_location = match head.invalid_location {
+        Some(byte) => NoneOrSome {
+            payload: NoneOrSomePayload {
+                some: ManuallyDrop::new(byte),
+            },
+            tag: NoneOrSomeTag::Some,
+        },
+        None => NoneOrSome {
+            payload: NoneOrSomePayload { none: [] },
+            tag: NoneOrSomeTag::None,
+        },
+    };
     HostHttpSendStreamingResult {
         payload: HostHttpSendStreamingResultPayload {
             ok: ManuallyDrop::new(HostHttpSendStreamingOk {
                 content_length,
+                invalid_location,
                 body: handle,
                 headers: build_roc_headers(&head.headers, roc_host),
                 status: head.status,
@@ -634,6 +754,13 @@ pub extern "C" fn hosted_http_send_streaming(
         },
         tag: HostHttpSendStreamingResultTag::Ok,
     }
+}
+
+#[no_mangle]
+pub extern "C" fn hosted_http_close_body(handle: *mut u64) {
+    let host = roc_host();
+    unsafe { resources::resource_ref::<StreamingBody>(handle) }.close(BodyState::Ended);
+    resources::release(handle, host);
 }
 
 fn read_body_err(error: HostHttpReadBodyErr) -> HostHttpReadBodyResult {
@@ -914,12 +1041,12 @@ mod tests {
     }
 
     #[test]
-    fn request_defaults_content_type_only_when_the_caller_set_none() {
+    fn request_preserves_resolved_content_type_without_adding_defaults() {
         let host = crate::resources::make_host();
         let uri = "http://example.invalid/";
 
         let defaulted = request_args(7, "", uri, &[("Accept", "*/*")], &host);
-        assert_eq!(content_types(defaulted, &host), ["text/plain"]);
+        assert!(content_types(defaulted, &host).is_empty());
 
         let explicit = request_args(7, "", uri, &[("content-TYPE", "application/json")], &host);
         assert_eq!(content_types(explicit, &host), ["application/json"]);
@@ -939,6 +1066,25 @@ mod tests {
         rejects(2, "not a token", uri, &[]);
         rejects(3, "", "http://exa mple.invalid/", &[]);
         rejects(3, "", uri, &[("bad name", "value")]);
+    }
+
+    #[test]
+    fn redirect_header_metadata_preserves_utf8_and_reports_invalid_bytes() {
+        let mut headers = hyper::HeaderMap::new();
+        headers.append(
+            "Location",
+            hyper::header::HeaderValue::from_bytes("/caf\u{e9}".as_bytes()).unwrap(),
+        );
+        assert_eq!(invalid_location(&headers), None);
+        assert_eq!(
+            header_pairs(&headers),
+            [("location".into(), "/caf\u{e9}".into())]
+        );
+        headers.append(
+            "Location",
+            hyper::header::HeaderValue::from_bytes(b"/bad\xff").unwrap(),
+        );
+        assert_eq!(invalid_location(&headers), Some(255));
     }
 
     #[test]
@@ -1266,6 +1412,106 @@ mod tests {
     }
 
     #[test]
+    fn an_expired_wait_does_not_poll_ready_io() {
+        let mut polled = false;
+        let result = TOKIO_RUNTIME.block_on(await_io(Some(Instant::now()), async {
+            polled = true;
+        }));
+        assert_eq!(result, Err(Failure::Timeout));
+        assert!(!polled);
+    }
+
+    #[test]
+    fn interruption_precedes_timeout_and_sends_nothing() {
+        struct Reset;
+        impl Drop for Reset {
+            fn drop(&mut self) {
+                crate::signals::set_test_pending(false);
+            }
+        }
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let uri = format!("http://{}/", listener.local_addr().unwrap());
+        let _reset = Reset;
+        crate::signals::set_test_pending(true);
+        let mut polled = false;
+        let result = TOKIO_RUNTIME.block_on(await_io(Some(Instant::now()), async {
+            polled = true;
+        }));
+        assert_eq!(result, Err(Failure::Interrupted));
+        assert!(!polled);
+        assert_eq!(
+            open_stream(&uri, 1, Some(Duration::ZERO)).err(),
+            Some(Failure::Interrupted)
+        );
+        assert_eq!(
+            listener.accept().unwrap_err().kind(),
+            std::io::ErrorKind::WouldBlock
+        );
+        let host = crate::resources::make_host();
+        assert!(transport_err_tag(get(&uri, 1, &host), &host) == HttpTransportErrTag::Interrupted);
+    }
+
+    #[test]
+    fn interrupted_body_reads_keep_the_cursor_and_collected_prefix() {
+        struct Reset;
+        impl Drop for Reset {
+            fn drop(&mut self) {
+                crate::signals::set_test_pending(false);
+            }
+        }
+        let (resume_tx, resume_rx) = mpsc::channel::<()>();
+        let (uri, server) = local_server(move |mut stream| {
+            stream
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 8\r\n\r\nhalf")
+                .unwrap();
+            resume_rx.recv().unwrap();
+            stream.write_all(b"time").unwrap();
+        });
+        let (_, mut stream) = open_stream(&uri, 0, Some(IDLE)).unwrap();
+        assert_eq!(
+            stream.read_to_end(u64::MAX),
+            Err(ReadToEndErr::Failed(Failure::Timeout))
+        );
+        assert_eq!(&stream.pending[..], b"half");
+        let reset = Reset;
+        crate::signals::set_test_pending(true);
+        assert_eq!(stream.read_chunk(), Err(Failure::Interrupted));
+        assert_eq!(
+            stream.read_to_end(u64::MAX),
+            Err(ReadToEndErr::Failed(Failure::Interrupted))
+        );
+        assert_eq!(&stream.pending[..], b"half");
+        assert!(matches!(stream.state, BodyState::Open(_)));
+        drop(reset);
+        resume_tx.send(()).unwrap();
+        assert_eq!(&stream.read_to_end(u64::MAX).unwrap()[..], b"halftime");
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn an_expired_deadline_prevents_consuming_buffered_body_bytes() {
+        let (resume_tx, resume_rx) = mpsc::channel::<()>();
+        let (uri, server) = local_server(move |mut stream| {
+            stream
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 8\r\n\r\nhalf")
+                .unwrap();
+            let _ = resume_rx.recv();
+        });
+        let (_, mut stream) = open_stream(&uri, 0, Some(IDLE)).unwrap();
+        assert_eq!(
+            stream.read_to_end(u64::MAX),
+            Err(ReadToEndErr::Failed(Failure::Timeout))
+        );
+        assert_eq!(&stream.pending[..], b"half");
+        stream.deadline = Some(Instant::now());
+        assert_eq!(stream.read_chunk(), Err(Failure::Timeout));
+        assert!(matches!(stream.state, BodyState::Failed(Failure::Timeout)));
+        drop(resume_tx);
+        server.join().unwrap();
+    }
+
+    #[test]
     fn read_to_end_returns_the_remainder_and_enforces_its_limit() {
         let body = pattern(100_000);
         let sent = body.clone();
@@ -1509,12 +1755,9 @@ mod tests {
             assert_eq!(streamed, buffered);
             assert!(buffered.starts_with("POST /path?query=1 HTTP/1.1\r\n"));
             assert!(buffered.ends_with("\r\n\r\npayload"));
-            assert_eq!(
-                buffered
-                    .to_ascii_lowercase()
-                    .contains("content-type: text/plain\r\n"),
-                headers.is_empty()
-            );
+            assert!(!buffered
+                .to_ascii_lowercase()
+                .contains("content-type: text/plain\r\n"));
         }
     }
 

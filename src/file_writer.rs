@@ -7,6 +7,7 @@
 //! `BufWriter` flushes what is still buffered and discards any error, and it
 //! neither allocates through Roc nor touches another handle, so it is safe to
 //! run there.
+use crate::file_security::{self, Policy};
 use crate::roc_platform_abi::*;
 use crate::{
     file_io_err_from_io, normalize_file_kind_err, path_from_native, resources, roc_host,
@@ -23,46 +24,64 @@ pub struct FileWriter(BufWriter<File>);
 /// What `File.WriteMode` asks of the file that is opened.
 type WriteMode = AppendOrRequireNewOrTruncate;
 
-fn open_options(mode: WriteMode) -> OpenOptions {
-    let mut options = OpenOptions::new();
-    match mode {
-        // Create the file or empty it.
-        WriteMode::Truncate => options.write(true).create(true).truncate(true),
-        // Create the file if it is missing; every write goes to the end.
-        WriteMode::Append => options.append(true).create(true),
-        // Fail with `AlreadyExists` if anything is at the path, including a
-        // directory or a dangling symbolic link.
-        WriteMode::RequireNew => options.write(true).create_new(true),
-    };
-    options
+fn open_file(path: &Path, mode: WriteMode, policy: Policy) -> io::Result<File> {
+    for attempt in 0..2 {
+        match file_security::open_new(path, mode == WriteMode::Append, policy) {
+            Ok(file) => return Ok(file),
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
+                if mode == WriteMode::RequireNew {
+                    return Err(error);
+                }
+            }
+            Err(_error) if mode == WriteMode::RequireNew && path.symlink_metadata().is_ok() => {
+                return Err(io::ErrorKind::AlreadyExists.into())
+            }
+            Err(error) => return Err(normalize_file_kind_err(path, error)),
+        }
+        let mut options = OpenOptions::new();
+        options.write(true).append(mode == WriteMode::Append);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.custom_flags(libc::O_NONBLOCK);
+        }
+        match options.open(path) {
+            Ok(file) => {
+                file_security::regular(&file)?;
+                if mode == WriteMode::Truncate {
+                    file.set_len(0)?;
+                }
+                return Ok(file);
+            }
+            Err(error) if error.kind() == io::ErrorKind::NotFound && attempt == 0 => {
+                // A dangling link is an existing path, not a disappearance race.
+                if path.symlink_metadata().is_ok() {
+                    return Err(error);
+                }
+            }
+            Err(error) => return Err(normalize_file_kind_err(path, error)),
+        }
+    }
+    Err(io::ErrorKind::NotFound.into())
 }
 
 impl FileWriter {
+    #[cfg(test)]
     pub fn open(path: &Path, mode: WriteMode) -> io::Result<Self> {
         Self::open_with_capacity(path, mode, None)
     }
 
+    #[cfg(test)]
     fn open_with_capacity(
         path: &Path,
         mode: WriteMode,
         capacity: Option<usize>,
     ) -> io::Result<Self> {
-        match open_options(mode).open(path) {
-            Ok(file) => Ok(Self(match capacity {
-                Some(capacity) => BufWriter::with_capacity(capacity, file),
-                None => BufWriter::new(file),
-            })),
-            // Some systems refuse to create a file over a directory with
-            // another error; `RequireNew` reports whatever is there the same way.
-            Err(error)
-                if mode == WriteMode::RequireNew
-                    && error.kind() != io::ErrorKind::AlreadyExists
-                    && path.symlink_metadata().is_ok() =>
-            {
-                Err(io::ErrorKind::AlreadyExists.into())
-            }
-            Err(error) => Err(normalize_file_kind_err(path, error)),
-        }
+        let file = open_file(path, mode, Policy::Default)?;
+        Ok(Self(match capacity {
+            Some(capacity) => BufWriter::with_capacity(capacity, file),
+            None => BufWriter::new(file),
+        }))
     }
 
     /// Accept every byte, in the buffer or in the file, or fail.
@@ -96,13 +115,19 @@ fn open_err(error: &io::Error, roc_host: &RocHost) -> HostFileOpenWriterResult {
 pub extern "C" fn hosted_file_open_writer(
     path: UnixBytesOrUtf8OrWindowsU16s,
     mode: AppendOrRequireNewOrTruncate,
+    permissions: DefaultOrOwnerOnlyOrPublicRead,
 ) -> HostFileOpenWriterResult {
     let roc_host = roc_host();
     let path = match path_from_native(path, roc_host) {
         Ok(path) => path,
         Err(error) => return open_err(&error, roc_host),
     };
-    let writer = match FileWriter::open(&path, mode) {
+    let policy = match permissions {
+        DefaultOrOwnerOnlyOrPublicRead::Default => Policy::Default,
+        DefaultOrOwnerOnlyOrPublicRead::OwnerOnly => Policy::OwnerOnly,
+        DefaultOrOwnerOnlyOrPublicRead::PublicRead => Policy::PublicRead,
+    };
+    let writer = match open_file(&path, mode, policy).map(|file| FileWriter(BufWriter::new(file))) {
         Ok(writer) => writer,
         Err(error) => return open_err(&error, roc_host),
     };
@@ -165,6 +190,54 @@ pub unsafe extern "C" fn hosted_file_writer_flush(handle: *mut u64) -> HostFileW
 mod tests {
     use super::*;
     use std::fs;
+
+    #[test]
+    fn creation_permissions_do_not_change_existing_files() {
+        let dir = workspace("creation-permissions");
+        let path = dir.path().join("data");
+        let mut file = open_file(&path, WriteMode::RequireNew, Policy::PublicRead).unwrap();
+        file.write_all(b"first").unwrap();
+        drop(file);
+        let mut file = open_file(&path, WriteMode::Append, Policy::OwnerOnly).unwrap();
+        file.write_all(b"second").unwrap();
+        drop(file);
+        assert_eq!(fs::read(&path).unwrap(), b"firstsecond");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(
+                fs::metadata(&path).unwrap().permissions().mode() & 0o7777,
+                0o644
+            );
+        }
+        open_file(&path, WriteMode::Truncate, Policy::OwnerOnly).unwrap();
+        assert_eq!(fs::read(&path).unwrap(), b"");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(
+                fs::metadata(&path).unwrap().permissions().mode() & 0o7777,
+                0o644
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn dangling_links_fail_without_retrying_forever() {
+        let dir = workspace("dangling");
+        let path = dir.path().join("link");
+        std::os::unix::fs::symlink("missing", &path).unwrap();
+        for mode in [WriteMode::Append, WriteMode::Truncate] {
+            assert_eq!(
+                open_file(&path, mode, Policy::OwnerOnly)
+                    .unwrap_err()
+                    .kind(),
+                io::ErrorKind::NotFound
+            );
+        }
+        assert!(!dir.path().join("missing").exists());
+    }
 
     fn workspace(name: &str) -> tempfile::TempDir {
         tempfile::Builder::new()

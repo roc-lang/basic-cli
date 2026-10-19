@@ -196,6 +196,13 @@ File :: [].{
 	##   anything is at the path.
 	WriteMode : [Truncate, Append, RequireNew]
 
+	## Explicit access policies apply only when a regular file is newly created.
+	## OwnerOnly grants the owner read/write and others no access; PublicRead
+	## additionally grants everyone read. Both replace inherited ACL grants.
+	## Existing files keep their permissions. Use RequireNew with OwnerOnly for
+	## secrets. Filesystems that cannot enforce a policy return Unsupported.
+	WriterOptions := { create_permissions : [Default, OwnerOnly, PublicRead] ?? Default }
+
 	## A buffered file writer.
 	##
 	## Written bytes are held in a buffer in the host and reach the operating
@@ -244,7 +251,7 @@ File :: [].{
 		##
 		## ```roc
 		## reader = File.open_reader!(source)?
-		## File.with_writer!(destination, Truncate, |writer|
+		## File.with_writer!(destination, Truncate, {}, |writer|
 		##     writer.write_stream!(reader.chunks().map(|chunk| chunk.map_ok(redact))))?
 		## ```
 		write_stream! : Writer, Stream(Try(List(U8), err)) => Try({}, [FileErr(IOErr), SourceErr(err)])
@@ -300,13 +307,13 @@ File :: [].{
 	## of the flush that happens on release is not reported.
 	##
 	## ```roc
-	## log = File.open_writer!("events.log", Append)?
+	## log = File.open_writer!("events.log", Append, {})?
 	## log.write_utf8!("started\n")?
 	## log.flush!()?
 	## ```
-	open_writer! : Path, WriteMode => Try(Writer, [PathErr(IOErr, Path)])
-	open_writer! = |path, mode|
-		Host.file_open_writer!(Path.to_raw(path), mode)
+	open_writer! : Path, WriteMode, WriterOptions => Try(Writer, [PathErr(IOErr, Path)])
+	open_writer! = |path, mode, options|
+		Host.file_open_writer!(Path.to_raw(path), mode, options.create_permissions)
 			.map_ok(|writer| Writer.{ host: writer })
 			.map_err(|FileErr(err)| PathErr(err, path))
 
@@ -319,7 +326,7 @@ File :: [].{
 	## when this function returns.
 	##
 	## ```roc
-	## File.with_writer!("report.csv", Truncate, |writer| {
+	## File.with_writer!("report.csv", Truncate, {}, |writer| {
 	##     writer.write_utf8!("name,total\n")?
 	##     for row in rows {
 	##         writer.write_utf8!("${row.name},${row.total.to_str()}\n")?
@@ -328,9 +335,9 @@ File :: [].{
 	## })?
 	## ```
 	with_writer! :
-		Path, WriteMode, (Writer => Try(a, [PathErr(IOErr, Path), FileErr(IOErr), ..errs])) => Try(a, [PathErr(IOErr, Path), FileErr(IOErr), ..errs])
-	with_writer! = |path, mode, callback!| {
-		writer = open_writer!(path, mode)?
+		Path, WriteMode, WriterOptions, (Writer => Try(a, [PathErr(IOErr, Path), FileErr(IOErr), ..errs])) => Try(a, [PathErr(IOErr, Path), FileErr(IOErr), ..errs])
+	with_writer! = |path, mode, options, callback!| {
+		writer = open_writer!(path, mode, options)?
 		match callback!(writer) {
 			Ok(value) => {
 				writer.flush!()?

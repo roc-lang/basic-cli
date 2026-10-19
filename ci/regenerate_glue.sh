@@ -99,7 +99,7 @@ fi
 run_glue() {
     local out_dir=$1
     mkdir -p "$out_dir"
-    "$ROC_BIN" glue "$GLUE_SPEC" "$out_dir" "$PLATFORM_FILE"
+    "$ROC_BIN" glue --no-cache "$GLUE_SPEC" "$out_dir" "$PLATFORM_FILE"
 }
 
 if [ "$MODE" = "check" ]; then
