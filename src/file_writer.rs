@@ -43,7 +43,11 @@ fn open_file(path: &Path, mode: WriteMode, policy: Policy) -> io::Result<File> {
         #[cfg(unix)]
         {
             use std::os::unix::fs::OpenOptionsExt;
-            options.custom_flags(libc::O_NONBLOCK);
+            // An explicit policy must reject special files without blocking
+            // on a FIFO. Default retains ordinary blocking writer semantics.
+            if policy != Policy::Default {
+                options.custom_flags(libc::O_NONBLOCK);
+            }
         }
         match options.open(path) {
             Ok(file) => {
@@ -192,6 +196,36 @@ pub unsafe extern "C" fn hosted_file_writer_flush(handle: *mut u64) -> HostFileW
 
 #[cfg(test)]
 mod tests {
+    #[cfg(unix)]
+    #[test]
+    fn default_fifo_writers_keep_blocking_stream_semantics() {
+        use std::io::{Read, Write};
+        use std::os::{fd::AsRawFd, unix::ffi::OsStrExt};
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("pipe");
+        let name = std::ffi::CString::new(path.as_os_str().as_bytes()).unwrap();
+        assert_eq!(unsafe { libc::mkfifo(name.as_ptr(), 0o600) }, 0);
+        let reader_path = path.clone();
+        let reader = std::thread::spawn(move || {
+            let mut bytes = Vec::new();
+            std::fs::File::open(reader_path)
+                .unwrap()
+                .read_to_end(&mut bytes)
+                .unwrap();
+            bytes
+        });
+        let mut file =
+            super::open_file(&path, super::WriteMode::Truncate, super::Policy::Default).unwrap();
+        assert_eq!(
+            unsafe { libc::fcntl(file.as_raw_fd(), libc::F_GETFL) } & libc::O_NONBLOCK,
+            0
+        );
+        let bytes = vec![42; 256 * 1024];
+        file.write_all(&bytes).unwrap();
+        drop(file);
+        assert_eq!(reader.join().unwrap(), bytes);
+    }
+
     #[cfg(unix)]
     #[test]
     fn default_writers_support_devices_but_explicit_policies_reject_them() {
