@@ -75,12 +75,28 @@ pub(crate) fn connect(
 ) -> io::Result<()> {
     deadline.remaining()?;
     socket.set_nonblocking(true)?;
-    match socket.connect(address) {
-        Ok(()) => return Ok(()),
-        Err(error) if error.kind() == io::ErrorKind::WouldBlock => {}
-        #[cfg(unix)]
-        Err(error) if error.raw_os_error() == Some(libc::EINPROGRESS) => {}
-        Err(error) => return Err(error),
+    loop {
+        deadline.remaining()?;
+        match socket.connect(address) {
+            Ok(()) => return Ok(()),
+            // Linux AF_UNIX returns EAGAIN when the listener backlog is full.
+            // No connection was started: polling this unconnected socket gives
+            // POLLHUP with SO_ERROR == 0, which must not count as success.
+            #[cfg(target_os = "linux")]
+            Err(error)
+                if error.kind() == io::ErrorKind::WouldBlock
+                    && address.domain() == socket2::Domain::UNIX =>
+            {
+                let pause = deadline.remaining()?.unwrap_or(POLL_SLICE).min(POLL_SLICE);
+                if !crate::signals::wait_for(pause) {
+                    return Err(io::ErrorKind::Interrupted.into());
+                }
+            }
+            Err(error) if error.kind() == io::ErrorKind::WouldBlock => break,
+            #[cfg(unix)]
+            Err(error) if error.raw_os_error() == Some(libc::EINPROGRESS) => break,
+            Err(error) => return Err(error),
+        }
     }
     wait_ready(socket, true, deadline)?;
     match socket.take_error()? {

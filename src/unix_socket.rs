@@ -403,6 +403,45 @@ mod tests {
     use std::io::{Read, Write};
     const LONG: u64 = 5_000_000_000;
 
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn a_full_backlog_times_out_then_retries_until_a_connection_is_established() {
+        let directory = tempfile::Builder::new().prefix("roc-").tempdir().unwrap();
+        let path = directory.path().join("s");
+        let listener =
+            socket2::Socket::new(socket2::Domain::UNIX, socket2::Type::STREAM, None).unwrap();
+        listener.bind(&address(&path).unwrap()).unwrap();
+        // Linux allows one queued connection with backlog zero.
+        listener.listen(0).unwrap();
+        let _queued = connect(&path, LONG).unwrap();
+        let probe =
+            socket2::Socket::new(socket2::Domain::UNIX, socket2::Type::STREAM, None).unwrap();
+        probe.set_nonblocking(true).unwrap();
+        assert_eq!(
+            probe.connect(&address(&path).unwrap()).unwrap_err().kind(),
+            io::ErrorKind::WouldBlock
+        );
+        assert_eq!(
+            connect(&path, 20_000_000).unwrap_err().kind(),
+            io::ErrorKind::TimedOut
+        );
+
+        let server = std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(30));
+            // Free the backlog slot while the next connect is retrying.
+            let (_first, _) = listener.accept().unwrap();
+            let (mut peer, _) = listener.accept().unwrap();
+            peer.set_read_timeout(Some(std::time::Duration::from_secs(5)))
+                .unwrap();
+            let mut byte = [0];
+            peer.read_exact(&mut byte).unwrap();
+            assert_eq!(byte, [42]);
+        });
+        let mut connected = Connection::new(connect(&path, LONG).unwrap()).unwrap();
+        connected.write(&[42], LONG).unwrap();
+        server.join().unwrap();
+    }
+
     #[test]
     fn pathname_roundtrip_preserves_buffer_and_requires_explicit_cleanup() {
         let directory = tempfile::Builder::new().prefix("roc-").tempdir().unwrap();
