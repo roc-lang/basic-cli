@@ -16,14 +16,14 @@ main! = |_args| {
 	# Monotonic measures elapsed time, unaffected by changes to the wall clock.
 	start = Monotonic.now!()
 
-	Sleep.seconds!(1)
+	Sleep.seconds!(1)?
 
 	Stdout.line!("Completed in ${start.elapsed!().to_str()}")?
 
 	# A computed wait is a method on the Duration: sleep for whatever is left
 	# of the interval, which is nothing if it has already passed.
 	interval = Duration.millis(1200)
-	interval.minus(start.elapsed!()).sleep!()
+	interval.minus(start.elapsed!()).sleep!()?
 
 	if start.elapsed!() >= interval {
 		Stdout.line!("Waited out the ${interval.to_str()} interval")?

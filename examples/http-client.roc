@@ -27,18 +27,18 @@ main! = |_args| run_demo!()
 
 run_demo! : () => Try({}, _)
 run_demo! = || {
-	utf8 = Http.get_utf8!("http://localhost:9000/utf8test") ? |err| GetUtf8Failed(err)
+	utf8 = Http.get_utf8!("http://localhost:9000/utf8test", {}) ? |err| GetUtf8Failed(err)
 	Stdout.line!("I received '${utf8}' from the server.")?
 
 	request = Request.from_method(GET).with_uri("http://localhost:9000/utf8test")
-	response = Http.send!(request) ? |err| SendFailed(err)
+	response = Http.send!(request, {}) ? |err| SendFailed(err)
 	status = U16.to_str(Response.status(response))
 
 	decoded : { foo : Str }
-	decoded = Http.get!("http://localhost:9000") ? |err| GetJsonFailed(err)
+	decoded = Http.get!("http://localhost:9000", {}) ? |err| GetJsonFailed(err)
 
 	echo_request = Request.from_method(POST).with_uri("http://localhost:9000/echo-json")
-	echo_response = Http.send_json!(echo_request, { foo: "Hello Json!" }) ? |err| SendJsonFailed(err)
+	echo_response = Http.send_json!(echo_request, { foo: "Hello Json!" }, {}) ? |err| SendJsonFailed(err)
 	echoed : { foo : Str }
 	echoed = Http.decode_json_response(echo_response) ? |err| EchoedJsonDecodeFailed(err)
 
@@ -54,7 +54,7 @@ run_demo! = || {
 
 reject_invalid_url! : () => Try({}, _)
 reject_invalid_url! = || {
-	result = Http.send!(Request.from_method(GET).with_uri("ftp://example.com"))
+	result = Http.send!(Request.from_method(GET).with_uri("ftp://example.com"), {})
 
 	match result {
 		Err(InvalidUrl(UnsupportedScheme("ftp"))) => Stdout.line!("invalid request URL was rejected.")
@@ -66,7 +66,7 @@ reject_invalid_url! = || {
 reject_invalid_json! : () => Try({}, _)
 reject_invalid_json! = || {
 	result : Try({ foo : Str }, _)
-	result = Http.get!("http://localhost:9000/invalid-json")
+	result = Http.get!("http://localhost:9000/invalid-json", {})
 
 	match result {
 		Err(JsonErr(_)) => Stdout.line!("invalid JSON was rejected.")
@@ -77,7 +77,7 @@ reject_invalid_json! = || {
 
 reject_invalid_utf8! : () => Try({}, _)
 reject_invalid_utf8! = || {
-	result = Http.get_utf8!("http://localhost:9000/invalid-utf8")
+	result = Http.get_utf8!("http://localhost:9000/invalid-utf8", {})
 
 	match result {
 		Err(BadBody(_)) => Stdout.line!("invalid UTF-8 was rejected.")

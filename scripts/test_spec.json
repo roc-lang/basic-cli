@@ -79,7 +79,7 @@
           "live_handles": 0,
           "stdout_contains": [
             "Hello\nCaptured: Hi Roc\n",
-            "Command config: Cmd({ program: OsStr.utf8(\"/usr/bin/env\"), args: [], env_names: [OsStr.utf8(\"FOO\"), OsStr.utf8(\"BAZ\")], clear_envs: True,",
+            "Command config: Cmd.Command({ program: OsStr.utf8(\"/usr/bin/env\"), args: [], env_names: [OsStr.utf8(\"FOO\"), OsStr.utf8(\"BAZ\")], clear_envs: True,",
             "FOO=BAR\n",
             "BAZ=DUCK\n",
             "Status: Exited(1)\nStderr: cat: ",
@@ -718,7 +718,7 @@
             "deadlines: ok\n",
             "function value: exec\nbad utf8 through ?: Err(BadUtf8({ index: 1, problem: InvalidStartByte })) Err(BadUtf8({ index: 1, problem: InvalidStartByte }))\nfunction values: ok\ncmd: ok\n"
           ],
-          "stderr_contains": ["capture: stderr reaches the terminal\n"]
+          "stderr_contains": ["capture: stderr reaches the terminal\n", "stdout to parent stderr\n", "merged to parent stderr\nand stderr\n"]
         },
         {
           "name": "unhandled-timeout",
@@ -893,6 +893,36 @@
           "temp_cwd": true,
           "live_handles": 0,
           "stdout_contains": ["copied from stdin: []\n"]
+        }
+      ]
+    },
+    {
+      "path": "tests/unix-socket.roc",
+      "cases": [
+        {
+          "name": "pathname-stream-lifecycle",
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["UnixSocket buffering, streams and explicit pathname cleanup: ok\n"]
+        }
+      ]
+    },
+    {
+      "path": "tests/http-redirects.roc",
+      "cases": [
+        {
+          "name": "redirect-policy-and-deadlines",
+          "helper": "http",
+          "timeout": 20,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": [
+            "defaults and missing Location: ok\n",
+            "method, body and framing rules: ok\n",
+            "relative URLs and cross-origin credentials: ok\n",
+            "invalid locations, limits and final status: ok\n",
+            "streaming and overall deadlines: ok\n"
+          ]
         }
       ]
     },
@@ -1289,6 +1319,81 @@
           "args": ["error-rows", "unexpected"],
           "exit_code": 1,
           "contains": ["Program exited with error: UnexpectedArguments"]
+        }
+      ]
+    },
+    {
+      "path": "tests/signal-cleanup.roc",
+      "cases": [
+        {
+          "name": "sleep-sigint",
+          "args": [
+            "sleep"
+          ],
+          "pty": true,
+          "await_raw_mode": true,
+          "send_signal": "SIGINT",
+          "exit_code": 0,
+          "temp_cwd": true,
+          "contains": [
+            "cleanup complete:",
+            "Interrupt"
+          ]
+        },
+        {
+          "name": "sleep-sigterm",
+          "args": [
+            "sleep"
+          ],
+          "pty": true,
+          "await_raw_mode": true,
+          "send_signal": "SIGTERM",
+          "exit_code": 0,
+          "temp_cwd": true,
+          "contains": [
+            "cleanup complete:",
+            "Terminate"
+          ],
+          "platforms": {
+            "windows": {
+              "enabled": false
+            }
+          }
+        },
+        {
+          "name": "stdin-sigint",
+          "args": [
+            "stdin"
+          ],
+          "pty": true,
+          "await_raw_mode": true,
+          "send_signal": "SIGINT",
+          "exit_code": 0,
+          "temp_cwd": true,
+          "contains": [
+            "cleanup complete:",
+            "Interrupt"
+          ]
+        },
+        {
+          "name": "stdin-sigterm",
+          "args": [
+            "stdin"
+          ],
+          "pty": true,
+          "await_raw_mode": true,
+          "send_signal": "SIGTERM",
+          "exit_code": 0,
+          "temp_cwd": true,
+          "contains": [
+            "cleanup complete:",
+            "Terminate"
+          ],
+          "platforms": {
+            "windows": {
+              "enabled": false
+            }
+          }
         }
       ]
     }

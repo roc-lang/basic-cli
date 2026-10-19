@@ -27,7 +27,7 @@ main! = |_args| {
 	Stdout.write!("${redacted.display()}:\n${redacted.read_utf8!()?}")?
 
 	# The mode decides what happens to a file that is already there.
-	match File.open_writer!(report, RequireNew) {
+	match File.open_writer!(report, RequireNew, {}) {
 		Err(PathErr(AlreadyExists, _)) => Stdout.line!("RequireNew left the existing report alone.")?
 		Err(PathErr(err, path)) => {
 			return Err(PathErr(err, path))
@@ -52,6 +52,7 @@ write_report! = |path, rows|
 	File.with_writer!(
 		path,
 		Truncate,
+		{},
 		|writer| {
 			writer.write_utf8!("name,total\n")?
 			for row in rows {
@@ -69,6 +70,7 @@ copy_redacted! = |source, destination| {
 	File.with_writer!(
 		destination,
 		Truncate,
+		{},
 		|writer|
 			writer.write_stream!(reader.chunks().map(|chunk| chunk.map_ok(redact))),
 	)

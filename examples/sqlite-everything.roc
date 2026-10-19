@@ -102,6 +102,9 @@ main! = |_args| {
 			Ok(t) => Stdout.line!("    task: ${t.task}")?
 			# This row's values did not decode; go on with the next row.
 			Err(BadRow(_)) => {}
+			Err(Interrupted) => {
+				return Err(Interrupted)
+			}
 			Err(SqliteErr(err)) => {
 				return Err(ReadTodosFailed(SqliteErr(err)))
 			}

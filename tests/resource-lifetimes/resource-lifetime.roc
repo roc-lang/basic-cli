@@ -52,6 +52,9 @@ main! = |_args| {
 		Err(TcpErr(err)) => {
 			return Err(TcpErr(err))
 		}
+		Err(Interrupted) => {
+			return Err(Interrupted)
+		}
 	}
 	Tcp.Listener.close!(listener)?
 	Stdout.line!("Resource aliases and early returns cleaned up")

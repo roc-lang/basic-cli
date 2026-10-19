@@ -6,6 +6,7 @@ app [main!] { pf: platform "../platform/main.roc" }
 import pf.Cmd
 import pf.Duration
 import pf.Env
+import pf.System
 import pf.OsStr
 import pf.Path
 import pf.Sleep
@@ -23,6 +24,7 @@ main! = |args| {
 			streams!()?
 			child!()?
 			deadlines!()?
+			compact!()?
 			function_values!()?
 			Stdout.line!("cmd: ok")
 		}
@@ -31,7 +33,7 @@ main! = |args| {
 			_output = helper!(["hang"]).timeout(Duration.seconds(2)).run!()?
 			Ok({})
 		}
-		["unhandled-start-failure"] => missing().env("API_TOKEN", "hunter2").exec!()
+		["unhandled-start-failure"] => missing().env("API_TOKEN", "hunter2").call!()
 		["unhandled-bad-exit"] => {
 			_text = helper!(["exit", "3"]).env("API_TOKEN", "hunter2").stderr(Capture).capture!()?
 			Ok({})
@@ -56,11 +58,11 @@ as_helper! = |args|
 		}
 		["hang"] => {
 			Stdout.line!("Hi")?
-			Sleep.millis!(30_000)
+			Sleep.millis!(30_000)?
 			Ok({})
 		}
 		["hang-silently"] => {
-			Sleep.millis!(30_000)
+			Sleep.millis!(30_000)?
 			Ok({})
 		}
 		["echo"] => Stdout.write_bytes!(Stdin.read_to_end!()?)
@@ -75,7 +77,7 @@ as_helper! = |args|
 	}
 
 ## This executable, run as the helper with the given arguments.
-helper! : List(Str) => Cmd
+helper! : List(Str) => Cmd.Command
 helper! = |args| {
 	executable = match Env.exe_path!() {
 		Ok(path) => Path.to_os_str(path)
@@ -90,8 +92,27 @@ helper! = |args| {
 		.env("BASIC_CLI_LIVE_HANDLES", "")
 }
 
-missing : () -> Cmd
+missing : () -> Cmd.Command
 missing = || Cmd.new("definitely-not-a-real-command-xyz").arg("--version")
+
+## Compact functions and builder methods have distinct first-class signatures.
+compact! : () => Try({}, _)
+compact! = || {
+	program = Env.exe_path!()?.to_os_str()
+	call! = Cmd.call!
+	capture! = Cmd.capture!
+	run! = Cmd.run!
+	spawn! = Cmd.spawn!
+	call!(program, ["--helper", "print", "compact: inherited output"])?
+	text = capture!(program, ["--helper", "print", "spaces $HOME *.roc stay literal"])?
+	check!("compact capture preserves literal arguments", text == "spaces $HOME *.roc stay literal\n")?
+	output = run!(program, ["--helper", "exit", "7"])?
+	check!("compact run returns unsuccessful status as data", output.status == Exited(7))?
+	child = spawn!(program, ["--helper", "print", "compact: spawned output"])?
+	check!("compact spawn returns a waitable child", child.wait!()?.status == Exited(0))?
+	check!("compact calls preserve open error rows", call!("definitely-not-a-real-command-xyz", []) == Err(CmdErr(StartFailed(NotFound, "definitely-not-a-real-command-xyz"))))?
+	Ok({})
+}
 
 ## Render a value on one line, with a carriage return shown as `\r`.
 show = |value| Str.inspect(value).replace_each("\r", "\\r")
@@ -108,7 +129,7 @@ check! = |name, passed|
 running! : () => Try({}, _)
 running! = || {
 	# `exec!` inherits: the child's line is part of this program's output.
-	helper!(["print", "exec: printed by the child"]).exec!()?
+	helper!(["print", "exec: printed by the child"]).call!()?
 
 	text = helper!(["print", "Hi"]).capture!()?
 	check!("capture! returns what was printed", text == "Hi\n")?
@@ -130,7 +151,7 @@ running! = || {
 	# backslashes, which `Str.inspect` escapes.
 	Stdout.line!("bad exit: ${show(failed.require_success()).replace_each(show(failed.command), show("<command>"))}")?
 
-	match helper!(["exit", "4"]).stdout(Capture).stderr(Capture).exec!() {
+	match helper!(["exit", "4"]).stdout(Capture).stderr(Capture).call!() {
 		Err(BadExitStatus(bad)) => Stdout.line!("exec: ${show(bad.status)} ${show(bad.stdout_utf8_lossy())}")?
 		other => {
 			return Err(ExpectedBadExitStatus(show(other)))
@@ -170,6 +191,9 @@ errors! = || {
 	check!("errors compare by content", started != Err(CmdErr(StartFailed(PermissionDenied, "definitely-not-a-real-command-xyz"))) and started != Err(CmdErr(IOErr(NotFound))))?
 	match started {
 		Err(CmdErr(err)) => Stdout.line!("missing program, in words: ${err.to_str()}")?
+		Err(Interrupted) => {
+			return Err(Interrupted)
+		}
 		Ok(_) => {}
 	}
 	match missing().spawn!() {
@@ -237,6 +261,16 @@ streams! = || {
 	cleared = helper!(["env", "CMD_TEST_INHERITED"]).capture!()?
 	Stdout.line!("inherited environment: ${cleared.trim()}")?
 
+	to_stderr = helper!(["both", "stdout to parent stderr", "captured stderr"])
+		.stdout(InheritStderr).stderr(Capture).run!()?
+	check!("parent stderr routing does not capture stdout", to_stderr.stdout_bytes.is_empty() and to_stderr.stderr_utf8_lossy() == "captured stderr\n")?
+	merged_stderr = helper!(["both", "merged to parent stderr", "and stderr"])
+		.stdout(InheritStderr).stderr(MergeWithStdout).run!()?
+	check!("merged inherited stderr is not captured", merged_stderr.stdout_bytes.is_empty() and merged_stderr.stderr_bytes.is_empty())?
+	uncaptured = helper!(["print", "zero capture limit with inherited streams"])
+		.inherit_stdio().output_limit(MaxBytes(0)).run!()?
+	check!("inherited streams have no capture budget", uncaptured.stdout_bytes.is_empty() and uncaptured.stderr_bytes.is_empty())?
+
 	Stdout.line!("streams: ok")
 }
 
@@ -279,7 +313,7 @@ child! = || {
 	hung.kill!()?
 	killed = hung.wait!()?
 	check!("a killed child did not succeed", killed.status != Exited(0) and killed.require_success() == Err(BadExitStatus(killed)))?
-	if Env.platform!().os != WINDOWS {
+	if is_unix!() {
 		check!("a kill is a signal on Unix", killed.status == Signaled(9))?
 	}
 
@@ -298,6 +332,7 @@ read_all! = |child, bytes|
 		Err(EndOfInput) => Ok(bytes)
 		Err(Closed) => Err(UnexpectedClosed)
 		Err(CmdErr(err)) => Err(CmdErr(err))
+		Err(Interrupted) => Err(Interrupted)
 	}
 
 ## The command's own deadline, however the command is run.
@@ -325,7 +360,7 @@ deadlines! = || {
 	# parent stopped it, and that output would be in the error.
 	instant = helper!(["hang-silently"]).timeout(Duration.zero).run!()
 	Stdout.line!("zero timeout: ${Str.inspect(instant)}")?
-	check!("exec! and capture! have the deadline too", helper!(["hang-silently"]).timeout(Duration.zero).stdout(Null).exec!() == Err(CmdErr(TimedOut({ stdout_bytes: [], stderr_bytes: [] }))) and helper!(["hang-silently"]).timeout(Duration.zero).capture!() == Err(CmdErr(TimedOut({ stdout_bytes: [], stderr_bytes: [] }))))?
+	check!("exec! and capture! have the deadline too", helper!(["hang-silently"]).timeout(Duration.zero).stdout(Null).call!() == Err(CmdErr(TimedOut({ stdout_bytes: [], stderr_bytes: [] }))) and helper!(["hang-silently"]).timeout(Duration.zero).capture!() == Err(CmdErr(TimedOut({ stdout_bytes: [], stderr_bytes: [] }))))?
 
 	unhurried = helper!(["print", "in time"]).timeout(Duration.seconds(60)).capture!()?
 	check!("a deadline that is not reached changes nothing", unhurried == "in time\n")?
@@ -343,14 +378,14 @@ deadlines! = || {
 ## design; this stops checking if a wrapper forwards one without rebuilding it.
 function_values! : () => Try({}, _)
 function_values! = || {
-	if Env.platform!().os == OTHER("never") {
+	if Env.var_str!("BASIC_CLI_TEST_ANOTHER_ERROR") == Ok("1") {
 		return Err(AnotherError)
 	}
 
-	exec! = Cmd.exec!
-	capture! = Cmd.capture!
-	run! = Cmd.run!
-	spawn! = Cmd.spawn!
+	exec! = Cmd.Command.call!
+	capture! = Cmd.Command.capture!
+	run! = Cmd.Command.run!
+	spawn! = Cmd.Command.spawn!
 
 	exec!(helper!(["print", "function value: exec"]))?
 	text = capture!(helper!(["print", "capture"]))?
@@ -405,4 +440,9 @@ capture_through_try! = || {
 		return Err(AnotherError)
 	}
 	Ok(text)
+}
+
+is_unix! = || match System.target!().os() {
+	Windows(_) => False
+	Linux(_) | MacOS(_) => True
 }

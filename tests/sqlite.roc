@@ -55,12 +55,15 @@ events_db! = || {
 }
 
 ## Collect a stream's items as text, one per line.
-drain! : Stream(Try(a, [SqliteErr(Sqlite.Err), Closed, BadRow(err)])), Str => Try({}, _)
+drain! : Stream(Try(a, [Interrupted, SqliteErr(Sqlite.Err), Closed, BadRow(err)])), Str => Try({}, _)
 drain! = |stream, label| {
 	for! item in stream {
 		match item {
 			Ok(value) => show!("${label} row", value)?
 			Err(BadRow(err)) => show!("${label} bad row", err)?
+			Err(Interrupted) => {
+				return Err(Interrupted)
+			}
 			Err(SqliteErr(err)) => show!("${label} sqlite error", err)?
 			Err(Closed) => Stdout.line!("${label}: closed")?
 		}
@@ -80,6 +83,9 @@ leave_early! = |db| {
 			Ok(event) if event.id >= 3 => break
 			Ok(event) => show!("early row", event)?
 			Err(BadRow(err)) => show!("early bad row", err)?
+			Err(Interrupted) => {
+				return Err(Interrupted)
+			}
 			Err(SqliteErr(err)) => {
 				return Err(SqliteErr(err))
 			}
@@ -418,12 +424,18 @@ errors! = || {
 		db.execute!(Query.new("INSERT INTO parent VALUES (?)", [Null, Null])),
 	] {
 		match result {
+			Err(Interrupted) => {
+				return Err(Interrupted)
+			}
 			Err(SqliteErr(err)) => Stdout.line!("to_str: ${err.to_str()}")?
 			other => show!("no sqlite error", other)?
 		}
 	}
 	for result in [db.query_all!("SELECT 1 AS a", Decoder.i64("b")), db.query_all!("SELECT 1 AS a", Decoder.i64(3))] {
 		match result {
+			Err(Interrupted) => {
+				return Err(Interrupted)
+			}
 			Err(SqliteErr(err)) => Stdout.line!("to_str: ${err.to_str()}")?
 			other => show!("no sqlite error", other)?
 		}
@@ -447,6 +459,9 @@ close! = || {
 				show!("close", db.close!())?
 			}
 			Err(BadRow(err)) => show!("bad row", err)?
+			Err(Interrupted) => {
+				return Err(Interrupted)
+			}
 			Err(SqliteErr(err)) => show!("sqlite error", err)?
 			Err(Closed) => Stdout.line!("closed")?
 		}
@@ -472,6 +487,9 @@ close! = || {
 			Ok(event) if event.id == 3 => break
 			Ok(event) => show!("orphan row", event)?
 			Err(BadRow(err)) => show!("orphan bad row", err)?
+			Err(Interrupted) => {
+				return Err(Interrupted)
+			}
 			Err(SqliteErr(err)) => show!("orphan sqlite error", err)?
 			Err(Closed) => Stdout.line!("orphan closed")?
 		}
@@ -479,7 +497,7 @@ close! = || {
 	Stdout.line!("done")
 }
 
-orphan_stream! : () => Try(Stream(Try(Event, [SqliteErr(Sqlite.Err), Closed, BadRow(Sqlite.DecodeErr)])), _)
+orphan_stream! : () => Try(Stream(Try(Event, [Interrupted, SqliteErr(Sqlite.Err), Closed, BadRow(Sqlite.DecodeErr)])), _)
 orphan_stream! = || {
 	db = events_db!()?
 	Ok(db.rows("SELECT id, payload FROM events ORDER BY id", decode_event))

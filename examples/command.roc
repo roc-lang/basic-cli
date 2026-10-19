@@ -8,7 +8,7 @@ import pf.Cmd
 main! : List(OsStr) => Try({}, _)
 main! = |_args| {
 	# Run a command on your terminal. Anything but exit code 0 is an error.
-	Cmd.new("echo").arg("Hello").exec!()?
+	Cmd.new("echo").arg("Hello").call!()?
 
 	# Capture what a command prints, as text. A string that interpolates is
 	# passed as it is: no shell splits it or expands it.
@@ -22,7 +22,7 @@ main! = |_args| {
 		.clear_envs()
 		.envs([("FOO", "BAR"), ("BAZ", "DUCK")])
 	Stdout.line!("Command config: ${Str.inspect(env_cmd)}")?
-	env_cmd.exec!()?
+	env_cmd.call!()?
 
 	# `run!` returns the exit status and the output as data, so a command that
 	# fails is yours to handle. Output is printed as text.
@@ -45,10 +45,13 @@ main! = |_args| {
 	Stdout.line!("Bytes: ${Str.inspect(bytes)}")?
 
 	# A program that does not exist is an error you can match on.
-	match Cmd.new("definitely-not-a-real-command-xyz").exec!() {
+	match Cmd.new("definitely-not-a-real-command-xyz").call!() {
 		Err(CmdErr(StartFailed(NotFound, program))) => Stdout.line!("Not installed: ${OsStr.display(program)}")?
 		Err(CmdErr(err)) => Stdout.line!("Could not run: ${err.to_str()}")?
 		Err(BadExitStatus(failed)) => Stdout.line!("Failed: ${failed.command}")?
+		Err(Interrupted) => {
+			return Err(Interrupted)
+		}
 		Ok({}) => {}
 	}
 

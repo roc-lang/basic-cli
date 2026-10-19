@@ -66,7 +66,7 @@ download! = |url, destination| {
 	if response.status() != 200 {
 		return Err(UnexpectedStatus(response.status()))
 	}
-	File.with_writer!(destination, Truncate, |writer| writer.write_stream!(response.chunks()))?
+	File.with_writer!(destination, Truncate, {}, |writer| writer.write_stream!(response.chunks()))?
 
 	Ok({})
 }

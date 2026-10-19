@@ -57,6 +57,7 @@ chat! = |conn| {
 	match Stdin.line!() {
 		# No more input: move on.
 		Err(EndOfInput) => Stdout.line!("")
+		Err(Interrupted) => Err(Interrupted)
 		Err(BadUtf8(problem)) => Err(BadUtf8(problem))
 		Err(StdinErr(err)) => Err(StdinErr(err))
 		Ok(out_msg) => {
@@ -83,6 +84,9 @@ pipeline! = |conn, requests| {
 			# The connection failed or timed out, and this is the last item.
 			Err(TcpErr(err)) => {
 				return Err(TcpErr(err))
+			}
+			Err(Interrupted) => {
+				return Err(Interrupted)
 			}
 		}
 		# The echo server keeps the connection open, so stop at the last reply

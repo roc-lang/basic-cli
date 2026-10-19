@@ -75,7 +75,7 @@ head! = || {
 
 Tally : { count : U64, bytes : U64, sum : U64, empty : U64, largest : U64 }
 
-tally! : Stream(Try(List(U8), [HttpErr(Http.TransportErr)])) => Try(Tally, [HttpErr(Http.TransportErr)])
+tally! : Stream(Try(List(U8), [Interrupted, HttpErr(Http.TransportErr)])) => Try(Tally, [Interrupted, HttpErr(Http.TransportErr)])
 tally! = |stream| {
 	var $tally = { count: 0, bytes: 0, sum: 0, empty: 0, largest: 0 }
 	for! item in stream {
@@ -169,6 +169,9 @@ idle_timeout! = || {
 				Err(HttpErr(Timeout)) => {
 					$timed_out = True
 				}
+				Err(Interrupted) => {
+					return Err(Interrupted)
+				}
 				Err(HttpErr(err)) => {
 					return Err(HttpErr(err))
 				}
@@ -219,13 +222,13 @@ zero_timeouts! = || {
 deadline! : () => Try({}, _)
 deadline! = || {
 	request = get("/stream/slow").with_timeout(TimeoutMilliseconds(500))
-	Stdout.line!("send!: ${Str.inspect(Http.send!(request).map_ok(|response| response.status()))}")?
+	Stdout.line!("send!: ${Str.inspect(Http.send!(request, {}).map_ok(|response| response.status()))}")?
 
 	destination : Path
 	destination = "slow.txt"
 	response = Http.send_streaming!(request, { idle_timeout: NoTimeout })?
 	Stdout.line!("send_streaming!: status ${response.status().to_str()} before the deadline")?
-	downloaded = File.with_writer!(destination, Truncate, |writer| writer.write_stream!(response.chunks()))
+	downloaded = File.with_writer!(destination, Truncate, {}, |writer| writer.write_stream!(response.chunks()))
 	expect downloaded == Err(SourceErr(HttpErr(Timeout)))
 	Stdout.line!("download: ${Str.inspect(downloaded)}")?
 	Stdout.line!("written before the deadline: ${Str.inspect(destination.read_utf8!()?)}")?
@@ -244,7 +247,7 @@ broken_body! = || {
 	destination = "broken.bin"
 	response = Http.send_streaming!(get("/stream/broken"), {})?
 	Stdout.line!("status: ${response.status().to_str()}, ${Str.inspect(response.content_length())}")?
-	downloaded = File.with_writer!(destination, Truncate, |writer| writer.write_stream!(response.chunks()))
+	downloaded = File.with_writer!(destination, Truncate, {}, |writer| writer.write_stream!(response.chunks()))
 	expect downloaded == Err(SourceErr(HttpErr(BadBody)))
 	Stdout.line!("download: ${Str.inspect(downloaded)}")?
 	written = destination.read_bytes!()?
@@ -267,7 +270,7 @@ download_one! = |path, destination| {
 	if response.status() != 200 {
 		return Err(UnexpectedStatus(response.status()))
 	}
-	File.with_writer!(destination, RequireNew, |writer| writer.write_stream!(response.chunks()))?
+	File.with_writer!(destination, RequireNew, {}, |writer| writer.write_stream!(response.chunks()))?
 	written = destination.read_bytes!()?
 	Stdout.line!("${destination.display()}: ${written.len().to_str()} bytes, checksum ${checksum(written).to_str()}")
 }

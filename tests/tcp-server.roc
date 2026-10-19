@@ -68,10 +68,11 @@ main! = |args| {
 show_unit = |result| Str.inspect(result.map_ok(|_| {}))
 
 ## Render one item of `lines`, naming every tag an item can have.
-show_line_item : Try(Str, [ReadLimitExceeded(U64), BadUtf8({ problem : Str.Utf8Problem, index : U64 }), TcpErr(_)]) -> Str
+show_line_item : Try(Str, [Interrupted, ReadLimitExceeded(U64), BadUtf8({ problem : Str.Utf8Problem, index : U64 }), TcpErr(_)]) -> Str
 show_line_item = |item|
 	match item {
 		Ok(line) => "line ${Str.inspect(line)}"
+		Err(Interrupted) => "Interrupted"
 		Err(BadUtf8({ index, .. })) => "bad utf8 at byte ${index.to_str()}"
 		Err(ReadLimitExceeded(limit)) => "longer than ${limit.to_str()} bytes"
 		Err(TcpErr(err)) => "TcpErr(${Str.inspect(err)})"
@@ -142,6 +143,9 @@ conversation! = |listener, port| {
 			}
 			Err(TcpErr(err)) => {
 				$last = Str.inspect(err)
+			}
+			Err(Interrupted) => {
+				return Err(Interrupted)
 			}
 		}
 	}
@@ -231,6 +235,9 @@ function_values! = |listener, port| {
 			}
 			Err(TcpErr(err)) => {
 				$items = $items.append("TcpErr(${Str.inspect(err)})")
+			}
+			Err(Interrupted) => {
+				return Err(Interrupted)
 			}
 		}
 	}
