@@ -259,6 +259,17 @@ mod native {
         },
     };
     const OWNER_RIGHTS: u32 = FILE_GENERIC_READ | FILE_GENERIC_WRITE | READ_CONTROL | WRITE_DAC;
+    fn wide_path(path: &Path) -> io::Result<Vec<u16>> {
+        let mut name: Vec<u16> = path.as_os_str().encode_wide().collect();
+        if name.contains(&0) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "file path contains a NUL character",
+            ));
+        }
+        name.push(0);
+        Ok(name)
+    }
     fn check(value: i32) -> io::Result<()> {
         if value != 0 {
             Ok(())
@@ -360,7 +371,7 @@ mod native {
         Ok((sid, Descriptor(descriptor)))
     }
     pub(super) fn open_existing(path: &Path) -> io::Result<File> {
-        let name: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+        let name = wide_path(path)?;
         let handle = unsafe {
             CreateFileW(
                 name.as_ptr(),
@@ -385,6 +396,7 @@ mod native {
                 .create_new(true)
                 .open(path);
         }
+        let name = wide_path(path)?;
         // Alternate data streams share their base file's descriptor. Treating
         // a newly-created stream as a new private file could change an existing
         // file's ACL, contrary to creation-only policy semantics.
@@ -447,7 +459,6 @@ mod native {
             lpSecurityDescriptor: (&mut descriptor as *mut SECURITY_DESCRIPTOR).cast(),
             bInheritHandle: 0,
         };
-        let name: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
         let access = if append {
             FILE_APPEND_DATA | FILE_READ_ATTRIBUTES
         } else {
@@ -548,6 +559,29 @@ mod native {
 mod tests {
     use super::*;
     use std::io::Write;
+    #[cfg(windows)]
+    #[test]
+    fn embedded_nul_paths_do_not_create_or_change_a_truncated_target() {
+        let directory = tempfile::tempdir().unwrap();
+        let target = directory.path().join("target");
+        let invalid = directory.path().join("target\0suffix");
+        assert_eq!(
+            open_new(&invalid, false, Policy::OwnerOnly)
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::InvalidInput
+        );
+        assert!(!target.exists());
+        std::fs::write(&target, b"preserved").unwrap();
+        assert_eq!(
+            set_permissions(&invalid, Policy::OwnerOnly)
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::InvalidInput
+        );
+        assert_eq!(std::fs::read(&target).unwrap(), b"preserved");
+    }
+
     #[test]
     fn explicit_policies_preserve_contents_and_require_regular_files() {
         let dir = tempfile::tempdir().unwrap();
