@@ -12,6 +12,7 @@ use std::io::{self, BufReader};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 
+mod allocator;
 mod cmd;
 mod dns;
 mod file_reader;

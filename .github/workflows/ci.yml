@@ -75,6 +75,11 @@ jobs:
         run: python3 scripts/test_system_api.py
       - name: Format, check, and test examples
         run: ./scripts/test.py --operation validate
+      - name: Check musl allocator syscall churn
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes strace
+          python3 scripts/test_musl_allocator.py
       - name: Check native resource ownership with glibc and Valgrind
         run: |
           sudo apt-get update

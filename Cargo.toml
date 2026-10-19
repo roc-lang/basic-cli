@@ -37,6 +37,11 @@ tower-service = "=0.3.3"
 # Exercise the production ring provider against a local TLS server.
 rustls = { version = "=0.23.45", default-features = false, features = ["std", "ring", "tls12"] }
 
+# Keep freed small-allocation pages on the statically linked Linux hosts.
+# Generated Roc ABI helpers already allocate through Rust's global allocator.
+[target.'cfg(all(target_os = "linux", target_env = "musl"))'.dependencies]
+mimalloc = { version = "=0.1.52", default-features = false }
+
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 sys-locale = "=0.3.2"
 

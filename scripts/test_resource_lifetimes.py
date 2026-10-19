@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check Roc/host ownership with a Valgrind-visible glibc diagnostic platform.
 
-The published Linux platform remains static musl. Its allocator is invisible to
+The published Linux platform uses static musl and mimalloc. Its allocator is invisible to
 Memcheck, so zero reported allocations cannot validate reference-count cleanup.
 This Linux x86_64-only check builds an isolated glibc copy under ignored target/.
 
