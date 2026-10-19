@@ -158,6 +158,7 @@ fn console_child(mode: &str) {
     input(stdin.0, "after cancellation\r");
     release.send(()).unwrap();
     worker.join().unwrap();
+    eprintln!("console cancellation case completed: {mode}");
 }
 
 #[test]
@@ -172,12 +173,12 @@ fn console_cancellation_releases_raw_and_cooked_reads_without_consuming_the_next
         "cancel-raw",
         "interrupt-raw",
     ] {
+        let test = format!(
+            "{}::console_cancellation_releases_raw_and_cooked_reads_without_consuming_the_next_line",
+            module_path!().split_once("::").unwrap().1,
+        );
         let mut child = Command::new(std::env::current_exe().unwrap())
-            .args([
-                "--exact",
-                concat!(module_path!(), "::console_cancellation_releases_raw_and_cooked_reads_without_consuming_the_next_line"),
-                "--nocapture",
-            ])
+            .args(["--exact", &test, "--nocapture"])
             .env(CHILD_MODE, mode)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
@@ -204,5 +205,9 @@ fn console_cancellation_releases_raw_and_cooked_reads_without_consuming_the_next
             .read_to_string(&mut diagnostic)
             .unwrap();
         assert!(status.success(), "{mode}: {status}\n{diagnostic}");
+        assert!(
+            diagnostic.contains(&format!("console cancellation case completed: {mode}")),
+            "{mode}: console helper did not execute\n{diagnostic}",
+        );
     }
 }

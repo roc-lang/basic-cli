@@ -1,16 +1,20 @@
 use super::{Stream, CHUNK};
 use std::io;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
+
+static PREVIOUS_WAKE_ACTION: Mutex<Option<libc::sigaction>> = Mutex::new(None);
 
 extern "C" fn wake(_: libc::c_int) {}
 
 pub fn prepare() -> io::Result<()> {
+    let mut saved = PREVIOUS_WAKE_ACTION.lock().unwrap();
     unsafe {
         let mut previous: libc::sigaction = std::mem::zeroed();
         if libc::sigaction(libc::SIGUSR2, std::ptr::null(), &mut previous) != 0 {
             return Err(io::Error::last_os_error());
         }
-        if previous.sa_sigaction != libc::SIG_DFL {
+        if previous.sa_sigaction != libc::SIG_DFL && previous.sa_sigaction != libc::SIG_IGN {
             return Err(io::Error::new(
                 io::ErrorKind::AlreadyExists,
                 "SIGUSR2 is reserved for native I/O cancellation",
@@ -22,18 +26,75 @@ pub fn prepare() -> io::Result<()> {
         if libc::sigaction(libc::SIGUSR2, &action, std::ptr::null_mut()) != 0 {
             return Err(io::Error::last_os_error());
         }
+        // Ignored dispositions survive exec, including those inherited from a
+        // shell or supervisor. They must not disable ordinary standard I/O.
+        *saved = Some(previous);
     }
     Ok(())
 }
 
 pub fn rollback() {
+    let Some(previous) = PREVIOUS_WAKE_ACTION.lock().unwrap().take() else {
+        return;
+    };
     unsafe {
         let mut action: libc::sigaction = std::mem::zeroed();
         if libc::sigaction(libc::SIGUSR2, std::ptr::null(), &mut action) == 0
             && action.sa_sigaction == wake as extern "C" fn(libc::c_int) as libc::sighandler_t
         {
-            libc::signal(libc::SIGUSR2, libc::SIG_DFL);
+            libc::sigaction(libc::SIGUSR2, &previous, std::ptr::null_mut());
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::os::unix::process::CommandExt;
+    use std::process::Command;
+
+    #[test]
+    fn inherited_ignored_wake_signal_allows_stdio_and_is_restored_on_rollback() {
+        const CHILD: &str = "BASIC_CLI_INHERITED_IGNORED_WAKE_TEST";
+        if std::env::var_os(CHILD).is_none() {
+            let mut command = Command::new(std::env::current_exe().unwrap());
+            let test = format!(
+                "{}::inherited_ignored_wake_signal_allows_stdio_and_is_restored_on_rollback",
+                module_path!().split_once("::").unwrap().1,
+            );
+            command
+                .args(["--exact", &test, "--nocapture"])
+                .env(CHILD, "1");
+            unsafe {
+                command.pre_exec(|| {
+                    if libc::signal(libc::SIGUSR2, libc::SIG_IGN) == libc::SIG_ERR {
+                        Err(io::Error::last_os_error())
+                    } else {
+                        Ok(())
+                    }
+                });
+            }
+            let output = command.output().unwrap();
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            assert!(output
+                .stdout
+                .windows(b"inherited ignore works\n".len())
+                .any(|part| part == b"inherited ignore works\n"));
+            return;
+        }
+        prepare().unwrap();
+        rollback();
+        let mut action: libc::sigaction = unsafe { std::mem::zeroed() };
+        assert_eq!(
+            unsafe { libc::sigaction(libc::SIGUSR2, std::ptr::null(), &mut action) },
+            0
+        );
+        assert_eq!(action.sa_sigaction, libc::SIG_IGN);
+        crate::native_stdio::write(Stream::Stdout, b"inherited ignore works\n").unwrap();
     }
 }
 
