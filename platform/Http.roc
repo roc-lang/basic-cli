@@ -139,7 +139,7 @@ Http :: [].{
 	## `TimeoutMilliseconds(0)` both mean no deadline. For a large download
 	## leave the request at `NoTimeout` and rely on `idle_timeout`.
 	##
-	## `max_redirects` has the same meaning as [SendOptions.max_redirects].
+	## `max_redirects` has the same meaning as the `max_redirects` field of [SendOptions].
 	## A caught pending signal returns bare `Interrupted` from a wait. Body
 	## reads preserve their cursor and collected bytes after interruption;
 	## acknowledge the signal before reading again. The deadline keeps running.

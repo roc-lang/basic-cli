@@ -467,9 +467,9 @@ Cmd :: [].{
 	## - `StartFailed(err, program)`: the program could not be started, for
 	##   example `StartFailed(NotFound, program)` when it does not exist.
 	## - `TimedOut(partial)`: the command reached the deadline set with
-	##   [timeout] and was killed.
+	##   [Command.timeout] and was killed.
 	## - `OutputLimitExceeded(partial)`: the command printed more than
-	##   [output_limit] or [pending_limit] allows and was killed.
+	##   [Command.output_limit] or [Command.pending_limit] allows and was killed.
 	## - `IOErr(err)`: an operating-system failure while the command ran. A
 	##   [Child.read!] or [Child.write_bytes!] that waited for its whole
 	##   `Duration` is `IOErr(TimedOut)`.
@@ -501,7 +501,7 @@ Cmd :: [].{
 	}
 
 	## The result of a command that ran to completion: how it ended and what it
-	## printed. `command` is the program and arguments, as [to_str] renders them.
+	## printed. `command` is the program and arguments, as [Command.to_str] renders them.
 	## Output is empty for a stream that was not captured.
 	Output := { command : Str, status : ExitStatus, stdout_bytes : List(U8), stderr_bytes : List(U8) }.{
 
