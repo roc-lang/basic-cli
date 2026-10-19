@@ -47,7 +47,11 @@ fn open_file(path: &Path, mode: WriteMode, policy: Policy) -> io::Result<File> {
         }
         match options.open(path) {
             Ok(file) => {
-                file_security::regular(&file)?;
+                // Default writers retain support for devices such as /dev/null.
+                // Explicit security policies are supported only for regular files.
+                if policy != Policy::Default {
+                    file_security::regular(&file)?;
+                }
                 if mode == WriteMode::Truncate {
                     file.set_len(0)?;
                 }
@@ -188,6 +192,23 @@ pub unsafe extern "C" fn hosted_file_writer_flush(handle: *mut u64) -> HostFileW
 
 #[cfg(test)]
 mod tests {
+    #[cfg(unix)]
+    #[test]
+    fn default_writers_support_devices_but_explicit_policies_reject_them() {
+        let path = std::path::Path::new("/dev/null");
+        let mut file =
+            super::open_file(path, super::WriteMode::Append, super::Policy::Default).unwrap();
+        std::io::Write::write_all(&mut file, b"discarded").unwrap();
+        for policy in [super::Policy::OwnerOnly, super::Policy::PublicRead] {
+            assert_eq!(
+                super::open_file(path, super::WriteMode::Append, policy)
+                    .unwrap_err()
+                    .kind(),
+                std::io::ErrorKind::InvalidInput
+            );
+        }
+    }
+
     use super::*;
     use std::fs;
 

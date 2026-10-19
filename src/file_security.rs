@@ -253,7 +253,10 @@ mod native {
             *,
         },
         Storage::FileSystem::*,
-        System::Threading::{GetCurrentProcess, OpenProcessToken},
+        System::{
+            SystemServices::{FILE_PERSISTENT_ACLS, SECURITY_DESCRIPTOR_REVISION},
+            Threading::{GetCurrentProcess, OpenProcessToken},
+        },
     };
     const OWNER_RIGHTS: u32 = FILE_GENERIC_READ | FILE_GENERIC_WRITE | READ_CONTROL | WRITE_DAC;
     fn check(value: i32) -> io::Result<()> {
