@@ -304,6 +304,19 @@ decisions and assumptions, not open questions.
   unlimited is legal; exceeding one is `ReadLimitExceeded(U64)`. Only network
   reads have a default line limit.
 
+### Cooperative stop requests and OS-specific effects
+
+- Cooperative cancellation is bare `Interrupted`, beside the module's normal
+  errors. It takes precedence over a simultaneously expired timeout. Pending
+  caught events remain sticky until `Signal.poll!()` acknowledges them.
+- Register before acquiring resources. Reads preserve unread bytes across
+  cancellation; writes can make partial progress. Return only after a worker
+  acknowledges cancellation, so it cannot write later. Cleanup operations
+  must remain available with a pending event.
+- Keep shared APIs portable. Obtain opaque OS evidence through `System.target!`
+  and require it explicitly for a Unix-only operation; do not add pure witness
+  factories, codecs, or environment-based target detection.
+
 ### End of input and streams
 
 - A single read ends with `Err(EndOfInput)`; a short fixed-size read is
