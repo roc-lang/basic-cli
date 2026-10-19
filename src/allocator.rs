@@ -38,6 +38,7 @@ mod tests {
                 (host.roc_dealloc)(&mut host, memory.as_ptr().cast(), alignment);
             }
         }
+        println!("allocator ABI alignment and realloc checks complete");
     }
 
     // scripts/test_musl_allocator.py traces this exact test on a native Linux

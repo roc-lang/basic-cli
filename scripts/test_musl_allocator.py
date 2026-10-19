@@ -53,6 +53,14 @@ def main() -> None:
             executables.append(Path(artifact["executable"]))
     if len(executables) != 1:
         raise AssertionError(f"Expected one host test executable, got {executables}")
+    correctness = subprocess.run(
+        [str(executables[0]), "--exact",
+         "allocator::tests::roc_callbacks_preserve_alignment_and_reallocated_bytes",
+         "--nocapture", "--test-threads=1"],
+        cwd=ROOT, text=True, stdout=subprocess.PIPE, check=True,
+    )
+    if "allocator ABI alignment and realloc checks complete" not in correctness.stdout:
+        raise AssertionError(f"Allocator ABI test did not execute:\n{correctness.stdout}")
     with tempfile.TemporaryDirectory(prefix="basic-cli-allocator-") as directory:
         for size in (900, 960, 1024, 2048):
             summary = Path(directory) / f"{size}.strace"
