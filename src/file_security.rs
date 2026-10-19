@@ -24,7 +24,16 @@ pub(crate) fn regular(file: &File) -> io::Result<()> {
 }
 
 pub(crate) fn open_new(path: &Path, append: bool, policy: Policy) -> io::Result<File> {
-    let file = native::create(path, append, policy)?;
+    let file = native::create(path, append, policy).map_err(|error| {
+        // Some native APIs report access denied for an existing directory or
+        // link. Classify collisions here, before policy enforcement can fail
+        // after this call has successfully created a new file.
+        if path.symlink_metadata().is_ok() {
+            io::Error::from(io::ErrorKind::AlreadyExists)
+        } else {
+            error
+        }
+    })?;
     regular(&file)?;
     if policy != Policy::Default {
         native::apply(&file, policy)?;
@@ -54,10 +63,7 @@ mod native {
         fs::{OpenOptions, Permissions},
         os::{
             fd::AsRawFd,
-            unix::{
-                ffi::OsStrExt,
-                fs::{OpenOptionsExt, PermissionsExt},
-            },
+            unix::fs::{OpenOptionsExt, PermissionsExt},
         },
     };
     pub(super) fn create(path: &Path, append: bool, policy: Policy) -> io::Result<File> {
@@ -84,7 +90,25 @@ mod native {
             result => result,
         }
     }
-    pub(super) fn apply(file: &File, policy: Policy) -> io::Result<()> {
+    fn set_mode(file: &File, bits: u32) -> io::Result<()> {
+        if unsafe { libc::fcntl(file.as_raw_fd(), libc::F_GETFL) } & libc::O_PATH != 0 {
+            std::fs::set_permissions(
+                format!("/proc/self/fd/{}", file.as_raw_fd()),
+                Permissions::from_mode(bits),
+            )
+        } else {
+            file.set_permissions(Permissions::from_mode(bits))
+        }
+    }
+
+    pub(super) fn restrict_and_remove_acl(file: &File) -> io::Result<()> {
+        // Removing an ACL preserves its mask as the owning group's mode bits.
+        // Restrict that mask first so a previously denied group cannot gain
+        // access during replacement, including when a later operation fails.
+        set_mode(file, 0o600)?;
+        if file.metadata()?.permissions().mode() & 0o7777 != 0o600 {
+            return Err(unsupported("filesystem did not restrict file permissions"));
+        }
         let key = c"system.posix_acl_access";
         // Linux's fd-based chmod/xattr APIs reject O_PATH descriptors. A
         // procfs magic link addresses the held inode, so a rename cannot
@@ -106,17 +130,6 @@ mod native {
                 return Err(error);
             }
         }
-        if metadata_handle {
-            std::fs::set_permissions(
-                Path::new(std::ffi::OsStr::from_bytes(proc_path.as_bytes())),
-                Permissions::from_mode(mode(policy)),
-            )?;
-        } else {
-            file.set_permissions(Permissions::from_mode(mode(policy)))?;
-        }
-        if file.metadata()?.permissions().mode() & 0o7777 != mode(policy) {
-            return Err(unsupported("filesystem did not enforce file permissions"));
-        }
         // A named entry with no rights would deny PublicRead even with other=r.
         let size = unsafe {
             if metadata_handle {
@@ -131,6 +144,15 @@ mod native {
         let error = io::Error::last_os_error();
         if !matches!(error.raw_os_error(), Some(libc::ENODATA | libc::EOPNOTSUPP)) {
             return Err(error);
+        }
+        Ok(())
+    }
+
+    pub(super) fn apply(file: &File, policy: Policy) -> io::Result<()> {
+        restrict_and_remove_acl(file)?;
+        set_mode(file, mode(policy))?;
+        if file.metadata()?.permissions().mode() & 0o7777 != mode(policy) {
+            return Err(unsupported("filesystem did not enforce file permissions"));
         }
         Ok(())
     }
@@ -720,6 +742,81 @@ mod tests {
             let mut entry = std::ptr::null_mut();
             assert_ne!(unsafe { acl_get_entry(acl, 0, &mut entry) }, 0);
             unsafe { acl_free(acl) };
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn acl_removal_never_exposes_the_mask_to_a_previously_denied_group() {
+        use std::os::{
+            fd::AsRawFd,
+            unix::fs::{OpenOptionsExt, PermissionsExt},
+        };
+        for metadata_handle in [false, true] {
+            let directory = tempfile::tempdir().unwrap();
+            let path = directory.path().join("private");
+            let file = std::fs::File::create(&path).unwrap();
+            let mut acl = 2u32.to_le_bytes().to_vec();
+            // The named user has rw, but the owning group has no access.
+            // Removing this ACL without restricting its mask exposes rw to
+            // the owning group even though that group was previously denied.
+            for (tag, permissions, id) in [
+                (1u16, 6u16, u32::MAX),
+                (2, 6, unsafe { libc::geteuid() }.wrapping_add(1)),
+                (4, 0, u32::MAX),
+                (16, 6, u32::MAX),
+                (32, 0, u32::MAX),
+            ] {
+                acl.extend(tag.to_le_bytes());
+                acl.extend(permissions.to_le_bytes());
+                acl.extend(id.to_le_bytes());
+            }
+            assert_eq!(
+                unsafe {
+                    libc::fsetxattr(
+                        file.as_raw_fd(),
+                        c"system.posix_acl_access".as_ptr(),
+                        acl.as_ptr().cast(),
+                        acl.len(),
+                        0,
+                    )
+                },
+                0,
+                "{}",
+                io::Error::last_os_error()
+            );
+            assert_eq!(file.metadata().unwrap().permissions().mode() & 0o777, 0o660);
+            let file = if metadata_handle {
+                std::fs::OpenOptions::new()
+                    .read(true)
+                    .custom_flags(libc::O_PATH)
+                    .open(&path)
+                    .unwrap()
+            } else {
+                file
+            };
+            // Inspect the actual intermediate state, before final chmod. A
+            // failure here must leave no non-owner access, for either handle.
+            native::restrict_and_remove_acl(&file).unwrap();
+            assert_eq!(file.metadata().unwrap().permissions().mode() & 0o777, 0o600);
+            let ordinary = std::fs::File::open(&path).unwrap();
+            assert_eq!(
+                unsafe {
+                    libc::fgetxattr(
+                        ordinary.as_raw_fd(),
+                        c"system.posix_acl_access".as_ptr(),
+                        std::ptr::null_mut(),
+                        0,
+                    )
+                },
+                -1
+            );
+            assert_eq!(
+                io::Error::last_os_error().raw_os_error(),
+                Some(libc::ENODATA)
+            );
+            native::apply(&file, Policy::PublicRead).unwrap();
+            assert_eq!(file.metadata().unwrap().permissions().mode() & 0o777, 0o644);
         }
     }
 

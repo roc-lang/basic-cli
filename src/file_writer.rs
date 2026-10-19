@@ -25,16 +25,22 @@ pub struct FileWriter(BufWriter<File>);
 type WriteMode = AppendOrRequireNewOrTruncate;
 
 fn open_file(path: &Path, mode: WriteMode, policy: Policy) -> io::Result<File> {
+    open_file_with_create(path, mode, policy, file_security::open_new)
+}
+
+fn open_file_with_create(
+    path: &Path,
+    mode: WriteMode,
+    policy: Policy,
+    mut create: impl FnMut(&Path, bool, Policy) -> io::Result<File>,
+) -> io::Result<File> {
     for attempt in 0..2 {
-        match file_security::open_new(path, mode == WriteMode::Append, policy) {
+        match create(path, mode == WriteMode::Append, policy) {
             Ok(file) => return Ok(file),
             Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
                 if mode == WriteMode::RequireNew {
                     return Err(error);
                 }
-            }
-            Err(_error) if mode == WriteMode::RequireNew && path.symlink_metadata().is_ok() => {
-                return Err(io::ErrorKind::AlreadyExists.into())
             }
             Err(error) => return Err(normalize_file_kind_err(path, error)),
         }
@@ -248,6 +254,31 @@ mod tests {
 
     use super::*;
     use std::fs;
+
+    #[test]
+    fn require_new_preserves_policy_errors_after_successful_creation() {
+        let directory = workspace("policy-error");
+        let path = directory.path().join("new-file");
+        let error = open_file_with_create(
+            &path,
+            WriteMode::RequireNew,
+            Policy::OwnerOnly,
+            |path, append, policy| {
+                // Model a filesystem that accepts creation but rejects the
+                // subsequent ACL enforcement/validation on the held file.
+                let file = file_security::open_new(path, append, policy)?;
+                drop(file);
+                Err(io::Error::new(
+                    io::ErrorKind::Unsupported,
+                    "ACL unavailable",
+                ))
+            },
+        )
+        .unwrap_err();
+        assert!(path.is_file());
+        assert_eq!(error.kind(), io::ErrorKind::Unsupported);
+        assert_eq!(error.to_string(), "ACL unavailable");
+    }
 
     #[test]
     fn creation_permissions_do_not_change_existing_files() {
