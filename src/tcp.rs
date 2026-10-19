@@ -9,62 +9,42 @@
 //! reported by the OS as `WouldBlock` on some platforms and `TimedOut` on
 //! others; both become `TimedOut` here.
 use core::mem::ManuallyDrop;
-use std::io::{self, Read, Write};
-use std::net::{IpAddr, SocketAddr, TcpStream, ToSocketAddrs};
-use std::sync::mpsc;
+use std::io;
+#[cfg(test)]
+use std::io::{Read, Write};
+use std::net::TcpStream;
+#[cfg(test)]
 use std::thread;
+#[cfg(test)]
 use std::time::{Duration, Instant};
 
 use crate::roc_platform_abi::*;
 use crate::{roc_host, roc_u8_list_from_slice};
 
-/// How much one socket read may add to a connection's buffer. Also the upper
-/// bound of a `Tcp.Connection.chunks` item, which asks for this many bytes.
-const READ_CHUNK: usize = 64 * 1024;
+use crate::socket::normalize;
+#[cfg(test)]
+use crate::socket::READ_CHUNK;
+pub(crate) use crate::socket::{Deadline, ReadUntilError};
 
-fn timed_out() -> io::Error {
-    io::Error::new(io::ErrorKind::TimedOut, "TCP operation timed out")
-}
-
-/// Give a socket timeout the one kind Roc sees, whichever the OS reported.
-fn normalize(error: io::Error) -> io::Error {
-    if error.kind() == io::ErrorKind::WouldBlock {
-        timed_out()
-    } else {
-        error
-    }
-}
-
-/// The typed error for Roc. Used by every hosted Tcp function.
 pub(crate) fn tcp_io_err(error: io::Error, roc_host: &RocHost) -> IOErr {
     crate::tcp_io_err_from_io(&normalize(error), roc_host)
 }
 
-/// The instant a whole operation must finish by.
-#[derive(Clone, Copy)]
-pub(crate) struct Deadline(Option<Instant>);
-
-impl Deadline {
-    /// A deadline `nanos` from now. Zero has already expired. A timeout too
-    /// long for the clock to represent never expires.
-    pub(crate) fn after_nanos(nanos: u64) -> io::Result<Self> {
-        if nanos == 0 {
-            return Err(timed_out());
-        }
-        Ok(Self(
-            Instant::now().checked_add(Duration::from_nanos(nanos)),
-        ))
+pub(crate) struct Connection(crate::socket::BufferedSocket);
+impl Connection {
+    pub(crate) fn new(stream: TcpStream) -> io::Result<Self> {
+        crate::socket::BufferedSocket::new(stream.into()).map(Self)
     }
-
-    /// The time left, or `TimedOut` once there is none. `None` is unbounded.
-    pub(crate) fn remaining(self) -> io::Result<Option<Duration>> {
-        let Some(deadline) = self.0 else {
-            return Ok(None);
-        };
-        match deadline.checked_duration_since(Instant::now()) {
-            Some(remaining) if !remaining.is_zero() => Ok(Some(remaining)),
-            _ => Err(timed_out()),
-        }
+}
+impl std::ops::Deref for Connection {
+    type Target = crate::socket::BufferedSocket;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl std::ops::DerefMut for Connection {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
@@ -72,34 +52,8 @@ pub(crate) fn resolve_with_deadline(
     host: String,
     port: u16,
     deadline: Deadline,
-) -> io::Result<Vec<SocketAddr>> {
-    if let Ok(ip) = host.parse::<IpAddr>() {
-        return Ok(vec![SocketAddr::new(ip, port)]);
-    }
-
-    let (sender, receiver) = mpsc::sync_channel(1);
-    thread::Builder::new()
-        .name("basic-cli-tcp-resolve".to_string())
-        .spawn(move || {
-            let resolved = (host.as_str(), port)
-                .to_socket_addrs()
-                .map(|addresses| addresses.collect());
-            let _ = sender.send(resolved);
-        })?;
-
-    let received = match deadline.remaining()? {
-        Some(remaining) => receiver.recv_timeout(remaining),
-        None => receiver
-            .recv()
-            .map_err(|_| mpsc::RecvTimeoutError::Disconnected),
-    };
-    match received {
-        Ok(result) => result,
-        Err(mpsc::RecvTimeoutError::Timeout) => Err(timed_out()),
-        Err(mpsc::RecvTimeoutError::Disconnected) => Err(io::Error::other(
-            "TCP address resolution worker stopped unexpectedly",
-        )),
-    }
+) -> io::Result<Vec<std::net::SocketAddr>> {
+    crate::dns::resolve(host, port, deadline)
 }
 
 fn connect(host: String, port: u16, timeout_nanos: u64) -> io::Result<TcpStream> {
@@ -108,10 +62,13 @@ fn connect(host: String, port: u16, timeout_nanos: u64) -> io::Result<TcpStream>
     let mut last_error = None;
 
     for address in addresses {
-        let attempt = match deadline.remaining()? {
-            Some(remaining) => TcpStream::connect_timeout(&address, remaining),
-            None => TcpStream::connect(address),
-        };
+        let socket = socket2::Socket::new(
+            socket2::Domain::for_address(address),
+            socket2::Type::STREAM,
+            Some(socket2::Protocol::TCP),
+        )?;
+        let attempt = crate::socket::connect(&socket, &address.into(), deadline)
+            .map(|()| TcpStream::from(socket));
         match attempt {
             Ok(stream) => return Ok(stream),
             Err(error) => last_error = Some(normalize(error)),
@@ -124,245 +81,6 @@ fn connect(host: String, port: u16, timeout_nanos: u64) -> io::Result<TcpStream>
             "hostname resolved to no TCP addresses",
         )
     }))
-}
-
-fn out_of_memory() -> io::Error {
-    io::Error::new(
-        io::ErrorKind::OutOfMemory,
-        "could not reserve memory for TCP read",
-    )
-}
-
-/// Why a delimited read returned no record.
-#[derive(Debug)]
-pub(crate) enum ReadUntilError {
-    Io(io::Error),
-    /// The record is longer than the limit. Its tail is discarded before the
-    /// next read returns.
-    LimitExceeded,
-}
-
-impl From<io::Error> for ReadUntilError {
-    fn from(error: io::Error) -> Self {
-        Self::Io(error)
-    }
-}
-
-/// A connected socket and the bytes received from it but not yet returned.
-pub(crate) struct Connection {
-    stream: TcpStream,
-    /// Received bytes. Those before `start` have been returned already.
-    buffer: Vec<u8>,
-    start: usize,
-    /// The delimiter of an over-long record whose tail has not all arrived
-    /// yet. The next read discards through it before doing anything else.
-    discarding: Option<u8>,
-}
-
-impl Connection {
-    pub(crate) fn new(stream: TcpStream) -> Self {
-        Self {
-            stream,
-            buffer: Vec::new(),
-            start: 0,
-            discarding: None,
-        }
-    }
-
-    fn available(&self) -> &[u8] {
-        &self.buffer[self.start..]
-    }
-
-    fn consume(&mut self, count: usize) {
-        self.start += count;
-        if self.start == self.buffer.len() {
-            self.buffer.clear();
-            self.start = 0;
-        }
-    }
-
-    fn take(&mut self, count: usize) -> Vec<u8> {
-        let bytes = self.available()[..count].to_vec();
-        self.consume(count);
-        bytes
-    }
-
-    /// Wait for the socket and append what one read returns. `Ok(0)` is the
-    /// end of input. Buffered bytes are kept whatever the outcome.
-    fn fill(&mut self, deadline: Deadline) -> io::Result<usize> {
-        if self.start > 0 {
-            self.buffer.drain(..self.start);
-            self.start = 0;
-        }
-        let filled = self.buffer.len();
-        self.buffer
-            .try_reserve(READ_CHUNK)
-            .map_err(|_| out_of_memory())?;
-        self.buffer.resize(filled + READ_CHUNK, 0);
-        let result = loop {
-            let attempt = deadline
-                .remaining()
-                .and_then(|remaining| self.stream.set_read_timeout(remaining))
-                .and_then(|()| (&self.stream).read(&mut self.buffer[filled..]));
-            match attempt {
-                Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
-                other => break other.map_err(normalize),
-            }
-        };
-        self.buffer
-            .truncate(filled + *result.as_ref().unwrap_or(&0));
-        result
-    }
-
-    /// Drop the tail of a record that exceeded the limit, through its
-    /// delimiter or to the end of input, within `deadline`. If the deadline
-    /// passes first, what has arrived is dropped and the rest is left for the
-    /// read after this one.
-    fn finish_discard(&mut self, deadline: Deadline) -> io::Result<()> {
-        while let Some(delimiter) = self.discarding {
-            match self.available().iter().position(|&byte| byte == delimiter) {
-                Some(index) => {
-                    self.consume(index + 1);
-                    self.discarding = None;
-                }
-                None => {
-                    self.consume(self.available().len());
-                    if self.fill(deadline)? == 0 {
-                        self.discarding = None;
-                    }
-                }
-            }
-        }
-        Ok(())
-    }
-
-    /// Read at most `count` bytes, as soon as any are available.
-    ///
-    /// `None` is the end of input. Asking for zero bytes performs no I/O and
-    /// returns an empty buffer, which is data, not the end.
-    pub(crate) fn read_up_to(
-        &mut self,
-        count: u64,
-        timeout_nanos: u64,
-    ) -> io::Result<Option<Vec<u8>>> {
-        let deadline = Deadline::after_nanos(timeout_nanos)?;
-        if count == 0 {
-            return Ok(Some(Vec::new()));
-        }
-        self.finish_discard(deadline)?;
-        if self.available().is_empty() && self.fill(deadline)? == 0 {
-            return Ok(None);
-        }
-        let count = usize::try_from(count).unwrap_or(usize::MAX);
-        Ok(Some(self.take(count.min(self.available().len()))))
-    }
-
-    /// Read exactly `count` bytes.
-    ///
-    /// If the input ends first the error is `UnexpectedEof`. Like every
-    /// failed read that consumes nothing: the bytes that did arrive stay
-    /// buffered.
-    pub(crate) fn read_exactly(&mut self, count: u64, timeout_nanos: u64) -> io::Result<Vec<u8>> {
-        let deadline = Deadline::after_nanos(timeout_nanos)?;
-        if count == 0 {
-            return Ok(Vec::new());
-        }
-        let count = usize::try_from(count).map_err(|_| out_of_memory())?;
-        self.finish_discard(deadline)?;
-        self.buffer
-            .try_reserve(count.saturating_sub(self.available().len()))
-            .map_err(|_| out_of_memory())?;
-        while self.available().len() < count {
-            if self.fill(deadline)? == 0 {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "TCP connection ended before the requested bytes arrived",
-                ));
-            }
-        }
-        Ok(self.take(count))
-    }
-
-    /// Read bytes through and including the next `delimiter`.
-    ///
-    /// If the input ends first, the bytes before the end are returned without
-    /// a delimiter. `None` is the end of input: no byte was left to return.
-    ///
-    /// A record, counting its delimiter, may be at most `limit` bytes. A
-    /// longer one is `LimitExceeded`: the part already received is dropped
-    /// at once, and the rest by the next read (see `finish_discard`).
-    pub(crate) fn read_until(
-        &mut self,
-        delimiter: u8,
-        limit: u64,
-        timeout_nanos: u64,
-    ) -> Result<Option<Vec<u8>>, ReadUntilError> {
-        let deadline = Deadline::after_nanos(timeout_nanos)?;
-        self.finish_discard(deadline)?;
-        let limit = usize::try_from(limit).unwrap_or(usize::MAX);
-        let mut scanned = 0;
-        loop {
-            let available = self.available();
-            let window = available.len().min(limit);
-            let find = |bytes: &[u8]| bytes.iter().position(|&byte| byte == delimiter);
-            if let Some(index) = find(&available[scanned..window]) {
-                return Ok(Some(self.take(scanned + index + 1)));
-            }
-            scanned = window;
-            if available.len() > limit {
-                match find(&available[limit..]) {
-                    Some(index) => self.consume(limit + index + 1),
-                    None => {
-                        self.consume(self.available().len());
-                        self.discarding = Some(delimiter);
-                    }
-                }
-                return Err(ReadUntilError::LimitExceeded);
-            }
-            if self.fill(deadline)? == 0 {
-                // The input ended inside the limit: the tail is a record.
-                let rest = self.available().len();
-                return Ok((rest > 0).then(|| self.take(rest)));
-            }
-        }
-    }
-
-    /// Read one line, without its `\n` terminator and without one `\r` before
-    /// it: the rule of `file_reader::read_line`. The terminator counts
-    /// towards `limit`. A final unterminated line is a line.
-    pub(crate) fn read_line(
-        &mut self,
-        limit: u64,
-        timeout_nanos: u64,
-    ) -> Result<Option<Vec<u8>>, ReadUntilError> {
-        Ok(self
-            .read_until(b'\n', limit, timeout_nanos)?
-            .map(|mut line| {
-                if line.last() == Some(&b'\n') {
-                    line.pop();
-                    if line.last() == Some(&b'\r') {
-                        line.pop();
-                    }
-                }
-                line
-            }))
-    }
-
-    /// Write all of `bytes`. On failure any prefix may have been sent.
-    pub(crate) fn write(&mut self, bytes: &[u8], timeout_nanos: u64) -> io::Result<()> {
-        let deadline = Deadline::after_nanos(timeout_nanos)?;
-        let mut written = 0;
-        while written < bytes.len() {
-            self.stream.set_write_timeout(deadline.remaining()?)?;
-            match self.stream.write(&bytes[written..]) {
-                Ok(0) => return Err(io::Error::from(io::ErrorKind::WriteZero)),
-                Ok(count) => written += count,
-                Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
-                Err(error) => return Err(normalize(error)),
-            }
-        }
-        Ok(())
-    }
 }
 
 /// Run `operation` on the connection behind `handle`, then drop the reference
@@ -386,7 +104,7 @@ pub(crate) fn connection_result(
     stream: io::Result<TcpStream>,
     roc_host: &RocHost,
 ) -> io::Result<*mut u64> {
-    crate::resources::box_resource(Connection::new(stream?), roc_host)
+    crate::resources::box_resource(Connection::new(stream?)?, roc_host)
 }
 
 fn delimited_result(
@@ -604,7 +322,7 @@ mod tests {
         let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
         let client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
         let (peer, _) = listener.accept().unwrap();
-        (Connection::new(client), peer)
+        (Connection::new(client).unwrap(), peer)
     }
 
     fn kind<T: std::fmt::Debug>(result: io::Result<T>) -> io::ErrorKind {
@@ -689,6 +407,47 @@ mod tests {
         assert_eq!(
             kind(connection.read_up_to(1, SHORT)),
             io::ErrorKind::TimedOut
+        );
+    }
+
+    #[test]
+    fn interrupted_reads_preserve_the_prefix_and_take_priority_over_expiration() {
+        struct Reset;
+        impl Drop for Reset {
+            fn drop(&mut self) {
+                crate::signals::set_test_pending(false);
+            }
+        }
+        let (mut connection, mut peer) = pair();
+        peer.write_all(b"prefix").unwrap();
+        time_out_until_buffered(&mut connection, b"prefix");
+        let reset = Reset;
+        crate::signals::set_test_pending(true);
+        assert_eq!(
+            kind(connection.read_up_to(3, 0)),
+            io::ErrorKind::Interrupted
+        );
+        assert_eq!(
+            kind(connection.read_exactly(6, LONG)),
+            io::ErrorKind::Interrupted
+        );
+        assert_eq!(
+            until_kind(connection.read_line(NO_LIMIT, LONG)),
+            io::ErrorKind::Interrupted
+        );
+        assert_eq!(
+            kind(connection.write(b"not written", LONG)),
+            io::ErrorKind::Interrupted
+        );
+        assert_eq!(connection.available(), b"prefix");
+        drop(reset);
+
+        peer.write_all(b" tail\n").unwrap();
+        assert_eq!(line(&mut connection, NO_LIMIT).unwrap(), b"prefix tail");
+        peer.set_read_timeout(Some(Duration::from_millis(20)))
+            .unwrap();
+        assert!(
+            matches!(peer.read(&mut [0]), Err(error) if matches!(error.kind(), io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut))
         );
     }
 

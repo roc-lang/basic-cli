@@ -81,6 +81,13 @@ def run(request: dict[str, object]) -> dict[str, object]:
     args = [str(arg) for arg in request["args"]]
     deadline = time.monotonic() + float(request["timeout"])
     console = Console()
+    # CTRL_C_EVENT broadcasts to the attached console. Keep this helper alive;
+    # Signal.catch! re-enables Ctrl-C in the child after CREATE_NEW_PROCESS_GROUP.
+    ctrl_handler_type = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.DWORD)
+    ctrl_handler = ctrl_handler_type(lambda event: event == 0)
+    console.kernel32.SetConsoleCtrlHandler.argtypes = [ctrl_handler_type, wintypes.BOOL]
+    if not console.kernel32.SetConsoleCtrlHandler(ctrl_handler, True):
+        raise ctypes.WinError(ctypes.get_last_error())
     initial_mode = console.mode()
     output = bytearray()
     with open("CONIN$", "rb", buffering=0) as console_input:
@@ -103,7 +110,11 @@ def run(request: dict[str, object]) -> dict[str, object]:
             console.press_key(character)
             time.sleep(float(request["input_delay"]))
         if request["send_signal"]:
-            process.send_signal(signal.CTRL_BREAK_EVENT)
+            if request["send_signal"] == "SIGINT":
+                if not console.kernel32.GenerateConsoleCtrlEvent(signal.CTRL_C_EVENT, 0):
+                    raise ctypes.WinError(ctypes.get_last_error())
+            else:
+                process.send_signal(signal.CTRL_BREAK_EVENT)
         try:
             exit_code = process.wait(timeout=max(0.0, deadline - time.monotonic()))
         except subprocess.TimeoutExpired:

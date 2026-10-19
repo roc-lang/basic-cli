@@ -109,6 +109,30 @@ Path := [
 	canonicalize! : Path => Try(Path, [PathErr(IOErr, Path)])
 	canonicalize! = |path| Host.path_canonicalize!(to_raw(path)).map_ok(from_raw).map_err(|err| PathErr(err, path))
 
+	## Replace discretionary access grants on a regular-file target, preserving
+	## ownership and contents. Symbolic links are followed. OwnerOnly grants
+	## owner read/write; PublicRead additionally grants everyone read. Neither
+	## grants execute. Existing handles and privileged OS access are unaffected.
+	## On macOS the target must currently be readable to open a handle for
+	## replacing its ACL. On Linux repairing an unreadable file requires
+	## /proc/self/fd.
+	set_permissions! : Path, [OwnerOnly, PublicRead] => Try({}, [PathErr(IOErr, Path)])
+	set_permissions! = |path, permissions|
+		Host.path_set_permissions!(to_raw(path), permissions).map_err(|err| PathErr(err, path))
+
+	## Create a new symbolic link. A relative target is stored unchanged and
+	## resolves from the link's parent directory. The declared target kind must
+	## match the eventual target; dangling targets are allowed. Windows requires
+	## Developer Mode or permission to create symbolic links.
+	symlink! : Path, Path, [File, Directory] => Try({}, [PathErr(IOErr, Path)])
+	symlink! = |target, link, kind|
+		Host.path_symlink!(to_raw(target), to_raw(link), kind).map_err(|err| PathErr(err, link))
+
+	## Read the stored target without resolving it or converting native units.
+	read_link! : Path => Try(Path, [PathErr(IOErr, Path)])
+	read_link! = |path|
+		Host.path_read_link!(to_raw(path)).map_ok(from_raw).map_err(|err| PathErr(err, path))
+
 	## Copy a regular file and its permissions, replacing the destination file.
 	## Rejects same-file copies (including hard-link aliases) and special files.
 	copy! : Path, Path => Try({}, [CopyErr({ operation : Str, source : Path, destination : Path, error : IOErr })])

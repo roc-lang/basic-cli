@@ -1,4 +1,4 @@
-# Statically linked x64musl binaries use musl's mallocng allocator directly.
+# C dependencies in static x64musl binaries can still use musl mallocng.
 # Ignore its encoded-metadata check while retaining reports from every caller.
 {
    musl-mallocng-enframe-uninitialised

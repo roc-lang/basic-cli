@@ -2,6 +2,7 @@ import IOErr
 import InternalHttp
 import InternalSqlite
 import Resource
+import System
 
 ## Declare the hosted effects and ABI-safe data exchanged with the native host.
 Host :: [].{
@@ -15,7 +16,7 @@ Host :: [].{
 		clear_envs : Bool,
 		cwd : [Inherit, Dir(NativePath)],
 		stdin : [Inherit, Null, Bytes(List(U8)), Pipe],
-		stdout : [Inherit, Null, Capture, Tee, Pipe],
+		stdout : [Inherit, InheritStderr, Null, Capture, Tee, Pipe],
 		stderr : [Inherit, Null, Capture, Tee, Pipe, MergeWithStdout],
 		timeout : [NoTimeout, AfterNanos(U64)],
 		output_limit : [NoLimit, MaxBytes(U64)],
@@ -66,27 +67,27 @@ Host :: [].{
 	random_seed_u64! : () => Try(U64, [RandomErr(IOErr)])
 	random_seed_u32! : () => Try(U32, [RandomErr(IOErr)])
 
-	sleep_nanos! : U64 => {}
+	sleep_nanos! : U64 => Try({}, [Interrupted])
 
-	sqlite_open! : NativePath, [ReadWriteCreate, ReadWrite, ReadOnly], U64 => Try(Resource.SqliteDb, InternalSqlite.Failure)
+	sqlite_open! : NativePath, [ReadWriteCreate, ReadWrite, ReadOnly], U64 => Try(Resource.SqliteDb, [Interrupted, Failed(InternalSqlite.Failure)])
 	sqlite_close! : Resource.SqliteDb => Try({}, InternalSqlite.Failure)
 	sqlite_execute! : Resource.SqliteDb, Str, List(InternalSqlite.Value) => Try({}, InternalSqlite.Problem)
 	sqlite_execute_script! : Resource.SqliteDb, Str => Try({}, InternalSqlite.Problem)
 	sqlite_query! : Resource.SqliteDb, Str, List(InternalSqlite.Value) => Try(Resource.SqliteRows, InternalSqlite.Problem)
 	sqlite_columns! : Resource.SqliteRows => List(Str)
-	sqlite_next! : Resource.SqliteRows => Try(List(InternalSqlite.Cell), [Done, Closed, Failed(InternalSqlite.Failure)])
+	sqlite_next! : Resource.SqliteRows => Try(List(InternalSqlite.Cell), [Done, Closed, Interrupted, Failed(InternalSqlite.Failure)])
 
-	stderr_line! : Str => Try({}, [StderrErr(IOErr)])
-	stderr_write! : Str => Try({}, [StderrErr(IOErr)])
-	stderr_write_bytes! : List(U8) => Try({}, [StderrErr(IOErr)])
+	stderr_line! : Str => Try({}, [Interrupted, StderrErr(IOErr)])
+	stderr_write! : Str => Try({}, [Interrupted, StderrErr(IOErr)])
+	stderr_write_bytes! : List(U8) => Try({}, [Interrupted, StderrErr(IOErr)])
 
-	stdin_line! : () => Try(List(U8), [EndOfInput, StdinErr(IOErr)])
-	stdin_bytes! : () => Try(List(U8), [EndOfInput, StdinErr(IOErr)])
-	stdin_read_to_end! : () => Try(List(U8), [StdinErr(IOErr)])
+	stdin_line! : () => Try(List(U8), [EndOfInput, Interrupted, StdinErr(IOErr)])
+	stdin_bytes! : () => Try(List(U8), [EndOfInput, Interrupted, StdinErr(IOErr)])
+	stdin_read_to_end! : () => Try(List(U8), [Interrupted, StdinErr(IOErr)])
 
-	stdout_line! : Str => Try({}, [StdoutErr(IOErr)])
-	stdout_write! : Str => Try({}, [StdoutErr(IOErr)])
-	stdout_write_bytes! : List(U8) => Try({}, [StdoutErr(IOErr)])
+	stdout_line! : Str => Try({}, [Interrupted, StdoutErr(IOErr)])
+	stdout_write! : Str => Try({}, [Interrupted, StdoutErr(IOErr)])
+	stdout_write_bytes! : List(U8) => Try({}, [Interrupted, StdoutErr(IOErr)])
 
 	# Tcp timeouts cross as nanoseconds. A connection's I/O timeout and line
 	# limit live in `Tcp.Connection` and are passed with each read or write.
@@ -111,10 +112,7 @@ Host :: [].{
 	# generated glue more than necessary.
 	file_hard_link! : NativePath, NativePath => Try({}, [FileErr(IOErr)])
 	file_rename! : NativePath, NativePath => Try({}, [FileErr(IOErr)])
-	env_platform! : () => {
-		arch : [X86, X64, ARM, AARCH64, OTHER(Str)],
-		os : [LINUX, MACOS, WINDOWS, OTHER(Str)],
-	}
+
 	env_dict! : () => List((NativeOsStr, NativeOsStr))
 	env_set_cwd! : NativePath => Try({}, IOErr)
 
@@ -130,17 +128,17 @@ Host :: [].{
 	CmdPartialOutput : { stdout_bytes : List(U8), stderr_bytes : List(U8) }
 	CmdOutput : { status : [Exited(I32), Signaled(I32)], stdout_bytes : List(U8), stderr_bytes : List(U8) }
 	CmdErr : [StartFailed(IOErr), TimedOut(CmdPartialOutput), OutputLimitExceeded(CmdPartialOutput), IOErr(IOErr)]
-	cmd_spawn! : Cmd => Try(Resource.Child, CmdErr)
-	cmd_run! : Cmd => Try(CmdOutput, CmdErr)
+	cmd_spawn! : Cmd => Try(Resource.Child, [CmdErr(CmdErr), Interrupted])
+	cmd_run! : Cmd => Try(CmdOutput, [CmdErr(CmdErr), Interrupted])
 	child_pid! : Resource.Child => U32
-	child_wait! : Resource.Child => Try(CmdOutput, [Closed, CmdErr(CmdErr)])
+	child_wait! : Resource.Child => Try(CmdOutput, [Closed, Interrupted, CmdErr(CmdErr)])
 	child_poll! : Resource.Child => Try([Running, Finished(CmdOutput)], [Closed, CmdErr(CmdErr)])
 	child_kill! : Resource.Child => Try({}, [Closed, CmdErr(CmdErr)])
 	child_close! : Resource.Child => Try({}, CmdErr)
 	child_close_stdin! : Resource.Child => Try({}, [Closed, CmdErr(CmdErr)])
 	# The waits are in nanoseconds; zero makes one attempt that does not wait.
-	child_write! : Resource.Child, List(U8), U64 => Try({}, [Closed, CmdErr(CmdErr)])
-	child_read! : Resource.Child, U64 => Try([Stdout(List(U8)), Stderr(List(U8))], [EndOfInput, Closed, CmdErr(CmdErr)])
+	child_write! : Resource.Child, List(U8), U64 => Try({}, [Closed, Interrupted, CmdErr(CmdErr)])
+	child_read! : Resource.Child, U64 => Try([Stdout(List(U8)), Stderr(List(U8))], [EndOfInput, Closed, Interrupted, CmdErr(CmdErr)])
 
 	tcp_listen! : Str, U16, U64 => Try(Resource.TcpListener, [TcpErr(IOErr)])
 	tcp_local_port! : Resource.TcpListener => Try(U16, [Closed, TcpErr(IOErr)])
@@ -154,7 +152,7 @@ Host :: [].{
 	file_reader_position! : Resource.FileReader => Try(U64, [FileErr(IOErr)])
 	file_reader_seek! : Resource.FileReader, [Start(U64), Current(I64), End(I64)] => Try(U64, [FileErr(IOErr)])
 
-	file_open_writer! : NativePath, [Truncate, Append, RequireNew] => Try(Resource.FileWriter, [FileErr(IOErr)])
+	file_open_writer! : NativePath, [Truncate, Append, RequireNew], [Default, OwnerOnly, PublicRead] => Try(Resource.FileWriter, [FileErr(IOErr)])
 	file_writer_write_bytes! : Resource.FileWriter, List(U8) => Try({}, [FileErr(IOErr)])
 	file_writer_write_utf8! : Resource.FileWriter, Str => Try({}, [FileErr(IOErr)])
 	file_writer_flush! : Resource.FileWriter => Try({}, [FileErr(IOErr)])
@@ -164,6 +162,25 @@ Host :: [].{
 	# reads from the one cursor the response's streams share: `Chunk` is the
 	# next non-empty chunk of at most 64 KiB, `ToEnd(max)` is everything unread,
 	# or `ReadLimitExceeded` once more than `max` bytes of it have arrived.
-	http_send_streaming! : InternalHttp.RequestToAndFromHost, [NoTimeout, After(U64)] => Try(InternalHttp.StreamingResponseFromHost, InternalHttp.TransportErr)
+	http_send_streaming! : InternalHttp.RequestToAndFromHost, [NoTimeout, After(U64)], [NoTimeout, At(U64)] => Try(InternalHttp.StreamingResponseFromHost, InternalHttp.TransportErr)
 	http_read_body! : Resource.HttpResponse, [Chunk, ToEnd(U64)] => Try(List(U8), [EndOfBody, ReadLimitExceeded, HttpErr(InternalHttp.TransportErr)])
+	signal_catch! : List([Interrupt, Terminate(System.Unix)]) => Try({}, [SignalErr(IOErr)])
+	signal_poll! : () => List([Interrupt, Terminate])
+
+	ExecFailure : [Interrupted, Failed(IOErr)]
+	cmd_exec! : System.Unix, NativePath, List(NativeOsStr) => ExecFailure
+	path_set_permissions! : NativePath, [OwnerOnly, PublicRead] => Try({}, IOErr)
+	path_symlink! : NativePath, NativePath, [File, Directory] => Try({}, IOErr)
+	path_read_link! : NativePath => Try(NativePath, IOErr)
+	http_close_body! : Resource.HttpResponse => {}
+	sqlite_rollback_cleanup! : Resource.SqliteDb => Try({}, InternalSqlite.Problem)
+	unix_socket_connect! : NativePath, U64 => Try(Resource.UnixSocketConnection, [UnixSocketErr(IOErr)])
+	unix_socket_read_up_to! : Resource.UnixSocketConnection, U64, U64 => Try(List(U8), [EndOfInput, UnixSocketErr(IOErr)])
+	unix_socket_read_exactly! : Resource.UnixSocketConnection, U64, U64 => Try(List(U8), [UnixSocketErr(IOErr), UnexpectedEndOfInput])
+	unix_socket_read_until! : Resource.UnixSocketConnection, U8, U64, U64 => Try(List(U8), [EndOfInput, ReadLimitExceeded(U64), UnixSocketErr(IOErr)])
+	unix_socket_read_line! : Resource.UnixSocketConnection, U64, U64 => Try(List(U8), [EndOfInput, ReadLimitExceeded(U64), UnixSocketErr(IOErr)])
+	unix_socket_write! : Resource.UnixSocketConnection, List(U8), U64 => Try({}, [UnixSocketErr(IOErr)])
+	unix_socket_listen! : NativePath => Try(Resource.UnixSocketListener, [UnixSocketErr(IOErr)])
+	unix_socket_accept! : Resource.UnixSocketListener, [NoTimeout, After(U64)] => Try(Resource.UnixSocketConnection, [Closed, UnixSocketErr(IOErr)])
+	unix_socket_listener_close! : Resource.UnixSocketListener => Try({}, [UnixSocketErr(IOErr)])
 }

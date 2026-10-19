@@ -15,13 +15,6 @@ import Path
 ## ```
 Env :: [].{
 
-	## Report the architecture and operating system for which the host was built.
-	platform! : () => {
-		arch : [X86, X64, ARM, AARCH64, OTHER(Str)],
-		os : [LINUX, MACOS, WINDOWS, OTHER(Str)],
-	}
-	platform! = || Host.env_platform!()
-
 	## Return all environment variables as native name/value pairs.
 	##
 	## Native non-Unicode values are preserved. Iteration order is unspecified

@@ -71,8 +71,15 @@ jobs:
         run: python3 -m unittest scripts/test_check_release_version.py scripts/test_check_release_branch.py scripts/test_check_version_bump.py scripts/test_update_nix_release.py scripts/test_check_roc_nightly.py scripts/test_windows_runtime.py
       - name: Check Roc nightly pins are in sync
         run: python3 scripts/check_roc_nightly.py
+      - name: Check OS witness API boundaries
+        run: python3 scripts/test_system_api.py
       - name: Format, check, and test examples
         run: ./scripts/test.py --operation validate
+      - name: Check musl allocator syscall churn
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes strace
+          python3 scripts/test_musl_allocator.py
       - name: Check native resource ownership with glibc and Valgrind
         run: |
           sudo apt-get update
@@ -219,3 +226,7 @@ jobs:
         if: matrix.valgrind
         shell: bash
         run: ./scripts/test.py --operation run --target "${{ matrix.target }}" --artifact-dir dist/example-binaries --valgrind
+
+      - name: Stop a real systemd service and verify application cleanup
+        if: matrix.target == 'x64musl' || matrix.target == 'arm64musl'
+        run: sudo python3 scripts/test_systemd_cleanup.py dist/example-binaries/${{ matrix.target }}/signal-cleanup

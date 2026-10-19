@@ -6,6 +6,15 @@ import Resource
 
 ## Open SQLite databases, run statements, and decode rows.
 ##
+## A caught signal interrupts preparation, query execution and busy waits with
+## bare Interrupted. The pending signal is retained until acknowledged. A rows
+## stream reports the interruption once and ends; start a new query afterwards.
+## Completed statements can finish before cancellation is observed. Scripts do
+## not undo earlier statements unless run inside transaction!.
+##
+## busy_timeout setters update the platform busy budget. A busy_timeout query
+## reports zero, SQLite's value when a custom busy handler is installed.
+##
 ## A [Db] is one connection. A string literal is a [Query]: each `${…}` in it
 ## is a [Value] bound as a parameter, never pasted into the SQL text. A
 ## [Decoder] turns a result row into a Roc value.
@@ -58,16 +67,17 @@ Sqlite :: [].{
 	## db = Sqlite.open!("app.db", {})?
 	## readonly = Sqlite.open!("app.db", { mode: ReadOnly })?
 	## ```
-	open! : Path, OpenOptions => Try(Db, [SqliteErr(Err)])
+	open! : Path, OpenOptions => Try(Db, [Interrupted, SqliteErr(Err)])
 	open! = |path, options|
 		match Host.sqlite_open!(Path.to_raw(path), options.mode, options.busy_timeout.to_nanos()) {
 			Ok(host) => Ok(Db.{ host })
-			Err(failure) => Err(SqliteErr(failed(failure)))
+			Err(Interrupted) => Err(Interrupted)
+			Err(Failed(failure)) => Err(SqliteErr(failed(failure)))
 		}
 
 	## Open a new, private in-memory database. It is discarded when the
 	## connection is closed or released.
-	open_in_memory! : () => Try(Db, [SqliteErr(Err)])
+	open_in_memory! : () => Try(Db, [Interrupted, SqliteErr(Err)])
 	open_in_memory! = || open!(":memory:", {})
 
 	## A connection to one database.
@@ -115,7 +125,7 @@ Sqlite :: [].{
 		## ```roc
 		## db.execute!("INSERT INTO todos (task) VALUES (${String(task)})")?
 		## ```
-		execute! : Db, Query => Try({}, [SqliteErr(Err), Closed])
+		execute! : Db, Query => Try({}, [Interrupted, SqliteErr(Err), Closed])
 		execute! = |db, query|
 			match Host.sqlite_execute!(db.host, query.sql, query.params) {
 				Ok({}) => Ok({})
@@ -136,7 +146,7 @@ Sqlite :: [].{
 		##     \\CREATE INDEX todos_task ON todos (task);
 		## )?
 		## ```
-		execute_script! : Db, Str => Try({}, [SqliteErr(Err), Closed])
+		execute_script! : Db, Str => Try({}, [Interrupted, SqliteErr(Err), Closed])
 		execute_script! = |db, sql|
 			match Host.sqlite_execute_script!(db.host, sql) {
 				Ok({}) => Ok({})
@@ -151,13 +161,16 @@ Sqlite :: [].{
 		## ```roc
 		## count = db.query_one!("SELECT COUNT(*) FROM todos", Decoder.i64(0))?
 		## ```
-		query_one! : Db, Query, Decoder(a, err) => Try(a, [SqliteErr(Err), Closed, NoRows, TooManyRows, BadRow(err)])
+		query_one! : Db, Query, Decoder(a, err) => Try(a, [Interrupted, SqliteErr(Err), Closed, NoRows, TooManyRows, BadRow(err)])
 		query_one! = |db, query, decoder| {
 			cursor = start!(db, query, decoder)?
 			first = match next_cells!(cursor) {
 				Ok(cells) => cells
 				Err(Done) => {
 					return Err(NoRows)
+				}
+				Err(Interrupted) => {
+					return Err(Interrupted)
 				}
 				Err(Closed) => {
 					return Err(Closed)
@@ -175,6 +188,7 @@ Sqlite :: [].{
 						Ok(value) => Ok(value)
 						Err(err) => Err(BadRow(err))
 					}
+				Err(Interrupted) => Err(Interrupted)
 				Err(Closed) => Err(Closed)
 				Err(SqliteErr(err)) => Err(SqliteErr(err))
 			}
@@ -188,7 +202,7 @@ Sqlite :: [].{
 		## ```roc
 		## tasks = db.query_all!("SELECT task FROM todos ORDER BY id", Decoder.str("task"))?
 		## ```
-		query_all! : Db, Query, Decoder(a, err) => Try(List(a), [SqliteErr(Err), Closed, BadRow(err)])
+		query_all! : Db, Query, Decoder(a, err) => Try(List(a), [Interrupted, SqliteErr(Err), Closed, BadRow(err)])
 		query_all! = |db, query, decoder| {
 			cursor = start!(db, query, decoder)?
 			var $values = []
@@ -206,6 +220,9 @@ Sqlite :: [].{
 						}
 					Err(Done) => {
 						$running = False
+					}
+					Err(Interrupted) => {
+						return Err(Interrupted)
 					}
 					Err(Closed) => {
 						return Err(Closed)
@@ -237,6 +254,7 @@ Sqlite :: [].{
 		##         Ok(event) => Stdout.line!(event.payload)?
 		##         Err(BadRow(_)) => {}
 		##         Err(SqliteErr(err)) => { return Err(SqliteErr(err)) }
+		##         Err(Interrupted) => { return Err(Interrupted) }
 		##         Err(Closed) => { return Err(Closed) }
 		##     }
 		## }
@@ -251,7 +269,7 @@ Sqlite :: [].{
 		## ([roc-lang/roc#12266](https://github.com/roc-lang/roc/issues/12266)).
 		## Give the loop a function of its own if the lock has to be gone before
 		## the next statement, such as a `DROP TABLE`.
-		rows : Db, Query, Decoder(a, err) -> Stream(Try(a, [SqliteErr(Err), Closed, BadRow(err)]))
+		rows : Db, Query, Decoder(a, err) -> Stream(Try(a, [Interrupted, SqliteErr(Err), Closed, BadRow(err)]))
 		rows = |db, query, decoder|
 			# Keep the connection, the decoder and the cursor in the state, not the
 			# callback capture, so Finished can release them even when the
@@ -272,6 +290,7 @@ Sqlite :: [].{
 							}
 					}
 					match started {
+						Err(Interrupted) => Ok((Err(Interrupted), Finished))
 						Err(Closed) => Ok((Err(Closed), Finished))
 						Err(SqliteErr(err)) => Ok((Err(SqliteErr(err)), Finished))
 						Ok(running) =>
@@ -282,6 +301,7 @@ Sqlite :: [].{
 										Err(err) => Ok((Err(BadRow(err)), Running(running)))
 									}
 								Err(Done) => Err(NoMore)
+								Err(Interrupted) => Ok((Err(Interrupted), Finished))
 								Err(Closed) => Ok((Err(Closed), Finished))
 								Err(SqliteErr(err)) => Ok((Err(SqliteErr(err)), Finished))
 							}
@@ -307,21 +327,25 @@ Sqlite :: [].{
 		## ```
 		# TODO(roc-lang/roc#12263): change the callback type back to
 		# `(() => Try(a, [..errs]))` once the compiler accepts it.
-		transaction! : Db, (() => Try(a, [SqliteErr(Err), Closed, ..errs])) => Try(a, [SqliteErr(Err), Closed, ..errs])
+		transaction! : Db, (() => Try(a, [Interrupted, SqliteErr(Err), Closed, ..errs])) => Try(a, [Interrupted, SqliteErr(Err), Closed, ..errs])
 		transaction! = |db, body!| {
 			run_sql!(db, "BEGIN")?
 			match body!() {
 				Ok(value) =>
 					match run_sql!(db, "COMMIT") {
 						Ok({}) => Ok(value)
+						Err(Interrupted) => {
+							_rolled_back = Host.sqlite_rollback_cleanup!(db.host)
+							Err(Interrupted)
+						}
 						Err(Closed) => Err(Closed)
 						Err(SqliteErr(err)) => {
-							_rolled_back = run_sql!(db, "ROLLBACK")
+							_rolled_back = Host.sqlite_rollback_cleanup!(db.host)
 							Err(SqliteErr(err))
 						}
 					}
 				Err(err) => {
-					_rolled_back = run_sql!(db, "ROLLBACK")
+					_rolled_back = Host.sqlite_rollback_cleanup!(db.host)
 					Err(err)
 				}
 			}
@@ -737,7 +761,7 @@ resolve = |columns, names| {
 }
 
 ## Prepare and bind the query, then resolve the decoder against its columns.
-start! : Sqlite.Db, Sqlite.Query, Sqlite.Decoder(a, err) => Try(Cursor, [SqliteErr(Sqlite.Err), Closed])
+start! : Sqlite.Db, Sqlite.Query, Sqlite.Decoder(a, err) => Try(Cursor, [Interrupted, SqliteErr(Sqlite.Err), Closed])
 start! = |db, query, decoder|
 	match Host.sqlite_query!(db.host, query.sql, query.params) {
 		Ok(rows) => {
@@ -750,11 +774,12 @@ start! = |db, query, decoder|
 		Err(problem) => Err(widen_problem(problem))
 	}
 
-next_cells! : Cursor => Try(List(InternalSqlite.Cell), [Done, Closed, SqliteErr(Sqlite.Err)])
+next_cells! : Cursor => Try(List(InternalSqlite.Cell), [Done, Closed, Interrupted, SqliteErr(Sqlite.Err)])
 next_cells! = |cursor|
 	match Host.sqlite_next!(cursor.rows) {
 		Ok(cells) => Ok(cells)
 		Err(Done) => Err(Done)
+		Err(Interrupted) => Err(Interrupted)
 		Err(Closed) => Err(Closed)
 		Err(Failed(failure)) => Err(SqliteErr(failed(failure)))
 	}
@@ -765,17 +790,18 @@ decode_cells = |cursor, decoder, cells| {
 	decode({ names: cursor.names, cells, indexes: cursor.indexes }, 0)
 }
 
-run_sql! : Sqlite.Db, Str => Try({}, [SqliteErr(Sqlite.Err), Closed])
+run_sql! : Sqlite.Db, Str => Try({}, [Interrupted, SqliteErr(Sqlite.Err), Closed])
 run_sql! = |db, sql|
 	match Host.sqlite_execute!(db.host, sql, []) {
 		Ok({}) => Ok({})
 		Err(problem) => Err(widen_problem(problem))
 	}
 
-widen_problem : InternalSqlite.Problem -> [SqliteErr(Sqlite.Err), Closed]
+widen_problem : InternalSqlite.Problem -> [Interrupted, SqliteErr(Sqlite.Err), Closed]
 widen_problem = |problem|
 	match problem {
 		Failed(failure) => SqliteErr(failed(failure))
+		Interrupted => Interrupted
 		Closed => Closed
 		WrongParamCount(counts) => SqliteErr(WrongParamCount(counts))
 		ReturnsRows => SqliteErr(ReturnsRows)

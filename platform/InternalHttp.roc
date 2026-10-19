@@ -10,7 +10,7 @@ InternalHttp :: [].{
 
 	## Errors raised by the host while sending a request, before a real HTTP
 	## response is available.
-	TransportErr : [Timeout, NetworkError, BadBody, Other(List(U8))]
+	TransportErr : [Interrupted, Timeout, NetworkError, BadBody, Other(List(U8))]
 
 	# Generated Rust glue uses tuple headers at the host ABI boundary.
 	HostHeaderTuple : (Str, Str)
@@ -35,6 +35,9 @@ InternalHttp :: [].{
 	StreamingResponseFromHost : {
 		status : U16,
 		headers : List(HostHeaderTuple),
+		# Preserve malformed Location detection without turning arbitrary
+		# non-UTF8 header bytes into a valid empty relative URL.
+		invalid_location : [None, Some(U8)],
 		content_length : [Known(U64), Unknown],
 		body : Resource.HttpResponse,
 	}

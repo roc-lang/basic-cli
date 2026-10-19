@@ -14,10 +14,10 @@
 //! cursor therefore never touches its statement without first checking that the
 //! connection is still open, and reports `Closed` when it is not.
 use core::mem::ManuallyDrop;
-use std::cell::RefCell;
+use std::cell::{Cell as LocalCell, RefCell};
 use std::ffi::{c_char, c_int, c_void, CStr, CString};
 use std::rc::Rc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use libsqlite3_sys as ffi;
 
@@ -58,6 +58,7 @@ impl Failure {
 /// Why a statement was not run.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Problem {
+    Interrupted,
     Failed(Failure),
     Closed,
     WrongParamCount { expected: u64, given: u64 },
@@ -74,6 +75,7 @@ impl From<Failure> for Problem {
 /// Why a cursor produced no row.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum StepError {
+    Interrupted,
     Closed,
     Failed(Failure),
 }
@@ -108,6 +110,100 @@ pub(crate) enum Cell<'a> {
     Blob(&'a [u8]),
 }
 
+// These callbacks execute synchronously inside SQLite. Their stable context is
+// outside State's RefCell: borrowing State again from a callback would panic.
+struct Callbacks {
+    timeout: LocalCell<Duration>,
+    busy_started: LocalCell<Option<Instant>>,
+    cancelled: LocalCell<bool>,
+    cleanup_depth: LocalCell<u32>,
+    busy_setting: LocalCell<bool>,
+}
+impl Callbacks {
+    fn pending(&self) -> bool {
+        self.cleanup_depth.get() == 0 && crate::signals::is_pending()
+    }
+    fn begin(&self) -> Result<(), Problem> {
+        self.cancelled.set(false);
+        self.busy_started.set(None);
+        if self.pending() {
+            Err(Problem::Interrupted)
+        } else {
+            Ok(())
+        }
+    }
+}
+struct Cleanup<'a>(&'a Callbacks);
+impl<'a> Cleanup<'a> {
+    fn new(callbacks: &'a Callbacks) -> Self {
+        callbacks
+            .cleanup_depth
+            .set(callbacks.cleanup_depth.get() + 1);
+        Self(callbacks)
+    }
+}
+impl Drop for Cleanup<'_> {
+    fn drop(&mut self) {
+        self.0.cleanup_depth.set(self.0.cleanup_depth.get() - 1);
+    }
+}
+unsafe extern "C" fn progress(context: *mut c_void) -> c_int {
+    let callbacks = unsafe { &*context.cast::<Callbacks>() };
+    if callbacks.pending() {
+        callbacks.cancelled.set(true);
+        1
+    } else {
+        0
+    }
+}
+unsafe extern "C" fn busy(context: *mut c_void, count: c_int) -> c_int {
+    let callbacks = unsafe { &*context.cast::<Callbacks>() };
+    if callbacks.pending() {
+        callbacks.cancelled.set(true);
+        return 0;
+    }
+    let start = if count == 0 {
+        let now = Instant::now();
+        callbacks.busy_started.set(Some(now));
+        now
+    } else {
+        callbacks.busy_started.get().unwrap_or_else(Instant::now)
+    };
+    let left = callbacks.timeout.get().saturating_sub(start.elapsed());
+    if left.is_zero() {
+        return 0;
+    }
+    let wait = left.min(Duration::from_millis(10));
+    if callbacks.cleanup_depth.get() != 0 {
+        std::thread::sleep(wait);
+    } else if !crate::signals::wait_for(wait) {
+        callbacks.cancelled.set(true);
+        return 0;
+    }
+    1
+}
+unsafe extern "C" fn authorize(
+    context: *mut c_void,
+    action: c_int,
+    name: *const c_char,
+    value: *const c_char,
+    _database: *const c_char,
+    _trigger: *const c_char,
+) -> c_int {
+    if action == ffi::SQLITE_PRAGMA
+        && !name.is_null()
+        && !value.is_null()
+        && unsafe { CStr::from_ptr(name) }
+            .to_bytes()
+            .eq_ignore_ascii_case(b"busy_timeout")
+    {
+        unsafe { &*context.cast::<Callbacks>() }
+            .busy_setting
+            .set(true);
+    }
+    ffi::SQLITE_OK
+}
+
 struct IdleStatement {
     sql: String,
     stmt: *mut ffi::sqlite3_stmt,
@@ -122,10 +218,13 @@ struct State {
     active: Vec<*mut ffi::sqlite3_stmt>,
     /// How many statements have been prepared for the cache, for tests.
     prepared: u64,
+    callbacks: *const Callbacks,
+    uncached: Vec<*mut ffi::sqlite3_stmt>,
 }
 
 pub(crate) struct Connection {
     state: RefCell<State>,
+    callbacks: Box<Callbacks>,
 }
 
 /// The value behind a `Resource.SqliteDb` handle.
@@ -162,34 +261,25 @@ fn error_message(raw: *mut ffi::sqlite3, code: c_int) -> String {
 /// Whether `sql` holds nothing SQLite would run: only white space, comments
 /// and empty statements. Anything that is not known to be nothing counts as a
 /// statement, including text that does not parse.
-fn holds_statement(raw: *mut ffi::sqlite3, sql: &[u8]) -> bool {
+fn holds_statement(state: &State, sql: &[u8]) -> Result<bool, Problem> {
     let mut rest = sql;
     while !rest.is_empty() {
-        let mut stmt: *mut ffi::sqlite3_stmt = core::ptr::null_mut();
-        let mut tail: *const c_char = core::ptr::null();
-        let code = unsafe {
-            ffi::sqlite3_prepare_v2(
-                raw,
-                rest.as_ptr().cast(),
-                rest.len() as c_int,
-                &mut stmt,
-                &mut tail,
-            )
+        let (stmt, tail, _) = match state.prepare(rest) {
+            Ok(prepared) => prepared,
+            Err(Problem::Interrupted) => return Err(Problem::Interrupted),
+            Err(_) => return Ok(true),
         };
         if !stmt.is_null() {
             unsafe { ffi::sqlite3_finalize(stmt) };
-            return true;
-        }
-        if code != ffi::SQLITE_OK {
-            return true;
+            return Ok(true);
         }
         let consumed = (tail as usize).saturating_sub(rest.as_ptr() as usize);
         if tail.is_null() || consumed == 0 || consumed > rest.len() {
-            return false;
+            return Ok(false);
         }
         rest = &rest[consumed..];
     }
-    false
+    Ok(false)
 }
 
 fn check_sql_text(sql: &str) -> Result<(), Failure> {
@@ -211,6 +301,106 @@ impl State {
         Failure::new(code, error_message(self.raw, code))
     }
 
+    fn callbacks(&self) -> &Callbacks {
+        unsafe { &*self.callbacks }
+    }
+    fn problem(&self, code: c_int) -> Problem {
+        if code & 0xff == ffi::SQLITE_INTERRUPT
+            || (self.callbacks().cancelled.get()
+                && matches!(code & 0xff, ffi::SQLITE_BUSY | ffi::SQLITE_LOCKED))
+        {
+            Problem::Interrupted
+        } else {
+            Problem::Failed(self.failure(code))
+        }
+    }
+    // busy_timeout setters take effect during prepare, not step. Read the new
+    // native budget and restore our handler before any following statement.
+    fn reconcile_busy(&self) -> Result<bool, Problem> {
+        let callbacks = self.callbacks();
+        if !callbacks.busy_setting.replace(false) {
+            return Ok(false);
+        }
+        let _cleanup = Cleanup::new(callbacks);
+        let mut stmt = std::ptr::null_mut();
+        let code = unsafe {
+            ffi::sqlite3_prepare_v2(
+                self.raw,
+                c"PRAGMA busy_timeout".as_ptr(),
+                -1,
+                &mut stmt,
+                std::ptr::null_mut(),
+            )
+        };
+        let result = if code == ffi::SQLITE_OK && !stmt.is_null() {
+            let code = unsafe { ffi::sqlite3_step(stmt) };
+            if code == ffi::SQLITE_ROW {
+                callbacks.timeout.set(Duration::from_millis(
+                    unsafe { ffi::sqlite3_column_int64(stmt, 0) }.max(0) as u64,
+                ));
+                Ok(true)
+            } else {
+                Err(self.problem(code))
+            }
+        } else {
+            Err(self.problem(code))
+        };
+        if !stmt.is_null() {
+            unsafe { ffi::sqlite3_finalize(stmt) };
+        }
+        unsafe {
+            ffi::sqlite3_busy_handler(self.raw, Some(busy), self.callbacks.cast_mut().cast());
+        }
+        result
+    }
+    fn prepare(
+        &self,
+        sql: &[u8],
+    ) -> Result<(*mut ffi::sqlite3_stmt, *const c_char, bool), Problem> {
+        if self.callbacks().pending() {
+            return Err(Problem::Interrupted);
+        }
+        let mut stmt = std::ptr::null_mut();
+        let mut tail = std::ptr::null();
+        let code = unsafe {
+            ffi::sqlite3_prepare_v2(
+                self.raw,
+                sql.as_ptr().cast(),
+                sql.len() as c_int,
+                &mut stmt,
+                &mut tail,
+            )
+        };
+        let changed = if code == ffi::SQLITE_OK {
+            self.reconcile_busy()
+        } else {
+            // A failed preparation may have reached the PRAGMA authorizer
+            // before applying the setter. Preserve our previous budget and
+            // restore the callback without replacing the original failure.
+            if self.callbacks().busy_setting.replace(false) {
+                unsafe {
+                    ffi::sqlite3_busy_handler(
+                        self.raw,
+                        Some(busy),
+                        self.callbacks.cast_mut().cast(),
+                    );
+                }
+            }
+            Ok(false)
+        };
+        if code != ffi::SQLITE_OK || changed.is_err() {
+            if !stmt.is_null() {
+                unsafe { ffi::sqlite3_finalize(stmt) };
+            }
+            return if code != ffi::SQLITE_OK {
+                Err(self.problem(code))
+            } else {
+                Err(changed.unwrap_err())
+            };
+        }
+        Ok((stmt, tail, changed.unwrap()))
+    }
+
     /// Take the statement for `sql` out of the cache, preparing it on a miss.
     ///
     /// `None` means the text holds no statement. Text holding more than one is
@@ -228,22 +418,10 @@ impl State {
         let mut found: *mut ffi::sqlite3_stmt = core::ptr::null_mut();
         // Empty statements (a lone `;`, a comment) may come before the real one.
         while found.is_null() && !rest.is_empty() {
-            let mut tail: *const c_char = core::ptr::null();
-            let code = unsafe {
-                ffi::sqlite3_prepare_v2(
-                    self.raw,
-                    rest.as_ptr().cast(),
-                    rest.len() as c_int,
-                    &mut found,
-                    &mut tail,
-                )
-            };
-            if code != ffi::SQLITE_OK {
-                let failure = self.failure(code);
-                if !found.is_null() {
-                    unsafe { ffi::sqlite3_finalize(found) };
-                }
-                return Err(failure.into());
+            let (stmt, tail, changed) = self.prepare(rest)?;
+            found = stmt;
+            if changed && !stmt.is_null() {
+                self.uncached.push(stmt);
             }
             let consumed = (tail as usize).saturating_sub(rest.as_ptr() as usize);
             if tail.is_null() || consumed == 0 || consumed > rest.len() {
@@ -255,9 +433,16 @@ impl State {
         if found.is_null() {
             return Ok(None);
         }
-        if holds_statement(self.raw, rest) {
-            unsafe { ffi::sqlite3_finalize(found) };
-            return Err(Problem::MultipleStatements);
+        match holds_statement(self, rest) {
+            Ok(false) => {}
+            result => {
+                self.uncached.retain(|stmt| *stmt != found);
+                unsafe { ffi::sqlite3_finalize(found) };
+                return match result {
+                    Err(error) => Err(error),
+                    _ => Err(Problem::MultipleStatements),
+                };
+            }
         }
         self.prepared += 1;
         Ok(Some(found))
@@ -272,6 +457,11 @@ impl State {
             ffi::sqlite3_reset(stmt);
             // Do not keep the caller's values alive in an idle statement.
             ffi::sqlite3_clear_bindings(stmt);
+        }
+        if let Some(index) = self.uncached.iter().position(|cached| *cached == stmt) {
+            self.uncached.swap_remove(index);
+            unsafe { ffi::sqlite3_finalize(stmt) };
+            return;
         }
         if self.idle.iter().any(|idle| idle.sql == sql) {
             // Two cursors ran the same text at once; one statement is enough.
@@ -333,6 +523,12 @@ impl State {
         if self.raw.is_null() {
             return Ok(());
         }
+        unsafe {
+            ffi::sqlite3_progress_handler(self.raw, 0, None, std::ptr::null_mut());
+            ffi::sqlite3_busy_handler(self.raw, None, std::ptr::null_mut());
+            ffi::sqlite3_set_authorizer(self.raw, None, std::ptr::null_mut());
+        }
+        self.uncached.clear();
         for idle in self.idle.drain(..) {
             unsafe { ffi::sqlite3_finalize(idle.stmt) };
         }
@@ -361,6 +557,9 @@ impl Connection {
         mode: Mode,
         busy_timeout: Duration,
     ) -> Result<Rc<Self>, Failure> {
+        if crate::signals::is_pending() {
+            return Err(Failure::new(ffi::SQLITE_INTERRUPT, "operation interrupted"));
+        }
         let access = match mode {
             Mode::ReadWriteCreate => ffi::SQLITE_OPEN_READWRITE | ffi::SQLITE_OPEN_CREATE,
             Mode::ReadWrite => ffi::SQLITE_OPEN_READWRITE,
@@ -383,14 +582,19 @@ impl Connection {
             unsafe { sqlite3_close_v2(raw) };
             return Err(failure);
         }
-        // Rounded up, so that a wait shorter than a millisecond is not no wait.
-        let millis = busy_timeout
-            .as_nanos()
-            .div_ceil(1_000_000)
-            .min(c_int::MAX as u128) as c_int;
+        let callbacks = Box::new(Callbacks {
+            timeout: LocalCell::new(busy_timeout),
+            busy_started: LocalCell::new(None),
+            cancelled: LocalCell::new(false),
+            cleanup_depth: LocalCell::new(0),
+            busy_setting: LocalCell::new(false),
+        });
+        let context = (&*callbacks as *const Callbacks).cast_mut().cast();
         unsafe {
             ffi::sqlite3_extended_result_codes(raw, 1);
-            ffi::sqlite3_busy_timeout(raw, millis);
+            ffi::sqlite3_progress_handler(raw, 1000, Some(progress), context);
+            ffi::sqlite3_busy_handler(raw, Some(busy), context);
+            ffi::sqlite3_set_authorizer(raw, Some(authorize), context);
         }
         Ok(Rc::new(Self {
             state: RefCell::new(State {
@@ -398,7 +602,10 @@ impl Connection {
                 idle: Vec::new(),
                 active: Vec::new(),
                 prepared: 0,
+                callbacks: &*callbacks,
+                uncached: Vec::new(),
             }),
+            callbacks,
         }))
     }
 
@@ -409,6 +616,7 @@ impl Connection {
 
     /// Run one statement that has no result columns.
     pub(crate) fn execute(&self, sql: &str, params: &[Param]) -> Result<(), Problem> {
+        self.callbacks.begin()?;
         let mut state = self.state.borrow_mut();
         let Some(stmt) = state.checkout(sql)? else {
             return if params.is_empty() {
@@ -427,7 +635,7 @@ impl Connection {
                 // A statement without result columns produces no row.
                 match unsafe { ffi::sqlite3_step(stmt) } {
                     ffi::SQLITE_DONE | ffi::SQLITE_ROW => Ok(()),
-                    code => Err(state.failure(code).into()),
+                    code => Err(state.problem(code)),
                 }
             })
         };
@@ -437,30 +645,59 @@ impl Connection {
 
     /// Run every statement in `sql`, discarding any rows.
     pub(crate) fn execute_script(&self, sql: &str) -> Result<(), Problem> {
+        self.callbacks.begin()?;
         let state = self.state.borrow();
         if state.raw.is_null() {
             return Err(Problem::Closed);
         }
         check_sql_text(sql)?;
-        let text = CString::new(sql).expect("checked for NUL bytes");
-        let code = unsafe {
-            ffi::sqlite3_exec(
-                state.raw,
-                text.as_ptr(),
-                None,
-                core::ptr::null_mut(),
-                core::ptr::null_mut(),
-            )
+        let mut rest = sql.as_bytes();
+        while !rest.is_empty() {
+            let (stmt, tail, _) = state.prepare(rest)?;
+            let consumed = (tail as usize).saturating_sub(rest.as_ptr() as usize);
+            if !stmt.is_null() {
+                let result = loop {
+                    if self.callbacks.pending() {
+                        break Err(Problem::Interrupted);
+                    }
+                    let code = unsafe { ffi::sqlite3_step(stmt) };
+                    match code {
+                        ffi::SQLITE_ROW => {}
+                        ffi::SQLITE_DONE => break Ok(()),
+                        code => break Err(state.problem(code)),
+                    }
+                };
+                unsafe { ffi::sqlite3_finalize(stmt) };
+                result?;
+            }
+            if consumed == 0 || consumed > rest.len() {
+                break;
+            }
+            rest = &rest[consumed..];
+        }
+        Ok(())
+    }
+
+    /// Fixed cleanup operation; never acknowledges the application's signal.
+    pub(crate) fn rollback_cleanup(&self) -> Result<(), Problem> {
+        let _cleanup = Cleanup::new(&self.callbacks);
+        let active = {
+            let state = self.state.borrow();
+            if state.raw.is_null() {
+                return Err(Problem::Closed);
+            }
+            unsafe { ffi::sqlite3_get_autocommit(state.raw) == 0 }
         };
-        if code == ffi::SQLITE_OK {
-            Ok(())
+        if active {
+            self.execute("ROLLBACK", &[])
         } else {
-            Err(state.failure(code).into())
+            Ok(())
         }
     }
 
     /// Prepare and bind a statement, ready to be stepped.
     pub(crate) fn query(self: &Rc<Self>, sql: &str, params: &[Param]) -> Result<Cursor, Problem> {
+        self.callbacks.begin()?;
         let mut state = self.state.borrow_mut();
         let Some(stmt) = state.checkout(sql)? else {
             if !params.is_empty() {
@@ -549,6 +786,10 @@ impl Cursor {
         let Some(stmt) = self.live_stmt()? else {
             return Ok(false);
         };
+        if let Err(Problem::Interrupted) = self.connection.callbacks.begin() {
+            self.finish();
+            return Err(StepError::Interrupted);
+        }
         match unsafe { ffi::sqlite3_step(stmt) } {
             ffi::SQLITE_ROW => Ok(true),
             ffi::SQLITE_DONE => {
@@ -556,9 +797,13 @@ impl Cursor {
                 Ok(false)
             }
             code => {
-                let failure = self.connection.state.borrow().failure(code);
+                let problem = self.connection.state.borrow().problem(code);
                 self.finish();
-                Err(StepError::Failed(failure))
+                match problem {
+                    Problem::Interrupted => Err(StepError::Interrupted),
+                    Problem::Failed(failure) => Err(StepError::Failed(failure)),
+                    _ => unreachable!(),
+                }
             }
         }
     }
@@ -679,10 +924,12 @@ type RocValueTag = BytesOrIntegerOrNullOrRealOrStringTag;
 type RocCell = BytesOrIntegerOrNullOrRealOrText;
 type RocCellTag = BytesOrIntegerOrNullOrRealOrTextTag;
 type RocCellPayload = BytesOrIntegerOrNullOrRealOrTextPayload;
-type RocFailure = HostSqliteOpenErr;
-type RocProblem = ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCount;
-type RocProblemTag = ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag;
-type RocProblemPayload = ClosedOrFailedOrMultipleStatementsOrReturnsRowsOrWrongParamCountPayload;
+type RocFailure = HostSqliteCloseErr;
+type RocProblem = ClosedOrFailedOrInterruptedOrMultipleStatementsOrReturnsRowsOrWrongParamCount;
+type RocProblemTag =
+    ClosedOrFailedOrInterruptedOrMultipleStatementsOrReturnsRowsOrWrongParamCountTag;
+type RocProblemPayload =
+    ClosedOrFailedOrInterruptedOrMultipleStatementsOrReturnsRowsOrWrongParamCountPayload;
 
 fn params_from_roc(values: &[RocValue]) -> Vec<Param<'_>> {
     values
@@ -741,6 +988,10 @@ fn roc_failure(failure: &Failure, roc_host: &RocHost) -> RocFailure {
 
 fn roc_problem(problem: &Problem, roc_host: &RocHost) -> RocProblem {
     match problem {
+        Problem::Interrupted => RocProblem {
+            payload: RocProblemPayload { interrupted: [] },
+            tag: RocProblemTag::Interrupted,
+        },
         Problem::Failed(failure) => RocProblem {
             payload: RocProblemPayload {
                 failed: ManuallyDrop::new(roc_failure(failure, roc_host)),
@@ -791,7 +1042,19 @@ fn execute_result(result: Result<(), Problem>, roc_host: &RocHost) -> HostSqlite
 fn open_err(failure: &Failure, roc_host: &RocHost) -> HostSqliteOpenResult {
     HostSqliteOpenResult {
         payload: HostSqliteOpenResultPayload {
-            err: ManuallyDrop::new(roc_failure(failure, roc_host)),
+            err: ManuallyDrop::new(if failure.extended_code & 0xff == ffi::SQLITE_INTERRUPT {
+                HostSqliteOpenErr {
+                    payload: HostSqliteOpenErrPayload { interrupted: [] },
+                    tag: HostSqliteOpenErrTag::Interrupted,
+                }
+            } else {
+                HostSqliteOpenErr {
+                    payload: HostSqliteOpenErrPayload {
+                        failed: ManuallyDrop::new(roc_failure(failure, roc_host)),
+                    },
+                    tag: HostSqliteOpenErrTag::Failed,
+                }
+            }),
         },
         tag: HostSqliteOpenResultTag::Err,
     }
@@ -807,12 +1070,12 @@ fn query_err(problem: &Problem, roc_host: &RocHost) -> HostSqliteQueryResult {
 }
 
 fn next_err(
-    tag: ClosedOrDoneOrFailedTag,
-    payload: ClosedOrDoneOrFailedPayload,
+    tag: ClosedOrDoneOrFailedOrInterruptedTag,
+    payload: ClosedOrDoneOrFailedOrInterruptedPayload,
 ) -> HostSqliteNextResult {
     HostSqliteNextResult {
         payload: HostSqliteNextResultPayload {
-            err: ManuallyDrop::new(ClosedOrDoneOrFailed { payload, tag }),
+            err: ManuallyDrop::new(ClosedOrDoneOrFailedOrInterrupted { payload, tag }),
         },
         tag: HostSqliteNextResultTag::Err,
     }
@@ -918,6 +1181,19 @@ pub unsafe extern "C" fn hosted_sqlite_execute_script(
 }
 
 /// # Safety
+/// `handle` must be a live database handle.
+#[no_mangle]
+pub unsafe extern "C" fn hosted_sqlite_rollback_cleanup(
+    handle: *mut u64,
+) -> HostSqliteRollbackCleanupResult {
+    let roc_host = roc_host();
+    let db: &mut SqliteDb = unsafe { crate::resources::resource_ref(handle) };
+    let result = execute_result(db.0.rollback_cleanup(), roc_host);
+    crate::resources::release(handle, roc_host);
+    result
+}
+
+/// # Safety
 ///
 /// `handle` must be a live database handle from `hosted_sqlite_open`.
 #[no_mangle]
@@ -994,16 +1270,20 @@ pub unsafe extern "C" fn hosted_sqlite_next(handle: *mut u64) -> HostSqliteNextR
             }
         }
         Ok(false) => next_err(
-            ClosedOrDoneOrFailedTag::Done,
-            ClosedOrDoneOrFailedPayload { done: [] },
+            ClosedOrDoneOrFailedOrInterruptedTag::Done,
+            ClosedOrDoneOrFailedOrInterruptedPayload { done: [] },
+        ),
+        Err(StepError::Interrupted) => next_err(
+            ClosedOrDoneOrFailedOrInterruptedTag::Interrupted,
+            ClosedOrDoneOrFailedOrInterruptedPayload { interrupted: [] },
         ),
         Err(StepError::Closed) => next_err(
-            ClosedOrDoneOrFailedTag::Closed,
-            ClosedOrDoneOrFailedPayload { closed: [] },
+            ClosedOrDoneOrFailedOrInterruptedTag::Closed,
+            ClosedOrDoneOrFailedOrInterruptedPayload { closed: [] },
         ),
         Err(StepError::Failed(failure)) => next_err(
-            ClosedOrDoneOrFailedTag::Failed,
-            ClosedOrDoneOrFailedPayload {
+            ClosedOrDoneOrFailedOrInterruptedTag::Failed,
+            ClosedOrDoneOrFailedOrInterruptedPayload {
                 failed: ManuallyDrop::new(roc_failure(&failure, roc_host)),
             },
         ),
@@ -1018,6 +1298,113 @@ mod tests {
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::time::Instant;
+
+    #[test]
+    fn cancellation_rolls_back_without_acknowledging_the_signal() {
+        let connection = memory();
+        connection
+            .execute("CREATE TABLE changes(value)", &[])
+            .unwrap();
+        connection.execute("BEGIN", &[]).unwrap();
+        connection
+            .execute("INSERT INTO changes VALUES(1)", &[])
+            .unwrap();
+        crate::signals::set_test_pending(true);
+        assert_eq!(connection.execute("COMMIT", &[]), Err(Problem::Interrupted));
+        connection.rollback_cleanup().unwrap();
+        assert!(crate::signals::is_pending());
+        crate::signals::set_test_pending(false);
+        assert_eq!(count(&connection, "changes"), 0);
+        connection
+            .execute("INSERT INTO changes VALUES(2)", &[])
+            .unwrap();
+        assert_eq!(count(&connection, "changes"), 1);
+    }
+
+    #[test]
+    fn progress_callback_interrupts_running_bytecode_and_cache_can_be_reused() {
+        let connection = memory();
+        let sql = "WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<10000000) SELECT sum(x) FROM n";
+        let stmt = connection
+            .state
+            .borrow_mut()
+            .checkout(sql)
+            .unwrap()
+            .unwrap();
+        crate::signals::set_test_pending(true);
+        let code = unsafe { ffi::sqlite3_step(stmt) };
+        assert_eq!(code, ffi::SQLITE_INTERRUPT);
+        assert_eq!(
+            connection.state.borrow().problem(code),
+            Problem::Interrupted
+        );
+        connection.state.borrow_mut().checkin(sql, stmt);
+        crate::signals::set_test_pending(false);
+        assert_eq!(
+            all_rows(&connection, "SELECT 7", &[]),
+            vec![vec![Owned::Integer(7)]]
+        );
+    }
+
+    #[test]
+    fn progress_callback_also_interrupts_preparation() {
+        let connection = memory();
+        let state = connection.state.borrow();
+        let context = (&*connection.callbacks as *const Callbacks)
+            .cast_mut()
+            .cast();
+        unsafe { ffi::sqlite3_progress_handler(state.raw, 1, Some(progress), context) };
+        let sql = std::iter::repeat_n("SELECT 1", 300)
+            .collect::<Vec<_>>()
+            .join(" UNION ALL ");
+        let mut stmt = std::ptr::null_mut();
+        crate::signals::set_test_pending(true);
+        let code = unsafe {
+            ffi::sqlite3_prepare_v2(
+                state.raw,
+                sql.as_ptr().cast(),
+                sql.len() as c_int,
+                &mut stmt,
+                std::ptr::null_mut(),
+            )
+        };
+        if !stmt.is_null() {
+            unsafe { ffi::sqlite3_finalize(stmt) };
+        }
+        crate::signals::set_test_pending(false);
+        assert_eq!(code, ffi::SQLITE_INTERRUPT);
+        assert!(connection.callbacks.cancelled.get());
+    }
+
+    #[test]
+    fn busy_timeout_setters_in_scripts_keep_the_managed_handler() {
+        let connection = memory();
+        connection
+            .execute_script("PRAGMA busy_timeout=37; CREATE TABLE changes(value);")
+            .unwrap();
+        assert_eq!(
+            connection.callbacks.timeout.get(),
+            Duration::from_millis(37)
+        );
+        assert_eq!(
+            all_rows(&connection, "PRAGMA busy_timeout", &[]),
+            vec![vec![Owned::Integer(0)]]
+        );
+        all_rows(&connection, "PRAGMA busy_timeout=41", &[]);
+        all_rows(&connection, "PRAGMA busy_timeout=43", &[]);
+        all_rows(&connection, "PRAGMA busy_timeout=41", &[]);
+        assert_eq!(
+            connection.callbacks.timeout.get(),
+            Duration::from_millis(41)
+        );
+        crate::signals::set_test_pending(true);
+        let context = (&*connection.callbacks as *const Callbacks)
+            .cast_mut()
+            .cast();
+        assert_eq!(unsafe { busy(context, 0) }, 0);
+        assert!(connection.callbacks.cancelled.get());
+        crate::signals::set_test_pending(false);
+    }
 
     static NEXT_TEMP_DIR: AtomicUsize = AtomicUsize::new(0);
 

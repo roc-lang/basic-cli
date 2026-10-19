@@ -83,6 +83,9 @@ fn pattern(start: usize, len: usize) -> Bytes {
 }
 
 async fn handle_request(req: Request<Incoming>) -> Result<Response<BoxBody>, GenericError> {
+    if req.uri().path().starts_with("/redirect/") {
+        return handle_redirect(req).await;
+    }
     let response = match (req.method(), req.uri().path()) {
         (&Method::GET, "/utf8test") => {
             // UTF-8 encoded "Hello utf8"
@@ -167,6 +170,136 @@ async fn handle_request(req: Request<Incoming>) -> Result<Response<BoxBody>, Gen
     };
 
     Ok(response)
+}
+
+/// Redirects intentionally keep their bodies unfinished. Following a redirect
+/// must close that body and send the next request without collecting it.
+fn redirect(status: u16, locations: &[String]) -> Result<Response<BoxBody>, GenericError> {
+    let mut response = Response::builder().status(status);
+    for location in locations {
+        response = response.header("Location", location);
+    }
+    Ok(response.body(parts([
+        Part::Data(Bytes::from_static(b"discard this intermediate body")),
+        Part::Pause(Duration::from_secs(60)),
+    ]))?)
+}
+
+async fn handle_redirect(req: Request<Incoming>) -> Result<Response<BoxBody>, GenericError> {
+    let path = req.uri().path().to_owned();
+    if path == "/redirect/inspect" {
+        let method = req.method().as_str().to_owned();
+        let uri = req.uri().to_string();
+        let fields = [
+            "host",
+            "authorization",
+            "cookie",
+            "proxy-authorization",
+            "content-type",
+            "content-length",
+            "x-hop",
+            "x-public",
+            "expect",
+            "digest",
+        ];
+        let headers: String = fields
+            .into_iter()
+            .map(|name| {
+                format!(
+                    "{name}: {}\n",
+                    req.headers()
+                        .get(name)
+                        .map_or("<absent>", |v| v.to_str().unwrap_or("<invalid>"))
+                )
+            })
+            .collect();
+        let body = req.into_body().collect().await?.to_bytes();
+        let report = format!(
+            "method: {method}\nuri: {uri}\nbody: {}\n{headers}",
+            String::from_utf8_lossy(&body)
+        );
+        return Ok(Response::builder()
+            .header("X-Request-Method", method)
+            .body(full(report))?);
+    }
+    if path == "/redirect/final" {
+        return Ok(Response::new(full("final")));
+    }
+    if let Some(left) = path.strip_prefix("/redirect/delayed/") {
+        tokio::time::sleep(Duration::from_millis(250)).await;
+        let left: u8 = left.parse()?;
+        return if left == 0 {
+            Ok(Response::new(parts([
+                Part::Pause(Duration::from_millis(250)),
+                Part::Data(Bytes::from_static(b"final")),
+            ])))
+        } else {
+            redirect(302, &[format!("/redirect/delayed/{}", left - 1)])
+        };
+    }
+    if let Some(left) = path.strip_prefix("/redirect/chain/") {
+        let left: u8 = left.parse()?;
+        return if left == 0 {
+            Ok(Response::new(full("final")))
+        } else {
+            redirect(302, &[format!("/redirect/chain/{}", left - 1)])
+        };
+    }
+    match path.as_str() {
+        "/redirect/non-utf8" => {
+            return Ok(Response::builder()
+                .status(302)
+                .header(
+                    "Location",
+                    hyper::header::HeaderValue::from_bytes(b"/bad\xff")?,
+                )
+                .body(full("invalid location"))?)
+        }
+        "/redirect/unicode" => {
+            return Ok(Response::builder()
+                .status(302)
+                .header(
+                    "Location",
+                    hyper::header::HeaderValue::from_bytes(
+                        "/redirect/inspect?name=caf\u{e9}".as_bytes(),
+                    )?,
+                )
+                .body(full("unicode location"))?)
+        }
+        "/redirect/missing" => {
+            return Ok(Response::builder()
+                .status(302)
+                .body(full("missing-location"))?)
+        }
+        "/redirect/duplicate" => {
+            return redirect(302, &["/redirect/final".into(), "/not-found".into()])
+        }
+        "/redirect/malformed" => return redirect(302, &["http://[".into()]),
+        "/redirect/unsupported" => return redirect(302, &["ftp://example.com/file".into()]),
+        "/redirect/not-found" => return redirect(302, &["/not-found".into()]),
+        "/redirect/loop" => return redirect(302, &["/redirect/loop".into()]),
+        "/redirect/fragment" => return redirect(302, &["/redirect/inspect#never-send".into()]),
+        _ => {}
+    }
+    let segments: Vec<_> = path.trim_start_matches('/').split('/').collect();
+    if let ["redirect", status, target] = segments.as_slice() {
+        let status: u16 = status.parse()?;
+        let location = match *target {
+            "echo" => "/redirect/inspect",
+            "relative" => "../inspect",
+            "cross" => "http://localhost:9000/redirect/inspect",
+            "network" => "//localhost:9000/redirect/inspect",
+            _ => {
+                return Ok(Response::builder()
+                    .status(404)
+                    .body(full("unknown redirect target"))?)
+            }
+        };
+        return redirect(status, &[location.to_owned()]);
+    }
+    Ok(Response::builder()
+        .status(404)
+        .body(full("unknown redirect route"))?)
 }
 
 #[tokio::main]

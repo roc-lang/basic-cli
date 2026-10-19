@@ -39,53 +39,53 @@ modes! = || {
 	path : Path
 	path = "modes.txt"
 
-	File.with_writer!(path, RequireNew, |writer| writer.write_utf8!("new\n"))?
+	File.with_writer!(path, RequireNew, {}, |writer| writer.write_utf8!("new\n"))?
 	show!("RequireNew on a free path", path)?
 
 	# `AlreadyExists` if anything is at the path; the file is left alone.
-	again = File.open_writer!(path, RequireNew).map_ok(|_| {})
+	again = File.open_writer!(path, RequireNew, {}).map_ok(|_| {})
 	expect again == Err(PathErr(AlreadyExists, path))
 	Stdout.line!("RequireNew on a file: ${Str.inspect(again)}")?
-	scoped = File.with_writer!(path, RequireNew, |writer| writer.write_utf8!("replaced\n"))
+	scoped = File.with_writer!(path, RequireNew, {}, |writer| writer.write_utf8!("replaced\n"))
 	expect scoped == Err(PathErr(AlreadyExists, path))
 	directory : Path
 	directory = "a-directory"
 	directory.create_dir!()?
-	on_directory = File.open_writer!(directory, RequireNew).map_ok(|_| {})
+	on_directory = File.open_writer!(directory, RequireNew, {}).map_ok(|_| {})
 	expect on_directory == Err(PathErr(AlreadyExists, directory))
 	Stdout.line!("RequireNew on a directory: ${Str.inspect(on_directory)}")?
 	show!("after the refused opens", path)?
 
-	File.with_writer!(path, Append, |writer| writer.write_bytes!("appended\n".to_utf8()))?
+	File.with_writer!(path, Append, {}, |writer| writer.write_bytes!("appended\n".to_utf8()))?
 	show!("Append to a file", path)?
 
-	File.with_writer!(path, Truncate, |writer| writer.write_utf8!("truncated\n"))?
+	File.with_writer!(path, Truncate, {}, |writer| writer.write_utf8!("truncated\n"))?
 	show!("Truncate a file", path)?
 
 	# Opening is all it takes to empty the file.
-	_ = File.open_writer!(path, Truncate)?
+	_ = File.open_writer!(path, Truncate, {})?
 	show!("Truncate without writing", path)?
 
 	created : Path
 	created = "created-by-append.txt"
-	File.with_writer!(created, Append, |writer| writer.write_utf8!("first\n"))?
-	File.with_writer!(created, Append, |writer| writer.write_utf8!("second\n"))?
+	File.with_writer!(created, Append, {}, |writer| writer.write_utf8!("first\n"))?
+	File.with_writer!(created, Append, {}, |writer| writer.write_utf8!("second\n"))?
 	show!("Append creates the file", created)?
 
 	fresh : Path
 	fresh = "created-by-truncate.txt"
-	File.with_writer!(fresh, Truncate, |_writer| Ok({}))?
+	File.with_writer!(fresh, Truncate, {}, |_writer| Ok({}))?
 	show!("Truncate creates the file", fresh)?
 
 	# A failed open names the path, in every mode.
 	missing : Path
 	missing = "no-such-directory/file.txt"
 	for write_mode in [Truncate, Append, RequireNew] {
-		result = File.open_writer!(missing, write_mode).map_ok(|_| {})
+		result = File.open_writer!(missing, write_mode, {}).map_ok(|_| {})
 		expect result == Err(PathErr(NotFound, missing))
 		Stdout.line!("missing parent, ${Str.inspect(write_mode)}: ${Str.inspect(result)}")?
 	}
-	on_dir = File.open_writer!(directory, Truncate).map_ok(|_| {})
+	on_dir = File.open_writer!(directory, Truncate, {}).map_ok(|_| {})
 	expect on_dir == Err(PathErr(IsADirectory, directory))
 	Stdout.line!("Truncate on a directory: ${Str.inspect(on_dir)}")
 }
@@ -96,7 +96,7 @@ buffering! = || {
 	path : Path
 	path = "buffered.txt"
 
-	writer = File.open_writer!(path, Truncate)?
+	writer = File.open_writer!(path, Truncate, {})?
 	Stdout.line!("inspect: ${Str.inspect(writer)}")?
 	writer.write_utf8!("one,")?
 	# A copy shares the file and the buffer, so writes keep their order.
@@ -135,14 +135,14 @@ buffering! = || {
 	show!("dropped by an early return", dropped)?
 
 	# The writer above is still open; a second one appends after its data.
-	File.open_writer!(path, Append)?.write_utf8!("appended")?
+	File.open_writer!(path, Append, {})?.write_utf8!("appended")?
 	appended = path.read_bytes!()?
 	Stdout.line!("appended through a temporary writer: ${appended.len().to_str()} bytes, ending ${Str.inspect(appended.take_last(2))}")
 }
 
 write_and_drop! : Path, Bool => Try({}, _)
 write_and_drop! = |path, early| {
-	writer = File.open_writer!(path, Append)?
+	writer = File.open_writer!(path, Append, {})?
 	aliases = [writer, writer]
 	for alias in aliases {
 		alias.write_utf8!("kept ")?
@@ -164,6 +164,7 @@ streams! = || {
 	whole = File.with_writer!(
 		path,
 		Truncate,
+		{},
 		|writer| writer.write_stream!(Stream.from_iter([chunk("a"), chunk(""), chunk("bc")].iter())),
 	)
 	Stdout.line!("stream without an error: ${Str.inspect(whole)}")?
@@ -173,6 +174,7 @@ streams! = || {
 	failed = File.with_writer!(
 		path,
 		Truncate,
+		{},
 		|writer| writer.write_stream!(Stream.from_iter(broken.iter())),
 	)
 	expect failed == Err(SourceErr(Boom("after two chunks")))
@@ -189,7 +191,7 @@ streams! = || {
 	copy : Path
 	copy = "copy.bin"
 	reader = File.open_reader!(source)?
-	copied = File.with_writer!(copy, RequireNew, |writer| writer.write_stream!(reader.chunks()))
+	copied = File.with_writer!(copy, RequireNew, {}, |writer| writer.write_stream!(reader.chunks()))
 	match copied {
 		Ok({}) => {}
 		Err(SourceErr(FileErr(err))) => {
@@ -206,7 +208,7 @@ streams! = || {
 	Stdout.line!("copied ${copied_bytes.len().to_str()} bytes, equal: ${Str.inspect(copied_bytes == bytes)}")?
 
 	# Without `with_writer!` the same call works on a writer directly.
-	writer = File.open_writer!(path, Append)?
+	writer = File.open_writer!(path, Append, {})?
 	direct = writer.write_stream!(Stream.from_iter([chunk("|x"), Err(Stopped), chunk("y")].iter()))
 	expect direct == Err(SourceErr(Stopped))
 	writer.flush!()?
@@ -224,6 +226,7 @@ with_writer! = || {
 	value = File.with_writer!(
 		path,
 		Truncate,
+		{},
 		|writer| {
 			writer.write_utf8!("written")?
 			Ok(42.U64)
@@ -237,6 +240,7 @@ with_writer! = || {
 	failed = File.with_writer!(
 		path,
 		Truncate,
+		{},
 		|writer| {
 			writer.write_utf8!("partial")?
 			Err(Refused("by the callback"))
@@ -247,7 +251,7 @@ with_writer! = || {
 	show!("  flushed", path)?
 
 	# A writer that outlives the callback stays open and usable.
-	kept = File.with_writer!(path, Append, |writer| Ok(writer))?
+	kept = File.with_writer!(path, Append, {}, |writer| Ok(writer))?
 	kept.write_utf8!(" and more")?
 	kept.flush!()?
 	show!("writer kept by the callback", path)?
@@ -262,6 +266,7 @@ only_file_errors! = |path|
 	File.with_writer!(
 		path,
 		Truncate,
+		{},
 		|writer| {
 			writer.write_utf8!("name,total\n")?
 			writer.write_bytes!("apples,3\n".to_utf8())?
@@ -284,7 +289,7 @@ error_rows! = |arg_count| {
 	write_bytes! = File.Writer.write_bytes!
 	flush! = File.Writer.flush!
 
-	writer = open!(path, Truncate)?
+	writer = open!(path, Truncate, {})?
 	write_utf8!(writer, "value,")?
 	write_bytes!(writer, "value,".to_utf8())?
 	flush!(writer)?
@@ -302,9 +307,12 @@ stdin! : () => Try({}, _)
 stdin! = || {
 	path : Path
 	path = "stdin.bin"
-	result = File.with_writer!(path, Truncate, |writer| writer.write_stream!(Stdin.chunks()))
+	result = File.with_writer!(path, Truncate, {}, |writer| writer.write_stream!(Stdin.chunks()))
 	match result {
 		Ok({}) => {}
+		Err(SourceErr(Interrupted)) => {
+			return Err(Interrupted)
+		}
 		Err(SourceErr(StdinErr(err))) => {
 			return Err(StdinErr(err))
 		}

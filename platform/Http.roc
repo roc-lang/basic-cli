@@ -3,6 +3,7 @@ import Host
 import InternalHttp
 import Resource
 import Url
+import http.Method
 import http.Header
 import http.Request
 import http.Response
@@ -21,9 +22,14 @@ import http.Response
 ## for HTTP protocol, TLS trust-store, and timeout details.
 Http :: [].{
 
-	## Errors raised by the host while sending a request, before a real HTTP
-	## response is available.
-	TransportErr : InternalHttp.TransportErr
+	## Failures while sending a request, reading its body or following redirects.
+	TransportErr : [Timeout, NetworkError, BadBody, Other(List(U8)), RedirectLimitExceeded(U64), InvalidRedirectUrl(Url.ParseErr), AmbiguousRedirectLocation, InsecureRedirect]
+
+	## Redirects are opt-in; `{}` returns the first response unchanged.
+	## A positive maximum follows 301/302/303/307/308, using one request
+	## deadline across every hop and the final body. Cross-origin requests
+	## discard credentials; HTTPS-to-HTTP redirects are rejected.
+	SendOptions := { max_redirects : U64 ?? 0 }
 
 	## Validate and send an HTTP request.
 	##
@@ -33,16 +39,24 @@ Http :: [].{
 	##
 	## ```roc
 	## request = Request.from_method(GET).with_uri("https://www.roc-lang.org")
-	## response = Http.send!(request)?
+	## response = Http.send!(request, {})?
 	## ```
-	send! : Request => Try(Response, [InvalidUrl(Url.ParseErr), HttpErr(TransportErr)])
-	send! = |request| {
-		url = Url.parse(Request.uri(request)) ? InvalidUrl
-		canonical_url = Url.without_fragment(url)
-		canonical_request = request.with_uri(Url.to_str(canonical_url))
-		host_response = Host.http_send_request!(InternalHttp.to_host_request(canonical_request)) ? HttpErr
-
-		Ok(InternalHttp.from_host_response(host_response))
+	send! : Request, SendOptions => Try(Response, [Interrupted, InvalidUrl(Url.ParseErr), HttpErr(TransportErr)])
+	send! = |request, options| {
+		response = send_streaming!(request, { idle_timeout: NoTimeout, max_redirects: options.max_redirects })?
+		body = match response.read_to_end!(NoLimit) {
+			Ok(bytes) => bytes
+			Err(ReadLimitExceeded(_)) => {
+				return Err(HttpErr(BadBody))
+			}
+			Err(Interrupted) => {
+				return Err(Interrupted)
+			}
+			Err(HttpErr(error)) => {
+				return Err(HttpErr(error))
+			}
+		}
+		Ok(Response.from_status(response.status).with_headers(response.headers).with_body(body))
 	}
 
 	## Encode a value as JSON and set it as the request body.
@@ -61,11 +75,11 @@ Http :: [].{
 	}
 
 	## Encode a value as JSON, attach it to the request body, and send it.
-	send_json! : Request, _ => Try(Response, [JsonErr(_), InvalidUrl(Url.ParseErr), HttpErr(TransportErr)])
-	send_json! = |request, value| {
+	send_json! : Request, _, SendOptions => Try(Response, [Interrupted, JsonErr(_), InvalidUrl(Url.ParseErr), HttpErr(TransportErr)])
+	send_json! = |request, value, options| {
 		json_request = with_json_body(request, value)?
 
-		send!(json_request)
+		send!(json_request, options)
 	}
 
 	## Perform an HTTP GET and decode the response body as a UTF-8 `Str`.
@@ -74,11 +88,11 @@ Http :: [].{
 	## Url.from_quote; dynamic strings should be passed through Url.parse.
 	##
 	## ```roc
-	## hello_str = Http.get_utf8!("http://localhost:8000")?
+	## hello_str = Http.get_utf8!("http://localhost:8000", {})?
 	## ```
-	get_utf8! : Url.Url => Try(Str, [BadBody(Str), InvalidUrl(Url.ParseErr), HttpErr(TransportErr)])
-	get_utf8! = |url| {
-		response = send!(Request.from_method(GET).with_uri(Url.to_str(url)))?
+	get_utf8! : Url.Url, SendOptions => Try(Str, [Interrupted, BadBody(Str), InvalidUrl(Url.ParseErr), HttpErr(TransportErr)])
+	get_utf8! = |url, options| {
+		response = send!(Request.from_method(GET).with_uri(Url.to_str(url)), options)?
 		body = Str.from_utf8(Response.body(response)) ? |_| BadBody("get_utf8!: response body was not valid UTF-8")
 
 		Ok(body)
@@ -103,11 +117,11 @@ Http :: [].{
 	##
 	## ```roc
 	## payload : Try({ foo : Str }, _)
-	## payload = Http.get!("http://localhost:8000")
+	## payload = Http.get!("http://localhost:8000", {})
 	## ```
-	get! : Url.Url => Try(_, [BadBody(Str), InvalidUrl(Url.ParseErr), HttpErr(TransportErr), JsonErr(_)])
-	get! = |url| {
-		response = send!(Request.from_method(GET).with_uri(Url.to_str(url)))?
+	get! : Url.Url, SendOptions => Try(_, [Interrupted, BadBody(Str), InvalidUrl(Url.ParseErr), HttpErr(TransportErr), JsonErr(_)])
+	get! = |url, options| {
+		response = send!(Request.from_method(GET).with_uri(Url.to_str(url)), options)?
 
 		decode_json_response(response)
 	}
@@ -124,7 +138,12 @@ Http :: [].{
 	## the whole exchange, body included, and `NoTimeout` (its default) and
 	## `TimeoutMilliseconds(0)` both mean no deadline. For a large download
 	## leave the request at `NoTimeout` and rely on `idle_timeout`.
-	StreamingOptions := { idle_timeout : [NoTimeout, After(Duration)] ?? After(Duration.seconds(30)) }
+	##
+	## `max_redirects` has the same meaning as the `max_redirects` field of [SendOptions].
+	## A caught pending signal returns bare `Interrupted` from a wait. Body
+	## reads preserve their cursor and collected bytes after interruption;
+	## acknowledge the signal before reading again. The deadline keeps running.
+	StreamingOptions := { idle_timeout : [NoTimeout, After(Duration)] ?? After(Duration.seconds(30)), max_redirects : U64 ?? 0 }
 
 	## Validate and send an HTTP request, returning once the status and
 	## headers have arrived. The body is read afterwards, through the
@@ -140,32 +159,24 @@ Http :: [].{
 	## if response.status() != 200 {
 	##     return Err(UnexpectedStatus(response.status()))
 	## }
-	## File.with_writer!(destination, Truncate, |writer| writer.write_stream!(response.chunks()))?
+	## File.with_writer!(destination, Truncate, {}, |writer| writer.write_stream!(response.chunks()))?
 	## ```
-	send_streaming! : Request, StreamingOptions => Try(StreamingResponse, [InvalidUrl(Url.ParseErr), HttpErr(TransportErr)])
+	send_streaming! : Request, StreamingOptions => Try(StreamingResponse, [Interrupted, InvalidUrl(Url.ParseErr), HttpErr(TransportErr)])
 	send_streaming! = |request, options| {
 		url = Url.parse(Request.uri(request)) ? InvalidUrl
-		canonical_url = Url.without_fragment(url)
-		canonical_request = request.with_uri(Url.to_str(canonical_url))
-		host_idle_timeout = match options.idle_timeout {
-			NoTimeout => NoTimeout
-			After(duration) => After(duration.to_nanos())
+		canonical = Url.without_fragment(url)
+		headers = Request.headers(request)
+		initial_headers = if headers.any(|header| header.name.with_ascii_lowercased() == "content-type") {
+			headers
+		} else {
+			headers.append({ name: "Content-Type", value: "text/plain" })
 		}
-		# A tag union that crosses the host boundary is closed by design, so
-		# the transport error is rebuilt under `HttpErr`, in an open union that
-		# `?` can combine with a caller's other errors.
-		match Host.http_send_streaming!(InternalHttp.to_host_request(canonical_request), host_idle_timeout) {
-			Ok(response) =>
-				Ok(
-					StreamingResponse.{
-						status: response.status,
-						headers: InternalHttp.from_host_headers(response.headers),
-						content_length: response.content_length,
-						host: response.body,
-					},
-				)
-			Err(err) => Err(HttpErr(err))
+		canonical_request = request.with_uri(canonical.to_str()).with_headers(initial_headers)
+		deadline = match Request.timeout(request) {
+			NoTimeout | TimeoutMilliseconds(0) => NoTimeout
+			TimeoutMilliseconds(ms) => At(Host.monotonic_now!().plus_saturated(ms.times_saturated(1_000_000)))
 		}
+		send_redirected!(canonical_request, canonical, options, options.max_redirects, deadline)
 	}
 
 	## The status and headers of a response, and its body still to be read.
@@ -229,7 +240,7 @@ Http :: [].{
 		##
 		## Process chunks individually to bound memory; `Stream.collect!`
 		## accumulates every chunk.
-		chunks : StreamingResponse -> Stream(Try(List(U8), [HttpErr(TransportErr)]))
+		chunks : StreamingResponse -> Stream(Try(List(U8), [Interrupted, HttpErr(TransportErr)]))
 		chunks = |response|
 			# Keep the response in the state, not the callback capture, so
 			# Finished can release it even when the terminal continuation is
@@ -244,7 +255,7 @@ Http :: [].{
 							match Host.http_read_body!(current.host, Chunk) {
 								Ok(bytes) => Ok((Ok(bytes), Reading(current)))
 								Err(EndOfBody) => Err(NoMore)
-								Err(HttpErr(err)) => Ok((Err(HttpErr(err)), Finished))
+								Err(HttpErr(err)) => Ok((Err(transport_error(err)), Finished))
 								# Only a read to the end has a limit to exceed.
 								Err(ReadLimitExceeded) => Ok((Err(HttpErr(Other("the host limited a chunk read".to_utf8()))), Finished))
 							}
@@ -267,7 +278,7 @@ Http :: [].{
 		## ```roc
 		## body = response.read_to_end!(MaxBytes(1_048_576))?
 		## ```
-		read_to_end! : StreamingResponse, [NoLimit, MaxBytes(U64)] => Try(List(U8), [ReadLimitExceeded(U64), HttpErr(TransportErr)])
+		read_to_end! : StreamingResponse, [NoLimit, MaxBytes(U64)] => Try(List(U8), [Interrupted, ReadLimitExceeded(U64), HttpErr(TransportErr)])
 		read_to_end! = |response, limit| {
 			max = match limit {
 				NoLimit => U64.highest
@@ -276,7 +287,7 @@ Http :: [].{
 			match Host.http_read_body!(response.host, ToEnd(max)) {
 				Ok(bytes) => Ok(bytes)
 				Err(ReadLimitExceeded) => Err(ReadLimitExceeded(max))
-				Err(HttpErr(err)) => Err(HttpErr(err))
+				Err(HttpErr(err)) => Err(transport_error(err))
 				# A read to the end returns an empty remainder instead.
 				Err(EndOfBody) => Ok([])
 			}
@@ -288,3 +299,142 @@ Http :: [].{
 expect Http.StreamingOptions.{}.idle_timeout == After(Duration.seconds(30))
 expect Http.StreamingOptions.{ idle_timeout: NoTimeout }.idle_timeout == NoTimeout
 expect Http.StreamingOptions.{ idle_timeout: After(Duration.zero) }.idle_timeout == After(Duration.nanos(0))
+
+## Convert raw transport errors to the public open error row.
+transport_error : InternalHttp.TransportErr -> [Interrupted, HttpErr(Http.TransportErr)]
+transport_error = |error|
+	match error {
+		Interrupted => Interrupted
+		Timeout => HttpErr(Timeout)
+		NetworkError => HttpErr(NetworkError)
+		BadBody => HttpErr(BadBody)
+		Other(message) => HttpErr(Other(message))
+	}
+
+## The same driver serves buffered and streamed responses. The deadline is
+## captured once and is passed unchanged to every native hop and final body.
+send_redirected! : Request, Url.Url, Http.StreamingOptions, U64, [NoTimeout, At(U64)] => Try(Http.StreamingResponse, [Interrupted, HttpErr(Http.TransportErr)])
+send_redirected! = |request, url, options, remaining, deadline| {
+	idle = match options.idle_timeout {
+		NoTimeout => NoTimeout
+		After(duration) => After(duration.to_nanos())
+	}
+	hop = request.with_headers(sanitize_headers(Request.headers(request), False, False))
+	raw = match Host.http_send_streaming!(InternalHttp.to_host_request(hop), idle, deadline) {
+		Ok(value) => value
+		Err(error) => {
+			return Err(transport_error(error))
+		}
+	}
+	response = Http.StreamingResponse.{ status: raw.status, headers: InternalHttp.from_host_headers(raw.headers), content_length: raw.content_length, host: raw.body }
+	status = response.status
+	redirect = status == 301 or status == 302 or status == 303 or status == 307 or status == 308
+	if options.max_redirects == 0 or !redirect {
+		return Ok(response)
+	}
+	locations = response.headers.keep_if(|header| header.name.with_ascii_lowercased() == "location")
+	location = match locations {
+		[] => {
+			return Ok(response)
+		}
+		[header] => header.value
+		_ => {
+			Host.http_close_body!(response.host)
+			return Err(HttpErr(AmbiguousRedirectLocation))
+		}
+	}
+	Host.http_close_body!(response.host)
+	if remaining == 0 {
+		return Err(HttpErr(RedirectLimitExceeded(options.max_redirects)))
+	}
+	match raw.invalid_location {
+		Some(byte) => {
+			return Err(HttpErr(InvalidRedirectUrl(InvalidCharacter(byte))))
+		}
+		None => {}
+	}
+	next_url = redirect_url(url, location) ? |error| HttpErr(InvalidRedirectUrl(error))
+	if Url.scheme(url) == Https and Url.scheme(next_url) == Http {
+		return Err(HttpErr(InsecureRedirect))
+	}
+	next = redirected_request(request, url, next_url, status)
+	send_redirected!(next, next_url, options, remaining - 1, deadline)
+}
+
+## HTTP permits network-path references; Url.resolve deliberately does not.
+redirect_url : Url.Url, Str -> Try(Url.Url, Url.ParseErr)
+redirect_url = |base, location| {
+	resolved = if location.starts_with("//") {
+		scheme = match Url.scheme(base) {
+			Http => "http:"
+			Https => "https:"
+		}
+		Url.parse(Str.concat(scheme, location))
+	} else {
+		# A colon in the first path segment denotes a URI scheme, including
+		# schemes we reject; do not reinterpret it as a relative pathname.
+		absolute = match location.split_first(":") {
+			Ok({ before, .. }) => !before.contains("/") and !before.contains("?") and !before.contains("#")
+			Err(NotFound) => False
+		}
+		if absolute {
+			Url.parse(location)
+		} else {
+			Url.resolve(base, location)
+		}
+	}
+	resolved.map_ok(Url.without_fragment)
+}
+
+same_origin : Url.Url, Url.Url -> Bool
+same_origin = |left, right|
+	Url.scheme(left) == Url.scheme(right) and Url.host(left) == Url.host(right) and Url.port(left) == Url.port(right)
+
+redirected_request : Request, Url.Url, Url.Url, U16 -> Request
+redirected_request = |request, old_url, next_url, status| {
+	method = Request.method(request)
+	rewrite = ((status == 301 or status == 302) and method == POST) or (status == 303 and method != HEAD)
+	headers = sanitize_headers(Request.headers(request), !same_origin(old_url, next_url), rewrite)
+	prepared = request.with_uri(next_url.to_str()).with_headers(headers)
+	if rewrite {
+		prepared.with_method(GET).with_body([])
+	} else {
+		prepared
+	}
+}
+
+## Recompute framing and authority. Connection-nominated fields are hop-local.
+sanitize_headers : List(Header.Header), Bool, Bool -> List(Header.Header)
+sanitize_headers = |headers, cross_origin, drop_body| {
+	connection_values = headers.keep_if(|header| header.name.with_ascii_lowercased() == "connection").map(|header| header.value)
+	connection_names = Str.join_with(connection_values, ",").split_on(",").map(|name| name.trim().with_ascii_lowercased())
+	headers.keep_if(
+		|header| {
+			name = header.name.with_ascii_lowercased()
+			hop = name == "host" or name == "content-length" or name == "connection" or name == "keep-alive" or name == "proxy-connection" or name == "te" or name == "trailer" or name == "transfer-encoding" or name == "upgrade" or connection_names.contains(name)
+			secret = cross_origin and (name == "authorization" or name == "cookie" or name == "proxy-authorization")
+			body = drop_body and (name.starts_with("content-") or name == "digest" or name == "expect")
+			!hop and !secret and !body
+		},
+	)
+}
+
+expect Http.SendOptions.{}.max_redirects == 0
+expect Http.StreamingOptions.{}.max_redirects == 0
+expect redirect_url("https://example.com/a/b", "../c#part") == Url.parse("https://example.com/c")
+expect redirect_url("https://example.com/a", "//other.example/b") == Url.parse("https://other.example/b")
+expect same_origin("https://EXAMPLE.com:443/a", "https://example.com/b")
+expect !same_origin("http://example.com/", "https://example.com/")
+
+expect {
+	request = Request.from_method(POST).with_body([1, 2]).with_headers([
+		{ name: "Authorization", value: "secret" },
+		{ name: "Cookie", value: "secret" },
+		{ name: "Content-Type", value: "application/json" },
+		{ name: "Connection", value: "X-Private" },
+		{ name: "X-Private", value: "hop" },
+		{ name: "X-Public", value: "kept" },
+	])
+	next = redirected_request(request, "https://a.example/", "https://b.example/", 302)
+	Request.method(next) == GET and Request.body(next) == [] and Request.headers(next) == [{ name: "X-Public", value: "kept" }]
+}

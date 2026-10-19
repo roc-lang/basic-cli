@@ -5,6 +5,56 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
+/// Store the target exactly as supplied. Relative targets resolve at the link.
+pub(crate) fn symlink(target: &Path, link: &Path, directory: bool) -> io::Result<()> {
+    let resolved = if target.is_absolute() {
+        target.to_path_buf()
+    } else {
+        link.parent().unwrap_or_else(|| Path::new(".")).join(target)
+    };
+    match fs::metadata(resolved) {
+        Ok(metadata) if metadata.is_dir() != directory || (!directory && !metadata.is_file()) => {
+            return Err(invalid("symbolic link target kind does not match"))
+        }
+        Err(error) if error.kind() != io::ErrorKind::NotFound => return Err(error),
+        _ => {}
+    }
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(target, link)
+    }
+    #[cfg(windows)]
+    {
+        if directory {
+            std::os::windows::fs::symlink_dir(target, link)
+        } else {
+            std::os::windows::fs::symlink_file(target, link)
+        }
+    }
+}
+
+pub(crate) fn read_link(path: &Path) -> io::Result<PathBuf> {
+    fs::read_link(path)
+}
+
+#[cfg(all(test, unix))]
+mod link_tests {
+    use super::*;
+    #[test]
+    fn relative_dangling_links_and_kinds() {
+        let root = tempfile::tempdir().unwrap();
+        let link = root.path().join("link");
+        symlink(Path::new("target"), &link, false).unwrap();
+        assert_eq!(read_link(&link).unwrap(), Path::new("target"));
+        fs::write(root.path().join("target"), b"data").unwrap();
+        assert_eq!(fs::read(&link).unwrap(), b"data");
+        assert!(symlink(Path::new("target"), &root.path().join("wrong"), true).is_err());
+        assert!(symlink(Path::new("target"), &link, false).is_err());
+        fs::create_dir(root.path().join("directory")).unwrap();
+        symlink(Path::new("directory"), &root.path().join("dir-link"), true).unwrap();
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct CopyOptions {
     pub preserve_links: bool,

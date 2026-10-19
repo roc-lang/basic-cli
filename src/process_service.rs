@@ -34,6 +34,8 @@ pub struct Partial {
 /// Why a command did not start or did not run to completion.
 #[derive(Debug)]
 pub enum Error {
+    /// A caught application interrupt canceled this operation.
+    Interrupted,
     /// No process exists: the program, its pipes or its supervisor failed.
     Start(io::Error),
     /// The command's own deadline expired and it was killed.
@@ -77,6 +79,8 @@ pub enum StdinMode {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OutputMode {
     Inherit,
+    /// Inherit the parent's standard error without capturing output.
+    InheritStderr,
     Null,
     Capture,
     /// Captured and forwarded to the parent's stream.
@@ -121,6 +125,7 @@ struct State {
     reap_failed: bool,
 }
 struct Shared {
+    forwarding: crate::native_stdio::Owner,
     state: Mutex<State>,
     changed: Condvar,
     cancel: Notify,
@@ -181,31 +186,10 @@ fn sync_task<T: Send + 'static>(
     });
     rx.recv().expect("process task stopped")
 }
-fn forwarding_slots() -> Arc<tokio::sync::Semaphore> {
-    static SLOTS: OnceLock<Arc<tokio::sync::Semaphore>> = OnceLock::new();
-    SLOTS
-        .get_or_init(|| Arc::new(tokio::sync::Semaphore::new(2)))
-        .clone()
-}
-// A cancelled async waiter does not interrupt an OS write. Keep the permit in
-// the actual blocking closure to bound stranded forwarding work across commands.
-async fn forward_blocking(
-    write: impl FnOnce() -> io::Result<()> + Send + 'static,
-) -> io::Result<()> {
-    let permit = forwarding_slots()
-        .acquire_owned()
-        .await
-        .map_err(io::Error::other)?;
-    tokio::task::spawn_blocking(move || {
-        let _permit = permit;
-        write()
-    })
-    .await
-    .map_err(io::Error::other)?
-}
 fn output_stdio(mode: OutputMode) -> Stdio {
     match mode {
         OutputMode::Inherit => Stdio::inherit(),
+        OutputMode::InheritStderr => Stdio::from(std::io::stderr()),
         OutputMode::Null => Stdio::null(),
         OutputMode::Capture | OutputMode::Tee | OutputMode::Pipe => Stdio::piped(),
     }
@@ -218,6 +202,9 @@ fn wait_timed_out(what: &str) -> Error {
 }
 impl Child {
     pub fn spawn(config: Config) -> Result<Self, Error> {
+        if crate::signals::is_pending() {
+            return Err(Error::Interrupted);
+        }
         sync_task(async move { spawn(config).await.map_err(Error::Start) })
     }
     fn check_open(&self) -> Result<(), ChildError> {
@@ -233,12 +220,37 @@ impl Child {
         self.pid
     }
     pub fn wait(&self) -> Result<Output, ChildError> {
+        self.check_open()?;
+        if crate::signals::is_pending() {
+            return Err(Error::Interrupted.into());
+        }
         self.close_stdin()?;
         let mut state = self.shared.state.lock().unwrap();
-        while !state.done {
-            state = self.shared.changed.wait(state).unwrap();
+        loop {
+            if crate::signals::is_pending() {
+                return Err(Error::Interrupted.into());
+            }
+            if state.done {
+                return Ok(result(&state)?);
+            }
+            state = self
+                .shared
+                .changed
+                .wait_timeout(state, Duration::from_millis(10))
+                .unwrap()
+                .0;
         }
-        Ok(result(&state)?)
+    }
+    /// Foreground operations own the child and finish cleanup before returning
+    /// an interruption. Waiting on a caller-owned Child leaves it running.
+    pub fn wait_foreground(&self) -> Result<Output, ChildError> {
+        match self.wait() {
+            Err(ChildError::Cmd(Error::Interrupted)) => {
+                self.close()?;
+                Err(Error::Interrupted.into())
+            }
+            result => result,
+        }
     }
     /// `None` while the child is running or its output is still being read.
     pub fn poll(&self) -> Result<Option<Output>, ChildError> {
@@ -252,6 +264,7 @@ impl Child {
     }
     pub fn kill(&self) -> Result<(), ChildError> {
         self.check_open()?;
+        self.shared.forwarding.cancel();
         self.shared.cancel.notify_one();
         Ok(())
     }
@@ -262,6 +275,7 @@ impl Child {
         if *closed {
             return Ok(());
         }
+        self.shared.forwarding.cancel();
         self.shared.cancel.notify_one();
         let mut state = self.shared.state.lock().unwrap();
         while !state.done {
@@ -286,6 +300,9 @@ impl Child {
     /// prefix.
     pub fn write(&self, bytes: Vec<u8>, wait: Duration) -> Result<(), ChildError> {
         self.check_open()?;
+        if crate::signals::is_pending() {
+            return Err(Error::Interrupted.into());
+        }
         let stdin = self.stdin.clone();
         let written = sync_task(async move {
             let write = async {
@@ -298,13 +315,20 @@ impl Child {
                     .write_all(&bytes)
                     .await
             };
-            // A wait too long to represent as a deadline never expires.
-            match tokio::time::Instant::now().checked_add(wait) {
-                Some(deadline) => tokio::time::timeout_at(deadline, write)
-                    .await
-                    .map_err(|_| wait_timed_out("Child stdin write timed out"))?
-                    .map_err(Error::Io),
-                None => write.await.map_err(Error::Io),
+            let bounded = async {
+                // A wait too long to represent as a deadline never expires.
+                match tokio::time::Instant::now().checked_add(wait) {
+                    Some(deadline) => tokio::time::timeout_at(deadline, write)
+                        .await
+                        .map_err(|_| wait_timed_out("Child stdin write timed out"))?
+                        .map_err(Error::Io),
+                    None => write.await.map_err(Error::Io),
+                }
+            };
+            tokio::select! {
+                biased;
+                _ = crate::signals::cancelled() => Err(Error::Interrupted),
+                result = bounded => result,
             }
         });
         Ok(written?)
@@ -318,6 +342,9 @@ impl Child {
         let deadline = Instant::now().checked_add(wait);
         let mut state = self.shared.state.lock().unwrap();
         loop {
+            if crate::signals::is_pending() {
+                return Err(Error::Interrupted.into());
+            }
             if let Some(event) = state.events.pop_front() {
                 state.pending -= event.bytes.len();
                 return Ok(Some(event));
@@ -336,17 +363,24 @@ impl Child {
                     }
                     self.shared
                         .changed
-                        .wait_timeout(state, remaining)
+                        .wait_timeout(state, remaining.min(Duration::from_millis(10)))
                         .unwrap()
                         .0
                 }
-                None => self.shared.changed.wait(state).unwrap(),
+                None => {
+                    self.shared
+                        .changed
+                        .wait_timeout(state, Duration::from_millis(10))
+                        .unwrap()
+                        .0
+                }
             };
         }
     }
 }
 impl Drop for Child {
     fn drop(&mut self) {
+        self.shared.forwarding.cancel();
         self.shared.cancel.notify_one();
     }
 }
@@ -396,6 +430,9 @@ async fn observed_pump<R: AsyncRead + Unpin>(reader: R, pump: Pump) -> io::Resul
     let shared = pump.shared.clone();
     let result = pump.run(reader).await;
     if let Err(error) = &result {
+        if error.kind() == io::ErrorKind::Interrupted && shared.forwarding.is_cancelled() {
+            return Ok(());
+        }
         report_error(&shared, error);
     }
     result
@@ -442,23 +479,24 @@ impl Pump {
                             stop(&shared, &mut state, Stop::OutputLimit);
                         }
                     }
-                    OutputMode::Inherit | OutputMode::Null => {}
+                    OutputMode::Inherit | OutputMode::InheritStderr | OutputMode::Null => {}
                 }
                 shared.changed.notify_all();
             }
             // `Inherit` is pumped only for a merged stream, which has to pass
             // through the shared pipe to keep its order.
-            if matches!(mode, OutputMode::Tee | OutputMode::Inherit) {
-                // Blocking terminal writes run outside the service thread.
-                let bytes = buffer[..count].to_vec();
-                forward_blocking(move || {
-                    use std::io::Write;
-                    match stream {
-                        Stream::Stdout => std::io::stdout().write_all(&bytes),
-                        Stream::Stderr => std::io::stderr().write_all(&bytes),
+            if matches!(
+                mode,
+                OutputMode::Tee | OutputMode::Inherit | OutputMode::InheritStderr
+            ) {
+                let target = match (stream, mode) {
+                    (_, OutputMode::InheritStderr) | (Stream::Stderr, _) => {
+                        crate::native_stdio::Stream::Stderr
                     }
-                })
-                .await?;
+                    (Stream::Stdout, _) => crate::native_stdio::Stream::Stdout,
+                };
+                crate::native_stdio::forward(target, buffer[..count].to_vec(), &shared.forwarding)
+                    .await?;
             }
         }
     }
@@ -528,6 +566,7 @@ async fn spawn(mut config: Config) -> io::Result<Child> {
     };
     let stdin = Arc::new(AsyncMutex::new(input_pipe));
     let shared = Arc::new(Shared {
+        forwarding: crate::native_stdio::Owner::default(),
         state: Mutex::new(State {
             stdout: Vec::new(),
             stderr: Vec::new(),
@@ -631,6 +670,7 @@ async fn spawn(mut config: Config) -> io::Result<Child> {
             }
             result = completion => Some(result),
         };
+        shared.forwarding.cancel();
         let status = match completed {
             Some(Ok(status)) => Ok(status),
             Some(Err(err)) => {
@@ -649,6 +689,7 @@ async fn spawn(mut config: Config) -> io::Result<Child> {
         if let Some(writer) = writer {
             writer.abort();
         }
+        shared.forwarding.cancel_and_wait().await;
         stdin.lock().await.take();
         let mut state = shared.state.lock().unwrap();
         match status {
@@ -681,6 +722,40 @@ async fn spawn(mut config: Config) -> io::Result<Child> {
 mod tests {
     use super::*;
     const SECOND: Duration = Duration::from_secs(1);
+
+    #[test]
+    fn pending_interruption_prevents_start_and_keeps_cleanup_available() {
+        struct Pending;
+        impl Drop for Pending {
+            fn drop(&mut self) {
+                crate::signals::set_test_pending(false);
+            }
+        }
+        let child = Child::spawn(shell("sleep 30")).unwrap();
+        crate::signals::set_test_pending(true);
+        let _pending = Pending;
+        assert!(matches!(
+            Child::spawn(shell("exit 0")),
+            Err(Error::Interrupted)
+        ));
+        assert!(matches!(
+            child.wait(),
+            Err(ChildError::Cmd(Error::Interrupted))
+        ));
+        assert!(matches!(
+            child.read(SECOND),
+            Err(ChildError::Cmd(Error::Interrupted))
+        ));
+        assert!(matches!(
+            child.write(vec![1], SECOND),
+            Err(ChildError::Cmd(Error::Interrupted))
+        ));
+        assert!(child.poll().unwrap().is_none());
+        child.kill().unwrap();
+        child.close_stdin().unwrap();
+        child.close().unwrap();
+        child.close().unwrap();
+    }
     fn shell(script: &str) -> Config {
         let mut command = std::process::Command::new("sh");
         command.args(["-c", script]);
@@ -715,42 +790,6 @@ mod tests {
             Err(ChildError::Cmd(Error::Io(error))) => error.kind(),
             other => panic!("expected an I/O error, got {other:?}"),
         }
-    }
-    #[test]
-    fn canceled_forwarding_does_not_accumulate_blocked_workers() {
-        sync_task(async {
-            let mut releases = Vec::new();
-            for _ in 0..2 {
-                let (release_tx, release_rx) = std::sync::mpsc::channel();
-                let (started_tx, started_rx) = tokio::sync::oneshot::channel();
-                let task = tokio::spawn(forward_blocking(move || {
-                    let _ = started_tx.send(());
-                    release_rx.recv().unwrap();
-                    Ok(())
-                }));
-                started_rx.await.unwrap();
-                task.abort();
-                releases.push(release_tx);
-            }
-            assert_eq!(forwarding_slots().available_permits(), 0);
-            for _ in 0..20 {
-                let task = tokio::spawn(forward_blocking(|| {
-                    panic!("forwarding exceeded worker bound")
-                }));
-                tokio::task::yield_now().await;
-                task.abort();
-            }
-            for release in releases {
-                release.send(()).unwrap();
-            }
-            tokio::time::timeout(Duration::from_secs(1), async {
-                while forwarding_slots().available_permits() != 2 {
-                    tokio::task::yield_now().await;
-                }
-            })
-            .await
-            .unwrap();
-        });
     }
     #[test]
     fn nonzero_and_bytes() {

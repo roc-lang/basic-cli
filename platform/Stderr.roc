@@ -8,7 +8,7 @@ Stderr :: [].{
 	## followed by a newline.
 	##
 	## > To write to `stderr` without the newline, see [Stderr.write!].
-	line! : Str => Try({}, [StderrErr(IOErr)])
+	line! : Str => Try({}, [Interrupted, StderrErr(IOErr)])
 	line! = |message| widen_stderr_err(Host.stderr_line!(message))
 
 	## Write the given string to [standard error](https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)).
@@ -17,14 +17,14 @@ Stderr :: [].{
 	## so this may appear to do nothing until you write a newline!
 	##
 	## > To write to `stderr` with a newline at the end, see [Stderr.line!].
-	write! : Str => Try({}, [StderrErr(IOErr)])
+	write! : Str => Try({}, [Interrupted, StderrErr(IOErr)])
 	write! = |message| widen_stderr_err(Host.stderr_write!(message))
 
 	## Write the given bytes to [standard error](https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)).
 	##
 	## Most terminals will not actually display content that are written to them until they receive a newline,
 	## so this may appear to do nothing until you write a newline!
-	write_bytes! : List(U8) => Try({}, [StderrErr(IOErr)])
+	write_bytes! : List(U8) => Try({}, [Interrupted, StderrErr(IOErr)])
 	write_bytes! = |bytes| widen_stderr_err(Host.stderr_write_bytes!(bytes))
 }
 
@@ -35,9 +35,10 @@ Stderr :: [].{
 ## function here rebuilds the union instead, so its error combines with others
 ## in every call form, including `err! = Stderr.line!` followed by `err!(text)?`.
 ## `tests/error-rows.roc` covers that form.
-widen_stderr_err : Try(v, [StderrErr(IOErr)]) -> Try(v, [StderrErr(IOErr)])
+widen_stderr_err : Try(v, [Interrupted, StderrErr(IOErr)]) -> Try(v, [Interrupted, StderrErr(IOErr)])
 widen_stderr_err = |result|
 	match result {
 		Ok(value) => Ok(value)
+		Err(Interrupted) => Err(Interrupted)
 		Err(StderrErr(err)) => Err(StderrErr(err))
 	}

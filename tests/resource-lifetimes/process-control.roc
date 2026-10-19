@@ -57,5 +57,6 @@ read_all! = |child, bytes| {
 		Err(EndOfInput) => Ok(bytes)
 		Err(Closed) => Err(UnexpectedClosed)
 		Err(CmdErr(err)) => Err(CmdErr(err))
+		Err(Interrupted) => Err(Interrupted)
 	}
 }

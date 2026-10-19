@@ -17,17 +17,24 @@ use crate::{
 // `cmd_run!` and `cmd_spawn!` take the same record, which the generator emits
 // once per function.
 type Cmd = HostCmdRunArgs;
-type CmdErr = HostCmdRunErr;
-type CmdErrPayload = HostCmdRunErrPayload;
-type CmdErrTag = HostCmdRunErrTag;
+type CmdErr = HostCmdRunErrCmdErr;
+type CmdErrPayload = HostCmdRunErrCmdErrPayload;
+type CmdErrTag = HostCmdRunErrCmdErrTag;
 type CmdOutput = HostCmdRunOk;
-type CmdPartialOutput = HostCmdRunErrTimedOut;
+type CmdPartialOutput = HostCmdRunErrCmdErrTimedOut;
 type ChildErr = HostChildWaitErr;
 type ChildErrPayload = HostChildWaitErrPayload;
 type ChildErrTag = HostChildWaitErrTag;
 type ChildUnitResult = HostChildKillResult;
 type ChildUnitResultPayload = HostChildKillResultPayload;
 type ChildUnitResultTag = HostChildKillResultTag;
+
+// RustGlue does not currently emit a semantic return alias for an error-only
+// hosted function. This is the generated [Failed(IOErr), Interrupted] result of
+// Host.cmd_exec!; regenerate-glue --check detects changes to its generated name.
+type ExecFailure = FailedOrInterruptedType384;
+type ExecFailureTag = FailedOrInterruptedType384Tag;
+type ExecFailurePayload = FailedOrInterruptedType384Payload;
 
 fn take_arg_list(
     list: &RocList<NativeOsStr>,
@@ -101,11 +108,14 @@ fn command_config(cmd: Cmd, roc_host: &RocHost) -> io::Result<Config> {
         command,
         stdin,
         stdout: match cmd.stdout {
-            CaptureOrInheritOrNullOrPipeOrTee::Capture => OutputMode::Capture,
-            CaptureOrInheritOrNullOrPipeOrTee::Inherit => OutputMode::Inherit,
-            CaptureOrInheritOrNullOrPipeOrTee::Null => OutputMode::Null,
-            CaptureOrInheritOrNullOrPipeOrTee::Pipe => OutputMode::Pipe,
-            CaptureOrInheritOrNullOrPipeOrTee::Tee => OutputMode::Tee,
+            CaptureOrInheritOrInheritStderrOrNullOrPipeOrTee::Capture => OutputMode::Capture,
+            CaptureOrInheritOrInheritStderrOrNullOrPipeOrTee::Inherit => OutputMode::Inherit,
+            CaptureOrInheritOrInheritStderrOrNullOrPipeOrTee::InheritStderr => {
+                OutputMode::InheritStderr
+            }
+            CaptureOrInheritOrInheritStderrOrNullOrPipeOrTee::Null => OutputMode::Null,
+            CaptureOrInheritOrInheritStderrOrNullOrPipeOrTee::Pipe => OutputMode::Pipe,
+            CaptureOrInheritOrInheritStderrOrNullOrPipeOrTee::Tee => OutputMode::Tee,
         },
         stderr: {
             use CaptureOrInheritOrMergeWithStdoutOrNullOrPipeOrTee as Mode;
@@ -172,6 +182,7 @@ fn partial_output(partial: &Partial) -> CmdPartialOutput {
 fn cmd_err(error: &Error) -> CmdErr {
     let roc_host = roc_host();
     match error {
+        Error::Interrupted => unreachable!("interruption is outside the command cause"),
         Error::Start(error) => CmdErr {
             tag: CmdErrTag::StartFailed,
             payload: CmdErrPayload {
@@ -201,6 +212,10 @@ fn cmd_err(error: &Error) -> CmdErr {
 
 fn child_err(error: &ChildError) -> ChildErr {
     match error {
+        ChildError::Cmd(Error::Interrupted) => ChildErr {
+            tag: ChildErrTag::Interrupted,
+            payload: ChildErrPayload { interrupted: [] },
+        },
         ChildError::Closed => ChildErr {
             tag: ChildErrTag::Closed,
             payload: ChildErrPayload { closed: [] },
@@ -208,6 +223,36 @@ fn child_err(error: &ChildError) -> ChildErr {
         ChildError::Cmd(error) => ChildErr {
             tag: ChildErrTag::CmdErr,
             payload: ChildErrPayload {
+                cmd_err: ManuallyDrop::new(cmd_err(error)),
+            },
+        },
+    }
+}
+
+fn nonblocking_child_err(error: &ChildError) -> HostChildKillErr {
+    match error {
+        ChildError::Closed => HostChildKillErr {
+            tag: HostChildKillErrTag::Closed,
+            payload: HostChildKillErrPayload { closed: [] },
+        },
+        ChildError::Cmd(error) => HostChildKillErr {
+            tag: HostChildKillErrTag::CmdErr,
+            payload: HostChildKillErrPayload {
+                cmd_err: ManuallyDrop::new(cmd_err(error)),
+            },
+        },
+    }
+}
+
+fn command_err(error: &Error) -> HostCmdRunErr {
+    match error {
+        Error::Interrupted => HostCmdRunErr {
+            tag: HostCmdRunErrTag::Interrupted,
+            payload: HostCmdRunErrPayload { interrupted: [] },
+        },
+        error => HostCmdRunErr {
+            tag: HostCmdRunErrTag::CmdErr,
+            payload: HostCmdRunErrPayload {
                 cmd_err: ManuallyDrop::new(cmd_err(error)),
             },
         },
@@ -244,7 +289,7 @@ fn unit_result(result: Result<(), ChildError>) -> ChildUnitResult {
         Err(error) => ChildUnitResult {
             tag: ChildUnitResultTag::Err,
             payload: ChildUnitResultPayload {
-                err: ManuallyDrop::new(child_err(&error)),
+                err: ManuallyDrop::new(nonblocking_child_err(&error)),
             },
         },
     }
@@ -272,7 +317,7 @@ pub extern "C" fn hosted_cmd_spawn(cmd: HostCmdSpawnArgs) -> HostCmdSpawnResult 
         Err(error) => HostCmdSpawnResult {
             tag: HostCmdSpawnResultTag::Err,
             payload: HostCmdSpawnResultPayload {
-                err: ManuallyDrop::new(cmd_err(&error)),
+                err: ManuallyDrop::new(command_err(&error)),
             },
         },
     }
@@ -280,7 +325,7 @@ pub extern "C" fn hosted_cmd_spawn(cmd: HostCmdSpawnArgs) -> HostCmdSpawnResult 
 
 #[no_mangle]
 pub extern "C" fn hosted_cmd_run(cmd: HostCmdRunArgs) -> HostCmdRunResult {
-    let finished = start(cmd).and_then(|child| match child.wait() {
+    let finished = start(cmd).and_then(|child| match child.wait_foreground() {
         Ok(output) => Ok(output),
         Err(ChildError::Cmd(error)) => Err(error),
         // Nothing else holds this child, so nothing can have closed it.
@@ -296,8 +341,66 @@ pub extern "C" fn hosted_cmd_run(cmd: HostCmdRunArgs) -> HostCmdRunResult {
         Err(error) => HostCmdRunResult {
             tag: HostCmdRunResultTag::Err,
             payload: HostCmdRunResultPayload {
-                err: ManuallyDrop::new(cmd_err(&error)),
+                err: ManuallyDrop::new(command_err(&error)),
             },
+        },
+    }
+}
+
+#[cfg(unix)]
+fn replace_process(path: &std::path::Path, args: &[std::ffi::OsString]) -> io::Error {
+    use std::ffi::CString;
+    use std::os::unix::ffi::OsStrExt;
+    let arguments = std::iter::once(path.as_os_str()).chain(args.iter().map(|arg| arg.as_os_str()));
+    let strings: Result<Vec<_>, _> = arguments.map(|arg| CString::new(arg.as_bytes())).collect();
+    let strings = match strings {
+        Ok(strings) => strings,
+        Err(_) => {
+            return io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "executable and arguments cannot contain NUL",
+            )
+        }
+    };
+    let mut pointers: Vec<_> = strings.iter().map(|arg| arg.as_ptr()).collect();
+    pointers.push(std::ptr::null());
+    // No fork and no process-global setup: an error leaves the running Roc
+    // program, its terminal, its environment and its resource owners intact.
+    unsafe {
+        libc::execv(strings[0].as_ptr(), pointers.as_ptr());
+    }
+    io::Error::last_os_error()
+}
+
+#[cfg(windows)]
+fn replace_process(_: &std::path::Path, _: &[std::ffi::OsString]) -> io::Error {
+    // A System.Unix proof cannot be obtained on Windows through the public API.
+    io::Error::from(io::ErrorKind::Unsupported)
+}
+
+#[no_mangle]
+pub extern "C" fn hosted_cmd_exec(
+    _unix: SystemUnix,
+    path: NativeOsStr,
+    args: RocList<NativeOsStr>,
+) -> ExecFailure {
+    // Consume both owned inputs even when conversion or cancellation fails.
+    let path = path_from_native(path, roc_host());
+    let args = take_arg_list(&args, roc_host());
+    if crate::signals::is_pending() {
+        return ExecFailure {
+            tag: ExecFailureTag::Interrupted,
+            payload: ExecFailurePayload { interrupted: [] },
+        };
+    }
+    let error = match (path, args) {
+        (Ok(path), Ok(args)) => replace_process(&path, &args),
+        (Err(error), _) | (_, Err(error)) => error,
+    };
+    ExecFailure {
+        tag: ExecFailureTag::Failed,
+        payload: ExecFailurePayload {
+            failed: ManuallyDrop::new(cmd_io_err_from_io(&error, roc_host())),
         },
     }
 }
@@ -338,7 +441,7 @@ pub extern "C" fn hosted_child_poll(handle: *mut u64) -> HostChildPollResult {
             tag: HostChildPollOkTag::Running,
             payload: HostChildPollOkPayload { running: [] },
         }),
-        Err(error) => Err(child_err(&error)),
+        Err(error) => Err(nonblocking_child_err(&error)),
     };
     match state {
         Ok(state) => HostChildPollResult {
@@ -390,9 +493,20 @@ pub extern "C" fn hosted_child_write(
 ) -> HostChildWriteResult {
     let input = bytes.as_slice().to_vec();
     unsafe { bytes.decref(roc_host()) };
-    unit_result(with_child(handle, |child| {
+    match with_child(handle, |child| {
         child.write(input, Duration::from_nanos(wait_nanos))
-    }))
+    }) {
+        Ok(()) => HostChildWriteResult {
+            tag: HostChildWriteResultTag::Ok,
+            payload: HostChildWriteResultPayload { ok: [] },
+        },
+        Err(error) => HostChildWriteResult {
+            tag: HostChildWriteResultTag::Err,
+            payload: HostChildWriteResultPayload {
+                err: ManuallyDrop::new(child_err(&error)),
+            },
+        },
+    }
 }
 
 #[no_mangle]
@@ -428,6 +542,10 @@ pub extern "C" fn hosted_child_read(handle: *mut u64, wait_nanos: u64) -> HostCh
             HostChildReadErrTag::EndOfInput,
             HostChildReadErrPayload { end_of_input: [] },
         ),
+        Err(ChildError::Cmd(Error::Interrupted)) => err(
+            HostChildReadErrTag::Interrupted,
+            HostChildReadErrPayload { interrupted: [] },
+        ),
         Err(ChildError::Closed) => err(
             HostChildReadErrTag::Closed,
             HostChildReadErrPayload { closed: [] },
@@ -438,6 +556,117 @@ pub extern "C" fn hosted_child_read(handle: *mut u64, wait_nanos: u64) -> HostCh
                 cmd_err: ManuallyDrop::new(cmd_err(&error)),
             },
         ),
+    }
+}
+
+#[cfg(all(test, unix))]
+mod exec_tests {
+    use super::*;
+    use std::io::Write;
+    use std::os::unix::ffi::OsStringExt;
+    use std::os::unix::fs::PermissionsExt;
+    use std::process::{Command, Stdio};
+
+    #[test]
+    fn exec_helper() {
+        match std::env::var("BASIC_CLI_EXEC_TEST").as_deref() {
+            Ok("replace") => {
+                println!("before:{}", std::process::id());
+                let script = "printf 'after:%s\\narg:' \"$$\"; printf '%s' \"$1\"; printf '\\nenv:%s\\ncwd:%s\\n' \"$BASIC_CLI_EXEC_ENV\" \"$PWD\"; IFS= read -r line; printf 'stdin:%s\\n' \"$line\"; printf 'stderr preserved\\n' >&2; exit 7";
+                let args = vec![
+                    "-c".into(),
+                    script.into(),
+                    "native-exec".into(),
+                    std::ffi::OsString::from_vec(vec![255, b' ', b'$', b'*']),
+                ];
+                panic!(
+                    "replacement failed: {}",
+                    replace_process(std::path::Path::new("/bin/sh"), &args)
+                );
+            }
+            Ok("format") => {
+                let directory = tempfile::tempdir().unwrap();
+                let path = directory.path().join("without-shebang");
+                std::fs::write(&path, b"exit 0\n").unwrap();
+                std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700)).unwrap();
+                assert_eq!(
+                    replace_process(&path, &[]).raw_os_error(),
+                    Some(libc::ENOEXEC)
+                );
+                println!("unrecognized format returned without a shell");
+            }
+            _ => {}
+        }
+    }
+
+    fn helper(mode: &str) -> Command {
+        let mut command = Command::new(std::env::current_exe().unwrap());
+        command
+            .args(["--exact", "cmd::exec_tests::exec_helper", "--nocapture"])
+            .env("BASIC_CLI_EXEC_TEST", mode)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        command
+    }
+
+    #[test]
+    fn native_replacement_preserves_pid_arguments_and_inherited_state() {
+        let directory = tempfile::tempdir().unwrap();
+        let mut child = helper("replace")
+            .env("BASIC_CLI_EXEC_ENV", "visible")
+            .current_dir(directory.path())
+            .stdin(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let pid = child.id();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(b"input preserved\n")
+            .unwrap();
+        let output = child.wait_with_output().unwrap();
+        assert_eq!(output.status.code(), Some(7));
+        let expected = format!("before:{pid}\nafter:{pid}\narg:").into_bytes();
+        assert!(output
+            .stdout
+            .windows(expected.len())
+            .any(|bytes| bytes == expected));
+        assert!(output
+            .stdout
+            .windows(9)
+            .any(|bytes| bytes == [255, b' ', b'$', b'*', b'\n', b'e', b'n', b'v', b':']));
+        let text = String::from_utf8_lossy(&output.stdout);
+        assert!(text.contains("env:visible\n"));
+        assert!(text.contains(&format!(
+            "cwd:{}\n",
+            directory.path().canonicalize().unwrap().display()
+        )));
+        assert!(text.contains("stdin:input preserved\n"));
+        assert_eq!(output.stderr, b"stderr preserved\n");
+    }
+
+    #[test]
+    fn native_replacement_does_not_start_an_implicit_shell() {
+        let output = helper("format").output().unwrap();
+        assert!(output.status.success());
+        assert!(String::from_utf8_lossy(&output.stdout)
+            .contains("unrecognized format returned without a shell"));
+    }
+
+    #[test]
+    fn failed_replacement_rejects_nul_and_preserves_the_current_directory() {
+        let cwd = std::env::current_dir().unwrap();
+        assert_eq!(
+            replace_process(std::path::Path::new("/missing-basic-cli-executable"), &[]).kind(),
+            io::ErrorKind::NotFound
+        );
+        let nul = std::ffi::OsString::from_vec(vec![b'x', 0]);
+        assert_eq!(
+            replace_process(std::path::Path::new("/bin/sh"), &[nul]).kind(),
+            io::ErrorKind::InvalidInput
+        );
+        assert_eq!(std::env::current_dir().unwrap(), cwd);
     }
 }
 
@@ -522,7 +751,7 @@ mod ownership_tests {
             clear_envs: true,
             manage_tree: true,
             stderr: CaptureOrInheritOrMergeWithStdoutOrNullOrPipeOrTee::MergeWithStdout,
-            stdout: CaptureOrInheritOrNullOrPipeOrTee::Tee,
+            stdout: CaptureOrInheritOrInheritStderrOrNullOrPipeOrTee::Tee,
         }
     }
 

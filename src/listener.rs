@@ -1,30 +1,10 @@
 //! Deadline-aware listeners using a host-thread reactor.
 use crate::tcp::Deadline;
 use crate::{resources, roc_host, roc_platform_abi::*};
-use std::{
-    io,
-    mem::ManuallyDrop,
-    net::{TcpListener, TcpStream},
-    sync::LazyLock,
-    time::Duration,
-};
+use std::{io, mem::ManuallyDrop, net::TcpStream};
 
-// A `static` for the same reason as `TOKIO_RUNTIME` in http.rs: a runtime with an
-// owner is dropped when that owner goes away, and dropping a runtime waits for
-// tokio's blocking pool. On Windows a thread local's drop runs during
-// `ExitProcess`, after every other thread is already gone, so that wait never
-// ends. Nothing here reaches the pool today — binding goes through `socket2` and
-// name resolution through `crate::tcp` — but a `static` keeps it that way by
-// construction rather than by review, and lets listeners created on one thread be
-// accepted on another, since they all register with the one IO driver.
-static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .expect("TCP listener runtime")
-});
 pub(crate) struct Listener {
-    socket: Option<tokio::net::TcpListener>,
+    socket: Option<socket2::Socket>,
 }
 
 /// Why a listener operation produced no value.
@@ -58,8 +38,7 @@ fn listen(host: String, port: u16, timeout_nanos: u64) -> io::Result<Listener> {
             socket.bind(&address.into())?;
             socket.listen(128)?;
             socket.set_nonblocking(true)?;
-            let _entered = RUNTIME.enter();
-            tokio::net::TcpListener::from_std(TcpListener::from(socket)).map(|socket| Listener {
+            Ok(Listener {
                 socket: Some(socket),
             })
         })();
@@ -95,7 +74,7 @@ fn exclusive_address(socket: &socket2::Socket) -> io::Result<()> {
 }
 
 impl Listener {
-    fn socket(&self) -> Result<&tokio::net::TcpListener, ListenerError> {
+    fn socket(&self) -> Result<&socket2::Socket, ListenerError> {
         self.socket.as_ref().ok_or(ListenerError::Closed)
     }
 
@@ -104,20 +83,18 @@ impl Listener {
     /// its own until a read or write sets one.
     fn accept(&self, wait_nanos: Option<u64>) -> Result<TcpStream, ListenerError> {
         let socket = self.socket()?;
-        if wait_nanos == Some(0) {
-            return Err(io::Error::from(io::ErrorKind::TimedOut).into());
-        }
-        let (stream, _) = RUNTIME.block_on(async {
-            match wait_nanos {
-                Some(nanos) => tokio::time::timeout(Duration::from_nanos(nanos), socket.accept())
-                    .await
-                    .unwrap_or_else(|_| Err(io::Error::from(io::ErrorKind::TimedOut))),
-                None => socket.accept().await,
+        let deadline = Deadline::for_wait(wait_nanos)?;
+        loop {
+            deadline.remaining()?;
+            match socket.accept() {
+                Ok((stream, _)) => return Ok(stream.into()),
+                Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                    crate::socket::wait_ready(socket, false, deadline)?
+                }
+                Err(error) if error.kind() == io::ErrorKind::Interrupted => {}
+                Err(error) => return Err(error.into()),
             }
-        })?;
-        let stream = stream.into_std()?;
-        stream.set_nonblocking(false)?;
-        Ok(stream)
+        }
     }
 }
 
@@ -167,9 +144,13 @@ pub extern "C" fn hosted_tcp_listen(
 pub extern "C" fn hosted_tcp_local_port(handle: *mut u64) -> HostTcpLocalPortResult {
     let host = roc_host();
     let listener = unsafe { resources::resource_ref::<Listener>(handle) };
-    let port = listener
-        .socket()
-        .and_then(|socket| Ok(socket.local_addr()?.port()));
+    let port = listener.socket().and_then(|socket| {
+        Ok(socket
+            .local_addr()?
+            .as_socket()
+            .ok_or_else(|| io::Error::other("listener has no IP address"))?
+            .port())
+    });
     let result = match port {
         Ok(port) => HostTcpLocalPortResult {
             tag: HostTcpLocalPortResultTag::Ok,
@@ -235,6 +216,8 @@ pub extern "C" fn hosted_tcp_listener_close(handle: *mut u64) -> HostTcpListener
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::net::TcpListener;
+    use std::time::Duration;
 
     const LONG: u64 = 10_000_000_000;
     const SHORT: u64 = 20_000_000;
@@ -246,7 +229,13 @@ mod tests {
     #[test]
     fn reserved_port_accept_deadline_and_close() {
         let mut listener = listen("127.0.0.1".into(), 0, LONG).unwrap();
-        let address = listener.socket().unwrap().local_addr().unwrap();
+        let address = listener
+            .socket()
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .as_socket()
+            .unwrap();
         assert_ne!(address.port(), 0);
         assert!(TcpListener::bind(address).is_err());
         assert!(timed_out(listener.accept(Some(SHORT))));
@@ -274,7 +263,13 @@ mod tests {
     #[test]
     fn accept_without_a_timeout_waits_for_a_client() {
         let listener = listen("127.0.0.1".into(), 0, LONG).unwrap();
-        let address = listener.socket().unwrap().local_addr().unwrap();
+        let address = listener
+            .socket()
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .as_socket()
+            .unwrap();
         let client = std::thread::spawn(move || {
             std::thread::sleep(Duration::from_millis(100));
             TcpStream::connect(address).unwrap()
@@ -293,7 +288,14 @@ mod tests {
             io::ErrorKind::TimedOut
         );
         let listener = listen("127.0.0.1".into(), 0, LONG).unwrap();
-        let port = listener.socket().unwrap().local_addr().unwrap().port();
+        let port = listener
+            .socket()
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .as_socket()
+            .unwrap()
+            .port();
         let Err(in_use) = listen("127.0.0.1".into(), port, LONG) else {
             panic!("a bound port was bound again");
         };
@@ -313,7 +315,13 @@ mod tests {
     fn final_arc_release_releases_port() {
         let host = resources::make_host();
         let listener = listen("127.0.0.1".into(), 0, LONG).unwrap();
-        let address = listener.socket().unwrap().local_addr().unwrap();
+        let address = listener
+            .socket()
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .as_socket()
+            .unwrap();
         let handle = resources::box_resource(listener, &host).unwrap();
         unsafe { incref_box(handle.cast(), 1) };
         resources::release(handle, &host);

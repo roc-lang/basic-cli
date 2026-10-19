@@ -302,7 +302,10 @@ mod sys {
 
     /// Runs for Ctrl+C, Ctrl+Break, and the console closing. Returning `FALSE`
     /// passes the event on, so the process still terminates as it would have.
-    unsafe extern "system" fn restore_on_console_event(_event: u32) -> BOOL {
+    unsafe extern "system" fn restore_on_console_event(event: u32) -> BOOL {
+        if crate::signals::dispatch_console_event(event) {
+            return TRUE;
+        }
         let console = CONSOLE.load(Ordering::SeqCst);
         if !console.is_null() {
             unsafe { SetConsoleMode(console, SAVED_MODE.load(Ordering::SeqCst)) };

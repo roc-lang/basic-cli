@@ -19,12 +19,13 @@ main! = |_args| {
 
 ## An empty line is a real answer, so it is `Ok("")`; input that has ended is
 ## `Err(EndOfInput)`. Here both mean there is no name.
-read_name! : () => Try(Str, [NoName, BadUtf8({ problem : Str.Utf8Problem, index : U64 }), StdinErr(_)])
+read_name! : () => Try(Str, [NoName, Interrupted, BadUtf8({ problem : Str.Utf8Problem, index : U64 }), StdinErr(_)])
 read_name! = ||
 	match Stdin.line!() {
 		Ok("") => Err(NoName)
 		Ok(name) => Ok(name)
 		Err(EndOfInput) => Err(NoName)
 		Err(BadUtf8(problem)) => Err(BadUtf8(problem))
+		Err(Interrupted) => Err(Interrupted)
 		Err(StdinErr(err)) => Err(StdinErr(err))
 	}

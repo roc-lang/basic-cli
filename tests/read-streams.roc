@@ -55,6 +55,9 @@ stdin_lines! = || {
 			Err(StdinErr(err)) => {
 				return Err(StdinErr(err))
 			}
+			Err(Interrupted) => {
+				return Err(Interrupted)
+			}
 		}
 	}
 	Stdout.line!("stream ended")?
@@ -108,6 +111,9 @@ header! = || {
 			}
 			Err(StdinErr(err)) => {
 				return Err(StdinErr(err))
+			}
+			Err(Interrupted) => {
+				return Err(Interrupted)
 			}
 		}
 	}

@@ -22,6 +22,8 @@ accept_wait = |accept_timeout|
 ##
 ## Every failure of the network or the operating system is `TcpErr(IOErr)`, so
 ## results compare with `==`: `result == Err(TcpErr(ConnectionRefused))`.
+## A caught, pending signal returns bare `Interrupted` from waits. A read that
+## is interrupted keeps its unread bytes; a write may have sent a prefix.
 ##
 ## Timeouts are [Duration]s. The wait to connect or to accept bounds that one
 ## call. The connection it produces holds its own I/O timeout, which bounds
@@ -90,11 +92,12 @@ Tcp :: [].{
 		##     Err(TcpErr(err)) => { return Err(TcpErr(err)) }
 		## }
 		## ```
-		accept! : Listener, { accept_timeout : [NoTimeout, After(Duration)], io_timeout : Duration } => Try(Connection, [Closed, TcpErr(IOErr)])
+		accept! : Listener, { accept_timeout : [NoTimeout, After(Duration)], io_timeout : Duration } => Try(Connection, [Closed, Interrupted, TcpErr(IOErr)])
 		accept! = |listener, options|
 			match Host.tcp_accept!(listener.host, accept_wait(options.accept_timeout)) {
 				Ok(host) => Ok(Connection.{ host, timeout: options.io_timeout, line_limit: default_line_limit })
 				Err(Closed) => Err(Closed)
+				Err(TcpErr(Interrupted)) => Err(Interrupted)
 				Err(TcpErr(err)) => Err(TcpErr(err))
 			}
 
@@ -114,10 +117,11 @@ Tcp :: [].{
 	## listener = Tcp.listen!("127.0.0.1", 0, Duration.seconds(5))?
 	## port = listener.local_port!()?
 	## ```
-	listen! : Str, U16, Duration => Try(Listener, [TcpErr(IOErr)])
+	listen! : Str, U16, Duration => Try(Listener, [Interrupted, TcpErr(IOErr)])
 	listen! = |host, port, timeout|
 		match Host.tcp_listen!(host, port, timeout.to_nanos()) {
 			Ok(handle) => Ok(Listener.{ host: handle })
+			Err(TcpErr(Interrupted)) => Err(Interrupted)
 			Err(TcpErr(err)) => Err(TcpErr(err))
 		}
 
@@ -170,11 +174,12 @@ Tcp :: [].{
 		## arrived. Short reads are valid. Asking for zero bytes returns
 		## `Ok([])` without waiting; otherwise the result is never empty, and a
 		## closed peer is `Err(EndOfInput)`.
-		read_up_to! : Connection, U64 => Try(List(U8), [EndOfInput, TcpErr(IOErr)])
+		read_up_to! : Connection, U64 => Try(List(U8), [EndOfInput, Interrupted, TcpErr(IOErr)])
 		read_up_to! = |conn, max_bytes|
 			match Host.tcp_read_up_to!(conn.host, max_bytes, conn.timeout.to_nanos()) {
 				Ok(bytes) => Ok(bytes)
 				Err(EndOfInput) => Err(EndOfInput)
+				Err(TcpErr(Interrupted)) => Err(Interrupted)
 				Err(TcpErr(err)) => Err(TcpErr(err))
 			}
 
@@ -183,11 +188,12 @@ Tcp :: [].{
 		## If the peer closes before `count` bytes arrive the result is
 		## `Err(UnexpectedEndOfInput)`. The bytes that did arrive are not
 		## consumed: [read_up_to!] returns them.
-		read_exactly! : Connection, U64 => Try(List(U8), [UnexpectedEndOfInput, TcpErr(IOErr)])
+		read_exactly! : Connection, U64 => Try(List(U8), [UnexpectedEndOfInput, Interrupted, TcpErr(IOErr)])
 		read_exactly! = |conn, count|
 			match Host.tcp_read_exactly!(conn.host, count, conn.timeout.to_nanos()) {
 				Ok(bytes) => Ok(bytes)
 				Err(UnexpectedEndOfInput) => Err(UnexpectedEndOfInput)
+				Err(TcpErr(Interrupted)) => Err(Interrupted)
 				Err(TcpErr(err)) => Err(TcpErr(err))
 			}
 
@@ -206,12 +212,13 @@ Tcp :: [].{
 		## ```roc
 		## field = conn.read_until!('|')?
 		## ```
-		read_until! : Connection, U8 => Try(List(U8), [EndOfInput, ReadLimitExceeded(U64), TcpErr(IOErr)])
+		read_until! : Connection, U8 => Try(List(U8), [EndOfInput, Interrupted, ReadLimitExceeded(U64), TcpErr(IOErr)])
 		read_until! = |conn, delimiter|
 			match Host.tcp_read_until!(conn.host, delimiter, conn.line_limit, conn.timeout.to_nanos()) {
 				Ok(bytes) => Ok(bytes)
 				Err(EndOfInput) => Err(EndOfInput)
 				Err(ReadLimitExceeded(limit)) => Err(ReadLimitExceeded(limit))
+				Err(TcpErr(Interrupted)) => Err(Interrupted)
 				Err(TcpErr(err)) => Err(TcpErr(err))
 			}
 
@@ -227,23 +234,27 @@ Tcp :: [].{
 		## is `BadUtf8`. Either way that line is skipped and the next call
 		## reads the line after it. For the bytes of a line, use
 		## `conn.read_until!('\n')`.
-		read_line! : Connection => Try(Str, [EndOfInput, ReadLimitExceeded(U64), BadUtf8({ problem : Str.Utf8Problem, index : U64 }), TcpErr(IOErr)])
+		read_line! : Connection => Try(Str, [EndOfInput, ReadLimitExceeded(U64), BadUtf8({ problem : Str.Utf8Problem, index : U64 }), Interrupted, TcpErr(IOErr)])
 		read_line! = |conn|
 			match Host.tcp_read_line!(conn.host, conn.line_limit, conn.timeout.to_nanos()) {
 				Ok(bytes) => Str.from_utf8(bytes)
 				Err(EndOfInput) => Err(EndOfInput)
 				Err(ReadLimitExceeded(limit)) => Err(ReadLimitExceeded(limit))
+				Err(TcpErr(Interrupted)) => Err(Interrupted)
 				Err(TcpErr(err)) => Err(TcpErr(err))
 			}
 
 		## Write all of `bytes`. They are sent at once, not buffered.
-		write_bytes! : Connection, List(U8) => Try({}, [TcpErr(IOErr)])
+		write_bytes! : Connection, List(U8) => Try({}, [Interrupted, TcpErr(IOErr)])
 		write_bytes! = |conn, bytes|
-			Host.tcp_write!(conn.host, bytes, conn.timeout.to_nanos())
-				.map_err(|TcpErr(err)| TcpErr(err))
+			match Host.tcp_write!(conn.host, bytes, conn.timeout.to_nanos()) {
+				Ok({}) => Ok({})
+				Err(TcpErr(Interrupted)) => Err(Interrupted)
+				Err(TcpErr(err)) => Err(TcpErr(err))
+			}
 
 		## Write a string as UTF-8. It is sent at once, not buffered.
-		write_utf8! : Connection, Str => Try({}, [TcpErr(IOErr)])
+		write_utf8! : Connection, Str => Try({}, [Interrupted, TcpErr(IOErr)])
 		write_utf8! = |conn, str|
 			write_bytes!(conn, Str.to_utf8(str))
 
@@ -267,7 +278,7 @@ Tcp :: [].{
 		## The stream holds no data of its own, so it can be mixed with the
 		## other reads and with writes. It keeps the connection open until it
 		## has finished or is released.
-		chunks : Connection -> Stream(Try(List(U8), [TcpErr(IOErr)]))
+		chunks : Connection -> Stream(Try(List(U8), [Interrupted, TcpErr(IOErr)]))
 		chunks = |conn|
 			# Keep the connection in the state, not the callback capture, so
 			# Finished can release it even when the terminal continuation is
@@ -282,6 +293,7 @@ Tcp :: [].{
 							match read_up_to!(current, 65_536) {
 								Ok(bytes) => Ok((Ok(bytes), Reading(current)))
 								Err(EndOfInput) => Err(NoMore)
+								Err(Interrupted) => Ok((Err(Interrupted), Finished))
 								Err(TcpErr(err)) => Ok((Err(TcpErr(err)), Finished))
 							}
 					},
@@ -311,7 +323,7 @@ Tcp :: [].{
 		## other reads and with writes, and leaving the loop early loses
 		## nothing. It keeps the connection open until it has finished or is
 		## released.
-		lines : Connection -> Stream(Try(Str, [ReadLimitExceeded(U64), BadUtf8({ problem : Str.Utf8Problem, index : U64 }), TcpErr(IOErr)]))
+		lines : Connection -> Stream(Try(Str, [ReadLimitExceeded(U64), BadUtf8({ problem : Str.Utf8Problem, index : U64 }), Interrupted, TcpErr(IOErr)]))
 		lines = |conn|
 			# Keep the connection in the state, not the callback capture, so
 			# Finished can release it even when the terminal continuation is
@@ -328,6 +340,7 @@ Tcp :: [].{
 								Err(EndOfInput) => Err(NoMore)
 								Err(BadUtf8(problem)) => Ok((Err(BadUtf8(problem)), Reading(current)))
 								Err(ReadLimitExceeded(limit)) => Ok((Err(ReadLimitExceeded(limit)), Reading(current)))
+								Err(Interrupted) => Ok((Err(Interrupted), Finished))
 								Err(TcpErr(err)) => Ok((Err(TcpErr(err)), Finished))
 							}
 					},
@@ -349,10 +362,11 @@ Tcp :: [].{
 	## ```
 	##
 	## Valid hostnames look like `127.0.0.1`, `::1`, `localhost`, or `roc-lang.org`.
-	connect! : Str, U16, { connect_timeout : Duration, io_timeout : Duration } => Try(Connection, [TcpErr(IOErr)])
+	connect! : Str, U16, { connect_timeout : Duration, io_timeout : Duration } => Try(Connection, [Interrupted, TcpErr(IOErr)])
 	connect! = |host, port, options|
 		match Host.tcp_connect!(host, port, options.connect_timeout.to_nanos()) {
 			Ok(handle) => Ok(Connection.{ host: handle, timeout: options.io_timeout, line_limit: default_line_limit })
+			Err(TcpErr(Interrupted)) => Err(Interrupted)
 			Err(TcpErr(err)) => Err(TcpErr(err))
 		}
 }

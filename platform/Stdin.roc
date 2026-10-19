@@ -7,6 +7,8 @@ import Host
 ## read is `Err(EndOfInput)`. An empty `Ok` is real data, such as an empty line.
 ## All reads share one buffer, so they can be mixed freely: reading a few lines
 ## and then calling [read_to_end!] loses nothing.
+## Interrupted reads retain bytes already buffered by the platform. A terminal
+## may discard an unsubmitted input line on Ctrl-C before delivering any bytes.
 Stdin :: [].{
 
 	## Read a line from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
@@ -23,11 +25,12 @@ Stdin :: [].{
 	## (e.g. because the user pressed Enter in the terminal), so using it can result in the appearance of the
 	## program having gotten stuck. It's often helpful to print a prompt first, so
 	## the user knows it's necessary to enter something before the program will continue.
-	line! : () => Try(Str, [EndOfInput, BadUtf8({ problem : Str.Utf8Problem, index : U64 }), StdinErr(IOErr)])
+	line! : () => Try(Str, [EndOfInput, Interrupted, BadUtf8({ problem : Str.Utf8Problem, index : U64 }), StdinErr(IOErr)])
 	line! = ||
 		match Host.stdin_line!() {
 			Ok(bytes) => Str.from_utf8(bytes)
 			Err(EndOfInput) => Err(EndOfInput)
+			Err(Interrupted) => Err(Interrupted)
 			Err(StdinErr(err)) => Err(StdinErr(err))
 		}
 
@@ -40,12 +43,12 @@ Stdin :: [].{
 	## > This is typically used in combination with [Tty.enable_raw_mode!],
 	## which disables default terminal behaviour and allows reading input
 	## without buffering until Enter key is pressed.
-	bytes! : () => Try(List(U8), [EndOfInput, StdinErr(IOErr)])
+	bytes! : () => Try(List(U8), [EndOfInput, Interrupted, StdinErr(IOErr)])
 	bytes! = || widen_stdin_end_err(Host.stdin_bytes!())
 
 	## Read all bytes from [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin))
 	## until [EOF](https://en.wikipedia.org/wiki/End-of-file) in this source.
-	read_to_end! : () => Try(List(U8), [StdinErr(IOErr)])
+	read_to_end! : () => Try(List(U8), [Interrupted, StdinErr(IOErr)])
 	read_to_end! = || widen_stdin_err(Host.stdin_read_to_end!())
 
 	## Lazily read standard input a line at a time, as [line!] does.
@@ -67,7 +70,7 @@ Stdin :: [].{
 	##     }
 	## }
 	## ```
-	lines : () -> Stream(Try(Str, [BadUtf8({ problem : Str.Utf8Problem, index : U64 }), StdinErr(IOErr)]))
+	lines : () -> Stream(Try(Str, [Interrupted, BadUtf8({ problem : Str.Utf8Problem, index : U64 }), StdinErr(IOErr)]))
 	lines = ||
 		Stream.custom(
 			Reading,
@@ -80,6 +83,7 @@ Stdin :: [].{
 							Ok(text) => Ok((Ok(text), Reading))
 							Err(EndOfInput) => Err(NoMore)
 							Err(BadUtf8(problem)) => Ok((Err(BadUtf8(problem)), Reading))
+							Err(Interrupted) => Ok((Err(Interrupted), Finished))
 							Err(StdinErr(err)) => Ok((Err(StdinErr(err)), Finished))
 						}
 				},
@@ -99,7 +103,7 @@ Stdin :: [].{
 	##     Stdout.write_bytes!(item?)?
 	## }
 	## ```
-	chunks : () -> Stream(Try(List(U8), [StdinErr(IOErr)]))
+	chunks : () -> Stream(Try(List(U8), [Interrupted, StdinErr(IOErr)]))
 	chunks = ||
 		Stream.custom(
 			Reading,
@@ -111,6 +115,7 @@ Stdin :: [].{
 						match bytes!() {
 							Ok(chunk) => Ok((Ok(chunk), Reading))
 							Err(EndOfInput) => Err(NoMore)
+							Err(Interrupted) => Ok((Err(Interrupted), Finished))
 							Err(StdinErr(err)) => Ok((Err(StdinErr(err)), Finished))
 						}
 				},
@@ -121,18 +126,20 @@ Stdin :: [].{
 ## public function rebuilds the error it forwards. That gives callers an open
 ## union, which `?` can combine with other error types however the function is
 ## called: directly, as a method, or through a function value.
-widen_stdin_end_err : Try(v, [EndOfInput, StdinErr(IOErr)]) -> Try(v, [EndOfInput, StdinErr(IOErr)])
+widen_stdin_end_err : Try(v, [EndOfInput, Interrupted, StdinErr(IOErr)]) -> Try(v, [EndOfInput, Interrupted, StdinErr(IOErr)])
 widen_stdin_end_err = |result|
 	match result {
 		Ok(value) => Ok(value)
 		Err(EndOfInput) => Err(EndOfInput)
+		Err(Interrupted) => Err(Interrupted)
 		Err(StdinErr(err)) => Err(StdinErr(err))
 	}
 
-widen_stdin_err : Try(v, [StdinErr(IOErr)]) -> Try(v, [StdinErr(IOErr)])
+widen_stdin_err : Try(v, [Interrupted, StdinErr(IOErr)]) -> Try(v, [Interrupted, StdinErr(IOErr)])
 widen_stdin_err = |result|
 	match result {
 		Ok(value) => Ok(value)
+		Err(Interrupted) => Err(Interrupted)
 		Err(StdinErr(err)) => Err(StdinErr(err))
 	}
 

@@ -29,7 +29,7 @@ build commands, hashes and licenses accompany the platform bundle in
 
 ## Host runtime behavior
 
-These current host-level limitations may affect application design:
+These host behaviors may affect application design:
 
 - HTTP and HTTPS use HTTP/1 only. [Issue #455](https://github.com/roc-lang/basic-cli/issues/455)
   tracks research into HTTP/2 support and its tradeoffs.
@@ -49,6 +49,24 @@ These current host-level limitations may affect application design:
   still be read; the `Request` deadline passing is final. Each streaming
   response has its own connection, closed when the body ends or fails, or when
   the response and its streams are released. Request bodies are not streamed.
+- HTTP redirects are opt-in through trailing options, `{ max_redirects: n }`;
+  the default is zero. The request deadline covers every hop and the final
+  body. Cross-origin hops strip credentials; HTTPS downgrades are refused.
+- `Signal.catch!` catches Ctrl-C and, with a `System.Unix` witness, SIGTERM
+  (including default `systemctl stop`). Blocking effects return bare
+  `Interrupted`. Call `Signal.poll!()` before effectful application cleanup;
+  catching a signal does not clean up external resources itself. Forced
+  termination and systemd's eventual stop-timeout escalation remain uncatchable.
+- `System.target!()` supplies opaque OS witnesses. `Cmd.exec!(unix, path, args)`
+  replaces a Unix process at an exact path and bypasses Roc cleanup on success;
+  `Cmd.call!(program, args)` runs a child and waits for success.
+- UnixSocket pathname streams work on Linux, macOS, and Windows 10 version
+  1803 (build 17134) or newer, including Windows 11. Path limits and native
+  filesystem name restrictions apply. Closing does not unlink the socket.
+- File writer options apply `OwnerOnly` or `PublicRead` permissions only when
+  creating a new regular file. Existing files retain their access grants;
+  use `RequireNew` with `OwnerOnly` for private files. Explicit permissions
+  replace ACL grants and fail if the filesystem cannot enforce the policy.
 - Several network and TLS failures currently use a generic HTTP transport
   error ([issue #438](https://github.com/roc-lang/basic-cli/issues/438)).
 - TCP reads and writes always have a timeout: a `Tcp.Connection` holds the
@@ -57,7 +75,7 @@ These current host-level limitations may affect application design:
   to connect or accept is separate; only `accept!` may wait indefinitely
   (`NoTimeout`). `Duration.zero` expires immediately, and expiry is always
   `TcpErr(TimedOut)`.
-- A TCP read that times out consumes nothing: the bytes that had arrived stay
+- A TCP read that times out or is interrupted consumes nothing: the bytes that had arrived stay
   buffered for the next read. A write that times out may have sent any prefix.
 - `Tcp.Connection.read_until!`, `read_line!` and `lines` stop at the
   connection's line limit (1 MiB unless changed with `with_line_limit`),

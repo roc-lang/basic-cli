@@ -20,6 +20,9 @@ main! = |_| {
 			# Only this line is affected; the stream carries on with the next.
 			Err(BadUtf8({ index, .. })) => Stderr.line!("${$number.to_str()}: invalid UTF-8 at byte ${index.to_str()}")?
 			# Reading failed, and this is the stream's last item.
+			Err(Interrupted) => {
+				return Err(Interrupted)
+			}
 			Err(StdinErr(err)) => {
 				return Err(StdinErr(err))
 			}
