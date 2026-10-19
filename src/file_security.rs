@@ -604,7 +604,7 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("inaccessible");
         std::fs::write(&path, b"preserved").unwrap();
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0)).unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o000)).unwrap();
         let result = set_permissions(&path, Policy::OwnerOnly);
         // Restore access even if the assertion fails, so cleanup can succeed.
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)).unwrap();
