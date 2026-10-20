@@ -52,6 +52,21 @@ These host behaviors may affect application design:
 - HTTP redirects are opt-in through trailing options, `{ max_redirects: n }`;
   the default is zero. The request deadline covers every hop and the final
   body. Cross-origin hops strip credentials; HTTPS downgrades are refused.
+- HTTP sends no default `User-Agent`. For APIs that require one, such as
+  GitHub's REST API, build a request with `.add_header("User-Agent", "my-roc-cli")`
+  and use `Http.send!` or `Http.send_streaming!`. A missing `Content-Type`
+  currently becomes `text/plain`, even for a bodyless GET; an explicit header
+  is preserved ([issue #531](https://github.com/roc-lang/basic-cli/issues/531)).
+- A spawned `Cmd.Child` is killed and reaped when its last reference is
+  released; an unused `_child` binding does not keep it alive. `Pipe` output
+  is read through `child.read!(duration)`, and is absent
+  from `child.wait!()`'s output; choose `Capture` to keep it for `wait!`.
+  Direct child-output redirection to a file is not supported yet
+  ([issue #532](https://github.com/roc-lang/basic-cli/issues/532)).
+- `Utc` stores nanoseconds, but `to_iso_8601` formats whole seconds and
+  floors any fractional second. No ISO 8601/RFC 3339 parser is supplied yet.
+  Use signed epoch nanoseconds for exact timestamp storage
+  ([issue #533](https://github.com/roc-lang/basic-cli/issues/533)).
 - `Signal.catch!` catches Ctrl-C and, with a `System.Unix` witness, SIGTERM
   (including default `systemctl stop`). Blocking effects return bare
   `Interrupted`. Call `Signal.poll!()` before effectful application cleanup;

@@ -18,6 +18,23 @@ import http.Response
 ## have arrived and hands the body over as a `Stream` of chunks, for a
 ## download larger than memory or one whose progress is shown.
 ##
+## No default `User-Agent` is sent. APIs such as
+## [GitHub's REST API](https://docs.github.com/en/rest/using-the-rest-api/getting-started-with-the-rest-api#user-agent)
+## require one; add it to the request before calling [Http.send!] or
+## [Http.send_streaming!]:
+##
+## ```roc
+## request = Request.from_method(GET)
+##     .with_uri("https://api.github.com/repos/roc-lang/basic-cli")
+##     .add_header("User-Agent", "my-roc-cli")
+## response = Http.send!(request, {})?
+## ```
+##
+## If the request has no `Content-Type` header, the platform currently adds
+## `Content-Type: text/plain`, including for a bodyless GET. An explicit
+## content type is preserved. [Issue #531](https://github.com/roc-lang/basic-cli/issues/531)
+## tracks changes to these defaults.
+##
 ## See the [host runtime behavior](https://github.com/roc-lang/basic-cli#host-runtime-behavior)
 ## for HTTP protocol, TLS trust-store, and timeout details.
 Http :: [].{

@@ -13,6 +13,13 @@ nanos_per_milli = 1_000_000
 ## [Utc.since]. To measure how long something took, prefer [Monotonic], which
 ## is unaffected by changes to the wall clock.
 ##
+## There is currently no ISO 8601 or RFC 3339 string parser. [Utc.to_iso_8601]
+## formats whole seconds and floors any fractional second; it does not change
+## the stored instant. For exact timestamp storage, use signed epoch
+## nanoseconds with [Utc.to_nanos_since_epoch] and [Utc.from_nanos_since_epoch].
+## [Issue #533](https://github.com/roc-lang/basic-cli/issues/533) tracks string
+## parsing and fractional-second formatting.
+##
 ## Every result is clamped to what its type holds, so nothing here crashes on
 ## overflow: a `Utc` to the [I128] range, a [Duration] to zero and its maximum.
 Utc :: { nanos : I128 }.{
@@ -70,6 +77,10 @@ Utc :: { nanos : I128 }.{
 
 	## Format this instant as an ISO 8601 UTC string with second precision,
 	## flooring any partial second: `2026-10-13T09:30:00Z`.
+	##
+	## The stored nanoseconds are unchanged, but this string omits them; use
+	## [to_nanos_since_epoch] when the full precision must round-trip. There
+	## is currently no corresponding ISO 8601 or RFC 3339 parser.
 	##
 	## Instants before 1970 are formatted too, in the proleptic Gregorian
 	## calendar. Years outside 0000 to 9999 use the expanded form with a sign,

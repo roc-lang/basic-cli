@@ -37,6 +37,13 @@ import Duration
 ## Programs and arguments are passed to the operating system as they are: no
 ## shell is involved, so spaces, `$FOO` and `*.txt` stay literal.
 ##
+## There is no output mode that writes directly to a file or a `File.Writer`
+## ([issue #532](https://github.com/roc-lang/basic-cli/issues/532)). `Pipe`
+## requires the application to drain [Child.read!] and write each chunk;
+## `Capture` and `Tee` retain output in memory. For independent file logging,
+## use the child's own log-file option or explicitly invoke an appropriate
+## operating-system shell with redirection.
+##
 ## Errors, [Command.to_str] and `Str.inspect` never contain the value of an environment
 ## variable, so a command that carries a secret can be logged.
 Cmd :: [].{
@@ -381,6 +388,8 @@ Cmd :: [].{
 		##
 		## Standard input, output and error are inherited unless the command sets
 		## them. Set a stream to `Pipe` to exchange data with the child while it runs.
+		## Keep the returned child for later reads, waits or cleanup; an unused
+		## binding such as `_child` does not keep the process alive. See [Child].
 		spawn! : Command => Try(Child, [CmdErr(Err), Interrupted])
 		spawn! = |cmd|
 			match Host.cmd_spawn!(to_host_cmd(cmd, Spawn)) {
@@ -553,6 +562,8 @@ Cmd :: [].{
 	## When the last reference to a child is released, a child that is still
 	## running is killed and reaped. Use [Child.close!] to do that at a chosen
 	## point. After `close!` every other operation returns `Err(Closed)`.
+	## An unused binding, including `_child`, can release the last reference
+	## immediately. Keep a reference that a later read, wait or cleanup uses.
 	Child :: { host : Resource.Child, pid_value : U32, command : Str, program : OsStr }.{
 
 		# A tag union that crosses the host boundary is closed by design, so
@@ -568,6 +579,10 @@ Cmd :: [].{
 		## return its status and captured output. A piped standard input is
 		## closed first, so exchange data with [write_bytes!] and [read!] before
 		## waiting. Waiting again returns the same result.
+		##
+		## `Pipe` output is available only through [read!]; its output field in
+		## this result is empty. Choose `Capture` to retain that stream for
+		## `wait!`, subject to the command's [Command.output_limit].
 		wait! : Child => Try(Output, [CmdErr(Cmd.Err), Closed, Interrupted])
 		wait! = |child|
 			match Host.child_wait!(child.host) {
