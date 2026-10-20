@@ -18,22 +18,10 @@ import http.Response
 ## have arrived and hands the body over as a `Stream` of chunks, for a
 ## download larger than memory or one whose progress is shown.
 ##
-## No default `User-Agent` is sent. APIs such as
-## [GitHub's REST API](https://docs.github.com/en/rest/using-the-rest-api/getting-started-with-the-rest-api#user-agent)
-## require one; add it to the request before calling [Http.send!] or
-## [Http.send_streaming!]:
-##
-## ```roc
-## request = Request.from_method(GET)
-##     .with_uri("https://api.github.com/repos/roc-lang/basic-cli")
-##     .add_header("User-Agent", "my-roc-cli")
-## response = Http.send!(request, {})?
-## ```
-##
-## If the request has no `Content-Type` header, the platform currently adds
-## `Content-Type: text/plain`, including for a bodyless GET. An explicit
-## content type is preserved. [Issue #531](https://github.com/roc-lang/basic-cli/issues/531)
-## tracks changes to these defaults.
+## Requests default to `User-Agent: roc-basic-cli/0.26`. An explicit
+## `User-Agent` is preserved, regardless of the header name's casing.
+## A non-empty body defaults to `Content-Type: text/plain`; an empty body
+## adds no content type. Explicit content types are always preserved.
 ##
 ## See the [host runtime behavior](https://github.com/roc-lang/basic-cli#host-runtime-behavior)
 ## for HTTP protocol, TLS trust-store, and timeout details.
@@ -182,13 +170,7 @@ Http :: [].{
 	send_streaming! = |request, options| {
 		url = Url.parse(Request.uri(request)) ? InvalidUrl
 		canonical = Url.without_fragment(url)
-		headers = Request.headers(request)
-		initial_headers = if headers.any(|header| header.name.with_ascii_lowercased() == "content-type") {
-			headers
-		} else {
-			headers.append({ name: "Content-Type", value: "text/plain" })
-		}
-		canonical_request = request.with_uri(canonical.to_str()).with_headers(initial_headers)
+		canonical_request = request_with_defaults(request.with_uri(canonical.to_str()))
 		deadline = match Request.timeout(request) {
 			NoTimeout | TimeoutMilliseconds(0) => NoTimeout
 			TimeoutMilliseconds(ms) => At(Host.monotonic_now!().plus_saturated(ms.times_saturated(1_000_000)))
@@ -454,4 +436,34 @@ expect {
 	])
 	next = redirected_request(request, "https://a.example/", "https://b.example/", 302)
 	Request.method(next) == GET and Request.body(next) == [] and Request.headers(next) == [{ name: "X-Public", value: "kept" }]
+}
+
+## Apply request defaults once, before redirect rewriting can remove body headers.
+request_with_defaults : Request -> Request
+request_with_defaults = |request| {
+	headers = Request.headers(request)
+	with_agent = if headers.any(|header| header.name.with_ascii_lowercased() == "user-agent") {
+		headers
+	} else {
+		headers.append({ name: "User-Agent", value: "roc-basic-cli/0.26" })
+	}
+	resolved = if !Request.body(request).is_empty() and !headers.any(|header| header.name.with_ascii_lowercased() == "content-type") {
+		with_agent.append({ name: "Content-Type", value: "text/plain" })
+	} else {
+		with_agent
+	}
+	request.with_headers(resolved)
+}
+
+expect {
+	request = request_with_defaults(Request.from_method(GET))
+	request.headers() == [{ name: "User-Agent", value: "roc-basic-cli/0.26" }]
+}
+expect {
+	request = request_with_defaults(Request.from_method(POST).with_body([1]))
+	request.headers().contains({ name: "Content-Type", value: "text/plain" })
+}
+expect {
+	headers = [{ name: "uSeR-aGeNt", value: "my-cli" }, { name: "content-TYPE", value: "application/custom" }]
+	request_with_defaults(Request.from_method(GET).with_headers(headers)).headers() == headers
 }

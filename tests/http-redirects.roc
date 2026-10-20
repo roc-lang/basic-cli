@@ -21,6 +21,15 @@ text = |response| Str.from_utf8_lossy(Response.body(response))
 
 main! : List(OsStr) => Try({}, _)
 main! = |_| {
+	# Defaults and explicit overrides must reach the wire for both entry points.
+	plain = text(Http.send!(request("/redirect/inspect"), {})?)
+	check(plain.contains("user-agent: roc-basic-cli/0.26\n") and plain.contains("content-type: <absent>\n"), "bodyless GET defaults")?
+	post = text(Http.send!(request("/redirect/inspect").with_method(POST).with_body("payload".to_utf8()), {})?)
+	check(post.contains("content-type: text/plain\n"), "non-empty body default")?
+	custom = request("/redirect/inspect").add_header("uSeR-aGeNt", "my-cli").add_header("content-TYPE", "application/custom")
+	streamed_custom = Http.send_streaming!(custom, {})?
+	custom_report = Str.from_utf8_lossy(streamed_custom.read_to_end!(NoLimit)?)
+	check(custom_report.contains("user-agent: my-cli\n") and custom_report.contains("content-type: application/custom\n"), "explicit headers preserved")?
 	# Disabled redirects return the original status, including invalid Location.
 	for path in ["/redirect/malformed", "/redirect/duplicate", "/redirect/unsupported", "/redirect/non-utf8"] {
 		response = Http.send_streaming!(request(path), {})?

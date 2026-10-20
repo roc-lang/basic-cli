@@ -81,6 +81,8 @@ pub enum OutputMode {
     Inherit,
     /// Inherit the parent's standard error without capturing output.
     InheritStderr,
+    /// Write through a file descriptor installed before spawning.
+    File,
     Null,
     Capture,
     /// Captured and forwarded to the parent's stream.
@@ -99,6 +101,8 @@ pub struct Config {
     pub stdin: StdinMode,
     pub stdout: OutputMode,
     pub stderr: StderrMode,
+    pub stdout_file: Option<std::fs::File>,
+    pub stderr_file: Option<std::fs::File>,
     /// `None` is no deadline; zero expires immediately.
     pub timeout: Option<Duration>,
     /// Combined capture budget; `None` is unlimited.
@@ -190,7 +194,7 @@ fn output_stdio(mode: OutputMode) -> Stdio {
     match mode {
         OutputMode::Inherit => Stdio::inherit(),
         OutputMode::InheritStderr => Stdio::from(std::io::stderr()),
-        OutputMode::Null => Stdio::null(),
+        OutputMode::Null | OutputMode::File => Stdio::null(),
         OutputMode::Capture | OutputMode::Tee | OutputMode::Pipe => Stdio::piped(),
     }
 }
@@ -479,7 +483,10 @@ impl Pump {
                             stop(&shared, &mut state, Stop::OutputLimit);
                         }
                     }
-                    OutputMode::Inherit | OutputMode::InheritStderr | OutputMode::Null => {}
+                    OutputMode::Inherit
+                    | OutputMode::InheritStderr
+                    | OutputMode::Null
+                    | OutputMode::File => {}
                 }
                 shared.changed.notify_all();
             }
@@ -511,14 +518,34 @@ async fn spawn(mut config: Config) -> io::Result<Child> {
         StdinMode::Null => Stdio::null(),
         StdinMode::Bytes(_) | StdinMode::Pipe => Stdio::piped(),
     });
-    config.command.stdout(output_stdio(config.stdout));
+    let stdout_file = config.stdout_file.take();
+    if config.stdout == OutputMode::File {
+        let file = stdout_file.ok_or_else(|| io::Error::other("missing stdout file"))?;
+        if config.stderr == StderrMode::MergeWithStdout {
+            // Duplicate the same open file description: offset and O_APPEND are
+            // shared, so stderr cannot reopen/truncate the stdout destination.
+            config.command.stderr(Stdio::from(file.try_clone()?));
+        }
+        config.command.stdout(Stdio::from(file));
+    } else {
+        config.command.stdout(output_stdio(config.stdout));
+    }
     let merge = config.stderr == StderrMode::MergeWithStdout;
     // Both descriptors share one kernel pipe, preserving their actual write ordering.
     let merged = match config.stderr {
+        StderrMode::Separate(OutputMode::File) => {
+            let file = config
+                .stderr_file
+                .take()
+                .ok_or_else(|| io::Error::other("missing stderr file"))?;
+            config.command.stderr(Stdio::from(file));
+            None
+        }
         StderrMode::Separate(mode) => {
             config.command.stderr(output_stdio(mode));
             None
         }
+        StderrMode::MergeWithStdout if config.stdout == OutputMode::File => None,
         StderrMode::MergeWithStdout if config.stdout == OutputMode::Null => {
             config.command.stderr(Stdio::null());
             None
@@ -764,6 +791,8 @@ mod tests {
             stdin: StdinMode::Null,
             stdout: OutputMode::Capture,
             stderr: StderrMode::Separate(OutputMode::Capture),
+            stdout_file: None,
+            stderr_file: None,
             timeout: Some(Duration::from_secs(3)),
             output_limit: Some(16 * 1024 * 1024),
             pending_limit: 1024 * 1024,

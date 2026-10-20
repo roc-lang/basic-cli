@@ -196,6 +196,7 @@ async fn handle_redirect(req: Request<Incoming>) -> Result<Response<BoxBody>, Ge
             "cookie",
             "proxy-authorization",
             "content-type",
+            "user-agent",
             "content-length",
             "x-hop",
             "x-public",

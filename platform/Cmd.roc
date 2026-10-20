@@ -6,6 +6,7 @@ import Env
 import System
 import Path
 import Duration
+import File
 
 ## Build and run child processes with native-safe programs, arguments, and
 ## environment values.
@@ -37,12 +38,10 @@ import Duration
 ## Programs and arguments are passed to the operating system as they are: no
 ## shell is involved, so spaces, `$FOO` and `*.txt` stay literal.
 ##
-## There is no output mode that writes directly to a file or a `File.Writer`
-## ([issue #532](https://github.com/roc-lang/basic-cli/issues/532)). `Pipe`
-## requires the application to drain [Child.read!] and write each chunk;
-## `Capture` and `Tee` retain output in memory. For independent file logging,
-## use the child's own log-file option or explicitly invoke an appropriate
-## operating-system shell with redirection.
+## Redirect output directly to disk with `File(path, mode, options)`, using
+## [File.WriteMode] and [File.WriterOptions]. Files are opened before the child
+## starts; failures are `StartFailed`. Relative paths use the command's working
+## directory. Redirected bytes are neither captured nor queued in memory.
 ##
 ## Errors, [Command.to_str] and `Str.inspect` never contain the value of an environment
 ## variable, so a command that carries a secret can be logged.
@@ -66,16 +65,18 @@ Cmd :: [].{
 	## - `Capture`: kept in memory and returned in the [Output].
 	## - `Tee`: captured and also forwarded to the parent's standard output. The
 	##   child sees a pipe, not a terminal.
+	## - `File(path, mode, options)`: open a file once and write directly to it.
+	##   `MergeWithStdout` shares the same open file, including its append mode.
 	## - `Pipe`: queued as chunks for [Child.read!]. Only [spawn!] returns a
 	##   [Child], so with [call!], [capture!] and [run!] it means `Capture`.
-	StdoutMode : [Inherit, InheritStderr, Null, Capture, Tee, Pipe]
+	StdoutMode : [Inherit, InheritStderr, Null, Capture, Tee, Pipe, File(Path, File.WriteMode, File.WriterOptions)]
 
 	## Where the child's standard error goes: the modes of [StdoutMode], or
 	## `MergeWithStdout`, which sends it into the same OS pipe as standard output.
 	## That keeps the order in which the child wrote to the two streams, which two
 	## separate streams cannot. The merged stream follows the standard output
 	## mode and is reported as standard output.
-	StderrMode : [Inherit, Null, Capture, Tee, Pipe, MergeWithStdout]
+	StderrMode : [Inherit, Null, Capture, Tee, Pipe, File(Path, File.WriteMode, File.WriterOptions), MergeWithStdout]
 
 	## How a child ended: `Exited(code)` with its exit code, or `Signaled(signal)`
 	## when a signal terminated it. `Signaled` is reported on Unix only.
@@ -175,8 +176,8 @@ Cmd :: [].{
 		program : OsStr,
 		cwd_value : [Inherit, Dir(Path)],
 		stdin_value : [Unset, Set([Inherit, Null, Bytes(List(U8)), Pipe])],
-		stdout_value : [Unset, Set([Inherit, InheritStderr, Null, Capture, Tee, Pipe])],
-		stderr_value : [Unset, Set([Inherit, Null, Capture, Tee, Pipe, MergeWithStdout])],
+		stdout_value : [Unset, Set(StdoutMode)],
+		stderr_value : [Unset, Set(StderrMode)],
 		timeout_value : [NoTimeout, After(Duration)],
 		output_limit_value : [NoLimit, MaxBytes(U64)],
 		pending_limit_value : U64,
@@ -746,14 +747,14 @@ to_host_cmd = |cmd, entry| {
 		(Unset, _) => Inherit
 		(Set(Pipe), Spawn) => Pipe
 		(Set(Pipe), _) => Capture
-		(Set(mode), _) => mode
+		(Set(mode), _) => stdout_to_host(mode)
 	},
 	stderr: match (cmd.stderr_value, entry) {
 		(Unset, Run) => Capture
 		(Unset, _) => Inherit
 		(Set(Pipe), Spawn) => Pipe
 		(Set(Pipe), _) => Capture
-		(Set(mode), _) => mode
+		(Set(mode), _) => stderr_to_host(mode)
 	},
 	timeout: match cmd.timeout_value {
 		NoTimeout => NoTimeout
@@ -1034,3 +1035,27 @@ expect {
 	path = OsStr.windows_u16s([0x43, 0x3B, 0x44])
 	path_dirs(path, True) == [Path.windows_u16s([0x43]), Path.windows_u16s([0x44])]
 }
+
+stdout_to_host : Cmd.StdoutMode -> Host.CmdStdout
+stdout_to_host = |mode|
+	match mode {
+		Inherit => Inherit
+		InheritStderr => InheritStderr
+		Null => Null
+		Capture => Capture
+		Tee => Tee
+		Pipe => Pipe
+		File(path, write_mode, options) => File({ path: Path.to_raw(path), mode: write_mode, create_permissions: options.create_permissions })
+	}
+
+stderr_to_host : Cmd.StderrMode -> Host.CmdStderr
+stderr_to_host = |mode|
+	match mode {
+		Inherit => Inherit
+		Null => Null
+		Capture => Capture
+		Tee => Tee
+		Pipe => Pipe
+		MergeWithStdout => MergeWithStdout
+		File(path, write_mode, options) => File({ path: Path.to_raw(path), mode: write_mode, create_permissions: options.create_permissions })
+	}
