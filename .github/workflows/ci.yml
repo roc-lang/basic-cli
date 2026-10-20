@@ -38,10 +38,25 @@ jobs:
               with open('/tmp/026-probe-output','wb') as output:
                   result=subprocess.run(['/tmp/026-probe','--helper','flood'],stdout=output,stderr=subprocess.PIPE,preexec_fn=limit,timeout=30)
               print('stack KiB',kb,'exit',result.returncode,'bytes',Path('/tmp/026-probe-output').stat().st_size,'stderr',result.stderr.decode(errors='replace'),flush=True)
+          import os
+          for label,args in [('original-loop',['--helper','flood']),('parent-file-redirection',[])]:
+              failures=[]
+              for attempt in range(40 if args else 5):
+                  with open('/tmp/probe-stress-output','wb') as output:
+                      result=subprocess.run(['/tmp/026-probe',*args],stdout=output,stderr=subprocess.PIPE,timeout=60,env={**os.environ,'CMD_TEST_INHERITED':'yes'})
+                  if result.returncode:
+                      failures.append((attempt,result.returncode,Path('/tmp/probe-stress-output').stat().st_size,result.stderr.decode(errors='replace')))
+              print('STRESS',label,'failures',failures,flush=True)
           # Compare a heap payload to the literal used by the effectful loop.
           changed=source.replace('"0123456789abcdef".to_utf8()', "List.repeat('x', 16)")
           Path('/tmp/026-dynamic.roc').write_text(changed)
           subprocess.run(['roc','build','--no-cache','/tmp/026-dynamic.roc','--output=/tmp/026-dynamic'],check=True)
           result=subprocess.run(['/tmp/026-dynamic','--helper','flood'],stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,timeout=30)
           print('dynamic payload loop exit',result.returncode,'stderr',result.stderr.decode(errors='replace'),flush=True)
+          failures=[]
+          for attempt in range(40):
+              result=subprocess.run(['/tmp/026-dynamic','--helper','flood'],stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,timeout=30)
+              if result.returncode:
+                  failures.append((attempt,result.returncode,result.stderr.decode(errors='replace')))
+          print('STRESS dynamic-payload-loop failures',failures,flush=True)
           PY
