@@ -1,232 +1,46 @@
-name: CI
-
+name: Investigate logging helper
 on:
-  pull_request:
   workflow_dispatch:
-  schedule:
-    # Run daily at 11 AM UTC, after the nightlies are typically published.
-    - cron: '0 11 * * *'
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-# Do not add permissions here! Configure them at the job level!
 permissions: {}
-
 jobs:
-  rust-version:
-    name: read Rust version
-    runs-on: ubuntu-24.04
-    outputs:
-      version: ${{ steps.read.outputs.version }}
-    steps:
-      - uses: actions/checkout@v7
-      - id: read
-        run: |
-          version=$(sed -n 's/^channel = "\(.*\)".*/\1/p' rust-toolchain.toml)
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
-  # The host has substantial per-OS code, so lint and test it on each one.
-  rust:
-    name: Rust format, lint, and test (${{ matrix.os }})
-    needs: rust-version
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, macos-26, windows-2025]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install Rust toolchain
-        shell: bash
-        run: |
-          rustup toolchain install "${{ needs.rust-version.outputs.version }}" --profile minimal --component rustfmt --component clippy
-          rustup default "${{ needs.rust-version.outputs.version }}"
-      - name: Check formatting
-        run: cargo fmt --all -- --check
-      - name: Lint with Clippy
-        run: cargo clippy --locked --all-targets -- -D warnings
-      - name: Run host unit tests
-        run: cargo test --locked --all-targets
-
-  validate:
-    name: validate sources
-    needs: rust-version
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7
-      - uses: mlugg/setup-zig@8d6198c65fb0feaa111df26e6b467fea8345e46f # ratchet:mlugg/setup-zig@v2.0.5
-        with:
-          version: 0.17.0
-      - uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
-        with:
-          version: nightly-new-compiler
-          nightly-tag: nightly-2026-10-12-2664a27
-      - name: Install Rust toolchain
-        run: |
-          rustup toolchain install "${{ needs.rust-version.outputs.version }}" --profile minimal --target x86_64-unknown-linux-musl --component llvm-tools-preview
-          rustup default "${{ needs.rust-version.outputs.version }}"
-      - name: Test release tooling
-        run: python3 -m unittest scripts/test_check_release_version.py scripts/test_check_release_branch.py scripts/test_check_version_bump.py scripts/test_update_nix_release.py scripts/test_check_roc_nightly.py scripts/test_windows_runtime.py
-      - name: Check Roc nightly pins are in sync
-        run: python3 scripts/check_roc_nightly.py
-      - name: Check OS witness API boundaries
-        run: python3 scripts/test_system_api.py
-      - name: Format, check, and test examples
-        run: ./scripts/test.py --operation validate
-      - name: Check musl allocator syscall churn
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes strace
-          python3 scripts/test_musl_allocator.py
-      - name: Check native resource ownership with glibc and Valgrind
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes valgrind
-          python3 scripts/test_resource_lifetimes.py
-
-  nix:
-    name: Nix release consumer (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, macos-26]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v7
-      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
-      - name: Build and run an application against the pinned release
-        run: nix flake check --print-build-logs
-
-  validate-windows:
-    name: validate sources (windows)
-    needs: rust-version
-    runs-on: windows-2025
-    steps:
-      - uses: actions/checkout@v7
-      - uses: mlugg/setup-zig@8d6198c65fb0feaa111df26e6b467fea8345e46f
-        with:
-          version: 0.17.0
-      - uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
-        with:
-          version: nightly-new-compiler
-          nightly-tag: nightly-2026-10-12-2664a27
-      - name: Install Rust toolchain
-        shell: bash
-        run: |
-          rustup toolchain install "${{ needs.rust-version.outputs.version }}" --profile minimal --target x86_64-pc-windows-msvc --component rust-docs,llvm-tools-preview
-          rustup default "${{ needs.rust-version.outputs.version }}"
-      - name: Format, check, and test examples
-        shell: bash
-        run: ./scripts/test.py --operation validate
-      - name: Verify Windows runtime ABI and redistribution evidence
-        shell: bash
-        run: python -m unittest scripts/test_windows_runtime.py
-
-  build-examples:
-    name: build examples (${{ matrix.target }})
-    needs: [rust-version, validate]
+  probe:
+    runs-on: ubuntu-22.04
     permissions:
       contents: read
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: x64mac
-            os: macos-26-intel
-            rust_target: x86_64-apple-darwin
-          - target: arm64mac
-            os: macos-26
-            rust_target: aarch64-apple-darwin
-          - target: x64musl
-            os: ubuntu-24.04
-            rust_target: x86_64-unknown-linux-musl
-          - target: arm64musl
-            os: ubuntu-24.04-arm
-            rust_target: aarch64-unknown-linux-musl
-          - target: x64win
-            os: windows-2025
-            rust_target: x86_64-pc-windows-msvc
-    runs-on: ${{ matrix.os }}
+      actions: read
     steps:
       - uses: actions/checkout@v7
-      - name: Install Zig
-        uses: mlugg/setup-zig@8d6198c65fb0feaa111df26e6b467fea8345e46f # ratchet:mlugg/setup-zig@v2.0.5
-        with:
-          version: 0.17.0
-      - uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
+      - uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427
         with:
           version: nightly-new-compiler
           nightly-tag: nightly-2026-10-12-2664a27
-      - name: Install Rust toolchain
-        shell: bash
+      - name: Download the failing bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download 39509439394 -R roc-lang/basic-cli -n release-bundles -D /tmp/026-probe-bundles
+      - name: Reproduce with controlled stack sizes
         run: |
-          rustup toolchain install "${{ needs.rust-version.outputs.version }}" --profile minimal --target ${{ matrix.rust_target }} --component rust-docs,llvm-tools-preview
-          rustup default "${{ needs.rust-version.outputs.version }}"
-      - name: Install LLVM tools for Linux host stripping
-        if: endsWith(matrix.target, 'musl')
-        run: rustup component add llvm-tools-preview
-      - name: Cross-compile every example
-        shell: bash
-        run: ./scripts/test.py --operation build --target "${{ matrix.target }}" --artifact-dir dist/example-binaries
-      - name: Upload example binaries
-        uses: actions/upload-artifact@v7
-        with:
-          name: basic-cli-example-binaries-${{ matrix.target }}
-          path: dist/example-binaries/${{ matrix.target }}
-          if-no-files-found: error
-
-  run-examples:
-    name: run examples (${{ matrix.target }})
-    needs: [rust-version, build-examples]
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: x64mac
-            os: macos-26-intel
-            valgrind: false
-          - target: arm64mac
-            os: macos-26
-            valgrind: false
-          - target: x64musl
-            os: ubuntu-24.04
-            valgrind: true
-          - target: arm64musl
-            os: ubuntu-24.04-arm
-            valgrind: false
-          - target: x64win
-            os: windows-2025
-            valgrind: false
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install Rust toolchain
-        shell: bash
-        run: |
-          rustup toolchain install "${{ needs.rust-version.outputs.version }}" --profile minimal
-          rustup default "${{ needs.rust-version.outputs.version }}"
-      - name: Install Valgrind
-        if: matrix.valgrind
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes valgrind
-      - name: Download native example binaries
-        uses: actions/download-artifact@v8
-        with:
-          name: basic-cli-example-binaries-${{ matrix.target }}
-          path: dist/example-binaries/${{ matrix.target }}
-      - name: Run native spec cases
-        if: matrix.valgrind == false
-        shell: bash
-        run: ./scripts/test.py --operation run --target "${{ matrix.target }}" --artifact-dir dist/example-binaries
-      - name: Run native spec cases with Valgrind
-        if: matrix.valgrind
-        shell: bash
-        run: ./scripts/test.py --operation run --target "${{ matrix.target }}" --artifact-dir dist/example-binaries --valgrind
-
-      - name: Stop a real systemd service and verify application cleanup
-        if: matrix.target == 'x64musl' || matrix.target == 'arm64musl'
-        run: sudo python3 scripts/test_systemd_cleanup.py dist/example-binaries/${{ matrix.target }}/signal-cleanup
+          python3 -m http.server 18080 --directory /tmp/026-probe-bundles > /tmp/bundle-server.log 2>&1 &
+          trap 'kill $!' EXIT
+          python3 - <<'PY'
+          from pathlib import Path
+          import resource, subprocess, time
+          archive=next(Path('/tmp/026-probe-bundles').glob('*.tar.zst'))
+          source=Path('tests/cmd-api.roc').read_text().replace('../platform/main.roc', 'http://127.0.0.1:18080/'+archive.name)
+          Path('/tmp/026-probe.roc').write_text(source)
+          subprocess.run(['roc','build','--no-cache','/tmp/026-probe.roc','--output=/tmp/026-probe'],check=True)
+          print('Original stack:', resource.getrlimit(resource.RLIMIT_STACK),flush=True)
+          for kb in [8192,16384,32768,65536]:
+              def limit(kb=kb):
+                  _,hard=resource.getrlimit(resource.RLIMIT_STACK)
+                  resource.setrlimit(resource.RLIMIT_STACK,(kb*1024,hard))
+              with open('/tmp/026-probe-output','wb') as output:
+                  result=subprocess.run(['/tmp/026-probe','--helper','flood'],stdout=output,stderr=subprocess.PIPE,preexec_fn=limit,timeout=30)
+              print('stack KiB',kb,'exit',result.returncode,'bytes',Path('/tmp/026-probe-output').stat().st_size,'stderr',result.stderr.decode(errors='replace'),flush=True)
+          # Compare a heap payload to the literal used by the effectful loop.
+          changed=source.replace('"0123456789abcdef".to_utf8()', "List.repeat('x', 16)")
+          Path('/tmp/026-dynamic.roc').write_text(changed)
+          subprocess.run(['roc','build','--no-cache','/tmp/026-dynamic.roc','--output=/tmp/026-dynamic'],check=True)
+          result=subprocess.run(['/tmp/026-dynamic','--helper','flood'],stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,timeout=30)
+          print('dynamic payload loop exit',result.returncode,'stderr',result.stderr.decode(errors='replace'),flush=True)
+          PY
