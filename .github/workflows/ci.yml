@@ -47,6 +47,17 @@ jobs:
                   if result.returncode:
                       failures.append((attempt,result.returncode,Path('/tmp/probe-stress-output').stat().st_size,result.stderr.decode(errors='replace')))
               print('STRESS',label,'failures',failures,flush=True)
+          # Match the release runner's explicit target and cache warm-up.
+          Path('/tmp/026-cached.roc').write_text(source)
+          subprocess.run(['roc','check','/tmp/026-cached.roc','--max-transitive-mb=256'],check=True)
+          subprocess.run(['roc','test','/tmp/026-cached.roc','--max-transitive-mb=256'],check=True)
+          for label,flags in [('explicit-cached',[]),('explicit-no-cache',['--no-cache'])]:
+              subprocess.run(['roc','build','/tmp/026-cached.roc','--target=x64musl','--output=/tmp/026-cached','--max-transitive-mb=256',*flags],check=True)
+              with open('/tmp/cached-helper-output','wb') as output:
+                  helper=subprocess.run(['/tmp/026-cached','--helper','flood'],stdout=output,stderr=subprocess.PIPE,timeout=30)
+              with open('/tmp/cached-parent-output','wb') as output:
+                  parent=subprocess.run(['/tmp/026-cached'],stdout=output,stderr=subprocess.PIPE,timeout=60,env={**os.environ,'CMD_TEST_INHERITED':'yes'})
+              print('COMPILER',label,'helper',helper.returncode,'bytes',Path('/tmp/cached-helper-output').stat().st_size,'parent',parent.returncode,'stderr',parent.stderr.decode(errors='replace'),flush=True)
           # Compare a heap payload to the literal used by the effectful loop.
           changed=source.replace('"0123456789abcdef".to_utf8()', "List.repeat('x', 16)")
           Path('/tmp/026-dynamic.roc').write_text(changed)
