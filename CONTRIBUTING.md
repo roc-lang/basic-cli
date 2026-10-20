@@ -170,6 +170,13 @@ with different arguments, stdin, environment, fixtures, helper servers,
 expected exit codes, or output assertions. `happy` is only a naming convention;
 an app can have any number of successful and failing cases.
 
+Example checks, tests and builds use `--no-cache` on every operating system so
+validation compiles the current platform sources against the current native ABI.
+The pinned nightly can produce invalid cached loop code after check/test
+warm-up; do not re-enable these caches until an upstream fix is verified.
+When upgrading a platform URL, rebuild your application with
+`roc build --no-cache your-app.roc` as well.
+
 CI separates source validation, cross-target compilation, and native execution.
 Every example is compiled for each target declared in `platform/main.roc`:
 `x64mac`, `arm64mac`, `x64win`, `x64musl`, and `arm64musl`. Target-specific

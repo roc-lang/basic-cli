@@ -1068,6 +1068,23 @@ mod tests {
         assert!(state.done);
     }
     #[test]
+    fn repeated_file_writes_share_offsets_without_using_capture_budgets() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("child.log");
+        let mut config =
+            shell("i=0; while [ $i -lt 4096 ]; do printf out; printf err >&2; i=$((i+1)); done");
+        config.stdout = OutputMode::File;
+        config.stdout_file = Some(std::fs::File::create(&path).unwrap());
+        config.stderr = StderrMode::MergeWithStdout;
+        config.output_limit = Some(1);
+        config.pending_limit = 1;
+        let output = run(config).unwrap();
+        assert_eq!(output.status, Status::Exited(0));
+        assert!(output.stdout.is_empty() && output.stderr.is_empty());
+        assert_eq!(std::fs::read(path).unwrap(), b"outerr".repeat(4096));
+    }
+
+    #[test]
     fn merged_output_preserves_kernel_pipe_order() {
         let mut config = shell("printf a; printf b >&2; printf c; printf d >&2");
         config.stderr = StderrMode::MergeWithStdout;

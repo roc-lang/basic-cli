@@ -72,6 +72,7 @@ as_helper! = |args|
 			}
 			Ok({})
 		}
+		["large-block"] => Stdout.write_bytes!(List.repeat('x', 65_536))
 		["echo"] => Stdout.write_bytes!(Stdin.read_to_end!()?)
 		["env", name] =>
 			match Env.var!(OsStr.from_str(name)) {
@@ -483,7 +484,9 @@ file_outputs! = || Env.with_temp_dir!(
 		check!("stderr file with captured stdout", captured.stdout_bytes == "captured\n".to_utf8() and captured.stderr_bytes.is_empty() and separate.read_utf8!()? == "redirected\n")?
 		large = directory.join("large.log")
 		_large_output = helper!(["flood"]).stdout(File(large, RequireNew, {})).output_limit(MaxBytes(1)).pending_limit(1).spawn!()?.wait!()?.require_success()?
-		check!("file output does not consume capture or pending budgets", large.size_in_bytes!()? == 65_536)?
+		check!("file output does not consume capture or pending budgets", large.read_bytes!()? == List.repeat("0123456789abcdef".to_utf8(), 4096).join())?
+		_large_block = helper!(["large-block"]).stdout(File(large, Truncate, {})).output_limit(MaxBytes(1)).pending_limit(1).spawn!()?.wait!()?.require_success()?
+		check!("large file writes preserve every byte", large.read_bytes!()? == List.repeat('x', 65_536))?
 		Ok({})
 	},
 )

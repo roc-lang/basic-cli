@@ -91,7 +91,10 @@ def binary_stem(source: Path) -> str:
 
 def roc_extra_args() -> tuple[str, ...]:
     args = ("--max-transitive-mb=256",)
-    return (*args, "--no-cache") if platform.system() == "Windows" else args
+    # Validate the current Roc sources against the current native ABI on every
+    # target. The pinned compiler can reuse invalid cached loop code after
+    # check/test warm-up (reproduced on Linux and Intel macOS).
+    return (*args, "--no-cache")
 
 
 def load_spec() -> tuple[dict[str, bool], list[dict[str, object]]]:
