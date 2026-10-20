@@ -170,12 +170,14 @@ with different arguments, stdin, environment, fixtures, helper servers,
 expected exit codes, or output assertions. `happy` is only a naming convention;
 an app can have any number of successful and failing cases.
 
-Example checks, tests and builds use `--no-cache` on every operating system so
-validation compiles the current platform sources against the current native ABI.
-The pinned nightly can produce invalid cached loop code after check/test
-warm-up; do not re-enable these caches until an upstream fix is verified.
-When upgrading a platform URL, rebuild your application with
-`roc build --no-cache your-app.roc` as well.
+The runner normally uses the compiler cache. A temporary workaround disables it
+for `x64musl` and `x64mac` builds with `nightly-2026-10-12-2664a27`: after
+`roc check` and `roc test` warm the cache, the command stress helper can SIGSEGV
+before its first write. The same build passes with `--no-cache`
+([controlled reproduction](https://github.com/roc-lang/basic-cli/actions/runs/39512913704)).
+TODO: remove this workaround once a compiler update passes that cached
+check/test/build sequence on both targets. Other Unix targets and check/test
+stages retain caching; the existing Windows workaround is unchanged.
 
 CI separates source validation, cross-target compilation, and native execution.
 Every example is compiled for each target declared in `platform/main.roc`:
