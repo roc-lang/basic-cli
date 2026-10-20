@@ -25,6 +25,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import resource, subprocess, time
+          time.sleep(1)
           archive=next(Path('/tmp/026-probe-bundles').glob('*.tar.zst'))
           source=Path('tests/cmd-api.roc').read_text().replace('../platform/main.roc', 'http://127.0.0.1:18080/'+archive.name)
           Path('/tmp/026-probe.roc').write_text(source)
