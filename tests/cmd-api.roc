@@ -22,6 +22,7 @@ main! = |args| {
 			running!()?
 			errors!()?
 			streams!()?
+			file_outputs!()?
 			child!()?
 			deadlines!()?
 			compact!()?
@@ -65,6 +66,13 @@ as_helper! = |args|
 			Sleep.millis!(30_000)?
 			Ok({})
 		}
+		["flood"] => {
+			for _ in List.repeat(0, 4096) {
+				Stdout.write_bytes!("0123456789abcdef".to_utf8())?
+			}
+			Ok({})
+		}
+		["large-block"] => Stdout.write_bytes!(List.repeat('x', 65_536))
 		["echo"] => Stdout.write_bytes!(Stdin.read_to_end!()?)
 		["env", name] =>
 			match Env.var!(OsStr.from_str(name)) {
@@ -446,3 +454,39 @@ is_unix! = || match System.target!().os() {
 	Windows(_) => False
 	Linux(_) | MacOS(_) => True
 }
+
+## File descriptors are opened once before spawn, without capture budgets.
+file_outputs! : () => Try({}, _)
+file_outputs! = || Env.with_temp_dir!(
+	|directory| {
+		log = directory.join("server.log")
+		result = helper!(["both", "out", "err"])
+			.cwd(directory)
+			.stdout(File("server.log", RequireNew, { create_permissions: OwnerOnly }))
+			.stderr(MergeWithStdout)
+			.output_limit(MaxBytes(1))
+			.pending_limit(1)
+			.spawn!()?.wait!()?.require_success()?
+		check!("file stdout is not captured", result.stdout_bytes.is_empty() and result.stderr_bytes.is_empty())?
+		check!("merged stderr shares the stdout file and offset", log.read_utf8!()? == "out\nerr\n")?
+		helper!(["print", "append"]).stdout(File(log, Append, {})).call!()?
+		check!("file append preserves contents", log.read_utf8!()? == "out\nerr\nappend\n")?
+		helper!(["print", "truncate"]).stdout(File(log, Truncate, {})).call!()?
+		check!("file truncate replaces contents", log.read_utf8!()? == "truncate\n")?
+		blocked = helper!(["print", "must not run"]).stdout(File(log, RequireNew, {})).run!()
+		match blocked {
+			Err(CmdErr(StartFailed(AlreadyExists, _))) => {}
+			_ => return Err(CheckFailed("RequireNew must reject an existing output"))
+		}
+		check!("failed redirect leaves existing file intact", log.read_utf8!()? == "truncate\n")?
+		separate = directory.join("stderr.log")
+		captured = helper!(["both", "captured", "redirected"]).stdout(Capture).stderr(File(separate, RequireNew, {})).run!()?.require_success()?
+		check!("stderr file with captured stdout", captured.stdout_bytes == "captured\n".to_utf8() and captured.stderr_bytes.is_empty() and separate.read_utf8!()? == "redirected\n")?
+		large = directory.join("large.log")
+		_large_output = helper!(["flood"]).stdout(File(large, RequireNew, {})).output_limit(MaxBytes(1)).pending_limit(1).spawn!()?.wait!()?.require_success()?
+		check!("file output does not consume capture or pending budgets", large.read_bytes!()? == List.repeat("0123456789abcdef".to_utf8(), 4096).join())?
+		_large_block = helper!(["large-block"]).stdout(File(large, Truncate, {})).output_limit(MaxBytes(1)).pending_limit(1).spawn!()?.wait!()?.require_success()?
+		check!("large file writes preserve every byte", large.read_bytes!()? == List.repeat('x', 65_536))?
+		Ok({})
+	},
+)

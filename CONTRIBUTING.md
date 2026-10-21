@@ -170,6 +170,15 @@ with different arguments, stdin, environment, fixtures, helper servers,
 expected exit codes, or output assertions. `happy` is only a naming convention;
 an app can have any number of successful and failing cases.
 
+The runner normally uses the compiler cache. A temporary workaround disables it
+for `x64musl` and `x64mac` builds with `nightly-2026-10-12-2664a27`: after
+`roc check` and `roc test` warm the cache, the command stress helper can SIGSEGV
+before its first write. The same build passes with `--no-cache`
+([controlled reproduction](https://github.com/roc-lang/basic-cli/actions/runs/39512913704)).
+TODO: remove this workaround once a compiler update passes that cached
+check/test/build sequence on both targets. Other Unix targets and check/test
+stages retain caching; the existing Windows workaround is unchanged.
+
 CI separates source validation, cross-target compilation, and native execution.
 Every example is compiled for each target declared in `platform/main.roc`:
 `x64mac`, `arm64mac`, `x64win`, `x64musl`, and `arm64musl`. Target-specific

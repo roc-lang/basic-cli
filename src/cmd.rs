@@ -29,12 +29,11 @@ type ChildUnitResult = HostChildKillResult;
 type ChildUnitResultPayload = HostChildKillResultPayload;
 type ChildUnitResultTag = HostChildKillResultTag;
 
-// RustGlue does not currently emit a semantic return alias for an error-only
-// hosted function. This is the generated [Failed(IOErr), Interrupted] result of
-// Host.cmd_exec!; regenerate-glue --check detects changes to its generated name.
-type ExecFailure = FailedOrInterruptedType384;
-type ExecFailureTag = FailedOrInterruptedType384Tag;
-type ExecFailurePayload = FailedOrInterruptedType384Payload;
+// Generated aliases for the error-only [Failed(IOErr), Interrupted] result
+// of Host.cmd_exec!, kept independent of the generator's numbered type name.
+type ExecFailure = FailedOrInterrupted;
+type ExecFailureTag = FailedOrInterruptedTag;
+type ExecFailurePayload = FailedOrInterruptedPayload;
 
 fn take_arg_list(
     list: &RocList<NativeOsStr>,
@@ -90,15 +89,40 @@ fn command_config(cmd: Cmd, roc_host: &RocHost) -> io::Result<Config> {
         BytesOrInheritOrNullOrPipeTag::Pipe => StdinMode::Pipe,
     };
 
-    let mut command = std::process::Command::new(program?);
-    command.args(args?);
+    // Convert both path payloads before propagating any conversion failure,
+    // so every Roc-owned field is consumed even when another field is invalid.
+    let stdout = stdout_config(cmd.stdout, roc_host);
+    let stderr = stderr_config(cmd.stderr, roc_host);
+    let program = program?;
+    let args = args?;
+    let envs = envs?;
+    let cwd = cwd?;
+    let (stdout, stdout_spec) = stdout?;
+    let (stderr, stderr_spec) = stderr?;
+    let open = |spec: Option<FileOutput>| -> io::Result<Option<std::fs::File>> {
+        if crate::signals::is_pending() {
+            return Err(io::ErrorKind::Interrupted.into());
+        }
+        spec.map(|spec| {
+            let path = match &cwd {
+                Some(directory) if spec.path.is_relative() => directory.join(&spec.path),
+                _ => spec.path,
+            };
+            crate::file_writer::open_file(&path, spec.mode, spec.policy)
+        })
+        .transpose()
+    };
+    let stdout_file = open(stdout_spec)?;
+    let stderr_file = open(stderr_spec)?;
+    let mut command = std::process::Command::new(program);
+    command.args(args);
     if cmd.clear_envs {
         command.env_clear();
     }
-    if let Some(cwd) = cwd? {
+    if let Some(cwd) = cwd {
         command.current_dir(cwd);
     }
-    for pair in envs?.chunks(2) {
+    for pair in envs.chunks(2) {
         if let [key, value] = pair {
             command.env(key, value);
         }
@@ -107,27 +131,10 @@ fn command_config(cmd: Cmd, roc_host: &RocHost) -> io::Result<Config> {
     Ok(Config {
         command,
         stdin,
-        stdout: match cmd.stdout {
-            CaptureOrInheritOrInheritStderrOrNullOrPipeOrTee::Capture => OutputMode::Capture,
-            CaptureOrInheritOrInheritStderrOrNullOrPipeOrTee::Inherit => OutputMode::Inherit,
-            CaptureOrInheritOrInheritStderrOrNullOrPipeOrTee::InheritStderr => {
-                OutputMode::InheritStderr
-            }
-            CaptureOrInheritOrInheritStderrOrNullOrPipeOrTee::Null => OutputMode::Null,
-            CaptureOrInheritOrInheritStderrOrNullOrPipeOrTee::Pipe => OutputMode::Pipe,
-            CaptureOrInheritOrInheritStderrOrNullOrPipeOrTee::Tee => OutputMode::Tee,
-        },
-        stderr: {
-            use CaptureOrInheritOrMergeWithStdoutOrNullOrPipeOrTee as Mode;
-            match cmd.stderr {
-                Mode::Capture => StderrMode::Separate(OutputMode::Capture),
-                Mode::Inherit => StderrMode::Separate(OutputMode::Inherit),
-                Mode::Null => StderrMode::Separate(OutputMode::Null),
-                Mode::Pipe => StderrMode::Separate(OutputMode::Pipe),
-                Mode::Tee => StderrMode::Separate(OutputMode::Tee),
-                Mode::MergeWithStdout => StderrMode::MergeWithStdout,
-            }
-        },
+        stdout,
+        stderr,
+        stdout_file,
+        stderr_file,
         timeout: match cmd.timeout.tag {
             AfterNanosOrNoTimeoutTag::AfterNanos => {
                 Some(Duration::from_nanos(ManuallyDrop::into_inner(unsafe {
@@ -147,6 +154,76 @@ fn command_config(cmd: Cmd, roc_host: &RocHost) -> io::Result<Config> {
         pending_limit: usize::try_from(cmd.pending_limit).unwrap_or(usize::MAX),
         manage_tree: cmd.manage_tree,
     })
+}
+
+struct FileOutput {
+    path: std::path::PathBuf,
+    mode: AppendOrRequireNewOrTruncate,
+    policy: crate::file_security::Policy,
+}
+fn file_output(
+    file: CaptureOrFileOrInheritOrInheritStderrOrNullOrPipeOrTeeFile,
+    host: &RocHost,
+) -> io::Result<FileOutput> {
+    let path = path_from_native(file.path, host)?;
+    let policy = match file.create_permissions {
+        DefaultOrOwnerOnlyOrPublicRead::Default => crate::file_security::Policy::Default,
+        DefaultOrOwnerOnlyOrPublicRead::OwnerOnly => crate::file_security::Policy::OwnerOnly,
+        DefaultOrOwnerOnlyOrPublicRead::PublicRead => crate::file_security::Policy::PublicRead,
+    };
+    Ok(FileOutput {
+        path,
+        mode: file.mode,
+        policy,
+    })
+}
+fn stdout_config(
+    mode: CaptureOrFileOrInheritOrInheritStderrOrNullOrPipeOrTee,
+    host: &RocHost,
+) -> io::Result<(OutputMode, Option<FileOutput>)> {
+    use CaptureOrFileOrInheritOrInheritStderrOrNullOrPipeOrTeeTag as Tag;
+    let mode = match mode.tag {
+        Tag::Capture => OutputMode::Capture,
+        Tag::Inherit => OutputMode::Inherit,
+        Tag::InheritStderr => OutputMode::InheritStderr,
+        Tag::Null => OutputMode::Null,
+        Tag::Pipe => OutputMode::Pipe,
+        Tag::Tee => OutputMode::Tee,
+        Tag::File => {
+            return Ok((
+                OutputMode::File,
+                Some(file_output(
+                    ManuallyDrop::into_inner(unsafe { mode.payload.file }),
+                    host,
+                )?),
+            ))
+        }
+    };
+    Ok((mode, None))
+}
+fn stderr_config(
+    mode: CaptureOrFileOrInheritOrMergeWithStdoutOrNullOrPipeOrTee,
+    host: &RocHost,
+) -> io::Result<(StderrMode, Option<FileOutput>)> {
+    use CaptureOrFileOrInheritOrMergeWithStdoutOrNullOrPipeOrTeeTag as Tag;
+    let mode = match mode.tag {
+        Tag::Capture => OutputMode::Capture,
+        Tag::Inherit => OutputMode::Inherit,
+        Tag::Null => OutputMode::Null,
+        Tag::Pipe => OutputMode::Pipe,
+        Tag::Tee => OutputMode::Tee,
+        Tag::MergeWithStdout => return Ok((StderrMode::MergeWithStdout, None)),
+        Tag::File => {
+            return Ok((
+                StderrMode::Separate(OutputMode::File),
+                Some(file_output(
+                    ManuallyDrop::into_inner(unsafe { mode.payload.file }),
+                    host,
+                )?),
+            ))
+        }
+    };
+    Ok((StderrMode::Separate(mode), None))
 }
 
 fn same_command(cmd: HostCmdSpawnArgs) -> Cmd {
@@ -169,7 +246,14 @@ fn same_command(cmd: HostCmdSpawnArgs) -> Cmd {
 /// Start a command. A command that cannot be converted for this operating
 /// system never starts, which is the same failure as a program that is missing.
 fn start(cmd: Cmd) -> Result<Child, Error> {
-    Child::spawn(command_config(cmd, roc_host()).map_err(Error::Start)?)
+    let config = command_config(cmd, roc_host()).map_err(|error| {
+        if error.kind() == io::ErrorKind::Interrupted && crate::signals::is_pending() {
+            Error::Interrupted
+        } else {
+            Error::Start(error)
+        }
+    })?;
+    Child::spawn(config)
 }
 
 fn partial_output(partial: &Partial) -> CmdPartialOutput {
@@ -750,8 +834,16 @@ mod ownership_tests {
             },
             clear_envs: true,
             manage_tree: true,
-            stderr: CaptureOrInheritOrMergeWithStdoutOrNullOrPipeOrTee::MergeWithStdout,
-            stdout: CaptureOrInheritOrInheritStderrOrNullOrPipeOrTee::Tee,
+            stderr: CaptureOrFileOrInheritOrMergeWithStdoutOrNullOrPipeOrTee {
+                tag: CaptureOrFileOrInheritOrMergeWithStdoutOrNullOrPipeOrTeeTag::MergeWithStdout,
+                payload: CaptureOrFileOrInheritOrMergeWithStdoutOrNullOrPipeOrTeePayload {
+                    merge_with_stdout: [],
+                },
+            },
+            stdout: CaptureOrFileOrInheritOrInheritStderrOrNullOrPipeOrTee {
+                tag: CaptureOrFileOrInheritOrInheritStderrOrNullOrPipeOrTeeTag::Tee,
+                payload: CaptureOrFileOrInheritOrInheritStderrOrNullOrPipeOrTeePayload { tee: [] },
+            },
         }
     }
 
@@ -810,7 +902,10 @@ mod ownership_tests {
             tag: MaxBytesOrNoLimitTag::NoLimit,
             payload: MaxBytesOrNoLimitPayload { no_limit: [] },
         };
-        cmd.stderr = CaptureOrInheritOrMergeWithStdoutOrNullOrPipeOrTee::Pipe;
+        cmd.stderr = CaptureOrFileOrInheritOrMergeWithStdoutOrNullOrPipeOrTee {
+            tag: CaptureOrFileOrInheritOrMergeWithStdoutOrNullOrPipeOrTeeTag::Pipe,
+            payload: CaptureOrFileOrInheritOrMergeWithStdoutOrNullOrPipeOrTeePayload { pipe: [] },
+        };
         let config = command_config(cmd, &host).unwrap();
         assert_eq!(config.command.get_current_dir(), None);
         assert_eq!(config.timeout, None);
@@ -841,10 +936,62 @@ mod ownership_tests {
                 }),
             },
         };
-        let error = command_config(heap_command(foreign, &host), &host)
+        let mut command = heap_command(foreign, &host);
+        let file = |path| CaptureOrFileOrInheritOrInheritStderrOrNullOrPipeOrTeeFile {
+            path: utf8(path, &host),
+            mode: AppendOrRequireNewOrTruncate::RequireNew,
+            create_permissions: DefaultOrOwnerOnlyOrPublicRead::OwnerOnly,
+        };
+        command.stdout = CaptureOrFileOrInheritOrInheritStderrOrNullOrPipeOrTee {
+            tag: CaptureOrFileOrInheritOrInheritStderrOrNullOrPipeOrTeeTag::File,
+            payload: CaptureOrFileOrInheritOrInheritStderrOrNullOrPipeOrTeePayload {
+                file: ManuallyDrop::new(file("a stdout pathname needing a heap allocation")),
+            },
+        };
+        command.stderr = CaptureOrFileOrInheritOrMergeWithStdoutOrNullOrPipeOrTee {
+            tag: CaptureOrFileOrInheritOrMergeWithStdoutOrNullOrPipeOrTeeTag::File,
+            payload: CaptureOrFileOrInheritOrMergeWithStdoutOrNullOrPipeOrTeePayload {
+                file: ManuallyDrop::new(file("a stderr pathname needing a heap allocation")),
+            },
+        };
+        let error = command_config(command, &host)
             .err()
             .expect("a foreign program name must not convert");
         assert_eq!(error.kind(), io::ErrorKind::Unsupported);
+        finish(host, 10);
+    }
+
+    #[test]
+    fn pending_stop_does_not_truncate_a_redirected_file() {
+        let host = host();
+        let path = std::env::temp_dir().join(format!(
+            "roc-cmd-pending-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::write(&path, b"keep this log").unwrap();
+        let mut command = heap_command(utf8("some program", &host), &host);
+        command.stdout = CaptureOrFileOrInheritOrInheritStderrOrNullOrPipeOrTee {
+            tag: CaptureOrFileOrInheritOrInheritStderrOrNullOrPipeOrTeeTag::File,
+            payload: CaptureOrFileOrInheritOrInheritStderrOrNullOrPipeOrTeePayload {
+                file: ManuallyDrop::new(
+                    CaptureOrFileOrInheritOrInheritStderrOrNullOrPipeOrTeeFile {
+                        path: utf8(path.to_str().unwrap(), &host),
+                        mode: AppendOrRequireNewOrTruncate::Truncate,
+                        create_permissions: DefaultOrOwnerOnlyOrPublicRead::Default,
+                    },
+                ),
+            },
+        };
+        crate::signals::set_test_pending(true);
+        let result = command_config(command, &host);
+        crate::signals::set_test_pending(false);
+        assert_eq!(result.err().unwrap().kind(), io::ErrorKind::Interrupted);
+        assert_eq!(std::fs::read(&path).unwrap(), b"keep this log");
+        std::fs::remove_file(path).unwrap();
         finish(host, 8);
     }
 

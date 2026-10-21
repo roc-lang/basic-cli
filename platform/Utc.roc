@@ -13,6 +13,17 @@ nanos_per_milli = 1_000_000
 ## [Utc.since]. To measure how long something took, prefer [Monotonic], which
 ## is unaffected by changes to the wall clock.
 ##
+## This platform supplies clock effects and signed epoch conversions. Use a
+## package such as [roc-time](https://github.com/lukewilliamboswell/roc-time)
+## for timestamp parsing, calendar operations and richer formatting. Its
+## [supported profiles](https://lukewilliamboswell.github.io/roc-time/profiles.html#profiles)
+## describe the accepted formats and precision; roc-time 0.3 uses microseconds,
+## while `Utc` stores nanoseconds. Convert units explicitly at that boundary.
+## [Utc.to_iso_8601] is a convenience display at whole-second precision.
+## Use [Utc.to_nanos_since_epoch] and [Utc.from_nanos_since_epoch] for exact
+## timestamp storage. Parsing and richer formatting are outside this module's
+## scope rather than planned additions to the native host.
+##
 ## Every result is clamped to what its type holds, so nothing here crashes on
 ## overflow: a `Utc` to the [I128] range, a [Duration] to zero and its maximum.
 Utc :: { nanos : I128 }.{
@@ -70,6 +81,10 @@ Utc :: { nanos : I128 }.{
 
 	## Format this instant as an ISO 8601 UTC string with second precision,
 	## flooring any partial second: `2026-10-13T09:30:00Z`.
+	##
+	## The stored nanoseconds are unchanged, but this string omits them; use
+	## [to_nanos_since_epoch] when the full precision must round-trip. There
+	## is no corresponding parser here; use a time package for text interchange.
 	##
 	## Instants before 1970 are formatted too, in the proleptic Gregorian
 	## calendar. Years outside 0000 to 9999 use the expanded form with a sign,

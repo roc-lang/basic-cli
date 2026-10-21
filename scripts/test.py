@@ -89,9 +89,24 @@ def binary_stem(source: Path) -> str:
     return "-".join(parts[1:])
 
 
-def roc_extra_args() -> tuple[str, ...]:
+@functools.cache
+def roc_version() -> str:
+    return subprocess.check_output([ROC, "version"], text=True).strip()
+
+
+def roc_extra_args(*, build_target: str | None = None) -> tuple[str, ...]:
     args = ("--max-transitive-mb=256",)
-    return (*args, "--no-cache") if platform.system() == "Windows" else args
+    if platform.system() == "Windows":
+        return (*args, "--no-cache")
+    # TODO: Remove this workaround after a compiler update passes the cached
+    # check -> test -> build reproduction on x64musl and x64mac. With 2664a27,
+    # cmd-api's flood helper SIGSEGVs before its first write; --no-cache passes.
+    # Reproduction: https://github.com/roc-lang/basic-cli/actions/runs/39512913704
+    if build_target in ("x64musl", "x64mac") and roc_version() == (
+        "Roc compiler version nightly-2026-10-12-2664a27"
+    ):
+        return (*args, "--no-cache")
+    return args
 
 
 def load_spec() -> tuple[dict[str, bool], list[dict[str, object]]]:
@@ -616,7 +631,7 @@ def run_stage(
             binary.parent.mkdir(parents=True, exist_ok=True)
             command(
                 ROC, "build", source, f"--target={target}",
-                f"--output={binary}", *roc_extra_args(),
+                f"--output={binary}", *roc_extra_args(build_target=target),
             )
             binaries[path] = binary
         elif stage == "run":
@@ -790,7 +805,7 @@ def main() -> None:
 
     if shutil.which(ROC) is None:
         raise SystemExit(f"Roc executable '{ROC}' was not found")
-    print(f"Using roc version: {subprocess.check_output([ROC, 'version'], text=True).strip()}")
+    print(f"Using roc version: {roc_version()}")
     if not args.no_build and not args.bundle_path:
         print("\n=== Building platform ===")
         command(sys.executable, ROOT / "scripts" / "build.py", "--target", target)

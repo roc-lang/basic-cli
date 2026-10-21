@@ -52,6 +52,22 @@ These host behaviors may affect application design:
 - HTTP redirects are opt-in through trailing options, `{ max_redirects: n }`;
   the default is zero. The request deadline covers every hop and the final
   body. Cross-origin hops strip credentials; HTTPS downgrades are refused.
+- HTTP defaults to `User-Agent: roc-basic-cli/0.26`, preserving an explicit
+  user agent. A non-empty body defaults to `Content-Type: text/plain` unless
+  one is set; an empty body adds no content type.
+- A spawned `Cmd.Child` is killed and reaped when its last reference is
+  released; an unused `_child` binding does not keep it alive. `Pipe` output
+  is read through `child.read!(duration)` and is absent from `child.wait!()`;
+  choose `Capture` to retain it for `wait!`.
+  `.stdout(File(path, Append, {}))` or `.stderr(File(path, Truncate, {}))`
+  writes directly to disk with the writer modes and creation permissions.
+  `MergeWithStdout` shares stdout's open file; file-backed streams do not
+  consume capture or pending-output budgets.
+- `Utc` supplies clock readings and signed epoch conversions. Use a package
+  such as [roc-time](https://github.com/lukewilliamboswell/roc-time) for timestamp
+  parsing, calendar calculations and richer formatting. Its documented profiles
+  use microseconds, while `Utc` stores nanoseconds. `Utc.to_iso_8601` is a
+  whole-second display; signed epoch nanoseconds preserve the stored instant.
 - `Signal.catch!` catches Ctrl-C and, with a `System.Unix` witness, SIGTERM
   (including default `systemctl stop`). Blocking effects return bare
   `Interrupted`. Call `Signal.poll!()` before effectful application cleanup;

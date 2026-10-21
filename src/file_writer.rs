@@ -24,7 +24,7 @@ pub struct FileWriter(BufWriter<File>);
 /// What `File.WriteMode` asks of the file that is opened.
 type WriteMode = AppendOrRequireNewOrTruncate;
 
-fn open_file(path: &Path, mode: WriteMode, policy: Policy) -> io::Result<File> {
+pub(crate) fn open_file(path: &Path, mode: WriteMode, policy: Policy) -> io::Result<File> {
     open_file_with_create(path, mode, policy, file_security::open_new)
 }
 

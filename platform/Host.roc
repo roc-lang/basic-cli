@@ -9,6 +9,10 @@ Host :: [].{
 	NativeOsStr : [Utf8(Str), UnixBytes(List(U8)), WindowsU16s(List(U16))]
 	NativePath : [Utf8(Str), UnixBytes(List(U8)), WindowsU16s(List(U16))]
 
+	CmdFile : { path : NativePath, mode : [Append, RequireNew, Truncate], create_permissions : [Default, OwnerOnly, PublicRead] }
+	CmdStdout : [Inherit, InheritStderr, Null, Capture, Tee, Pipe, File(CmdFile)]
+	CmdStderr : [Inherit, Null, Capture, Tee, Pipe, File(CmdFile), MergeWithStdout]
+
 	# A command whose streams, deadline and limits are already resolved: `Cmd.roc`
 	# applies the defaults of the entry point before the command crosses.
 	Cmd : {
@@ -16,8 +20,8 @@ Host :: [].{
 		clear_envs : Bool,
 		cwd : [Inherit, Dir(NativePath)],
 		stdin : [Inherit, Null, Bytes(List(U8)), Pipe],
-		stdout : [Inherit, InheritStderr, Null, Capture, Tee, Pipe],
-		stderr : [Inherit, Null, Capture, Tee, Pipe, MergeWithStdout],
+		stdout : CmdStdout,
+		stderr : CmdStderr,
 		timeout : [NoTimeout, AfterNanos(U64)],
 		output_limit : [NoLimit, MaxBytes(U64)],
 		pending_limit : U64,
