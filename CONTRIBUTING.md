@@ -106,6 +106,31 @@ revision, hashes and original license together when changing them. New native
 dependencies or license expressions need review before adding them to the
 producer's accepted set.
 
+### Third-party notices
+
+`THIRD_PARTY_LICENSES.md` ships in every bundle. Everything after its marker
+comment is generated, so do not edit that part by hand. Regenerate it after
+changing `Cargo.lock`, `rust-toolchain.toml` or a prebuilt input under
+`platform/targets/`:
+
+```sh
+python3 scripts/third_party_notices.py
+```
+
+The script runs `cargo metadata` for every Roc target and follows normal
+dependencies, which excludes build and dev dependencies. For each linked package
+it reproduces every license file in the package source, along with the copyright
+comments at the top of its source files. A license expression outside the
+reviewed set in `scripts/windows_runtime.py` stops it, as does a package with no
+license file. CI and the release workflow run it with `--check` and fail when
+the committed file is stale.
+
+Prebuilt binaries such as musl's `libc.a` and `crt1.o` and LLVM's `libunwind.a`
+are recorded in `licenses/native-inputs.json` with their SHA-256, origin and
+license text in `licenses/`. Any file under a macOS or Linux target directory
+other than the generated `libhost.a` must be recorded there. When replacing one,
+record where the new file came from and its license before regenerating.
+
 For changes to the Nix release outputs, run `nix flake check`. This builds and
 runs an application against the pinned published platform inside the Nix sandbox;
 see [the Nix consumer documentation](nix/README.md).

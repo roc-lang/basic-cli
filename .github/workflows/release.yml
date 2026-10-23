@@ -183,6 +183,9 @@ jobs:
             --previous-url "$PREVIOUS_URL" \
             --timeout-seconds 120
 
+      - name: Check third-party notices are current
+        run: python3 scripts/third_party_notices.py --check
+
       - name: Bundle platform
         run: ./scripts/bundle.py --output-dir dist
 

@@ -68,7 +68,9 @@ jobs:
           rustup toolchain install "${{ needs.rust-version.outputs.version }}" --profile minimal --target x86_64-unknown-linux-musl --component llvm-tools-preview
           rustup default "${{ needs.rust-version.outputs.version }}"
       - name: Test release tooling
-        run: python3 -m unittest scripts/test_check_release_version.py scripts/test_check_release_branch.py scripts/test_check_version_bump.py scripts/test_update_nix_release.py scripts/test_check_roc_nightly.py scripts/test_windows_runtime.py
+        run: python3 -m unittest scripts/test_check_release_version.py scripts/test_check_release_branch.py scripts/test_check_version_bump.py scripts/test_update_nix_release.py scripts/test_check_roc_nightly.py scripts/test_windows_runtime.py scripts/test_third_party_notices.py
+      - name: Check third-party notices are current
+        run: python3 scripts/third_party_notices.py --check
       - name: Check Roc nightly pins are in sync
         run: python3 scripts/check_roc_nightly.py
       - name: Check OS witness API boundaries
