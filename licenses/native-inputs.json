@@ -1,0 +1,40 @@
+{
+  "components": [
+    {
+      "name": "musl libc",
+      "version": "1.2.4",
+      "license": "MIT",
+      "license_file": "musl-COPYRIGHT.txt",
+      "upstream": "https://git.musl-libc.org/cgit/musl/tree/COPYRIGHT?h=v1.2.4",
+      "origin": "Alpine Linux 3.18 package musl-dev 1.2.4-r3 (x86_64): https://dl-cdn.alpinelinux.org/alpine/v3.18/main/x86_64/musl-dev-1.2.4-r3.apk, files usr/lib/libc.a and usr/lib/crt1.o",
+      "files": {
+        "platform/targets/x64musl/crt1.o": "ffb51a69191a69fc34acaec1003fabe245d8841da7036d124d3445718415f9ea",
+        "platform/targets/x64musl/libc.a": "85f5eb2316bc6f86be7bd66008488c7d2eca290942b01ad2e86f02f8b5e8c90f"
+      }
+    },
+    {
+      "name": "musl libc",
+      "version": "1.2.2",
+      "license": "MIT",
+      "license_file": "musl-COPYRIGHT.txt",
+      "upstream": "https://git.musl-libc.org/cgit/musl/tree/COPYRIGHT?h=v1.2.2",
+      "origin": "Debian 11 package musl-dev 1.2.2-1 (arm64): https://deb.debian.org/debian/pool/main/m/musl/musl-dev_1.2.2-1_arm64.deb, files usr/lib/aarch64-linux-musl/libc.a and usr/lib/aarch64-linux-musl/crt1.o",
+      "files": {
+        "platform/targets/arm64musl/crt1.o": "0245544b81293be7bc86df1a8c0140ce1c0345c6abef11dcb20d0cfebc237ef1",
+        "platform/targets/arm64musl/libc.a": "209b1743f3b0108f5e3f2196dcef9dd40027928c89dad29fafea896772c84878"
+      }
+    },
+    {
+      "name": "LLVM libunwind",
+      "version": "20.1.1",
+      "license": "Apache-2.0 WITH LLVM-exception",
+      "license_file": "llvm-libunwind-LICENSE.TXT",
+      "upstream": "https://github.com/rust-lang/llvm-project/blob/acaea3d2bb8f351b740db7ebce7d7a40b9e21488/libunwind/LICENSE.TXT",
+      "origin": "Rust 1.87.0 self-contained musl runtime, built from rust-lang/llvm-project acaea3d2bb8f351b740db7ebce7d7a40b9e21488: https://static.rust-lang.org/dist/rust-std-1.87.0-x86_64-unknown-linux-musl.tar.xz and https://static.rust-lang.org/dist/rust-std-1.87.0-aarch64-unknown-linux-musl.tar.xz, file lib/rustlib/<target>/lib/self-contained/libunwind.a",
+      "files": {
+        "platform/targets/arm64musl/libunwind.a": "7d246ebb58d7c90ea3ee1907afc3e7e8f8dc5b8699173dd0373d9c813fff017d",
+        "platform/targets/x64musl/libunwind.a": "e59505f4e8e9bb8e19833e40a56555fc68805ec0cecf4084957e8865520ef7f4"
+      }
+    }
+  ]
+}

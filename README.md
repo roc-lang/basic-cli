@@ -25,7 +25,9 @@ Other targets are not currently supported. In particular, Windows support is
 x86-64 only and uses the UCRT supplied with Windows 10 and 11. Applications do
 not require a separate Visual C++ runtime installation. Windows library sources,
 build commands, hashes and licenses accompany the platform bundle in
-`targets/x64win/PROVENANCE.json` and `targets/x64win/licenses/`.
+`targets/x64win/PROVENANCE.json` and `targets/x64win/licenses/`. The bundle's
+`THIRD_PARTY_LICENSES.md` holds the notices for the third-party code linked
+into every target's host.
 
 ## Host runtime behavior
 
