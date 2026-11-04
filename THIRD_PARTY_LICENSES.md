@@ -641,7 +641,7 @@ for dual-licensed packages each offered license is included.
 | quote | 1.0.41 | MIT OR Apache-2.0 | all |
 | ring | 0.17.14 | Apache-2.0 AND ISC | all |
 | rustix | 1.1.2 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | x64mac, arm64mac, x64musl, arm64musl |
-| rustls | 0.23.45 | Apache-2.0 OR ISC OR MIT | all |
+| rustls | 0.23.46 | Apache-2.0 OR ISC OR MIT | all |
 | rustls-pki-types | 1.12.0 | MIT OR Apache-2.0 | all |
 | rustls-webpki | 0.103.15 | ISC | all |
 | same-file | 1.0.6 | Unlicense/MIT | all |
@@ -685,7 +685,7 @@ for dual-licensed packages each offered license is included.
 
 ### License texts
 
-Applies to: bitflags 2.13.0 (`LICENSE-APACHE`), cfg-if 1.0.3 (`LICENSE-APACHE`), equivalent 1.0.2 (`LICENSE-APACHE`), errno 0.3.14 (`LICENSE-APACHE`), fastrand 2.5.0 (`LICENSE-APACHE`), fnv 1.0.7 (`LICENSE-APACHE`), hashbrown 0.17.1 (`LICENSE-APACHE`), httparse 1.10.1 (`LICENSE-APACHE`), hyper-rustls 0.27.6 (`LICENSE-APACHE`), indexmap 2.14.2 (`LICENSE-APACHE`), linux-raw-sys 0.11.0 (`LICENSE-APACHE`), once_cell 1.21.3 (`LICENSE-APACHE`), ring 0.17.14 (`src/polyfill/once_cell/LICENSE-APACHE`), rustix 1.1.2 (`LICENSE-APACHE`), rustls 0.23.45 (`LICENSE-APACHE`), signal-hook-registry 1.4.6 (`LICENSE-APACHE`), smallvec 1.15.1 (`LICENSE-APACHE`), socket2 0.5.10 (`LICENSE-APACHE`), sys-locale 0.3.2 (`LICENSE-APACHE`), tempfile 3.23.0 (`LICENSE-APACHE`), zeroize 1.8.2 (`LICENSE-APACHE`).
+Applies to: bitflags 2.13.0 (`LICENSE-APACHE`), cfg-if 1.0.3 (`LICENSE-APACHE`), equivalent 1.0.2 (`LICENSE-APACHE`), errno 0.3.14 (`LICENSE-APACHE`), fastrand 2.5.0 (`LICENSE-APACHE`), fnv 1.0.7 (`LICENSE-APACHE`), hashbrown 0.17.1 (`LICENSE-APACHE`), httparse 1.10.1 (`LICENSE-APACHE`), hyper-rustls 0.27.6 (`LICENSE-APACHE`), indexmap 2.14.2 (`LICENSE-APACHE`), linux-raw-sys 0.11.0 (`LICENSE-APACHE`), once_cell 1.21.3 (`LICENSE-APACHE`), ring 0.17.14 (`src/polyfill/once_cell/LICENSE-APACHE`), rustix 1.1.2 (`LICENSE-APACHE`), rustls 0.23.46 (`LICENSE-APACHE`), signal-hook-registry 1.4.6 (`LICENSE-APACHE`), smallvec 1.15.1 (`LICENSE-APACHE`), socket2 0.5.10 (`LICENSE-APACHE`), sys-locale 0.3.2 (`LICENSE-APACHE`), tempfile 3.23.0 (`LICENSE-APACHE`), zeroize 1.8.2 (`LICENSE-APACHE`).
 
 ```text
                               Apache License
@@ -1979,7 +1979,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-Applies to: hyper-rustls 0.27.6 (`LICENSE-ISC`), rustls 0.23.45 (`LICENSE-ISC`).
+Applies to: hyper-rustls 0.27.6 (`LICENSE-ISC`), rustls 0.23.46 (`LICENSE-ISC`).
 
 ```text
 ISC License (ISC)
@@ -1999,7 +1999,7 @@ ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
 ```
 
-Applies to: hyper-rustls 0.27.6 (`LICENSE-MIT`), rustls 0.23.45 (`LICENSE-MIT`).
+Applies to: hyper-rustls 0.27.6 (`LICENSE-MIT`), rustls 0.23.46 (`LICENSE-MIT`).
 
 ```text
 Copyright (c) 2016 Joseph Birr-Pixton <jpixton@gmail.com>
