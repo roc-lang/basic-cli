@@ -308,7 +308,7 @@ Path := [
 
 	## Create a UTF-8 path from an interpolated string literal.
 	## This performs textual concatenation; use [join] for path-component joining.
-	from_interpolation : List(Str) -> Try((List(Str) -> Path), [InvalidInterpolation(Str)])
+	from_interpolation : List(Str) -> Try((Iter(Str) -> Path), [InvalidInterpolation(Str)])
 	from_interpolation = |segments|
 		Str.from_interpolation(segments).map_ok(|assemble| |values| Utf8(assemble(values)))
 

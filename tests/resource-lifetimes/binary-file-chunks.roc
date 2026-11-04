@@ -44,7 +44,7 @@ main! = |_args| Env.with_temp_dir!(
 check_chunks! = |path| {
 	reader = File.open_reader_with_capacity!(path, 2)?
 	stream = reader.chunks()
-	expect Stream.size_hint(stream) == Unknown
+	expect Stream.len_if_known(stream) == Err(Unknown)
 	before = reader.position!()?
 	expect before == 0
 	# An alias can move the cursor between construction and consumption.

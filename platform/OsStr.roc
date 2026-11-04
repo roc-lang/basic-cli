@@ -42,7 +42,7 @@ OsStr := [
 	from_quote = |str| Ok(Utf8(str))
 
 	## Build a UTF-8 OS string from an interpolated string literal.
-	from_interpolation : List(Str) -> Try((List(Str) -> OsStr), [InvalidInterpolation(Str)])
+	from_interpolation : List(Str) -> Try((Iter(Str) -> OsStr), [InvalidInterpolation(Str)])
 	from_interpolation = |segments|
 		Str.from_interpolation(segments).map_ok(|assemble| |values| Utf8(assemble(values)))
 

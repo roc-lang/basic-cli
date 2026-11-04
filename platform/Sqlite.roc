@@ -276,7 +276,7 @@ Sqlite :: [].{
 			# terminal continuation is retained.
 			Stream.custom(
 				NotStarted({ db, query, decoder }),
-				Unknown,
+				Err(Unknown),
 				|state| {
 					started = match state {
 						Finished => {
@@ -372,10 +372,10 @@ Sqlite :: [].{
 		from_quote = |sql| Ok(Query.{ sql, params: [] })
 
 		## An interpolated string literal: each `${…}` is a bound parameter.
-		from_interpolation : List(Str) -> Try((List(Value) -> Query), [InvalidInterpolation(Str)])
+		from_interpolation : List(Str) -> Try((Iter(Value) -> Query), [InvalidInterpolation(Str)])
 		from_interpolation = |segments|
 			match sql_from_segments(segments) {
-				Ok(sql) => Ok(|params| Query.{ sql, params })
+				Ok(sql) => Ok(|params| Query.{ sql, params: List.from_iter(params) })
 				Err(message) => Err(InvalidInterpolation(message))
 			}
 

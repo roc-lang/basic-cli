@@ -245,7 +245,7 @@ UnixSocket :: [].{
 			# retained.
 			Stream.custom(
 				Reading(conn),
-				Unknown,
+				Err(Unknown),
 				|state|
 					match state {
 						Finished => Err(NoMore)
@@ -290,7 +290,7 @@ UnixSocket :: [].{
 			# retained.
 			Stream.custom(
 				Reading(conn),
-				Unknown,
+				Err(Unknown),
 				|state|
 					match state {
 						Finished => Err(NoMore)
