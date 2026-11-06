@@ -75,7 +75,7 @@ Utc :: { nanos : I128 }.{
 
 		match I128.to_u64_try(span) {
 			Ok(nanos) => Duration.nanos(nanos)
-			Err(OutOfRange) => if span > 0 Duration.nanos(U64.highest) else Duration.zero
+			Err(OutOfRange) => if (span > 0) Duration.nanos(U64.highest) else Duration.zero
 		}
 	}
 

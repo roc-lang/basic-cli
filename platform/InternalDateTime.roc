@@ -76,16 +76,16 @@ InternalDateTime :: [].{
 		day_of_year = day_of_era - (365 * year_of_era + year_of_era // 4 - year_of_era // 100)
 		shifted_month = (5 * day_of_year + 2) // 153
 		day = day_of_year - (153 * shifted_month + 2) // 5 + 1
-		month = if shifted_month < 10 shifted_month + 3 else shifted_month - 9
+		month = if (shifted_month < 10) shifted_month + 3 else shifted_month - 9
 		march_year = year_of_era + era * 400
-		year = if month <= 2 march_year + 1 else march_year
+		year = if (month <= 2) march_year + 1 else march_year
 
 		{ year, month, day }
 	}
 
 	year_with_padded_zeros : I128 -> Str
 	year_with_padded_zeros = |year| {
-		magnitude = if year < 0 0 - year else year
+		magnitude = if (year < 0) 0 - year else year
 		digits = magnitude.to_str()
 		padded =
 			if magnitude < 10 {

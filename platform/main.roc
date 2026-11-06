@@ -179,7 +179,7 @@ main_for_host! = |args|
 		Err(Exit(code)) => code
 		Err(Interrupted) => {
 			Tty.disable_raw_mode!() ?? {}
-			if Signal.poll!().contains(Terminate) 143 else 130
+			if (Signal.poll!().contains(Terminate)) 143 else 130
 		}
 		Err(other) => {
 			# Leave raw mode first, so the message is not printed without line breaks.

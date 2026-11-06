@@ -1036,6 +1036,6 @@ expect {
 	names = ["a", "b", "c"]
 	decode_one(both, names, [Integer(1), Null, Null]) == Ok(Ok((1, Err(Null))))
 		and decode_one(both, names, [Integer(1), Integer(2), Integer(3)]) == Ok(Ok((1, Ok((2, 3)))))
-			and decode_one(both, names, [Integer(1), Null, Integer(3)]) == Ok(Err(UnexpectedType({ column: "b", found: Null })))
-				and decode_one(both, names, [Null, Null, Null]) == Ok(Err(UnexpectedType({ column: "a", found: Null })))
+		and decode_one(both, names, [Integer(1), Null, Integer(3)]) == Ok(Err(UnexpectedType({ column: "b", found: Null })))
+		and decode_one(both, names, [Null, Null, Null]) == Ok(Err(UnexpectedType({ column: "a", found: Null })))
 }

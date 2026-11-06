@@ -11,7 +11,7 @@ import http.Request
 import http.Response
 
 check : Bool, Str -> Try({}, [CheckFailed(Str)])
-check = |condition, message| if condition Ok({}) else Err(CheckFailed(message))
+check = |condition, message| if (condition) Ok({}) else Err(CheckFailed(message))
 
 request : Str -> Request
 request = |path| Request.from_method(GET).with_uri("http://127.0.0.1:9000${path}")
@@ -55,9 +55,9 @@ main! = |_| {
 		])
 		response = Http.send!(original, { max_redirects: 1 })?
 		report = text(response)
-		expected_method = if rewrite "GET" else "POST"
-		expected_body = if rewrite "" else "payload"
-		expected_type = if rewrite "<absent>" else "application/custom"
+		expected_method = if (rewrite) "GET" else "POST"
+		expected_body = if (rewrite) "" else "payload"
+		expected_type = if (rewrite) "<absent>" else "application/custom"
 		check(report.contains("method: ${expected_method}\n") and report.contains("body: ${expected_body}\n"), "redirect method and body")?
 		check(report.contains("content-type: ${expected_type}\n"), "body headers follow the rewritten body")?
 		check(report.contains("authorization: secret\n") and report.contains("cookie: secret\n") and report.contains("proxy-authorization: secret\n"), "same-origin credentials survive")?
@@ -70,7 +70,7 @@ main! = |_| {
 	# 301/302 preserve a non-POST method; 303 rewrites non-HEAD methods.
 	for status in [301.U16, 302, 303] {
 		put = request("/redirect/${status.to_str()}/echo").with_method(PUT).with_body(Str.to_utf8("payload"))
-		expected_method = if status == 303 "GET" else "PUT"
+		expected_method = if (status == 303) "GET" else "PUT"
 		check(text(Http.send!(put, { max_redirects: 1 })?).contains("method: ${expected_method}\n"), "PUT rewrite rule")?
 	}
 	head = Http.send!(request("/redirect/303/echo").with_method(HEAD), { max_redirects: 1 })?

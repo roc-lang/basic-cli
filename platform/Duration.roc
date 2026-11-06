@@ -19,7 +19,7 @@ fraction_str = |thousandths|
 		".${(thousandths // 100).to_str()}"
 	} else if thousandths % 10 == 0 {
 		hundredths = thousandths // 10
-		if hundredths < 10 ".0${hundredths.to_str()}" else ".${hundredths.to_str()}"
+		if (hundredths < 10) ".0${hundredths.to_str()}" else ".${hundredths.to_str()}"
 	} else if thousandths < 10 {
 		".00${thousandths.to_str()}"
 	} else if thousandths < 100 {

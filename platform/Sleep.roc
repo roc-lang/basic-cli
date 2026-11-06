@@ -8,7 +8,7 @@ millis_from_seconds : F64 -> U64
 millis_from_seconds = |seconds|
 	match F64.to_u64_try(seconds * 1000) {
 		Ok(milliseconds) => milliseconds
-		Err(OutOfRange) => if seconds > 0 U64.highest else 0
+		Err(OutOfRange) => if (seconds > 0) U64.highest else 0
 	}
 
 ## Convert whole milliseconds into the nanoseconds the host sleeps for,
