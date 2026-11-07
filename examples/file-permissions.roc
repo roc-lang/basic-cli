@@ -19,7 +19,6 @@ main! = |args| {
 		\\    Executable: ${Str.inspect(is_executable)}
 		\\    Readable: ${Str.inspect(is_readable)}
 		\\    Writable: ${Str.inspect(is_writable)}
-		,
 	)?
 
 	Ok({})

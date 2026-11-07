@@ -79,7 +79,7 @@ copy_redacted! = |source, destination| {
 ## Replace every digit with `#`.
 redact : List(U8) -> List(U8)
 redact = |bytes|
-	bytes.map(|byte| if byte >= '0' and byte <= '9' '#' else byte)
+	bytes.map(|byte| if (byte >= '0' and byte <= '9') '#' else byte)
 
 expect redact("pears,12\n".to_utf8()) == "pears,##\n".to_utf8()
 expect redact([]) == []

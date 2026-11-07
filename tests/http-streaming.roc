@@ -84,7 +84,7 @@ tally! = |stream| {
 			count: $tally.count + 1,
 			bytes: $tally.bytes + chunk.len(),
 			sum: $tally.sum + checksum(chunk),
-			empty: $tally.empty + (if chunk.is_empty() 1 else 0),
+			empty: $tally.empty + (if (chunk.is_empty()) 1 else 0),
 			largest: $tally.largest.max(chunk.len()),
 		}
 	}

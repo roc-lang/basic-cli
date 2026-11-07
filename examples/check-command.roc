@@ -7,7 +7,7 @@ import pf.Cmd
 
 report! : Str => Try({}, _)
 report! = |name| {
-	status = if Cmd.check_available!(name) "is available" else "is not available"
+	status = if (Cmd.check_available!(name)) "is available" else "is not available"
 	Stdout.line!("${name} ${status}")
 }
 

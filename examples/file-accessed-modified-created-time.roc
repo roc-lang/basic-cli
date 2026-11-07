@@ -24,14 +24,13 @@ main! = |args| {
 
 	# The time between two instants is a Duration, which compares with others.
 	age = Utc.now!().since(modified)
-	freshness = if age > Duration.minutes(5) "stale" else "fresh"
+	freshness = if (age > Duration.minutes(5)) "stale" else "fresh"
 
 	Stdout.line!(
 		\\${file.display()} file time metadata:
 		\\    Modified: ${modified.to_iso_8601()} (${freshness})
 		\\    Accessed: ${accessed.to_iso_8601()}
 		\\${created_line}
-		,
 	)?
 
 	Ok({})

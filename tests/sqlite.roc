@@ -49,7 +49,6 @@ events_db! = || {
 	db.execute_script!(
 		\\CREATE TABLE events (id INTEGER PRIMARY KEY, payload);
 		\\INSERT INTO events VALUES (1, 'one'), (2, 2.5), (3, 'three'), (4, 'four');
-		,
 	)?
 	Ok(db)
 }
@@ -121,7 +120,6 @@ rows! = || {
 	db.execute_script!(
 		\\CREATE TABLE numbers (n INTEGER);
 		\\INSERT INTO numbers VALUES (-1), (-9223372036854775808), (-3);
-		,
 	)?
 	drain!(db.rows("SELECT abs(n) AS n FROM numbers ORDER BY rowid", Decoder.i64("n")), "overflow")?
 	# The failed statement was released too.
@@ -264,7 +262,6 @@ decoders! = || {
 		\\INSERT INTO t VALUES (1, 300, 1.5, 'text', x'00ff', 1);
 		\\INSERT INTO t VALUES (2, NULL, NULL, NULL, NULL, 0);
 		\\INSERT INTO t VALUES (3, 7, NULL, CAST(x'61c328' AS TEXT), x'', 2);
-		,
 	)?
 	column! = |name, decoder| db.query_all!(Query.new("SELECT ${name} AS v, id FROM t ORDER BY id", []), decoder)
 	one! = |id, decoder| db.query_one!("SELECT * FROM t WHERE id = ${Integer(id)}", decoder)
@@ -388,7 +385,6 @@ errors! = || {
 		\\);
 		\\INSERT INTO parent VALUES (1);
 		\\INSERT INTO child VALUES (1, 'a@example.org', 'a', 1, 1);
-		,
 	)?
 	kind! = |query|
 		match db.execute!(query) {

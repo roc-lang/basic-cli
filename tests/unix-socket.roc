@@ -11,7 +11,7 @@ long : Duration
 long = Duration.seconds(5)
 
 check : Bool, Str -> Try({}, [CheckFailed(Str)])
-check = |condition, message| if condition Ok({}) else Err(CheckFailed(message))
+check = |condition, message| if (condition) Ok({}) else Err(CheckFailed(message))
 
 main! : List(OsStr) => Try({}, _)
 main! = |_| {

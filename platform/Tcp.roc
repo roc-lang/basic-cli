@@ -285,7 +285,7 @@ Tcp :: [].{
 			# retained.
 			Stream.custom(
 				Reading(conn),
-				Unknown,
+				Err(Unknown),
 				|state|
 					match state {
 						Finished => Err(NoMore)
@@ -330,7 +330,7 @@ Tcp :: [].{
 			# retained.
 			Stream.custom(
 				Reading(conn),
-				Unknown,
+				Err(Unknown),
 				|state|
 					match state {
 						Finished => Err(NoMore)

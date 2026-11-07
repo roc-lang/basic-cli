@@ -246,7 +246,7 @@ Http :: [].{
 			# retained.
 			Stream.custom(
 				Reading(response),
-				Unknown,
+				Err(Unknown),
 				|state|
 					match state {
 						Finished => Err(NoMore)

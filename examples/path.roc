@@ -17,7 +17,6 @@ main! = |args| {
 		\\Filename: ${filename}
 		\\Extension: ${extension}
 		\\Type: ${Str.inspect(Path.type!(path)?)}
-		,
 	)?
 
 	Ok({})

@@ -134,7 +134,7 @@ File :: [].{
 			# can release it even when the terminal continuation is retained.
 			Stream.custom(
 				Reading(reader),
-				Unknown,
+				Err(Unknown),
 				|state|
 					match state {
 						Finished => Err(NoMore)
@@ -173,7 +173,7 @@ File :: [].{
 			# can release it even when the terminal continuation is retained.
 			Stream.custom(
 				Reading(reader),
-				Unknown,
+				Err(Unknown),
 				|state|
 					match state {
 						Finished => Err(NoMore)

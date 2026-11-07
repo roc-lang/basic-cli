@@ -464,7 +464,7 @@ Cmd :: [].{
 			# On Windows a name is tried as-is (so `git.exe` is found directly)
 			# and with each `%PATHEXT%` extension appended (so `git` finds
 			# `git.exe`). On Unix the name is used verbatim.
-			extensions = if is_windows [""].concat(path_extensions!()) else [""]
+			extensions = if (is_windows) [""].concat(path_extensions!()) else [""]
 
 			search_dirs!(path_dirs(path_value, is_windows), command, extensions, is_windows)
 		}
@@ -776,17 +776,17 @@ path_dirs : OsStr, Bool -> List(Path)
 path_dirs = |path_value, is_windows|
 	match OsStr.to_raw(path_value) {
 		Utf8(str) =>
-			Str.split_on(str, if is_windows ";" else ":")
+			Str.split_on(str, if (is_windows) ";" else ":")
 				.keep_if(|segment| !Str.is_empty(segment))
 				.map(Path.utf8)
 
 		UnixBytes(bytes) =>
-			bytes.split_on(if is_windows ';' else ':')
+			bytes.split_on(if (is_windows) ';' else ':')
 				.keep_if(|segment| !List.is_empty(segment))
 				.map(Path.unix_bytes)
 
 		WindowsU16s(u16s) =>
-			u16s.split_on(if is_windows ';' else ':')
+			u16s.split_on(if (is_windows) ';' else ':')
 				.keep_if(|segment| !List.is_empty(segment))
 				.map(Path.windows_u16s)
 	}
@@ -831,7 +831,7 @@ search_extensions! = |dir, command, extensions, is_windows|
 ## since a directory both exists and carries an executable bit.
 candidate_available! : Path, Bool => Bool
 candidate_available! = |candidate, is_windows| {
-	runnable = if is_windows Path.exists!(candidate) else Path.is_executable!(candidate)
+	runnable = if (is_windows) Path.exists!(candidate) else Path.is_executable!(candidate)
 	match runnable {
 		Ok(True) => not_directory!(candidate)
 		Ok(False) => False
