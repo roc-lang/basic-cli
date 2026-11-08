@@ -1,6 +1,6 @@
 ## Run a build command with live output and a five-minute deadline.
 ## Usage: roc process-control.roc -- cargo build --release
-app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.26.0/GddgvsGjiNXrHFW6au5i5dUDbTs8FinQdrgE2Gqmw53t.tar.zst" }
+app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.27.0/9yjxqdGTP4xSpSEmDazwTmRsehfRZzA19pwEKkR6fj1g.tar.zst" }
 
 import pf.Cmd
 import pf.Duration
