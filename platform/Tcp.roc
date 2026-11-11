@@ -113,6 +113,9 @@ Tcp :: [].{
 	## system for a free port, which [Listener.local_port!] reports. The
 	## timeout covers hostname resolution.
 	##
+	## On Unix, a restarted server can bind again while connections from its
+	## previous listener are still in TCP `TIME_WAIT`.
+	##
 	## ```roc
 	## listener = Tcp.listen!("127.0.0.1", 0, Duration.seconds(5))?
 	## port = listener.local_port!()?
