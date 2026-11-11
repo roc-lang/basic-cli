@@ -3,6 +3,8 @@ use std::io;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 
+// SIGURG is ignored by default and separate from the signals Roc can catch.
+const WAKE_SIGNAL: libc::c_int = libc::SIGURG;
 static PREVIOUS_WAKE_ACTION: Mutex<Option<libc::sigaction>> = Mutex::new(None);
 
 extern "C" fn wake(_: libc::c_int) {}
@@ -11,19 +13,19 @@ pub fn prepare() -> io::Result<()> {
     let mut saved = PREVIOUS_WAKE_ACTION.lock().unwrap();
     unsafe {
         let mut previous: libc::sigaction = std::mem::zeroed();
-        if libc::sigaction(libc::SIGUSR2, std::ptr::null(), &mut previous) != 0 {
+        if libc::sigaction(WAKE_SIGNAL, std::ptr::null(), &mut previous) != 0 {
             return Err(io::Error::last_os_error());
         }
         if previous.sa_sigaction != libc::SIG_DFL && previous.sa_sigaction != libc::SIG_IGN {
             return Err(io::Error::new(
                 io::ErrorKind::AlreadyExists,
-                "SIGUSR2 is reserved for native I/O cancellation",
+                "SIGURG is reserved for native I/O cancellation",
             ));
         }
         let mut action: libc::sigaction = std::mem::zeroed();
         action.sa_sigaction = wake as extern "C" fn(libc::c_int) as libc::sighandler_t;
         libc::sigemptyset(&mut action.sa_mask);
-        if libc::sigaction(libc::SIGUSR2, &action, std::ptr::null_mut()) != 0 {
+        if libc::sigaction(WAKE_SIGNAL, &action, std::ptr::null_mut()) != 0 {
             return Err(io::Error::last_os_error());
         }
         // Ignored dispositions survive exec, including those inherited from a
@@ -39,10 +41,10 @@ pub fn rollback() {
     };
     unsafe {
         let mut action: libc::sigaction = std::mem::zeroed();
-        if libc::sigaction(libc::SIGUSR2, std::ptr::null(), &mut action) == 0
+        if libc::sigaction(WAKE_SIGNAL, std::ptr::null(), &mut action) == 0
             && action.sa_sigaction == wake as extern "C" fn(libc::c_int) as libc::sighandler_t
         {
-            libc::sigaction(libc::SIGUSR2, &previous, std::ptr::null_mut());
+            libc::sigaction(WAKE_SIGNAL, &previous, std::ptr::null_mut());
         }
     }
 }
@@ -67,7 +69,7 @@ mod tests {
                 .env(CHILD, "1");
             unsafe {
                 command.pre_exec(|| {
-                    if libc::signal(libc::SIGUSR2, libc::SIG_IGN) == libc::SIG_ERR {
+                    if libc::signal(WAKE_SIGNAL, libc::SIG_IGN) == libc::SIG_ERR {
                         Err(io::Error::last_os_error())
                     } else {
                         Ok(())
@@ -90,7 +92,7 @@ mod tests {
         rollback();
         let mut action: libc::sigaction = unsafe { std::mem::zeroed() };
         assert_eq!(
-            unsafe { libc::sigaction(libc::SIGUSR2, std::ptr::null(), &mut action) },
+            unsafe { libc::sigaction(WAKE_SIGNAL, std::ptr::null(), &mut action) },
             0
         );
         assert_eq!(action.sa_sigaction, libc::SIG_IGN);
@@ -102,7 +104,7 @@ pub fn thread() -> io::Result<usize> {
     unsafe {
         let mut wake: libc::sigset_t = std::mem::zeroed();
         libc::sigemptyset(&mut wake);
-        libc::sigaddset(&mut wake, libc::SIGUSR2);
+        libc::sigaddset(&mut wake, WAKE_SIGNAL);
         let error = libc::pthread_sigmask(libc::SIG_UNBLOCK, &wake, std::ptr::null_mut());
         if error != 0 {
             return Err(io::Error::from_raw_os_error(error));
@@ -112,7 +114,7 @@ pub fn thread() -> io::Result<usize> {
 }
 pub fn cancel(thread: usize) {
     unsafe {
-        libc::pthread_kill(thread as libc::pthread_t, libc::SIGUSR2);
+        libc::pthread_kill(thread as libc::pthread_t, WAKE_SIGNAL);
     }
 }
 

@@ -1326,6 +1326,126 @@
       "path": "tests/signal-cleanup.roc",
       "cases": [
         {
+          "name": "sleep-sigusr1",
+          "args": [
+            "sleep"
+          ],
+          "pty": true,
+          "await_raw_mode": true,
+          "send_signal": "SIGUSR1",
+          "exit_code": 0,
+          "temp_cwd": true,
+          "contains": [
+            "cleanup complete:",
+            "User1"
+          ],
+          "platforms": {
+            "windows": {
+              "enabled": false
+            }
+          }
+        },
+        {
+          "name": "stdin-sigusr1",
+          "args": [
+            "stdin"
+          ],
+          "pty": true,
+          "await_raw_mode": true,
+          "send_signal": "SIGUSR1",
+          "exit_code": 0,
+          "temp_cwd": true,
+          "contains": [
+            "cleanup complete:",
+            "User1"
+          ],
+          "platforms": {
+            "windows": {
+              "enabled": false
+            }
+          }
+        },
+        {
+          "name": "sleep-sigusr2",
+          "args": [
+            "sleep"
+          ],
+          "pty": true,
+          "await_raw_mode": true,
+          "send_signal": "SIGUSR2",
+          "exit_code": 0,
+          "temp_cwd": true,
+          "contains": [
+            "cleanup complete:",
+            "User2"
+          ],
+          "platforms": {
+            "windows": {
+              "enabled": false
+            }
+          }
+        },
+        {
+          "name": "stdin-sigusr2",
+          "args": [
+            "stdin"
+          ],
+          "pty": true,
+          "await_raw_mode": true,
+          "send_signal": "SIGUSR2",
+          "exit_code": 0,
+          "temp_cwd": true,
+          "contains": [
+            "cleanup complete:",
+            "User2"
+          ],
+          "platforms": {
+            "windows": {
+              "enabled": false
+            }
+          }
+        },
+        {
+          "name": "sleep-sigwinch",
+          "args": [
+            "sleep"
+          ],
+          "pty": true,
+          "await_raw_mode": true,
+          "send_signal": "SIGWINCH",
+          "exit_code": 0,
+          "temp_cwd": true,
+          "contains": [
+            "cleanup complete:",
+            "WindowResize"
+          ],
+          "platforms": {
+            "windows": {
+              "enabled": false
+            }
+          }
+        },
+        {
+          "name": "stdin-sigwinch",
+          "args": [
+            "stdin"
+          ],
+          "pty": true,
+          "await_raw_mode": true,
+          "send_signal": "SIGWINCH",
+          "exit_code": 0,
+          "temp_cwd": true,
+          "contains": [
+            "cleanup complete:",
+            "WindowResize"
+          ],
+          "platforms": {
+            "windows": {
+              "enabled": false
+            }
+          }
+        },
+        {
           "name": "sleep-sigint",
           "args": [
             "sleep"

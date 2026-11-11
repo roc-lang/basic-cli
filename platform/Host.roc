@@ -168,8 +168,9 @@ Host :: [].{
 	# or `ReadLimitExceeded` once more than `max` bytes of it have arrived.
 	http_send_streaming! : InternalHttp.RequestToAndFromHost, [NoTimeout, After(U64)], [NoTimeout, At(U64)] => Try(InternalHttp.StreamingResponseFromHost, InternalHttp.TransportErr)
 	http_read_body! : Resource.HttpResponse, [Chunk, ToEnd(U64)] => Try(List(U8), [EndOfBody, ReadLimitExceeded, HttpErr(InternalHttp.TransportErr)])
-	signal_catch! : List([Interrupt, Terminate(System.Unix)]) => Try({}, [SignalErr(IOErr)])
-	signal_poll! : () => List([Interrupt, Terminate])
+	signal_catch! : List([Interrupt, Terminate(System.Unix), User1(System.Unix), User2(System.Unix), WindowResize(System.Unix)]) => Try({}, [SignalErr(IOErr)])
+	signal_poll! : () => List([Interrupt, Terminate, User1, User2, WindowResize])
+	signal_interrupted_exit_code! : () => I32
 
 	ExecFailure : [Interrupted, Failed(IOErr)]
 	cmd_exec! : System.Unix, NativePath, List(NativeOsStr) => ExecFailure
