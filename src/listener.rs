@@ -33,6 +33,9 @@ fn listen(host: String, port: u16, timeout_nanos: u64) -> io::Result<Listener> {
                 socket2::Type::STREAM,
                 Some(socket2::Protocol::TCP),
             )?;
+            // Allow a server restart while its previous connections are in TIME_WAIT.
+            #[cfg(unix)]
+            socket.set_reuse_address(true)?;
             #[cfg(windows)]
             exclusive_address(&socket)?;
             socket.bind(&address.into())?;
@@ -258,6 +261,38 @@ mod tests {
         ));
         assert!(matches!(listener.accept(None), Err(ListenerError::Closed)));
         assert!(matches!(listener.socket(), Err(ListenerError::Closed)));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn can_listen_again_while_previous_connection_is_in_time_wait() {
+        use std::{io::Read, net::Shutdown};
+
+        let listener = listen("127.0.0.1".into(), 0, LONG).unwrap();
+        let address = listener
+            .socket()
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .as_socket()
+            .unwrap();
+        let mut client = TcpStream::connect(address).unwrap();
+        let mut server = listener.accept(Some(LONG)).unwrap();
+        server.set_nonblocking(false).unwrap();
+        let timeout = Some(Duration::from_nanos(LONG));
+        client.set_read_timeout(timeout).unwrap();
+        server.set_read_timeout(timeout).unwrap();
+
+        // The server sends the first FIN and enters TIME_WAIT when it receives the client's FIN.
+        let mut byte = [0];
+        server.shutdown(Shutdown::Write).unwrap();
+        assert_eq!(client.read(&mut byte).unwrap(), 0);
+        client.shutdown(Shutdown::Write).unwrap();
+        assert_eq!(server.read(&mut byte).unwrap(), 0);
+        drop((server, client, listener));
+
+        listen("127.0.0.1".into(), address.port(), LONG)
+            .expect("could not restart listener with a connection in TIME_WAIT");
     }
 
     #[test]
