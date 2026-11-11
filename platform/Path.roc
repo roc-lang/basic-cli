@@ -392,6 +392,43 @@ Path := [
 	to_hash : Path, Hasher -> Hasher
 	to_hash = |path, hasher| to_os_str(path).to_hash(hasher)
 
+	## Remove the final path component without accessing the filesystem. The
+	## returned path preserves the input representation. UTF-8 and Unix paths
+	## use `/`. Windows paths recognize drive and share roots and use both
+	## separators, except inside verbatim paths, which use `\`.
+	##
+	## Trailing separators and `.` components are ignored, except for a leading
+	## relative `.` and for `.` in a Windows verbatim path. `..` is kept as a
+	## component. An empty path, root, or Windows prefix alone has `NoParent`.
+	## The parent of a one-component relative path is the empty path.
+	##
+	## ```roc
+	## expect Path.parent("src/main.roc") == Ok(Path.utf8("src"))
+	## expect Path.parent("/src/") == Ok(Path.utf8("/"))
+	## expect Path.parent("/") == Err(NoParent)
+	## ```
+	parent : Path -> Try(Path, [NoParent])
+	parent = |path|
+		match path {
+			Utf8(str) => parent_slash_units(Str.to_utf8(str)).map_ok(|bytes| Utf8(str_from_valid_utf8(bytes)))
+			UnixBytes(bytes) => parent_slash_units(bytes).map_ok(|parent| UnixBytes(parent))
+			WindowsU16s(units) => parent_windows_units(units).map_ok(|parent| WindowsU16s(parent))
+		}
+
+	## Iterate over this path and its successive [parent] paths, starting with
+	## the original path and ending when there is no parent.
+	ancestors : Path -> Iter(Path)
+	ancestors = |path|
+		Iter.custom(
+			Ok(path),
+			Err(Unknown),
+			|next|
+				match next {
+					Ok(item) => Ok((item, parent(item)))
+					Err(NoParent) => Err(NoMore)
+				},
+		)
+
 	## Returns everything after the last directory separator.
 	filename : Path -> Try(Path, [IsDirPath, EndsInDots])
 	filename = |path|
@@ -498,6 +535,135 @@ str_from_valid_utf8 = |bytes|
 			crash "A valid UTF-8 path contained invalid UTF-8 after ASCII path slicing."
 		}
 	}
+
+parent_slash_units : List(U8) -> Try(List(U8), [NoParent])
+parent_slash_units = |units| {
+	is_sep = |unit| unit == '/'
+	root_end = if is_sep(units.get(0) ?? '.') {
+		1
+	} else {
+		0
+	}
+	parent_units(units, { prefix_end: 0, root_end, verbatim: False }, is_sep, '.')
+}
+
+parent_windows_units : List(U16) -> Try(List(U16), [NoParent])
+parent_windows_units = |units| {
+	{ end: prefix_end, verbatim } = windows_prefix(units)
+	# A slash immediately after a verbatim drive prefix still denotes the root.
+	root_end = if windows_separator(units.get(prefix_end) ?? '.') {
+		prefix_end + 1
+	} else {
+		prefix_end
+	}
+	is_sep = |unit| unit == '\\' or (Bool.not(verbatim) and unit == '/')
+	parent_units(units, { prefix_end, root_end, verbatim }, is_sep, '.')
+}
+
+# Look backward for the last component, then trim the separators and ignored
+# dots before it. Keep the root or prefix intact, as well as a leading `.`.
+parent_units : List(unit), { prefix_end : U64, root_end : U64, verbatim : Bool }, (unit -> Bool), unit -> Try(List(unit), [NoParent])
+	where [unit.is_eq : unit, unit -> Bool]
+parent_units = |units, { prefix_end, root_end, verbatim }, is_sep, dot| {
+	is_sep_at = |index| is_sep(units.get(index) ?? dot)
+	is_dot_at = |index| units.get(index) == Ok(dot)
+	len = units.len()
+	leading_dot = root_end == prefix_end and is_dot_at(root_end) and (len == root_end + 1 or is_sep_at(root_end + 1))
+	body_start = if leading_dot {
+		root_end + 1
+	} else {
+		root_end
+	}
+	trim_end = |end| {
+		var $end = end
+		while $end > body_start {
+			last = $end - 1
+			if is_sep_at(last) {
+				$end = last
+			} else if Bool.not(verbatim) and is_dot_at(last) and (last == body_start or is_sep_at(last - 1)) {
+				$end = last
+			} else {
+				break
+			}
+		}
+		$end
+	}
+
+	var $end = trim_end(len)
+	if $end == body_start {
+		if leading_dot and prefix_end == 0 {
+			Ok([])
+		} else {
+			Err(NoParent)
+		}
+	} else {
+		while $end > body_start and Bool.not(is_sep_at($end - 1)) {
+			$end = $end - 1
+		}
+		Ok(units.take_first(trim_end($end)))
+	}
+}
+
+windows_separator : U16 -> Bool
+windows_separator = |unit| unit == '/' or unit == '\\'
+
+windows_prefix : List(U16) -> { end : U64, verbatim : Bool }
+windows_prefix = |units|
+	match units {
+		['\\', '\\', '?', '\\', ..] => {
+			backslash = |unit| unit == '\\'
+			end = match units {
+				['\\', '\\', '?', '\\', 'U', 'N', 'C', sep, ..] if windows_separator(sep) =>
+					windows_share_end(units, 8, backslash).end
+				['\\', '\\', '?', '\\', drive, ':', ..] if is_drive_letter(drive) and (units.len() == 6 or windows_separator(units.get(6) ?? '.')) => 6
+				_ => windows_component_end(units, 4, backslash)
+			}
+			{ end, verbatim: True }
+		}
+		[first, second, '.', fourth, ..] if windows_separator(first) and windows_separator(second) and windows_separator(fourth) =>
+			{ end: windows_component_end(units, 4, windows_separator), verbatim: False }
+		[first, second, ..] if windows_separator(first) and windows_separator(second) => {
+			{ end, complete } = windows_share_end(units, 2, windows_separator)
+			{
+				end: if complete {
+					end
+				} else {
+					0
+				},
+				verbatim: False,
+			}
+		}
+		[drive, ':', ..] if is_drive_letter(drive) => { end: 2, verbatim: False }
+		_ => { end: 0, verbatim: False }
+	}
+
+is_drive_letter : U16 -> Bool
+is_drive_letter = |unit| (unit >= 'A' and unit <= 'Z') or (unit >= 'a' and unit <= 'z')
+
+windows_share_end : List(U16), U64, (U16 -> Bool) -> { end : U64, complete : Bool }
+windows_share_end = |units, start, is_sep| {
+	server_end = windows_component_end(units, start, is_sep)
+	if server_end == units.len() {
+		{ end: server_end, complete: False }
+	} else {
+		share_start = server_end + 1
+		share_end = windows_component_end(units, share_start, is_sep)
+		if share_end == share_start {
+			{ end: server_end, complete: False }
+		} else {
+			{ end: share_end, complete: server_end > start }
+		}
+	}
+}
+
+windows_component_end : List(U16), U64, (U16 -> Bool) -> U64
+windows_component_end = |units, start, is_sep| {
+	var $end = start
+	while $end < units.len() and Bool.not(is_sep(units.get($end) ?? '\\')) {
+		$end = $end + 1
+	}
+	$end
+}
 
 ends_with_u8 : List(U8), U8 -> Bool
 ends_with_u8 = |list, suffix|
@@ -849,6 +1015,97 @@ expect Path.ext(Path.utf8("a/b.c")).map_ok(Path.to_raw) == Ok(Utf8("c"))
 expect Path.to_raw(Path.join(Path.unix("a"), "b")) == UnixBytes([97, 47, 98])
 expect Path.to_raw(Path.join(Path.windows("a"), "b")) == WindowsU16s([97, 92, 98])
 expect Path.to_raw(Path.join(Path.utf8("a"), "b")) == Utf8("a/b")
+
+## Parent traversal preserves roots, relative components, and retained spelling.
+expect Path.parent("src/main.roc") == Ok(Path.utf8("src"))
+expect Path.parent("main.roc") == Ok(Path.utf8(""))
+expect Path.parent("") == Err(NoParent)
+expect Path.parent("/") == Err(NoParent)
+expect Path.parent("///") == Err(NoParent)
+expect Path.parent("/src") == Ok(Path.utf8("/"))
+expect Path.parent("///src/main.roc") == Ok(Path.utf8("///src"))
+expect Path.parent("src///main.roc///") == Ok(Path.utf8("src"))
+expect Path.parent("src/./main.roc/.//") == Ok(Path.utf8("src"))
+expect Path.parent("src/./lib/main.roc") == Ok(Path.utf8("src/./lib"))
+expect Path.parent(".") == Ok(Path.utf8(""))
+expect Path.parent("././/") == Ok(Path.utf8(""))
+expect Path.parent("./main.roc") == Ok(Path.utf8("."))
+expect Path.parent("..") == Ok(Path.utf8(""))
+expect Path.parent("src/..") == Ok(Path.utf8("src"))
+expect Path.parent("src/../main.roc") == Ok(Path.utf8("src/.."))
+expect Path.parent("/../main.roc") == Ok(Path.utf8("/.."))
+expect Path.parent("src/dir../main.roc") == Ok(Path.utf8("src/dir.."))
+expect Path.parent("src\\main.roc") == Ok(Path.utf8(""))
+expect Path.parent(Path.unix("C:\\src\\main.roc")) == Ok(Path.unix(""))
+
+expect {
+	checked_parent = |path| {
+		if path == "" {
+			return Err(EmptyInput)
+		}
+		parent = Path.parent
+		Ok(parent(path)?)
+	}
+	checked_parent("") == Err(EmptyInput) and checked_parent("/") == Err(NoParent) and checked_parent("src/main.roc") == Ok(Path.utf8("src"))
+}
+
+## UTF-8 boundaries, arbitrary Unix bytes, and unpaired Windows surrogates survive.
+expect Path.parent(Path.utf8("🐦/é.roc")).map_ok(Path.to_raw) == Ok(Utf8("🐦"))
+expect Path.parent(Path.unix_bytes([0xFF, '/', 0xFE])).map_ok(Path.to_raw) == Ok(UnixBytes([0xFF]))
+expect Path.parent(Path.unix_bytes([0xFF])).map_ok(Path.to_raw) == Ok(UnixBytes([]))
+expect Path.parent(Path.windows_u16s([0xD800, '\\', 0xDC00])).map_ok(Path.to_raw) == Ok(WindowsU16s([0xD800]))
+expect Path.parent(Path.windows_u16s([0xD800])).map_ok(Path.to_raw) == Ok(WindowsU16s([]))
+expect Path.parent(Path.windows("🐦\\é.roc")).map_ok(Path.to_raw) == Ok(WindowsU16s([0xD83D, 0xDC26]))
+
+## Windows grammar is determined by the representation on every operating system.
+expect Path.parent(Path.windows("")) == Err(NoParent)
+expect Path.parent(Path.windows("\\")) == Err(NoParent)
+expect Path.parent(Path.windows("src\\main.roc")) == Ok(Path.windows("src"))
+expect Path.parent(Path.windows("src\\lib/main.roc\\.//")) == Ok(Path.windows("src\\lib"))
+expect Path.parent(Path.windows(".\\main.roc")) == Ok(Path.windows("."))
+expect Path.parent(Path.windows("C:")) == Err(NoParent)
+expect Path.parent(Path.windows("C:\\")) == Err(NoParent)
+expect Path.parent(Path.windows("C:/")) == Err(NoParent)
+expect Path.parent(Path.windows("C:main.roc")) == Ok(Path.windows("C:"))
+expect Path.parent(Path.windows("C:.\\main.roc")) == Ok(Path.windows("C:."))
+expect Path.parent(Path.windows("C:.")) == Err(NoParent)
+expect Path.parent(Path.windows("C:\\src")) == Ok(Path.windows("C:\\"))
+expect Path.parent(Path.windows("c:/src")) == Ok(Path.windows("c:/"))
+expect Path.parent(Path.windows("\\src")) == Ok(Path.windows("\\"))
+expect Path.parent(Path.windows("\\\\server\\share")) == Err(NoParent)
+expect Path.parent(Path.windows("\\\\server\\share\\")) == Err(NoParent)
+expect Path.parent(Path.windows("\\\\server\\share\\src")) == Ok(Path.windows("\\\\server\\share\\"))
+expect Path.parent(Path.windows("//server/share/src")) == Ok(Path.windows("//server/share/"))
+expect Path.parent(Path.windows("\\\\server")) == Ok(Path.windows("\\"))
+expect Path.parent(Path.windows("\\\\.\\pipe")) == Err(NoParent)
+expect Path.parent(Path.windows("\\\\.\\pipe\\name")) == Ok(Path.windows("\\\\.\\pipe\\"))
+expect Path.parent(Path.windows("//./pipe/name")) == Ok(Path.windows("//./pipe/"))
+
+## Windows verbatim prefixes preserve dots and treat forward slashes as filename units.
+expect Path.parent(Path.windows("\\\\?\\C:")) == Err(NoParent)
+expect Path.parent(Path.windows("\\\\?\\C:\\")) == Err(NoParent)
+expect Path.parent(Path.windows("\\\\?\\C:\\src")) == Ok(Path.windows("\\\\?\\C:\\"))
+expect Path.parent(Path.windows("\\\\?\\C:\\src\\.")) == Ok(Path.windows("\\\\?\\C:\\src"))
+expect Path.parent(Path.windows("\\\\?\\C:\\src\\.\\file")) == Ok(Path.windows("\\\\?\\C:\\src\\."))
+expect Path.parent(Path.windows("\\\\?\\C:\\src/file")) == Ok(Path.windows("\\\\?\\C:\\"))
+expect Path.parent(Path.windows("\\\\?\\C:/src/file")) == Ok(Path.windows("\\\\?\\C:/"))
+expect Path.parent(Path.windows("\\\\?\\UNC\\server\\share")) == Err(NoParent)
+expect Path.parent(Path.windows("\\\\?\\UNC\\server\\share\\src")) == Ok(Path.windows("\\\\?\\UNC\\server\\share\\"))
+expect Path.parent(Path.windows("\\\\?\\UNC\\server")) == Err(NoParent)
+expect Path.parent(Path.windows("\\\\?\\Volume{abc}\\src")) == Ok(Path.windows("\\\\?\\Volume{abc}\\"))
+expect Path.parent(Path.windows("\\\\?\\Volume{abc}")) == Err(NoParent)
+
+## Ancestors starts with the original path, includes an empty relative parent,
+## and stops at roots and prefixes. It can also be consumed incrementally.
+expect Path.ancestors("src/lib/main.roc").collect() == [Path.utf8("src/lib/main.roc"), Path.utf8("src/lib"), Path.utf8("src"), Path.utf8("")]
+expect Path.ancestors("/src").collect() == [Path.utf8("/src"), Path.utf8("/")]
+expect Path.ancestors("").collect() == [Path.utf8("")]
+expect Path.ancestors("/").collect() == [Path.utf8("/")]
+expect Path.ancestors("src///").collect() == [Path.utf8("src///"), Path.utf8("")]
+expect Path.ancestors("src/../file").take_first(2).collect() == [Path.utf8("src/../file"), Path.utf8("src/..")]
+expect Path.ancestors(Path.windows("C:\\src")).collect() == [Path.windows("C:\\src"), Path.windows("C:\\")]
+expect Path.ancestors(Path.windows("\\\\server\\share\\src")).collect() == [Path.windows("\\\\server\\share\\src"), Path.windows("\\\\server\\share\\")]
+expect Path.ancestors(Path.unix_bytes([0xFF, '/', 0xFE])).map(Path.to_raw).collect() == [UnixBytes([0xFF, '/', 0xFE]), UnixBytes([0xFF]), UnixBytes([])]
 
 ## Errors carry the path they were about, and successes pass through untouched.
 expect {

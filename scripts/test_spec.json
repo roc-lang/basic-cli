@@ -400,7 +400,8 @@
         {
           "name": "existing-source",
           "args": ["{source}"],
-          "contains": ["Debug: Path.", "Filename: path.roc", "Extension: roc", "Type: IsFile"]
+          "contains": ["Debug: Path.", "Filename: path.roc", "Extension: roc", "Type: IsFile"],
+          "regex": ["^Parent: .*[/\\\\]examples$"]
         }
       ]
     },
