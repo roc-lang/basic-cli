@@ -100,3 +100,6 @@ __pycache__/
 
 # Locally downloaded Roc nightly
 .roc-bin/
+
+# Native inputs are fetched from content-addressed linker-input releases.
+platform/targets/

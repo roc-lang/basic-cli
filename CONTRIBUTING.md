@@ -125,11 +125,24 @@ reviewed set in `scripts/windows_runtime.py` stops it, as does a package with no
 license file. CI and the release workflow run it with `--check` and fail when
 the committed file is stale.
 
-Prebuilt binaries such as musl's `libc.a` and `crt1.o` and LLVM's `libunwind.a`
-are recorded in `licenses/native-inputs.json` with their SHA-256, origin and
-license text in `licenses/`. Any file under a macOS or Linux target directory
-other than the generated `libhost.a` must be recorded there. When replacing one,
-record where the new file came from and its license before regenerating.
+Native runtime inputs are built by the independent Linker inputs workflow.
+`linker-inputs.lock.json` pins each release archive by URL and SHA-256. Normal
+host builds fetch the required target into a shared content-addressed cache,
+verify it, and restore the runtime alongside the freshly built Rust host.
+GitHub Actions caches the same archives. Published platform bundles contain all
+runtime inputs, provenance, and licenses needed by applications.
+
+To update runtime inputs, change the producer recipe, run its native matrix,
+and dispatch Linker inputs on the default branch. Download its published lock
+and run `python3 scripts/pin_linker_inputs.py /path/to/linker-inputs.lock.json`,
+then regenerate third-party notices and commit the lock and text metadata.
+Generated target objects and libraries must stay outside Git.
+
+Linux startup supports fixed-address executables from the pinned Roc nightly
+and static PIE from the compiler's ASLR change. The compatibility workflow tests
+both compilers against the same pinned runtime release. Linux Rust and C host
+code is built as PIC. The producer also validates startup with stored function
+pointers, thread-local data, and threads on both Linux architectures.
 
 For changes to the Nix release outputs, run `nix flake check`. This builds and
 runs an application against the pinned published platform inside the Nix sandbox;

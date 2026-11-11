@@ -16,6 +16,10 @@ and native values that are destroyed without being freed.
 from __future__ import annotations
 
 import os
+try:
+    from .build import pic_build_env
+except ImportError:
+    from build import pic_build_env
 from pathlib import Path
 import platform
 import re
@@ -27,7 +31,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def run(*args: str, cwd: Path = ROOT) -> subprocess.CompletedProcess[str]:
     print("+", *args, flush=True)
-    return subprocess.run(args, cwd=cwd, text=True, check=True)
+    return subprocess.run(args, cwd=cwd, text=True, check=True, env=pic_build_env(os.environ.copy()))
 
 
 def main() -> None:

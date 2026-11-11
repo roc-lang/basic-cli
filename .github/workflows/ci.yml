@@ -67,14 +67,16 @@ jobs:
         run: |
           rustup toolchain install "${{ needs.rust-version.outputs.version }}" --profile minimal --target x86_64-unknown-linux-musl --component llvm-tools-preview
           rustup default "${{ needs.rust-version.outputs.version }}"
+      - uses: ./.github/actions/linker-inputs-cache
       - name: Test release tooling
-        run: python3 -m unittest scripts/test_check_release_version.py scripts/test_check_release_branch.py scripts/test_check_version_bump.py scripts/test_update_nix_release.py scripts/test_check_roc_nightly.py scripts/test_windows_runtime.py scripts/test_third_party_notices.py
+        run: python3 -m unittest scripts/test_check_release_version.py scripts/test_check_release_branch.py scripts/test_check_version_bump.py scripts/test_update_nix_release.py scripts/test_check_roc_nightly.py scripts/test_windows_runtime.py scripts/test_third_party_notices.py scripts/test_linker_inputs.py
       - name: Check third-party notices are current
         run: python3 scripts/third_party_notices.py --check
       - name: Check Roc nightly pins are in sync
         run: python3 scripts/check_roc_nightly.py
       - name: Check OS witness API boundaries
         run: python3 scripts/test_system_api.py
+      - uses: ./.github/actions/linker-inputs-cache
       - name: Format, check, and test examples
         run: ./scripts/test.py --operation validate
       - name: Check musl allocator syscall churn
@@ -120,6 +122,7 @@ jobs:
         run: |
           rustup toolchain install "${{ needs.rust-version.outputs.version }}" --profile minimal --target x86_64-pc-windows-msvc --component rust-docs,llvm-tools-preview
           rustup default "${{ needs.rust-version.outputs.version }}"
+      - uses: ./.github/actions/linker-inputs-cache
       - name: Format, check, and test examples
         shell: bash
         run: ./scripts/test.py --operation validate
@@ -170,6 +173,10 @@ jobs:
       - name: Install LLVM tools for Linux host stripping
         if: endsWith(matrix.target, 'musl')
         run: rustup component add llvm-tools-preview
+      - uses: ./.github/actions/linker-inputs-cache
+        if: endsWith(matrix.target, 'musl') || matrix.target == 'x64win'
+        with:
+          target: ${{ matrix.target }}
       - name: Cross-compile every example
         shell: bash
         run: ./scripts/test.py --operation build --target "${{ matrix.target }}" --artifact-dir dist/example-binaries

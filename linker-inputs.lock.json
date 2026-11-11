@@ -1,0 +1,24 @@
+{
+  "format_version": 1,
+  "release": "linker-inputs-548c70b9bde20eceee81ddbfd3a16fbbf178ec262db362980e65eda3f6881521",
+  "targets": {
+    "arm64musl": {
+      "asset": "arm64musl-ef2f4332bee02ca5aeaab1eed455a18f738ca6da20fa8d7a649aae24c05818cc.tar.gz",
+      "sha256": "ef2f4332bee02ca5aeaab1eed455a18f738ca6da20fa8d7a649aae24c05818cc",
+      "size": 2091881,
+      "url": "https://github.com/roc-lang/basic-cli/releases/download/linker-inputs-548c70b9bde20eceee81ddbfd3a16fbbf178ec262db362980e65eda3f6881521/arm64musl-ef2f4332bee02ca5aeaab1eed455a18f738ca6da20fa8d7a649aae24c05818cc.tar.gz"
+    },
+    "x64musl": {
+      "asset": "x64musl-36af1c9d069a4c8e270bae59fff49aacdae30aa6d1ab402e20c02e359c70f7ce.tar.gz",
+      "sha256": "36af1c9d069a4c8e270bae59fff49aacdae30aa6d1ab402e20c02e359c70f7ce",
+      "size": 2039775,
+      "url": "https://github.com/roc-lang/basic-cli/releases/download/linker-inputs-548c70b9bde20eceee81ddbfd3a16fbbf178ec262db362980e65eda3f6881521/x64musl-36af1c9d069a4c8e270bae59fff49aacdae30aa6d1ab402e20c02e359c70f7ce.tar.gz"
+    },
+    "x64win": {
+      "asset": "x64win-a664758f05be95d2ce42c7ef799fc4800ee23a3b1a50d05141ed0e22b4d47d9c.tar.gz",
+      "sha256": "a664758f05be95d2ce42c7ef799fc4800ee23a3b1a50d05141ed0e22b4d47d9c",
+      "size": 825954,
+      "url": "https://github.com/roc-lang/basic-cli/releases/download/linker-inputs-548c70b9bde20eceee81ddbfd3a16fbbf178ec262db362980e65eda3f6881521/x64win-a664758f05be95d2ce42c7ef799fc4800ee23a3b1a50d05141ed0e22b4d47d9c.tar.gz"
+    }
+  }
+}

@@ -9,9 +9,10 @@ import subprocess
 from pathlib import Path
 
 try:
-    from . import windows_runtime
+    from . import windows_runtime, linker_inputs
 except ImportError:
     import windows_runtime
+    import linker_inputs
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -88,6 +89,12 @@ def bundle(args: argparse.Namespace, roc_args: list[str]) -> None:
         not p.is_file() or not p.stat().st_size for p in windows_inputs
     )
     metadata_files = [] if stubbed_windows else windows_runtime.validate(windows_dir)
+    for target in linker_inputs.INVENTORY:
+        directory = PLATFORM_DIR / "targets" / target
+        host = directory / ("host.lib" if target == "x64win" else "libhost.a")
+        if host.is_file() and host.stat().st_size and (directory / "LINKER_INPUTS.json").is_file():
+            metadata_files.extend(linker_inputs.installed_documents(directory, target))
+    metadata_files = sorted(set(metadata_files))
     bundle_files = [
         *(relative_platform_path(path) for path in roc_files),
         *(relative_platform_path(path) for path in library_files),

@@ -1,0 +1,86 @@
+name: Static runtime compatibility
+on:
+  pull_request:
+  workflow_dispatch:
+permissions: {}
+jobs:
+  native:
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x64musl, arm64musl, x64mac, arm64mac, x64win]
+        compiler: [pinned, pie]
+        include:
+          - {target: x64musl, os: ubuntu-24.04}
+          - {target: arm64musl, os: ubuntu-24.04-arm}
+          - {target: x64mac, os: macos-26-intel}
+          - {target: arm64mac, os: macos-26}
+          - {target: x64win, os: windows-2025}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: mlugg/setup-zig@8d6198c65fb0feaa111df26e6b467fea8345e46f
+        if: matrix.compiler == 'pie'
+        with:
+          version: 0.17.1
+      - uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427
+        if: matrix.compiler == 'pinned'
+        with:
+          version: nightly-new-compiler
+          nightly-tag: nightly-2026-11-06-34f137a
+      - uses: actions/checkout@v7
+        if: matrix.compiler == 'pie'
+        with:
+          repository: roc-lang/roc
+          ref: c080bd1bc565531389f74444d3736d1bfb8e5352
+          path: target/roc-pie
+      - uses: actions/cache@v5
+        if: matrix.compiler == 'pie'
+        id: compiler-cache
+        with:
+          path: target/roc-pie/zig-out/bin
+          key: roc-pie-${{ runner.os }}-${{ runner.arch }}-c080bd1bc565531389f74444d3736d1bfb8e5352-zig-0.17.1-strip
+      - name: Build the pinned PIE compiler
+        if: matrix.compiler == 'pie' && steps.compiler-cache.outputs.cache-hit != 'true'
+        shell: bash
+        working-directory: target/roc-pie
+        run: zig build roc -Doptimize=ReleaseFast -Dstrip -j2
+      - name: Select the PIE compiler
+        shell: bash
+        if: matrix.compiler == 'pie'
+        run: echo "ROC=$GITHUB_WORKSPACE/target/roc-pie/zig-out/bin/roc${{ runner.os == 'Windows' && '.exe' || '' }}" >> "$GITHUB_ENV"
+      - uses: mlugg/setup-zig@8d6198c65fb0feaa111df26e6b467fea8345e46f
+        with:
+          version: 0.17.0
+      - name: Install the platform Rust toolchain
+        shell: bash
+        run: |
+          version=$(sed -n 's/^channel = "\(.*\)".*/\1/p' rust-toolchain.toml)
+          rustup toolchain install "$version" --profile minimal --component llvm-tools-preview
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            rustup component add rust-docs --toolchain "$version"
+          fi
+      - uses: ./.github/actions/linker-inputs-cache
+        if: endsWith(matrix.target, 'musl') || matrix.target == 'x64win'
+        with:
+          target: ${{ matrix.target }}
+      - name: Run native source, build, and execution checks
+        run: python scripts/test.py --target ${{ matrix.target }}
+      - name: Exercise development backend startup and callbacks
+        if: endsWith(matrix.target, 'musl')
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          mkdir -p dist/dev-compat
+          compiler="${ROC:-roc}"
+          "$compiler" build tests/tcp-server.roc --opt=dev --target="$TARGET" --output=dist/dev-compat/tcp-server
+          dist/dev-compat/tcp-server > target/dev-tcp-server.log
+          "$compiler" build tests/resource-lifetimes/resource-lifetime.roc --opt=dev --target="$TARGET" --output=dist/dev-compat/resources
+          dist/dev-compat/resources
+          python3 scripts/check_static_executables.py dist/dev-compat --format ${{ matrix.compiler }}
+      - name: Verify executable format
+        if: endsWith(matrix.target, 'musl')
+        run: python3 scripts/check_static_executables.py dist/example-binaries/${{ matrix.target }} --format ${{ matrix.compiler }}

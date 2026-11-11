@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import gzip
 import hashlib
 import io
@@ -52,20 +53,41 @@ def cache_dir() -> Path:
     return (Path(base) if base else Path.home() / ".cache") / "basic-cli/linker-inputs"
 
 
+@contextmanager
+def cache_lock(path: Path):
+    with path.open("a+b") as lock:
+        if os.name == "nt":
+            import msvcrt
+            if lock.tell() == 0:
+                lock.write(b"0")
+                lock.flush()
+            lock.seek(0)
+            msvcrt.locking(lock.fileno(), msvcrt.LK_LOCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            if os.name == "nt":
+                lock.seek(0)
+                msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, 1)
+
+
 def download(record: dict, cache: Path) -> Path:
     digest = record["sha256"]
     if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
         raise ValueError("Invalid linker-input SHA-256")
     cache.mkdir(parents=True, exist_ok=True)
     destination = cache / digest
-    if destination.is_file() and sha256(destination) == digest:
-        return destination
-    with tempfile.NamedTemporaryFile(dir=cache, delete=False) as temporary:
-        pending = Path(temporary.name)
+    with cache_lock(cache / (digest + ".lock")):
+        if destination.is_file() and sha256(destination) == digest:
+            return destination
+        with tempfile.NamedTemporaryFile(dir=cache, delete=False) as temporary:
+            pending = Path(temporary.name)
         try:
-            with urllib.request.urlopen(record["url"], timeout=120) as source:
-                shutil.copyfileobj(source, temporary)
-            temporary.flush()
+            with urllib.request.urlopen(record["url"], timeout=120) as source, pending.open("wb") as output:
+                shutil.copyfileobj(source, output)
             if sha256(pending) != digest:
                 raise ValueError(f"Checksum mismatch downloading {record['url']}")
             if "size" in record and pending.stat().st_size != record["size"]:
@@ -135,6 +157,31 @@ def restore(target: str, destination: Path, *, cache: Path | None = None, lock: 
                     os.replace(pending, output)
                 finally:
                     pending.unlink(missing_ok=True)
+
+
+def installed_documents(directory: Path, target: str) -> list[Path]:
+    manifest_path = directory / "LINKER_INPUTS.json"
+    manifest = json.loads(manifest_path.read_bytes())
+    if manifest.get("target") != target or manifest.get("format_version") != 1:
+        raise ValueError("Installed runtime manifest mismatch")
+    binaries = {p.name for p in directory.rglob("*") if p.is_file()
+                and p.suffix.lower() in windows_runtime.BINARY_EXTENSIONS}
+    host = "host.lib" if target == "x64win" else "libhost.a"
+    if binaries != INVENTORY[target] | {host}:
+        raise ValueError("Installed runtime binary inventory mismatch")
+    documents = [manifest_path]
+    for name, record in manifest["files"].items():
+        relative = PurePosixPath(name)
+        if relative.is_absolute() or ".." in relative.parts or "\\" in name or ":" in name:
+            raise ValueError("Invalid installed runtime path")
+        path = directory / name
+        if target == "x64win" and name == "PROVENANCE.json":
+            path = directory / "RUNTIME_PROVENANCE.json"
+        if sha256(path) != record["sha256"] or path.stat().st_size != record["size"]:
+            raise ValueError(f"Installed runtime file mismatch: {name}")
+        if path.suffix.lower() not in windows_runtime.BINARY_EXTENSIONS:
+            documents.append(path)
+    return documents
 
 
 def run(args: list[str], **kwargs) -> None:

@@ -146,6 +146,9 @@ def cargo_packages(rust_targets: dict[str, str]) -> list[dict]:
 def native_components(root: Path = ROOT) -> list[dict]:
     """Recorded prebuilt inputs, after checking that they match the files we ship."""
     components = json.loads((root / "licenses" / "native-inputs.json").read_text(encoding="utf-8"))["components"]
+    if root.resolve() == ROOT.resolve():
+        for target in ("x64musl", "arm64musl"):
+            build.linker_inputs.restore(target, root / "platform/targets" / target)
     recorded: set[str] = set()
     for component in components:
         if not (root / "licenses" / component["license_file"]).is_file():
@@ -159,7 +162,8 @@ def native_components(root: Path = ROOT) -> list[dict]:
     for target in build.TARGETS:
         directory = root / "platform" / "targets" / target
         shipped = {p.relative_to(root).as_posix() for p in directory.rglob("*")
-                   if p.is_file() and p.name not in GENERATED_INPUTS} if directory.is_dir() else set()
+                   if p.is_file() and p.name not in GENERATED_INPUTS
+                   and p.suffix.lower() in windows_runtime.BINARY_EXTENSIONS} if directory.is_dir() else set()
         if shipped - recorded:
             raise NoticeError(f"Prebuilt inputs without a provenance record: {sorted(shipped - recorded)}")
     return components
