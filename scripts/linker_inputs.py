@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import gzip
 import hashlib
 import io
@@ -52,20 +53,41 @@ def cache_dir() -> Path:
     return (Path(base) if base else Path.home() / ".cache") / "basic-cli/linker-inputs"
 
 
+@contextmanager
+def cache_lock(path: Path):
+    with path.open("a+b") as lock:
+        if os.name == "nt":
+            import msvcrt
+            if lock.tell() == 0:
+                lock.write(b"0")
+                lock.flush()
+            lock.seek(0)
+            msvcrt.locking(lock.fileno(), msvcrt.LK_LOCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            if os.name == "nt":
+                lock.seek(0)
+                msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, 1)
+
+
 def download(record: dict, cache: Path) -> Path:
     digest = record["sha256"]
     if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
         raise ValueError("Invalid linker-input SHA-256")
     cache.mkdir(parents=True, exist_ok=True)
     destination = cache / digest
-    if destination.is_file() and sha256(destination) == digest:
-        return destination
-    with tempfile.NamedTemporaryFile(dir=cache, delete=False) as temporary:
-        pending = Path(temporary.name)
+    with cache_lock(cache / (digest + ".lock")):
+        if destination.is_file() and sha256(destination) == digest:
+            return destination
+        with tempfile.NamedTemporaryFile(dir=cache, delete=False) as temporary:
+            pending = Path(temporary.name)
         try:
-            with urllib.request.urlopen(record["url"], timeout=120) as source:
-                shutil.copyfileobj(source, temporary)
-            temporary.flush()
+            with urllib.request.urlopen(record["url"], timeout=120) as source, pending.open("wb") as output:
+                shutil.copyfileobj(source, output)
             if sha256(pending) != digest:
                 raise ValueError(f"Checksum mismatch downloading {record['url']}")
             if "size" in record and pending.stat().st_size != record["size"]:

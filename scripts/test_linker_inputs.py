@@ -34,7 +34,7 @@ class LinkerInputTests(unittest.TestCase):
             with patch.object(inputs.urllib.request, "urlopen", return_value=io.BytesIO(b"wrong")):
                 with self.assertRaisesRegex(ValueError, "Checksum"):
                     inputs.download(record, cache)
-            self.assertEqual(list(cache.iterdir()), [])
+            self.assertEqual([p for p in cache.iterdir() if p.suffix != ".lock"], [])
 
     def test_concurrent_fetches_publish_only_verified_bytes(self):
         with tempfile.TemporaryDirectory() as temporary:
