@@ -91,6 +91,7 @@ platform ""
 		"hosted_random_seed_u32": Host.random_seed_u32!,
 		"hosted_random_seed_u64": Host.random_seed_u64!,
 		"hosted_signal_catch": Host.signal_catch!,
+		"hosted_signal_interrupted_exit_code": Host.signal_interrupted_exit_code!,
 		"hosted_signal_poll": Host.signal_poll!,
 		"hosted_sleep_nanos": Host.sleep_nanos!,
 		"hosted_sqlite_close": Host.sqlite_close!,
@@ -179,7 +180,7 @@ main_for_host! = |args|
 		Err(Exit(code)) => code
 		Err(Interrupted) => {
 			Tty.disable_raw_mode!() ?? {}
-			if (Signal.poll!().contains(Terminate)) 143 else 130
+			Host.signal_interrupted_exit_code!()
 		}
 		Err(other) => {
 			# Leave raw mode first, so the message is not printed without line breaks.

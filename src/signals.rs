@@ -7,6 +7,9 @@ use std::time::{Duration, Instant};
 
 pub(crate) const INTERRUPT: u8 = 1;
 pub(crate) const TERMINATE: u8 = 2;
+pub(crate) const USER1: u8 = 4;
+pub(crate) const USER2: u8 = 8;
+pub(crate) const WINDOW_RESIZE: u8 = 16;
 static PENDING: AtomicU8 = AtomicU8::new(0);
 static CAUGHT: AtomicU8 = AtomicU8::new(0);
 static BROKER: OnceLock<Broker> = OnceLock::new();
@@ -45,6 +48,10 @@ pub(crate) fn is_pending() -> bool {
 
 pub(crate) fn poll() -> u8 {
     PENDING.swap(0, Ordering::AcqRel)
+}
+
+pub(crate) fn interrupted_exit_code() -> i32 {
+    sys::interrupted_exit_code(poll())
 }
 
 pub(crate) fn catch(requested: u8) -> io::Result<()> {
@@ -132,6 +139,23 @@ mod sys {
     static WRITE_FD: AtomicI32 = AtomicI32::new(-1);
     static PIPE: OnceLock<OwnedFd> = OnceLock::new();
 
+    // Order also gives precedence when more than one event is pending at exit.
+    const SIGNALS: [(u8, libc::c_int); 5] = [
+        (TERMINATE, libc::SIGTERM),
+        (INTERRUPT, libc::SIGINT),
+        (USER1, libc::SIGUSR1),
+        (USER2, libc::SIGUSR2),
+        (WINDOW_RESIZE, libc::SIGWINCH),
+    ];
+
+    pub(super) fn interrupted_exit_code(pending: u8) -> i32 {
+        let signal = SIGNALS
+            .iter()
+            .find(|&&(bit, _)| pending & bit != 0)
+            .map_or(libc::SIGINT, |&(_, signal)| signal);
+        128 + signal
+    }
+
     pub(super) fn initialize() -> io::Result<()> {
         if PIPE.get().is_some() {
             return Ok(());
@@ -182,16 +206,12 @@ mod sys {
     }
 
     extern "C" fn handler(signal: libc::c_int) {
+        let Some(&(bit, _)) = SIGNALS.iter().find(|&&(_, number)| number == signal) else {
+            return;
+        };
         unsafe {
             let saved = *errno();
-            PENDING.fetch_or(
-                if signal == libc::SIGINT {
-                    INTERRUPT
-                } else {
-                    TERMINATE
-                },
-                Ordering::Release,
-            );
+            PENDING.fetch_or(bit, Ordering::Release);
             let fd = WRITE_FD.load(Ordering::Acquire);
             if fd >= 0 {
                 let byte = 1u8;
@@ -203,7 +223,7 @@ mod sys {
 
     pub(super) fn install(additional: u8) -> io::Result<()> {
         let mut installed = Vec::new();
-        for (bit, signal) in [(INTERRUPT, libc::SIGINT), (TERMINATE, libc::SIGTERM)] {
+        for (bit, signal) in SIGNALS {
             if additional & bit == 0 {
                 continue;
             }
@@ -235,6 +255,10 @@ mod sys {
     };
 
     static EVENT: AtomicPtr<core::ffi::c_void> = AtomicPtr::new(std::ptr::null_mut());
+
+    pub(super) fn interrupted_exit_code(_pending: u8) -> i32 {
+        130
+    }
 
     pub(super) fn initialize() -> io::Result<()> {
         if !EVENT.load(Ordering::Acquire).is_null() {
@@ -282,7 +306,7 @@ mod sys {
     }
 
     pub(super) fn install(additional: u8) -> io::Result<()> {
-        if additional & TERMINATE != 0 {
+        if additional & !INTERRUPT != 0 {
             return Err(io::ErrorKind::Unsupported.into());
         }
         if unsafe { SetConsoleCtrlHandler(Some(handler), TRUE) } == 0 {
@@ -313,23 +337,45 @@ mod tests {
             assert!(status.success());
             return;
         }
-        catch(INTERRUPT | TERMINATE).unwrap();
-        let sender = std::thread::spawn(|| {
-            std::thread::sleep(Duration::from_millis(30));
-            unsafe {
-                libc::raise(libc::SIGINT);
-            }
-        });
-        let started = Instant::now();
-        assert!(!wait_for(Duration::from_secs(20)));
-        sender.join().unwrap();
-        assert!(started.elapsed() < Duration::from_secs(2));
+        crate::native_stdio::prepare().unwrap();
+        for (bit, signal) in [
+            (INTERRUPT, libc::SIGINT),
+            (TERMINATE, libc::SIGTERM),
+            (USER1, libc::SIGUSR1),
+            (USER2, libc::SIGUSR2),
+            (WINDOW_RESIZE, libc::SIGWINCH),
+        ] {
+            catch(bit).unwrap();
+            catch(bit).unwrap();
+            let sender = std::thread::spawn(move || {
+                std::thread::sleep(Duration::from_millis(30));
+                unsafe { libc::raise(signal) };
+            });
+            let started = Instant::now();
+            assert!(!wait_for(Duration::from_secs(20)));
+            sender.join().unwrap();
+            assert!(started.elapsed() < Duration::from_secs(2));
+            unsafe { libc::raise(signal) };
+            assert!(!wait_for(Duration::ZERO));
+            assert_eq!(poll(), bit);
+            assert_eq!(poll(), 0);
+            assert!(wait_for(Duration::ZERO));
+            unsafe { libc::raise(signal) };
+            assert_eq!(interrupted_exit_code(), 128 + signal);
+            assert_eq!(poll(), 0);
+        }
         unsafe {
             libc::raise(libc::SIGINT);
             libc::raise(libc::SIGTERM);
+            libc::raise(libc::SIGUSR1);
+            libc::raise(libc::SIGUSR2);
+            libc::raise(libc::SIGWINCH);
         }
         assert!(!wait_for(Duration::ZERO));
-        assert_eq!(poll(), INTERRUPT | TERMINATE);
+        assert_eq!(
+            poll(),
+            INTERRUPT | TERMINATE | USER1 | USER2 | WINDOW_RESIZE
+        );
         assert_eq!(poll(), 0);
         assert!(wait_for(Duration::ZERO));
         catch(0).unwrap();
@@ -337,5 +383,6 @@ mod tests {
             libc::raise(libc::SIGTERM);
         }
         assert_eq!(poll(), TERMINATE);
+        assert_eq!(interrupted_exit_code(), 130);
     }
 }

@@ -473,6 +473,10 @@ mod tests {
         let Ok(mode) = std::env::var("BASIC_CLI_NATIVE_IO_TEST") else {
             return;
         };
+        // Catching SIGUSR2 before native I/O initializes must leave cancellation
+        // functional and must not turn private worker wakes into application events.
+        #[cfg(unix)]
+        crate::signals::catch(crate::signals::USER2).unwrap();
         if mode == "input" {
             let request = Request::new(Operation::Read(super::Read::Line));
             backend().unwrap().input.send(request.clone()).unwrap();
@@ -490,6 +494,7 @@ mod tests {
             eprintln!("native cancellation acknowledged");
             let line = read_line().unwrap().unwrap();
             assert_eq!(line, b"partial");
+            assert_eq!(crate::signals::poll(), 0);
             return;
         }
         let stream = if mode == "stderr" {
@@ -519,6 +524,7 @@ mod tests {
         let mut ready = [0];
         std::io::stdin().read_exact(&mut ready).unwrap();
         write(stream, b"recovered\n").unwrap();
+        assert_eq!(crate::signals::poll(), 0);
     }
 
     fn child(mode: &str) -> std::process::Child {

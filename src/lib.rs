@@ -2453,6 +2453,9 @@ pub extern "C" fn hosted_signal_catch(
         bits |= match request.tag {
             HostSignalCatchArg0Tag::Interrupt => signals::INTERRUPT,
             HostSignalCatchArg0Tag::Terminate => signals::TERMINATE,
+            HostSignalCatchArg0Tag::User1 => signals::USER1,
+            HostSignalCatchArg0Tag::User2 => signals::USER2,
+            HostSignalCatchArg0Tag::WindowResize => signals::WINDOW_RESIZE,
         };
     }
     unsafe { requests.decref(roc_host()) };
@@ -2480,13 +2483,23 @@ pub extern "C" fn hosted_signal_catch(
 pub extern "C" fn hosted_signal_poll() -> RocListWith<HostSignalPoll, false> {
     let bits = signals::poll();
     let mut events = Vec::new();
-    if bits & signals::INTERRUPT != 0 {
-        events.push(HostSignalPoll::Interrupt);
-    }
-    if bits & signals::TERMINATE != 0 {
-        events.push(HostSignalPoll::Terminate);
+    for (bit, event) in [
+        (signals::INTERRUPT, HostSignalPoll::Interrupt),
+        (signals::TERMINATE, HostSignalPoll::Terminate),
+        (signals::USER1, HostSignalPoll::User1),
+        (signals::USER2, HostSignalPoll::User2),
+        (signals::WINDOW_RESIZE, HostSignalPoll::WindowResize),
+    ] {
+        if bits & bit != 0 {
+            events.push(event);
+        }
     }
     unsafe { RocListWith::from_slice(&events, roc_host()) }
+}
+
+#[no_mangle]
+pub extern "C" fn hosted_signal_interrupted_exit_code() -> i32 {
+    signals::interrupted_exit_code()
 }
 
 #[no_mangle]

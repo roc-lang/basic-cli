@@ -12335,50 +12335,56 @@ const _: () = assert!(core::mem::align_of::<HostSignalCatchResult>() == 4, "Host
 #[cfg(target_pointer_width = "32")]
 const _: () = assert!(core::mem::offset_of!(HostSignalCatchResult, tag) == 16, "HostSignalCatchResult tag offset mismatch");
 
-/// Tag discriminant for InterruptOrTerminate.
+/// Tag discriminant for InterruptOrTerminateOrUser1OrUser2OrWindowResize.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum InterruptOrTerminateType380Tag {
+pub enum InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag {
     Interrupt = 0,
     Terminate = 1,
+    User1 = 2,
+    User2 = 3,
+    WindowResize = 4,
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub union InterruptOrTerminateType380Payload {
+pub union InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Payload {
     pub interrupt: [u8; 0],
     pub terminate: core::mem::ManuallyDrop<SystemUnix>,
+    pub user1: core::mem::ManuallyDrop<SystemUnix>,
+    pub user2: core::mem::ManuallyDrop<SystemUnix>,
+    pub window_resize: core::mem::ManuallyDrop<SystemUnix>,
 }
 
 #[cfg(target_pointer_width = "32")]
 #[repr(align(1))]
 #[derive(Clone, Copy)]
-pub struct InterruptOrTerminateType380PayloadAlignment;
+pub struct InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380PayloadAlignment;
 
-/// Tag union: InterruptOrTerminate
+/// Tag union: InterruptOrTerminateOrUser1OrUser2OrWindowResize
 #[cfg(target_pointer_width = "32")]
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct InterruptOrTerminateType380 {
-    pub _payload_alignment: [InterruptOrTerminateType380PayloadAlignment; 0],
+pub struct InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380 {
+    pub _payload_alignment: [InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380PayloadAlignment; 0],
     pub payload: [u8; 1],
-    pub tag: InterruptOrTerminateType380Tag,
+    pub tag: InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag,
 }
 
-/// Tag union: InterruptOrTerminate
+/// Tag union: InterruptOrTerminateOrUser1OrUser2OrWindowResize
 #[cfg(not(target_pointer_width = "32"))]
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct InterruptOrTerminateType380 {
-    pub payload: InterruptOrTerminateType380Payload,
-    pub tag: InterruptOrTerminateType380Tag,
+pub struct InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380 {
+    pub payload: InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Payload,
+    pub tag: InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag,
 }
 
-impl InterruptOrTerminateType380 {
+impl InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380 {
     /// Borrow the `Terminate` payload without creating another owner.
     ///
     /// # Safety
-    /// `self.tag` must be `InterruptOrTerminateType380Tag::Terminate` and the payload must still be initialized.
+    /// `self.tag` must be `InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::Terminate` and the payload must still be initialized.
     #[cfg(target_pointer_width = "32")]
     pub unsafe fn borrow_payload_terminate_unchecked(&self) -> &SystemUnix {
         unsafe { &*(self.payload.as_ptr() as *const SystemUnix) }
@@ -12387,7 +12393,7 @@ impl InterruptOrTerminateType380 {
     /// Borrow the `Terminate` payload without creating another owner.
     ///
     /// # Safety
-    /// `self.tag` must be `InterruptOrTerminateType380Tag::Terminate` and the payload must still be initialized.
+    /// `self.tag` must be `InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::Terminate` and the payload must still be initialized.
     #[cfg(not(target_pointer_width = "32"))]
     pub unsafe fn borrow_payload_terminate_unchecked(&self) -> &SystemUnix {
         unsafe { &*(&self.payload.terminate as *const core::mem::ManuallyDrop<SystemUnix> as *const SystemUnix) }
@@ -12396,7 +12402,7 @@ impl InterruptOrTerminateType380 {
     /// Move the `Terminate` payload out of one owned tag-union shell.
     ///
     /// # Safety
-    /// `self.tag` must be `InterruptOrTerminateType380Tag::Terminate`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    /// `self.tag` must be `InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::Terminate`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(target_pointer_width = "32")]
     pub unsafe fn take_payload_terminate_unchecked(&mut self) -> SystemUnix {
         unsafe { core::ptr::read(self.payload.as_ptr() as *const SystemUnix) }
@@ -12405,55 +12411,166 @@ impl InterruptOrTerminateType380 {
     /// Move the `Terminate` payload out of one owned tag-union shell.
     ///
     /// # Safety
-    /// `self.tag` must be `InterruptOrTerminateType380Tag::Terminate`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    /// `self.tag` must be `InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::Terminate`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(not(target_pointer_width = "32"))]
     pub unsafe fn take_payload_terminate_unchecked(&mut self) -> SystemUnix {
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.terminate) }
     }
 
+    /// Borrow the `User1` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::User1` and the payload must still be initialized.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn borrow_payload_user1_unchecked(&self) -> &SystemUnix {
+        unsafe { &*(self.payload.as_ptr() as *const SystemUnix) }
+    }
+
+    /// Borrow the `User1` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::User1` and the payload must still be initialized.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn borrow_payload_user1_unchecked(&self) -> &SystemUnix {
+        unsafe { &*(&self.payload.user1 as *const core::mem::ManuallyDrop<SystemUnix> as *const SystemUnix) }
+    }
+
+    /// Move the `User1` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::User1`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn take_payload_user1_unchecked(&mut self) -> SystemUnix {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const SystemUnix) }
+    }
+
+    /// Move the `User1` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::User1`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn take_payload_user1_unchecked(&mut self) -> SystemUnix {
+        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.user1) }
+    }
+
+    /// Borrow the `User2` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::User2` and the payload must still be initialized.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn borrow_payload_user2_unchecked(&self) -> &SystemUnix {
+        unsafe { &*(self.payload.as_ptr() as *const SystemUnix) }
+    }
+
+    /// Borrow the `User2` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::User2` and the payload must still be initialized.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn borrow_payload_user2_unchecked(&self) -> &SystemUnix {
+        unsafe { &*(&self.payload.user2 as *const core::mem::ManuallyDrop<SystemUnix> as *const SystemUnix) }
+    }
+
+    /// Move the `User2` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::User2`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn take_payload_user2_unchecked(&mut self) -> SystemUnix {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const SystemUnix) }
+    }
+
+    /// Move the `User2` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::User2`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn take_payload_user2_unchecked(&mut self) -> SystemUnix {
+        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.user2) }
+    }
+
+    /// Borrow the `WindowResize` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::WindowResize` and the payload must still be initialized.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn borrow_payload_window_resize_unchecked(&self) -> &SystemUnix {
+        unsafe { &*(self.payload.as_ptr() as *const SystemUnix) }
+    }
+
+    /// Borrow the `WindowResize` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::WindowResize` and the payload must still be initialized.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn borrow_payload_window_resize_unchecked(&self) -> &SystemUnix {
+        unsafe { &*(&self.payload.window_resize as *const core::mem::ManuallyDrop<SystemUnix> as *const SystemUnix) }
+    }
+
+    /// Move the `WindowResize` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::WindowResize`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn take_payload_window_resize_unchecked(&mut self) -> SystemUnix {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const SystemUnix) }
+    }
+
+    /// Move the `WindowResize` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::WindowResize`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn take_payload_window_resize_unchecked(&mut self) -> SystemUnix {
+        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.window_resize) }
+    }
+
 }
 
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::size_of::<InterruptOrTerminateType380>() == 2, "InterruptOrTerminateType380 size mismatch");
+const _: () = assert!(core::mem::size_of::<InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380>() == 2, "InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380 size mismatch");
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::align_of::<InterruptOrTerminateType380>() == 1, "InterruptOrTerminateType380 alignment mismatch");
+const _: () = assert!(core::mem::align_of::<InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380>() == 1, "InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380 alignment mismatch");
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::offset_of!(InterruptOrTerminateType380, tag) == 1, "InterruptOrTerminateType380 tag offset mismatch");
+const _: () = assert!(core::mem::offset_of!(InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380, tag) == 1, "InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380 tag offset mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::size_of::<InterruptOrTerminateType380>() == 2, "InterruptOrTerminateType380 size mismatch");
+const _: () = assert!(core::mem::size_of::<InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380>() == 2, "InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380 size mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::align_of::<InterruptOrTerminateType380>() == 1, "InterruptOrTerminateType380 alignment mismatch");
+const _: () = assert!(core::mem::align_of::<InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380>() == 1, "InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380 alignment mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::offset_of!(InterruptOrTerminateType380, tag) == 1, "InterruptOrTerminateType380 tag offset mismatch");
+const _: () = assert!(core::mem::offset_of!(InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380, tag) == 1, "InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380 tag offset mismatch");
 
-/// Tag union: InterruptOrTerminate
+/// Tag union: InterruptOrTerminateOrUser1OrUser2OrWindowResize
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum InterruptOrTerminateType384 {
+pub enum InterruptOrTerminateOrUser1OrUser2OrWindowResizeType384 {
     Interrupt = 0,
     Terminate = 1,
+    User1 = 2,
+    User2 = 3,
+    WindowResize = 4,
 }
 
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::size_of::<InterruptOrTerminateType384>() == 1, "InterruptOrTerminateType384 size mismatch");
+const _: () = assert!(core::mem::size_of::<InterruptOrTerminateOrUser1OrUser2OrWindowResizeType384>() == 1, "InterruptOrTerminateOrUser1OrUser2OrWindowResizeType384 size mismatch");
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::align_of::<InterruptOrTerminateType384>() == 1, "InterruptOrTerminateType384 alignment mismatch");
+const _: () = assert!(core::mem::align_of::<InterruptOrTerminateOrUser1OrUser2OrWindowResizeType384>() == 1, "InterruptOrTerminateOrUser1OrUser2OrWindowResizeType384 alignment mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::size_of::<InterruptOrTerminateType384>() == 1, "InterruptOrTerminateType384 size mismatch");
+const _: () = assert!(core::mem::size_of::<InterruptOrTerminateOrUser1OrUser2OrWindowResizeType384>() == 1, "InterruptOrTerminateOrUser1OrUser2OrWindowResizeType384 size mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::align_of::<InterruptOrTerminateType384>() == 1, "InterruptOrTerminateType384 alignment mismatch");
+const _: () = assert!(core::mem::align_of::<InterruptOrTerminateOrUser1OrUser2OrWindowResizeType384>() == 1, "InterruptOrTerminateOrUser1OrUser2OrWindowResizeType384 alignment mismatch");
 
 /// Tag discriminant for FailedOrInterrupted.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FailedOrInterruptedType385Tag {
+pub enum FailedOrInterruptedType386Tag {
     Failed = 0,
     Interrupted = 1,
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub union FailedOrInterruptedType385Payload {
+pub union FailedOrInterruptedType386Payload {
     pub failed: core::mem::ManuallyDrop<IOErr>,
     pub interrupted: [u8; 0],
 }
@@ -12461,32 +12578,32 @@ pub union FailedOrInterruptedType385Payload {
 #[cfg(target_pointer_width = "32")]
 #[repr(align(4))]
 #[derive(Clone, Copy)]
-pub struct FailedOrInterruptedType385PayloadAlignment;
+pub struct FailedOrInterruptedType386PayloadAlignment;
 
 /// Tag union: FailedOrInterrupted
 #[cfg(target_pointer_width = "32")]
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct FailedOrInterruptedType385 {
-    pub _payload_alignment: [FailedOrInterruptedType385PayloadAlignment; 0],
+pub struct FailedOrInterruptedType386 {
+    pub _payload_alignment: [FailedOrInterruptedType386PayloadAlignment; 0],
     pub payload: [u8; 16],
-    pub tag: FailedOrInterruptedType385Tag,
+    pub tag: FailedOrInterruptedType386Tag,
 }
 
 /// Tag union: FailedOrInterrupted
 #[cfg(not(target_pointer_width = "32"))]
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct FailedOrInterruptedType385 {
-    pub payload: FailedOrInterruptedType385Payload,
-    pub tag: FailedOrInterruptedType385Tag,
+pub struct FailedOrInterruptedType386 {
+    pub payload: FailedOrInterruptedType386Payload,
+    pub tag: FailedOrInterruptedType386Tag,
 }
 
-impl FailedOrInterruptedType385 {
+impl FailedOrInterruptedType386 {
     /// Borrow the `Failed` payload without creating another owner.
     ///
     /// # Safety
-    /// `self.tag` must be `FailedOrInterruptedType385Tag::Failed` and the payload must still be initialized.
+    /// `self.tag` must be `FailedOrInterruptedType386Tag::Failed` and the payload must still be initialized.
     #[cfg(target_pointer_width = "32")]
     pub unsafe fn borrow_payload_failed_unchecked(&self) -> &IOErr {
         unsafe { &*(self.payload.as_ptr() as *const IOErr) }
@@ -12495,7 +12612,7 @@ impl FailedOrInterruptedType385 {
     /// Borrow the `Failed` payload without creating another owner.
     ///
     /// # Safety
-    /// `self.tag` must be `FailedOrInterruptedType385Tag::Failed` and the payload must still be initialized.
+    /// `self.tag` must be `FailedOrInterruptedType386Tag::Failed` and the payload must still be initialized.
     #[cfg(not(target_pointer_width = "32"))]
     pub unsafe fn borrow_payload_failed_unchecked(&self) -> &IOErr {
         unsafe { &*(&self.payload.failed as *const core::mem::ManuallyDrop<IOErr> as *const IOErr) }
@@ -12504,7 +12621,7 @@ impl FailedOrInterruptedType385 {
     /// Move the `Failed` payload out of one owned tag-union shell.
     ///
     /// # Safety
-    /// `self.tag` must be `FailedOrInterruptedType385Tag::Failed`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    /// `self.tag` must be `FailedOrInterruptedType386Tag::Failed`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(target_pointer_width = "32")]
     pub unsafe fn take_payload_failed_unchecked(&mut self) -> IOErr {
         unsafe { core::ptr::read(self.payload.as_ptr() as *const IOErr) }
@@ -12513,7 +12630,7 @@ impl FailedOrInterruptedType385 {
     /// Move the `Failed` payload out of one owned tag-union shell.
     ///
     /// # Safety
-    /// `self.tag` must be `FailedOrInterruptedType385Tag::Failed`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    /// `self.tag` must be `FailedOrInterruptedType386Tag::Failed`. After this call, `self` is logically uninitialized and must not be read or destroyed.
     #[cfg(not(target_pointer_width = "32"))]
     pub unsafe fn take_payload_failed_unchecked(&mut self) -> IOErr {
         unsafe { core::mem::ManuallyDrop::take(&mut self.payload.failed) }
@@ -12522,17 +12639,17 @@ impl FailedOrInterruptedType385 {
 }
 
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::size_of::<FailedOrInterruptedType385>() == 40, "FailedOrInterruptedType385 size mismatch");
+const _: () = assert!(core::mem::size_of::<FailedOrInterruptedType386>() == 40, "FailedOrInterruptedType386 size mismatch");
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::align_of::<FailedOrInterruptedType385>() == 8, "FailedOrInterruptedType385 alignment mismatch");
+const _: () = assert!(core::mem::align_of::<FailedOrInterruptedType386>() == 8, "FailedOrInterruptedType386 alignment mismatch");
 #[cfg(target_pointer_width = "64")]
-const _: () = assert!(core::mem::offset_of!(FailedOrInterruptedType385, tag) == 32, "FailedOrInterruptedType385 tag offset mismatch");
+const _: () = assert!(core::mem::offset_of!(FailedOrInterruptedType386, tag) == 32, "FailedOrInterruptedType386 tag offset mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::size_of::<FailedOrInterruptedType385>() == 20, "FailedOrInterruptedType385 size mismatch");
+const _: () = assert!(core::mem::size_of::<FailedOrInterruptedType386>() == 20, "FailedOrInterruptedType386 size mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::align_of::<FailedOrInterruptedType385>() == 4, "FailedOrInterruptedType385 alignment mismatch");
+const _: () = assert!(core::mem::align_of::<FailedOrInterruptedType386>() == 4, "FailedOrInterruptedType386 alignment mismatch");
 #[cfg(target_pointer_width = "32")]
-const _: () = assert!(core::mem::offset_of!(FailedOrInterruptedType385, tag) == 16, "FailedOrInterruptedType385 tag offset mismatch");
+const _: () = assert!(core::mem::offset_of!(FailedOrInterruptedType386, tag) == 16, "FailedOrInterruptedType386 tag offset mismatch");
 
 /// Tag union: OwnerOnlyOrPublicRead
 #[repr(u8)]
@@ -14991,12 +15108,12 @@ pub struct HostPathTypeArgs {
 }
 
 /// Arguments for Host.signal_catch!
-/// Roc signature: List([Interrupt, Terminate(System.Unix)]) => Try({}, [SignalErr(IOErr)])
+/// Roc signature: List([Interrupt, Terminate(System.Unix), User1(System.Unix), User2(System.Unix), WindowResize(System.Unix)]) => Try({}, [SignalErr(IOErr)])
 /// Refcounted fields are owned by the hosted function.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct HostSignalCatchArgs {
-    pub arg0: RocListWith<InterruptOrTerminateType380, false>,
+    pub arg0: RocListWith<InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380, false>,
 }
 
 /// Arguments for Host.sleep_nanos!
@@ -15428,9 +15545,9 @@ pub type HostChildWriteErrCmdErrTimedOut = AnonStruct3e7554e024207e25;
 pub type HostCmdExecArg2 = UnixBytesOrUtf8OrWindowsU16s;
 pub type HostCmdExecArg2Payload = UnixBytesOrUtf8OrWindowsU16sPayload;
 pub type HostCmdExecArg2Tag = UnixBytesOrUtf8OrWindowsU16sTag;
-pub type FailedOrInterrupted = FailedOrInterruptedType385;
-pub type FailedOrInterruptedPayload = FailedOrInterruptedType385Payload;
-pub type FailedOrInterruptedTag = FailedOrInterruptedType385Tag;
+pub type FailedOrInterrupted = FailedOrInterruptedType386;
+pub type FailedOrInterruptedPayload = FailedOrInterruptedType386Payload;
+pub type FailedOrInterruptedTag = FailedOrInterruptedType386Tag;
 pub type HostCmdRunArg0 = AnonStruct1027aaeb0344dea1;
 pub type HostCmdRunArg0Args = UnixBytesOrUtf8OrWindowsU16s;
 pub type HostCmdRunArg0ArgsPayload = UnixBytesOrUtf8OrWindowsU16sPayload;
@@ -15626,15 +15743,21 @@ pub type HostPathSymlinkResult = HostEnvSetCwdResult;
 pub type HostPathSymlinkResultPayload = HostEnvSetCwdResultPayload;
 pub type HostPathSymlinkResultTag = HostEnvSetCwdResultTag;
 pub type HostPathTypeOk = DirOrFileOrOtherOrSymLink;
-pub type HostSignalCatchArg0 = InterruptOrTerminateType380;
-pub type HostSignalCatchArg0Payload = InterruptOrTerminateType380Payload;
-pub type HostSignalCatchArg0Tag = InterruptOrTerminateType380Tag;
+pub type HostSignalCatchArg0 = InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380;
+pub type HostSignalCatchArg0Payload = InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Payload;
+pub type HostSignalCatchArg0Tag = InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag;
 pub type HostSignalCatchArg0Terminate = SystemUnix;
-pub type InterruptOrTerminate = InterruptOrTerminateType380;
-pub type InterruptOrTerminatePayload = InterruptOrTerminateType380Payload;
-pub type InterruptOrTerminateTag = InterruptOrTerminateType380Tag;
-pub type InterruptOrTerminateTerminate = SystemUnix;
-pub type HostSignalPoll = InterruptOrTerminateType384;
+pub type HostSignalCatchArg0User1 = SystemUnix;
+pub type HostSignalCatchArg0User2 = SystemUnix;
+pub type HostSignalCatchArg0WindowResize = SystemUnix;
+pub type InterruptOrTerminateOrUser1OrUser2OrWindowResize = InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380;
+pub type InterruptOrTerminateOrUser1OrUser2OrWindowResizePayload = InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Payload;
+pub type InterruptOrTerminateOrUser1OrUser2OrWindowResizeTag = InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag;
+pub type InterruptOrTerminateOrUser1OrUser2OrWindowResizeTerminate = SystemUnix;
+pub type InterruptOrTerminateOrUser1OrUser2OrWindowResizeUser1 = SystemUnix;
+pub type InterruptOrTerminateOrUser1OrUser2OrWindowResizeUser2 = SystemUnix;
+pub type InterruptOrTerminateOrUser1OrUser2OrWindowResizeWindowResize = SystemUnix;
+pub type HostSignalPoll = InterruptOrTerminateOrUser1OrUser2OrWindowResizeType384;
 pub type HostSqliteCloseErr = AnonStruct8dda646697632dbf;
 pub type HostSqliteExecuteArg2 = BytesOrIntegerOrNullOrRealOrString;
 pub type HostSqliteExecuteArg2Payload = BytesOrIntegerOrNullOrRealOrStringPayload;
@@ -20761,7 +20884,7 @@ unsafe impl RocRelease<HostSignalCatchResult> for HostSignalCatchResultRelease {
     }
 }
 
-impl InterruptOrTerminateType380 {
+impl InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380 {
     /// Recursively decrement Roc-owned payloads.
     ///
     /// # Safety
@@ -20770,9 +20893,21 @@ impl InterruptOrTerminateType380 {
         let mut value = self;
         let _ = roc_host;
         match value.tag {
-            InterruptOrTerminateType380Tag::Interrupt => {},
-            InterruptOrTerminateType380Tag::Terminate => {
+            InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::Interrupt => {},
+            InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::Terminate => {
                 let payload = unsafe { value.take_payload_terminate_unchecked() };
+                unsafe { payload.decref(roc_host); }
+            },
+            InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::User1 => {
+                let payload = unsafe { value.take_payload_user1_unchecked() };
+                unsafe { payload.decref(roc_host); }
+            },
+            InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::User2 => {
+                let payload = unsafe { value.take_payload_user2_unchecked() };
+                unsafe { payload.decref(roc_host); }
+            },
+            InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::WindowResize => {
+                let payload = unsafe { value.take_payload_window_resize_unchecked() };
                 unsafe { payload.decref(roc_host); }
             },
         }
@@ -20787,19 +20922,31 @@ impl InterruptOrTerminateType380 {
         let value = self;
         let _ = amount;
         match value.tag {
-            InterruptOrTerminateType380Tag::Interrupt => {},
-            InterruptOrTerminateType380Tag::Terminate => {
+            InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::Interrupt => {},
+            InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::Terminate => {
                 let payload = unsafe { core::ptr::read(value.borrow_payload_terminate_unchecked()) };
+                unsafe { payload.incref(amount); }
+            },
+            InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::User1 => {
+                let payload = unsafe { core::ptr::read(value.borrow_payload_user1_unchecked()) };
+                unsafe { payload.incref(amount); }
+            },
+            InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::User2 => {
+                let payload = unsafe { core::ptr::read(value.borrow_payload_user2_unchecked()) };
+                unsafe { payload.incref(amount); }
+            },
+            InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Tag::WindowResize => {
+                let payload = unsafe { core::ptr::read(value.borrow_payload_window_resize_unchecked()) };
                 unsafe { payload.incref(amount); }
             },
         }
     }
 }
 
-pub struct InterruptOrTerminateType380Release;
+pub struct InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Release;
 
-unsafe impl RocRelease<InterruptOrTerminateType380> for InterruptOrTerminateType380Release {
-    unsafe fn release(value: InterruptOrTerminateType380, roc_host: &RocHost) {
+unsafe impl RocRelease<InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380> for InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380Release {
+    unsafe fn release(value: InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380, roc_host: &RocHost) {
         unsafe { value.decref(roc_host); }
     }
 }
@@ -20835,7 +20982,7 @@ unsafe impl RocRelease<SystemUnix> for SystemUnixRelease {
     }
 }
 
-impl InterruptOrTerminateType384 {
+impl InterruptOrTerminateOrUser1OrUser2OrWindowResizeType384 {
     /// Recursively decrement Roc-owned payloads.
     ///
     /// # Safety
@@ -20856,15 +21003,15 @@ impl InterruptOrTerminateType384 {
     }
 }
 
-pub struct InterruptOrTerminateType384Release;
+pub struct InterruptOrTerminateOrUser1OrUser2OrWindowResizeType384Release;
 
-unsafe impl RocRelease<InterruptOrTerminateType384> for InterruptOrTerminateType384Release {
-    unsafe fn release(value: InterruptOrTerminateType384, roc_host: &RocHost) {
+unsafe impl RocRelease<InterruptOrTerminateOrUser1OrUser2OrWindowResizeType384> for InterruptOrTerminateOrUser1OrUser2OrWindowResizeType384Release {
+    unsafe fn release(value: InterruptOrTerminateOrUser1OrUser2OrWindowResizeType384, roc_host: &RocHost) {
         unsafe { value.decref(roc_host); }
     }
 }
 
-impl FailedOrInterruptedType385 {
+impl FailedOrInterruptedType386 {
     /// Recursively decrement Roc-owned payloads.
     ///
     /// # Safety
@@ -20873,11 +21020,11 @@ impl FailedOrInterruptedType385 {
         let mut value = self;
         let _ = roc_host;
         match value.tag {
-            FailedOrInterruptedType385Tag::Failed => {
+            FailedOrInterruptedType386Tag::Failed => {
                 let payload = unsafe { value.take_payload_failed_unchecked() };
                 unsafe { payload.decref(roc_host); }
             },
-            FailedOrInterruptedType385Tag::Interrupted => {},
+            FailedOrInterruptedType386Tag::Interrupted => {},
         }
     }
 
@@ -20890,19 +21037,19 @@ impl FailedOrInterruptedType385 {
         let value = self;
         let _ = amount;
         match value.tag {
-            FailedOrInterruptedType385Tag::Failed => {
+            FailedOrInterruptedType386Tag::Failed => {
                 let payload = unsafe { core::ptr::read(value.borrow_payload_failed_unchecked()) };
                 unsafe { payload.incref(amount); }
             },
-            FailedOrInterruptedType385Tag::Interrupted => {},
+            FailedOrInterruptedType386Tag::Interrupted => {},
         }
     }
 }
 
-pub struct FailedOrInterruptedType385Release;
+pub struct FailedOrInterruptedType386Release;
 
-unsafe impl RocRelease<FailedOrInterruptedType385> for FailedOrInterruptedType385Release {
-    unsafe fn release(value: FailedOrInterruptedType385, roc_host: &RocHost) {
+unsafe impl RocRelease<FailedOrInterruptedType386> for FailedOrInterruptedType386Release {
+    unsafe fn release(value: FailedOrInterruptedType386, roc_host: &RocHost) {
         unsafe { value.decref(roc_host); }
     }
 }
@@ -21956,7 +22103,7 @@ unsafe extern "C" {
     ///     unsafe { arg1.decref(roc_host); }
     ///     unsafe { decref_list_of_unix_bytes_or_utf8or_windows_u16s(arg2, roc_host); }
     /// The result is owned by Roc: return exactly one owned reference.
-    pub fn hosted_cmd_exec(arg0: SystemUnix, arg1: UnixBytesOrUtf8OrWindowsU16s, arg2: RocList<UnixBytesOrUtf8OrWindowsU16s>) -> FailedOrInterruptedType385;
+    pub fn hosted_cmd_exec(arg0: SystemUnix, arg1: UnixBytesOrUtf8OrWindowsU16s, arg2: RocList<UnixBytesOrUtf8OrWindowsU16s>) -> FailedOrInterruptedType386;
 
     /// Hosted symbol for Host.cmd_run!
     /// Roc signature: { args : List([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))]), clear_envs : Bool, cwd : [Dir([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))]), Inherit], envs : List([UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))]), manage_tree : Bool, output_limit : [MaxBytes(U64), NoLimit], pending_limit : U64, program : [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))], stderr : [Capture, File({ create_permissions : [Default, OwnerOnly, PublicRead], mode : [Append, RequireNew, Truncate], path : [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))] }), Inherit, MergeWithStdout, Null, Pipe, Tee], stdin : [Bytes(List(U8)), Inherit, Null, Pipe], stdout : [Capture, File({ create_permissions : [Default, OwnerOnly, PublicRead], mode : [Append, RequireNew, Truncate], path : [UnixBytes(List(U8)), Utf8(Str), WindowsU16s(List(U16))] }), Inherit, InheritStderr, Null, Pipe, Tee], timeout : [AfterNanos(U64), NoTimeout] } => Try({ status : [Exited(I32), Signaled(I32)], stderr_bytes : List(U8), stdout_bytes : List(U8) }, [CmdErr([IOErr(IOErr), OutputLimitExceeded({ stderr_bytes : List(U8), stdout_bytes : List(U8) }), StartFailed(IOErr), TimedOut({ stderr_bytes : List(U8), stdout_bytes : List(U8) })]), Interrupted])
@@ -22420,17 +22567,21 @@ unsafe extern "C" {
     pub fn hosted_random_seed_u64() -> HostRandomSeedU64Result;
 
     /// Hosted symbol for Host.signal_catch!
-    /// Roc signature: List([Interrupt, Terminate(System.Unix)]) => Try({}, [SignalErr(IOErr)])
+    /// Roc signature: List([Interrupt, Terminate(System.Unix), User1(System.Unix), User2(System.Unix), WindowResize(System.Unix)]) => Try({}, [SignalErr(IOErr)])
     /// Owned arguments. Release each exactly once before returning, unless it is
     /// moved into storage or into the result:
     ///     unsafe { arg0.decref(roc_host); }
     /// The result is owned by Roc: return exactly one owned reference.
-    pub fn hosted_signal_catch(arg0: RocListWith<InterruptOrTerminateType380, false>) -> HostSignalCatchResult;
+    pub fn hosted_signal_catch(arg0: RocListWith<InterruptOrTerminateOrUser1OrUser2OrWindowResizeType380, false>) -> HostSignalCatchResult;
+
+    /// Hosted symbol for Host.signal_interrupted_exit_code!
+    /// Roc signature: {} => I32
+    pub fn hosted_signal_interrupted_exit_code() -> i32;
 
     /// Hosted symbol for Host.signal_poll!
-    /// Roc signature: {} => List([Interrupt, Terminate])
+    /// Roc signature: {} => List([Interrupt, Terminate, User1, User2, WindowResize])
     /// The result is owned by Roc: return exactly one owned reference.
-    pub fn hosted_signal_poll() -> RocListWith<InterruptOrTerminateType384, false>;
+    pub fn hosted_signal_poll() -> RocListWith<InterruptOrTerminateOrUser1OrUser2OrWindowResizeType384, false>;
 
     /// Hosted symbol for Host.sleep_nanos!
     /// Roc signature: U64 => Try({}, [Interrupted])

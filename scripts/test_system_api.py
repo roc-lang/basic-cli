@@ -40,7 +40,8 @@ POSITIVE = """
         }
 
     catch_unix! : System.Unix => Try({}, [SignalErr(IOErr)])
-    catch_unix! = |unix| Signal.catch!([Interrupt, Terminate(unix)])
+    catch_unix! = |unix|
+        Signal.catch!([Interrupt, Terminate(unix), User1(unix), User2(unix), WindowResize(unix)])
 
     replace! : System.Unix => Try({}, [CmdErr(Cmd.Err), Interrupted])
     replace! = |unix| Cmd.exec!(unix, "/bin/true", [])
@@ -72,6 +73,23 @@ def rejected_cases() -> list[Rejected]:
             """,
             ("cannot use opaque nominal type", f"System.{witness}"),
         ))
+    for event in ("User1", "User2", "WindowResize"):
+        cases.extend([
+            Rejected(f"{event.lower()}-requires-witness", f"""
+                import pf.Signal
+                main! = |_| Signal.catch!([{event}])
+            """, ("type mismatch", "Signal.Request")),
+            Rejected(f"{event.lower()}-rejects-windows-witness", f"""
+                import pf.System
+                import pf.Signal
+                main! = |_| {{
+                    match System.target!().os() {{
+                        Windows(windows) => Signal.catch!([{event}(windows)])
+                        _ => Ok({{}})
+                    }}
+                }}
+            """, ("type mismatch", "System.Windows", "Signal.Request")),
+        ])
     cases.extend([
         Rejected("cannot-construct-target", """
             import pf.System

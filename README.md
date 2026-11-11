@@ -71,10 +71,11 @@ These host behaviors may affect application design:
   use microseconds, while `Utc` stores nanoseconds. `Utc.to_iso_8601` is a
   whole-second display; signed epoch nanoseconds preserve the stored instant.
 - `Signal.catch!` catches Ctrl-C and, with a `System.Unix` witness, SIGTERM
-  (including default `systemctl stop`). Blocking effects return bare
-  `Interrupted`. Call `Signal.poll!()` before effectful application cleanup;
-  catching a signal does not clean up external resources itself. Forced
-  termination and systemd's eventual stop-timeout escalation remain uncatchable.
+  (including default `systemctl stop`), SIGUSR1, SIGUSR2, and SIGWINCH.
+  Blocking effects return bare `Interrupted`. Call `Signal.poll!()` before
+  retrying effects or running application cleanup. Catching a signal does not
+  clean up external resources itself. Forced termination and systemd's eventual
+  stop-timeout escalation remain uncatchable.
 - `System.target!()` supplies opaque OS witnesses. `Cmd.exec!(unix, path, args)`
   replaces a Unix process at an exact path and bypasses Roc cleanup on success;
   `Cmd.call!(program, args)` runs a child and waits for success.

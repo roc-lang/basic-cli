@@ -13,8 +13,8 @@ import pf.Tty
 main! : List(OsStr) => Try({}, _)
 main! = |args| {
 	match System.target!().os() {
-		Linux(os) => Signal.catch!([Interrupt, Terminate(os.unix())])?
-		MacOS(os) => Signal.catch!([Interrupt, Terminate(os.unix())])?
+		Linux(os) => catch_unix!(os.unix())?
+		MacOS(os) => catch_unix!(os.unix())?
 		Windows(_) => Signal.catch!([Interrupt])?
 	}
 	Signal.catch!([])?
@@ -53,3 +53,7 @@ main! = |args| {
 		Ok({}) => Err(ExpectedInterruption)
 	}
 }
+
+catch_unix! : System.Unix => Try({}, _)
+catch_unix! = |unix|
+	Signal.catch!([Interrupt, Terminate(unix), User1(unix), User2(unix), WindowResize(unix)])
