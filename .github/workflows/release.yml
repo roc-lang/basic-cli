@@ -88,6 +88,7 @@ jobs:
           RELEASE_VERSION: ${{ needs.release-info.outputs.release_version }}
         run: python scripts/check_release_version.py "$RELEASE_VERSION" --update
 
+      - uses: ./.github/actions/linker-inputs-cache
       - name: Build Windows host
         shell: pwsh
         run: python scripts/build.py
@@ -151,6 +152,7 @@ jobs:
           RELEASE_VERSION: ${{ needs.release-info.outputs.release_version }}
         run: python3 scripts/check_release_version.py "$RELEASE_VERSION" --update
 
+      - uses: ./.github/actions/linker-inputs-cache
       - name: Build platform for all targets
         run: ./scripts/build.py --all
 

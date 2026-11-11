@@ -40,6 +40,9 @@ jobs:
           path: dist/linker-inputs/*
           if-no-files-found: error
   publish:
+    concurrency:
+      group: linker-inputs-publication
+      cancel-in-progress: false
     needs: build
     if: github.event_name == 'workflow_dispatch' && github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-24.04
@@ -57,10 +60,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag=$(python3 scripts/linker_inputs.py manifest --directory dist/linker-inputs --repository "$GITHUB_REPOSITORY")
-          if gh release view "$tag" >/dev/null 2>&1; then
-            mkdir -p target/published-inputs
-            gh release download "$tag" --dir target/published-inputs
-            diff -r dist/linker-inputs target/published-inputs
-          else
-            gh release create "$tag" dist/linker-inputs/* --target "$GITHUB_SHA" --prerelease --latest=false --title "Linker inputs ${tag#linker-inputs-}" --notes "Independently built native runtime inputs. Consumers pin the attached manifest and archive SHA-256 hashes."
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --target "$GITHUB_SHA" --draft --prerelease --latest=false --title "Linker inputs ${tag#linker-inputs-}" --notes "Independently built native runtime inputs. Consumers pin the attached manifest and archive SHA-256 hashes."
           fi
+          mkdir -p target/published-inputs
+          gh release download "$tag" --dir target/published-inputs || true
+          for file in dist/linker-inputs/*; do
+            name=$(basename "$file")
+            if [[ -f "target/published-inputs/$name" ]]; then
+              cmp "$file" "target/published-inputs/$name"
+            else
+              gh release upload "$tag" "$file"
+            fi
+          done
+          gh release download "$tag" --dir target/published-inputs --clobber
+          diff -r dist/linker-inputs target/published-inputs
+          gh release edit "$tag" --draft=false --prerelease --latest=false

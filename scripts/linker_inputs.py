@@ -10,6 +10,7 @@ import io
 import json
 import os
 import platform
+import shlex
 from pathlib import Path, PurePosixPath
 import shutil
 import subprocess
@@ -82,6 +83,8 @@ def download(record: dict, cache: Path) -> Path:
     destination = cache / digest
     with cache_lock(cache / (digest + ".lock")):
         if destination.is_file() and sha256(destination) == digest:
+            if "size" in record and destination.stat().st_size != record["size"]:
+                raise ValueError("Linker-input size mismatch")
             return destination
         with tempfile.NamedTemporaryFile(dir=cache, delete=False) as temporary:
             pending = Path(temporary.name)
@@ -159,6 +162,31 @@ def restore(target: str, destination: Path, *, cache: Path | None = None, lock: 
                     pending.unlink(missing_ok=True)
 
 
+def installed_documents(directory: Path, target: str) -> list[Path]:
+    manifest_path = directory / "LINKER_INPUTS.json"
+    manifest = json.loads(manifest_path.read_bytes())
+    if manifest.get("target") != target or manifest.get("format_version") != 1:
+        raise ValueError("Installed runtime manifest mismatch")
+    binaries = {p.name for p in directory.rglob("*") if p.is_file()
+                and p.suffix.lower() in windows_runtime.BINARY_EXTENSIONS}
+    host = "host.lib" if target == "x64win" else "libhost.a"
+    if binaries != INVENTORY[target] | {host}:
+        raise ValueError("Installed runtime binary inventory mismatch")
+    documents = [manifest_path]
+    for name, record in manifest["files"].items():
+        relative = PurePosixPath(name)
+        if relative.is_absolute() or ".." in relative.parts or "\\" in name or ":" in name:
+            raise ValueError("Invalid installed runtime path")
+        path = directory / name
+        if target == "x64win" and name == "PROVENANCE.json":
+            path = directory / "RUNTIME_PROVENANCE.json"
+        if sha256(path) != record["sha256"] or path.stat().st_size != record["size"]:
+            raise ValueError(f"Installed runtime file mismatch: {name}")
+        if path.suffix.lower() not in windows_runtime.BINARY_EXTENSIONS:
+            documents.append(path)
+    return documents
+
+
 def run(args: list[str], **kwargs) -> None:
     subprocess.run(args, check=True, **kwargs)
 
@@ -171,12 +199,15 @@ def build_linux(target: str, output: Path, work: Path, zig: str, recipe: dict, j
     source = work / ("musl-" + recipe["musl"]["version"])
     loader = source / "ldso/dlstart.c"
     contents = loader.read_text()
+    # TODO for the release after 0.28.0: remove this fixed-address compatibility
+    # patch once the Roc pin includes #12949, then publish and pin unpatched inputs.
     old = "for (i=0; dynv[i]; i+=2) if (dynv[i]<DYN_CNT)"
     if contents.count(old) != 1:
         raise ValueError("musl startup source differs from the reviewed patch")
     loader.write_text(contents.replace(old, "for (i=0; dynv && dynv[i]; i+=2) if (dynv[i]<DYN_CNT)"))
-    environment = dict(os.environ, CC=f"{zig} cc -target {triple} -mcpu=baseline -fno-sanitize=all",
-                       AR=f"{zig} ar", RANLIB=f"{zig} ranlib", LC_ALL="C",
+    compiler = shlex.quote(zig)
+    environment = dict(os.environ, CC=f"{compiler} cc -target {triple} -mcpu=baseline -fno-sanitize=all",
+                       AR=f"{compiler} ar", RANLIB=f"{compiler} ranlib", LC_ALL="C",
                        CFLAGS=f"-O2 -fPIC -ffile-prefix-map={work}=/build")
     build = work / "musl-build"
     build.mkdir()

@@ -52,19 +52,19 @@ against `licenses/native-inputs.json`, which records where each one came from.
 
 | File | Component | SHA-256 |
 | --- | --- | --- |
-| `platform/targets/x64musl/crt1.o` | musl libc 1.2.4 | `ffb51a69191a69fc34acaec1003fabe245d8841da7036d124d3445718415f9ea` |
-| `platform/targets/x64musl/libc.a` | musl libc 1.2.4 | `85f5eb2316bc6f86be7bd66008488c7d2eca290942b01ad2e86f02f8b5e8c90f` |
-| `platform/targets/arm64musl/crt1.o` | musl libc 1.2.2 | `0245544b81293be7bc86df1a8c0140ce1c0345c6abef11dcb20d0cfebc237ef1` |
-| `platform/targets/arm64musl/libc.a` | musl libc 1.2.2 | `209b1743f3b0108f5e3f2196dcef9dd40027928c89dad29fafea896772c84878` |
-| `platform/targets/arm64musl/libunwind.a` | LLVM libunwind 20.1.1 | `7d246ebb58d7c90ea3ee1907afc3e7e8f8dc5b8699173dd0373d9c813fff017d` |
-| `platform/targets/x64musl/libunwind.a` | LLVM libunwind 20.1.1 | `e59505f4e8e9bb8e19833e40a56555fc68805ec0cecf4084957e8865520ef7f4` |
+| `platform/targets/x64musl/libc.a` | musl libc 1.2.6 | `0575ab9542e6faa7f09271478a6b257e6f44334d9c8cd605d94453e52d6f3711` |
+| `platform/targets/x64musl/rcrt1.o` | musl libc 1.2.6 | `4594f82520509e2abdae76fedb2eb07887c1e1068f3b8fc167892e08706ea7e8` |
+| `platform/targets/x64musl/libunwind.a` | LLVM libunwind Zig 0.17.0 bundled LLVM libunwind | `99bb43428246200d61e7b62c99134cdb4b9712b130db14cf107d889be2200bed` |
+| `platform/targets/arm64musl/libc.a` | musl libc 1.2.6 | `29422237a038f967575982f49520716d56220099f2d397704d94d024bf17b21e` |
+| `platform/targets/arm64musl/rcrt1.o` | musl libc 1.2.6 | `bcc4ddca200e6a8a0069a3f4a3066414f150c55f68802d973506ef440cf36c31` |
+| `platform/targets/arm64musl/libunwind.a` | LLVM libunwind Zig 0.17.0 bundled LLVM libunwind | `788ae40461cba9a5a425ac22bba9440306fe041ee5cfd3789ddee604156e83a3` |
 
 ### musl libc
 
-- 1.2.4 (MIT): Alpine Linux 3.18 package musl-dev 1.2.4-r3 (x86_64): https://dl-cdn.alpinelinux.org/alpine/v3.18/main/x86_64/musl-dev-1.2.4-r3.apk, files usr/lib/libc.a and usr/lib/crt1.o.
-  License: https://git.musl-libc.org/cgit/musl/tree/COPYRIGHT?h=v1.2.4
-- 1.2.2 (MIT): Debian 11 package musl-dev 1.2.2-1 (arm64): https://deb.debian.org/debian/pool/main/m/musl/musl-dev_1.2.2-1_arm64.deb, files usr/lib/aarch64-linux-musl/libc.a and usr/lib/aarch64-linux-musl/crt1.o.
-  License: https://git.musl-libc.org/cgit/musl/tree/COPYRIGHT?h=v1.2.2
+- 1.2.6 (MIT): https://github.com/roc-lang/basic-cli/releases/download/linker-inputs-548c70b9bde20eceee81ddbfd3a16fbbf178ec262db362980e65eda3f6881521/x64musl-36af1c9d069a4c8e270bae59fff49aacdae30aa6d1ab402e20c02e359c70f7ce.tar.gz.
+  License: https://musl.libc.org/releases/musl-1.2.6.tar.gz
+- 1.2.6 (MIT): https://github.com/roc-lang/basic-cli/releases/download/linker-inputs-548c70b9bde20eceee81ddbfd3a16fbbf178ec262db362980e65eda3f6881521/arm64musl-ef2f4332bee02ca5aeaab1eed455a18f738ca6da20fa8d7a649aae24c05818cc.tar.gz.
+  License: https://musl.libc.org/releases/musl-1.2.6.tar.gz
 
 ```text
 musl as a whole is licensed under the following standard MIT license:
@@ -143,6 +143,7 @@ Kylie McClain
 Leah Neukirchen
 Luca Barbato
 Luka Perkov
+Lynn Ochs
 M Farkas-Dyck (Strake)
 Mahesh Bodapati
 Markus Wichmann
@@ -172,7 +173,6 @@ Stefan O'Rear
 Szabolcs Nagy
 Timo Teräs
 Trutz Behn
-Valentin Ochs
 Will Dietz
 William Haddon
 William Pitcock
@@ -212,7 +212,7 @@ domain. The code also comes with a fallback permissive license for use
 in jurisdictions that may not recognize the public domain.
 
 The smoothsort implementation (src/stdlib/qsort.c) is Copyright © 2011
-Valentin Ochs and is licensed under an MIT-style license.
+Lynn Ochs and is licensed under an MIT-style license.
 
 The x86_64 port was written by Nicholas J. Kain and is licensed under
 the standard MIT terms.
@@ -264,8 +264,10 @@ obstacle to adoption, that text has been removed.
 
 ### LLVM libunwind
 
-- 20.1.1 (Apache-2.0 WITH LLVM-exception): Rust 1.87.0 self-contained musl runtime, built from rust-lang/llvm-project acaea3d2bb8f351b740db7ebce7d7a40b9e21488: https://static.rust-lang.org/dist/rust-std-1.87.0-x86_64-unknown-linux-musl.tar.xz and https://static.rust-lang.org/dist/rust-std-1.87.0-aarch64-unknown-linux-musl.tar.xz, file lib/rustlib/<target>/lib/self-contained/libunwind.a.
-  License: https://github.com/rust-lang/llvm-project/blob/acaea3d2bb8f351b740db7ebce7d7a40b9e21488/libunwind/LICENSE.TXT
+- Zig 0.17.0 bundled LLVM libunwind (Apache-2.0 WITH LLVM-exception): https://github.com/roc-lang/basic-cli/releases/download/linker-inputs-548c70b9bde20eceee81ddbfd3a16fbbf178ec262db362980e65eda3f6881521/x64musl-36af1c9d069a4c8e270bae59fff49aacdae30aa6d1ab402e20c02e359c70f7ce.tar.gz.
+  License: https://ziglang.org/download/0.17.0/
+- Zig 0.17.0 bundled LLVM libunwind (Apache-2.0 WITH LLVM-exception): https://github.com/roc-lang/basic-cli/releases/download/linker-inputs-548c70b9bde20eceee81ddbfd3a16fbbf178ec262db362980e65eda3f6881521/arm64musl-ef2f4332bee02ca5aeaab1eed455a18f738ca6da20fa8d7a649aae24c05818cc.tar.gz.
+  License: https://ziglang.org/download/0.17.0/
 
 ```text
 ==============================================================================

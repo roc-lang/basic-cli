@@ -10,7 +10,7 @@ mkdir -p "$docs_root" "$download_root"
 
 release_names="$(
   gh api --paginate "repos/$repository/releases?per_page=100" \
-    --jq '.[] | select(.draft == false) | .tag_name'
+    --jq '.[] | select(.draft == false and (.tag_name | startswith("linker-inputs-") | not)) | .tag_name'
 )"
 
 while IFS= read -r release_name; do

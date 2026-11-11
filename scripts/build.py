@@ -6,13 +6,15 @@ import hashlib
 import os
 import platform
 import shutil
+import shlex
 import subprocess
 from pathlib import Path
 
 try:
-    from . import windows_runtime
+    from . import windows_runtime, linker_inputs
 except ImportError:
     import windows_runtime
+    import linker_inputs
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -103,7 +105,7 @@ def musl_build_env(rust_target: str) -> dict[str, str]:
     env["ZIG_CC_TARGET"] = zig_target
     env[f"CC_{key}"] = str(ROOT / "ci" / "zig-cc.sh")
     env[f"AR_{key}"] = str(ROOT / "ci" / "zig-ar.sh")
-    env[f"CFLAGS_{key}"] = "-Wno-error"
+    env[f"CFLAGS_{key}"] = env.get(f"CFLAGS_{key}", "") + " -Wno-error -fPIC"
     print(f"  (using zig cc for {rust_target})")
     return env
 
@@ -136,13 +138,24 @@ def install_rust_target(rust_target: str, *, required: bool = False) -> None:
     run("rustup", "target", "add", rust_target, check=required)
 
 
+def pic_build_env(env: dict[str, str]) -> dict[str, str]:
+    existing = env.get("CARGO_ENCODED_RUSTFLAGS")
+    if existing is None:
+        existing = "\x1f".join(shlex.split(env.get("RUSTFLAGS", "")))
+    env["CARGO_ENCODED_RUSTFLAGS"] = existing + ("\x1f" if existing else "") + "-Crelocation-model=pic"
+    return env
+
+
 def copy_unix_host(target_name: str, rust_target: str, *, native: bool) -> None:
     output_dir = ROOT / "platform" / "targets" / target_name
     output_dir.mkdir(parents=True, exist_ok=True)
     source = ROOT / "target" / rust_target / "release" / "libhost.a"
 
+    environment = pic_build_env(musl_build_env(rust_target))
+    cflags_key = "CFLAGS_" + rust_target.replace("-", "_")
+    environment[cflags_key] = environment.get(cflags_key, "") + " -fPIC"
     if native and target_name in {"x64mac", "arm64mac"}:
-        run("cargo", "build", "--locked", "--release", "--lib")
+        run("cargo", "build", "--locked", "--release", "--lib", env=environment)
         source = ROOT / "target" / "release" / "libhost.a"
     else:
         run(
@@ -153,7 +166,7 @@ def copy_unix_host(target_name: str, rust_target: str, *, native: bool) -> None:
             "--lib",
             "--target",
             rust_target,
-            env=musl_build_env(rust_target),
+            env=environment,
         )
 
     destination = output_dir / "libhost.a"
@@ -165,6 +178,8 @@ def build_unix_target(target_name: str, *, native: bool = False) -> None:
     rust_target = TARGETS[target_name]
     qualifier = "native" if native else rust_target
     print(f"Building for {target_name} ({qualifier})...")
+    if target_name.endswith("musl"):
+        linker_inputs.restore(target_name, ROOT / "platform/targets" / target_name)
     copy_unix_host(target_name, rust_target, native=native)
     strip_linux_host(target_name)
 
@@ -212,7 +227,8 @@ def build_windows() -> None:
     run(*build_command, env=env)
 
     output_dir = ROOT / "platform" / "targets" / "x64win"
-    windows_runtime.build(output_dir, zig=env["ZIG"])
+    linker_inputs.restore("x64win", output_dir)
+    shutil.copyfile(output_dir / "PROVENANCE.json", output_dir / "RUNTIME_PROVENANCE.json")
     host_destination = output_dir / "host.lib"
     shutil.copy2(
         ROOT / "target" / WINDOWS_TARGET / "release" / "host.lib",

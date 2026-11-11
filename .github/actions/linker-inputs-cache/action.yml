@@ -1,0 +1,22 @@
+name: Cache linker inputs
+description: Cache verified runtime release archives by their pinned content identity
+inputs:
+  target:
+    description: Target restored by this job, or all for multi-target validation
+    default: all
+runs:
+  using: composite
+  steps:
+    - id: directory
+      shell: bash
+      run: |
+        python - <<'PY'
+        import os
+        from scripts.linker_inputs import cache_dir
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+            print(f'path={cache_dir()}', file=out)
+        PY
+    - uses: actions/cache@v5
+      with:
+        path: ${{ steps.directory.outputs.path }}
+        key: linker-inputs-${{ runner.os }}-${{ inputs.target }}-${{ hashFiles('linker-inputs.lock.json') }}
