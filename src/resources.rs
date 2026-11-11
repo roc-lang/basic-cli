@@ -93,6 +93,7 @@ resource_kinds! {
     Child => crate::process_service::Child,
     FileReader => std::io::BufReader<std::fs::File>,
     FileWriter => crate::file_writer::FileWriter,
+    HttpPending => crate::http::PendingResponse,
     HttpResponse => crate::http::StreamingBody,
     SqliteDb => crate::sqlite::SqliteDb,
     SqliteRows => crate::sqlite::SqliteRows,

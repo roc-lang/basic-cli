@@ -582,6 +582,7 @@ impl Drop for StreamingBody {
 }
 
 /// The status line and headers of a response whose body has not been read.
+#[derive(Clone)]
 struct StreamingHead {
     status: u16,
     headers: Vec<(String, String)>,
@@ -847,6 +848,424 @@ pub unsafe extern "C" fn hosted_http_read_body(
     // Only now, outside `block_on`: this may be the last reference.
     resources::release(handle, roc_host);
     result
+}
+
+// ============================================================================
+// Pending responses
+//
+// `Http.start!` sends a request from a task on `TOKIO_RUNTIME` and returns at
+// once, leaving the task behind a `Resource.HttpPending` handle. The runtime
+// has no thread of its own (see `TOKIO_RUNTIME`), so the task only runs while
+// a hosted call is inside `block_on`: any HTTP call, body read or wait.
+// Between those calls the kernel's socket buffers hold what arrives. A wait
+// that gives up keeps the task. Closing or dropping the handle aborts it and
+// turns the runtime so that its connection closes, as `StreamingBody::close`
+// does.
+//
+// The task notes when the head arrived, and the head is judged by that time,
+// not by when a wait comes for it: a head that came in time during another
+// HTTP call is not lost to a timeout while the app does other work.
+//
+// Redirects are decided in Roc. To follow one, Roc replaces the request behind
+// the same handle, and the host records the status and `Location` that led
+// there. Each wait that returns a head returns that list too, so that Roc can
+// rebuild the hop it is on.
+// ----------------------------------------------------------------------------
+
+type SendResult = Result<hyper::Response<hyper::body::Incoming>, hyper_util::client::legacy::Error>;
+
+enum PendingState {
+    /// The request is in flight, or its result, with the time it came, waits
+    /// in the finished task.
+    Sending(tokio::task::JoinHandle<(Instant, SendResult)>),
+    /// The head arrived at `at` during a wait that an interruption ended. The
+    /// next wait returns it.
+    Arrived {
+        at: Instant,
+        response: hyper::Response<hyper::body::Incoming>,
+    },
+    /// The head has been handed to Roc. Every later wait hands over the same
+    /// head and another reference to the same body handle.
+    Ready { head: StreamingHead, body: *mut u64 },
+    /// The request failed for good. Every later wait reports the same failure.
+    Failed(Failure),
+    /// Closed by `Http.PendingResponse.close!`.
+    Closed,
+}
+
+/// The resource behind a `Resource.HttpPending` handle.
+pub struct PendingResponse {
+    state: PendingState,
+    idle_timeout: Option<Duration>,
+    /// The `Request` timeout, fixed at `Http.start!` for every hop and the body.
+    deadline: Option<Instant>,
+    /// When the status and headers of the current hop must have arrived.
+    head_until: Option<Instant>,
+    /// The status and `Location` of each redirect followed so far, in order.
+    redirects: Vec<(u16, String)>,
+    /// Releases the body reference held in `Ready`.
+    host: RocHost,
+}
+
+/// What a wait for a pending response found.
+enum Waited {
+    NotReady,
+    /// The head and a new reference to the body handle, owned by the caller.
+    Ready(StreamingHead, *mut u64),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum PendingErr {
+    Closed,
+    Failed(Failure),
+}
+
+/// Let the caller's own limit of a wait pass, after a few turns of the
+/// runtime. The `select!` it is raced in polls the request first. Without the
+/// turns, a limit that has passed would end the wait after the first turn:
+/// that turn reads what has arrived on the socket and wakes the tasks that
+/// handle it, but `block_on` polls this future again before it runs them. The
+/// turns let those tasks run, so that even a wait whose limit has passed
+/// returns a head that is already on the socket. (`sleep_until` rounds up to
+/// the next millisecond, which hides this for a limit that has only just
+/// passed, but not for one that passed a millisecond or more ago.)
+async fn give_up_at(until: Option<Instant>) {
+    for _ in 0..SETTLE_TURNS {
+        tokio::task::yield_now().await;
+    }
+    match until {
+        Some(until) => tokio::time::sleep_until(tokio::time::Instant::from_std(until)).await,
+        None => std::future::pending::<()>().await,
+    }
+}
+
+impl PendingResponse {
+    fn new(idle_timeout: Option<Duration>, deadline: Option<Instant>) -> Self {
+        Self {
+            state: PendingState::Closed,
+            idle_timeout,
+            deadline,
+            head_until: None,
+            redirects: Vec::new(),
+            host: resources::make_host(),
+        }
+    }
+
+    /// Start sending `request` as the current hop, giving up any earlier one.
+    fn send(&mut self, request: Result<HyperRequest, String>) {
+        self.release();
+        self.state = match self.spawn(request) {
+            Ok(task) => PendingState::Sending(task),
+            Err(failure) => PendingState::Failed(failure),
+        };
+    }
+
+    fn spawn(
+        &mut self,
+        request: Result<HyperRequest, String>,
+    ) -> Result<tokio::task::JoinHandle<(Instant, SendResult)>, Failure> {
+        let request = request.map_err(Failure::Other)?;
+        // As in `send_streaming_at`: nothing is sent once a timeout has expired.
+        if self.idle_timeout == Some(Duration::ZERO) {
+            return Err(Failure::Timeout);
+        }
+        let now = Instant::now();
+        let budget =
+            wait_budget(self.idle_timeout, self.deadline, now).map_err(|()| Failure::Timeout)?;
+        self.head_until = budget.and_then(|budget| now.checked_add(budget));
+        let task = TOKIO_RUNTIME.spawn(async move {
+            let sent = streaming_client().request(request).await;
+            (Instant::now(), sent)
+        });
+        // Put the request on its way (connect, write what fits) without waiting.
+        settle();
+        Ok(task)
+    }
+
+    /// Follow a redirect: record it and send `request` as the next hop.
+    fn follow(&mut self, status: u16, location: String, request: Result<HyperRequest, String>) {
+        if matches!(self.state, PendingState::Closed) {
+            return;
+        }
+        self.redirects.push((status, location));
+        self.send(request);
+    }
+
+    /// Wait until `until` for the status and headers of the current hop.
+    fn wait(&mut self, until: Option<Instant>) -> Result<Waited, PendingErr> {
+        if matches!(self.state, PendingState::Closed) {
+            return Err(PendingErr::Closed);
+        }
+        if crate::signals::is_pending() {
+            return Err(PendingErr::Failed(Failure::Interrupted));
+        }
+        let head_until = self.head_until;
+        if let PendingState::Sending(task) = &mut self.state {
+            let sent = if task.is_finished() {
+                // The result came during an earlier hosted call. Take it
+                // without a look at the clock: it is judged below by the
+                // time it came.
+                Ok(Some(TOKIO_RUNTIME.block_on(task)))
+            } else {
+                // Only the borrow of the task is given up when the wait ends
+                // without it, never the task.
+                TOKIO_RUNTIME.block_on(await_io(head_until, async {
+                    tokio::select! {
+                        biased;
+                        sent = task => Some(sent),
+                        () = give_up_at(until) => None,
+                    }
+                }))
+            };
+            let arrived = match sent {
+                Ok(None) => return Ok(Waited::NotReady),
+                // The task keeps the request; the next wait continues it.
+                Err(Failure::Interrupted) => {
+                    return Err(PendingErr::Failed(Failure::Interrupted));
+                }
+                Err(failure) => return Err(PendingErr::Failed(self.fail(failure))),
+                Ok(Some(Err(error))) => {
+                    return Err(PendingErr::Failed(
+                        self.fail(Failure::Other(error.to_string())),
+                    ));
+                }
+                Ok(Some(Ok((_, Err(error))))) => {
+                    return Err(PendingErr::Failed(
+                        self.fail(Failure::Other(error.to_string())),
+                    ));
+                }
+                Ok(Some(Ok((at, Ok(response))))) => PendingState::Arrived { at, response },
+            };
+            self.state = arrived;
+        }
+        let arrived_at = match &self.state {
+            PendingState::Failed(failure) => return Err(PendingErr::Failed(failure.clone())),
+            PendingState::Ready { head, body } => return Ok(Self::hand_over(head.clone(), *body)),
+            PendingState::Arrived { at, .. } => *at,
+            PendingState::Sending(_) | PendingState::Closed => {
+                unreachable!("a wait leaves no request in flight without returning")
+            }
+        };
+        // As in `send_streaming_at`: an event that came while the head was
+        // being polled wins over it. An interruption keeps the head for later.
+        if crate::signals::is_pending() {
+            return Err(PendingErr::Failed(Failure::Interrupted));
+        }
+        // The head counts from when it arrived, which may be long before this
+        // wait.
+        if head_until.is_some_and(|until| until <= arrived_at) {
+            return Err(PendingErr::Failed(self.fail(Failure::Timeout)));
+        }
+        let PendingState::Arrived { response, .. } =
+            std::mem::replace(&mut self.state, PendingState::Closed)
+        else {
+            unreachable!("only a head that has arrived is left");
+        };
+        let (parts, body) = response.into_parts();
+        let head = StreamingHead::from_parts(&parts);
+        let body = StreamingBody {
+            state: BodyState::Open(body),
+            pending: bytes::BytesMut::new(),
+            idle_timeout: self.idle_timeout,
+            deadline: self.deadline,
+        };
+        let body = match resources::box_resource(body, &self.host) {
+            Ok(body) => body,
+            Err(error) => {
+                return Err(PendingErr::Failed(
+                    self.fail(Failure::Other(error.to_string())),
+                ));
+            }
+        };
+        self.state = PendingState::Ready {
+            head: head.clone(),
+            body,
+        };
+        Ok(Self::hand_over(head, body))
+    }
+
+    /// The redirects followed so far, as Roc receives them.
+    fn redirects_to_roc(&self, roc_host: &RocHost) -> RocList<NotReadyOrReadyReadyRedirects> {
+        let list = unsafe {
+            RocList::<NotReadyOrReadyReadyRedirects>::allocate(self.redirects.len(), roc_host)
+        };
+        for (index, (status, location)) in self.redirects.iter().enumerate() {
+            let redirect = NotReadyOrReadyReadyRedirects {
+                _0: *status,
+                _1: RocStr::from_str(location, roc_host),
+            };
+            unsafe {
+                list.elements.add(index).write(redirect);
+            }
+        }
+        list
+    }
+
+    /// A new reference to the body for the caller; this resource keeps its own.
+    fn hand_over(head: StreamingHead, body: *mut u64) -> Waited {
+        unsafe { incref_box(body.cast(), 1) };
+        Waited::Ready(head, body)
+    }
+
+    /// Give up the request and whatever it holds; the state is `Closed` after.
+    fn release(&mut self) {
+        match std::mem::replace(&mut self.state, PendingState::Closed) {
+            PendingState::Sending(task) => {
+                task.abort();
+                drop(task);
+                settle();
+            }
+            PendingState::Arrived { response, .. } => {
+                drop(response);
+                settle();
+            }
+            PendingState::Ready { body, .. } => resources::release(body, &self.host),
+            PendingState::Failed(_) | PendingState::Closed => {}
+        }
+    }
+
+    fn fail(&mut self, failure: Failure) -> Failure {
+        self.release();
+        self.state = PendingState::Failed(failure.clone());
+        failure
+    }
+}
+
+impl Drop for PendingResponse {
+    fn drop(&mut self) {
+        // A request in flight still holds its connection.
+        self.release();
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn hosted_http_start(
+    request: HostHttpStartArg0,
+    idle_timeout: AfterOrNoTimeout,
+    deadline: AtOrNoTimeout,
+) -> HostHttpStartResult {
+    let roc_host = roc_host();
+    // The hyper request copies what it needs, so the Roc values can go.
+    let hyper_request = build_hyper_request((&request).into());
+    unsafe { request.decref(roc_host) };
+
+    // Make the handle before anything is sent, so that a failure to make it
+    // sends nothing.
+    let pending = PendingResponse::new(idle_duration(idle_timeout), monotonic_instant(deadline));
+    let handle = match resources::box_resource(pending, roc_host) {
+        Ok(handle) => handle,
+        Err(error) => {
+            return HostHttpStartResult {
+                payload: HostHttpStartResultPayload {
+                    err: ManuallyDrop::new(roc_u8_list_from_slice(
+                        error.to_string().as_bytes(),
+                        roc_host,
+                    )),
+                },
+                tag: HostHttpStartResultTag::Err,
+            };
+        }
+    };
+    unsafe { resources::resource_ref::<PendingResponse>(handle) }.send(hyper_request);
+    HostHttpStartResult {
+        payload: HostHttpStartResultPayload {
+            ok: ManuallyDrop::new(handle),
+        },
+        tag: HostHttpStartResultTag::Ok,
+    }
+}
+
+fn pending_wait_ok(ok: HostHttpPendingWaitOk) -> HostHttpPendingWaitResult {
+    HostHttpPendingWaitResult {
+        payload: HostHttpPendingWaitResultPayload {
+            ok: ManuallyDrop::new(ok),
+        },
+        tag: HostHttpPendingWaitResultTag::Ok,
+    }
+}
+
+fn pending_wait_err(err: HostHttpPendingWaitErr) -> HostHttpPendingWaitResult {
+    HostHttpPendingWaitResult {
+        payload: HostHttpPendingWaitResultPayload {
+            err: ManuallyDrop::new(err),
+        },
+        tag: HostHttpPendingWaitResultTag::Err,
+    }
+}
+
+/// # Safety
+///
+/// `handle` must be a live handle from `hosted_http_start`.
+#[no_mangle]
+pub unsafe extern "C" fn hosted_http_pending_wait(
+    handle: *mut u64,
+    until: AtOrNoTimeout,
+) -> HostHttpPendingWaitResult {
+    let roc_host = roc_host();
+    let pending = unsafe { resources::resource_ref::<PendingResponse>(handle) };
+    let result = match pending.wait(monotonic_instant(until)) {
+        Ok(Waited::NotReady) => pending_wait_ok(HostHttpPendingWaitOk {
+            payload: HostHttpPendingWaitOkPayload { not_ready: [] },
+            tag: HostHttpPendingWaitOkTag::NotReady,
+        }),
+        Ok(Waited::Ready(head, body)) => pending_wait_ok(HostHttpPendingWaitOk {
+            payload: HostHttpPendingWaitOkPayload {
+                ready: ManuallyDrop::new(HostHttpPendingWaitOkReady {
+                    response: head.to_roc(body, roc_host),
+                    redirects: pending.redirects_to_roc(roc_host),
+                }),
+            },
+            tag: HostHttpPendingWaitOkTag::Ready,
+        }),
+        Err(PendingErr::Closed) => pending_wait_err(HostHttpPendingWaitErr {
+            payload: HostHttpPendingWaitErrPayload { closed: [] },
+            tag: HostHttpPendingWaitErrTag::Closed,
+        }),
+        Err(PendingErr::Failed(failure)) => pending_wait_err(HostHttpPendingWaitErr {
+            payload: HostHttpPendingWaitErrPayload {
+                http_err: ManuallyDrop::new(failure.to_roc(roc_host)),
+            },
+            tag: HostHttpPendingWaitErrTag::HttpErr,
+        }),
+    };
+    // Only now, outside `block_on`: this may be the last reference.
+    resources::release(handle, roc_host);
+    result
+}
+
+/// # Safety
+///
+/// `handle` must be a live handle from `hosted_http_start`.
+#[no_mangle]
+pub unsafe extern "C" fn hosted_http_pending_follow(
+    handle: *mut u64,
+    request: HostHttpPendingFollowArg1,
+    status: u16,
+    location: RocStr,
+) {
+    let roc_host = roc_host();
+    let hyper_request = build_hyper_request((&request).into());
+    let followed = location.as_str().to_owned();
+    unsafe {
+        request.decref(roc_host);
+        location.decref(roc_host);
+    }
+    unsafe { resources::resource_ref::<PendingResponse>(handle) }.follow(
+        status,
+        followed,
+        hyper_request,
+    );
+    resources::release(handle, roc_host);
+}
+
+/// # Safety
+///
+/// `handle` must be a live handle from `hosted_http_start`.
+#[no_mangle]
+pub unsafe extern "C" fn hosted_http_pending_close(handle: *mut u64) {
+    let roc_host = roc_host();
+    unsafe { resources::resource_ref::<PendingResponse>(handle) }.release();
+    resources::release(handle, roc_host);
 }
 
 #[cfg(test)]
