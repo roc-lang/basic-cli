@@ -1,0 +1,66 @@
+name: Linker inputs
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/linker-inputs.yml'
+      - 'native/linker-inputs/**'
+      - 'native/windows/**'
+      - 'scripts/linker_inputs.py'
+      - 'scripts/windows_runtime.py'
+      - 'scripts/test_linker_inputs.py'
+permissions: {}
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {target: x64musl, os: ubuntu-24.04}
+          - {target: arm64musl, os: ubuntu-24.04-arm}
+          - {target: x64win, os: windows-2025}
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: mlugg/setup-zig@8d6198c65fb0feaa111df26e6b467fea8345e46f
+        with:
+          version: 0.17.0
+      - name: Test artifact verification and caching
+        run: python -m unittest scripts/test_linker_inputs.py
+      - name: Build runtime inputs
+        run: python scripts/linker_inputs.py build --target ${{ matrix.target }} --directory dist/linker-inputs
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linker-inputs-${{ matrix.target }}
+          path: dist/linker-inputs/*
+          if-no-files-found: error
+  publish:
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: linker-inputs-*
+          merge-multiple: true
+          path: dist/linker-inputs
+      - name: Verify and publish immutable runtime release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=$(python3 scripts/linker_inputs.py manifest --directory dist/linker-inputs --repository "$GITHUB_REPOSITORY")
+          if gh release view "$tag" >/dev/null 2>&1; then
+            mkdir -p target/published-inputs
+            gh release download "$tag" --dir target/published-inputs
+            diff -r dist/linker-inputs target/published-inputs
+          else
+            gh release create "$tag" dist/linker-inputs/* --target "$GITHUB_SHA" --prerelease --latest=false --title "Linker inputs ${tag#linker-inputs-}" --notes "Independently built native runtime inputs. Consumers pin the attached manifest and archive SHA-256 hashes."
+          fi
