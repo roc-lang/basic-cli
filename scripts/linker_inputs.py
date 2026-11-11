@@ -10,6 +10,7 @@ import io
 import json
 import os
 import platform
+import shlex
 from pathlib import Path, PurePosixPath
 import shutil
 import subprocess
@@ -200,8 +201,9 @@ def build_linux(target: str, output: Path, work: Path, zig: str, recipe: dict, j
     if contents.count(old) != 1:
         raise ValueError("musl startup source differs from the reviewed patch")
     loader.write_text(contents.replace(old, "for (i=0; dynv && dynv[i]; i+=2) if (dynv[i]<DYN_CNT)"))
-    environment = dict(os.environ, CC=f"{zig} cc -target {triple} -mcpu=baseline -fno-sanitize=all",
-                       AR=f"{zig} ar", RANLIB=f"{zig} ranlib", LC_ALL="C",
+    compiler = shlex.quote(zig)
+    environment = dict(os.environ, CC=f"{compiler} cc -target {triple} -mcpu=baseline -fno-sanitize=all",
+                       AR=f"{compiler} ar", RANLIB=f"{compiler} ranlib", LC_ALL="C",
                        CFLAGS=f"-O2 -fPIC -ffile-prefix-map={work}=/build")
     build = work / "musl-build"
     build.mkdir()
