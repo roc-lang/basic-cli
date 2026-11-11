@@ -1,3 +1,5 @@
+# TODO for the release after 0.28.0: pin a Roc nightly containing #12949,
+# remove this workflow, and retire the fixed-address musl startup patch.
 name: Static runtime compatibility
 on:
   pull_request:

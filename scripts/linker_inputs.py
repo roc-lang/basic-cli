@@ -199,6 +199,8 @@ def build_linux(target: str, output: Path, work: Path, zig: str, recipe: dict, j
     source = work / ("musl-" + recipe["musl"]["version"])
     loader = source / "ldso/dlstart.c"
     contents = loader.read_text()
+    # TODO for the release after 0.28.0: remove this fixed-address compatibility
+    # patch once the Roc pin includes #12949, then publish and pin unpatched inputs.
     old = "for (i=0; dynv[i]; i+=2) if (dynv[i]<DYN_CNT)"
     if contents.count(old) != 1:
         raise ValueError("musl startup source differs from the reviewed patch")

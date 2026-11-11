@@ -25,3 +25,10 @@ python3 scripts/linker_inputs.py build --target x64musl --directory dist/linker-
 
 Publication requires each target to have passed validation on its native OS and
 architecture. The workflow publishes only after all three producers succeed.
+
+## Removal in the release after 0.28.0
+
+Move the Roc pin to a nightly containing roc-lang/roc#12949, remove the temporary
+Static runtime compatibility workflow and the fixed-address startup patch in
+the producer, then publish and pin new linker inputs using unpatched `rcrt1.o`.
+Update the producer's fixed-address checks and documentation with that change.
