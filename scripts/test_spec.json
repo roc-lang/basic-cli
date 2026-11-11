@@ -549,6 +549,34 @@
       ]
     },
     {
+      "path": "examples/tcp-tls.roc",
+      "cases": [
+        {
+          "name": "private-ca",
+          "helper": "tls",
+          "timeout": 20,
+          "live_handles": 0,
+          "args": ["{root}/tests/tls/localhost-cert.pem"],
+          "stdout_contains": ["Connected over TLS\n< hello\n< over tls\n"]
+        },
+        {
+          "name": "default-roots-reject-private-ca",
+          "helper": "tls",
+          "timeout": 20,
+          "live_handles": 0,
+          "exit_code": 1,
+          "contains": ["Program exited with error: TlsErr(UnknownIssuer)"]
+        },
+        {
+          "name": "bad-pem-before-connecting",
+          "live_handles": 0,
+          "args": ["{root}/LICENSE"],
+          "exit_code": 1,
+          "contains": ["Program exited with error: TlsErr(BadPem("]
+        }
+      ]
+    },
+    {
       "path": "examples/temp-dir.roc",
       "cases": [{ "name": "happy", "regex": ["The temp dir path is .+"] }]
     },
@@ -1228,6 +1256,33 @@
           "args": ["unexpected"],
           "exit_code": 1,
           "contains": ["Program exited with error: UnexpectedArguments"]
+        }
+      ]
+    },
+    {
+      "path": "tests/tls-trust.roc",
+      "cases": [
+        {
+          "name": "trust-options",
+          "helper": "tls",
+          "timeout": 30,
+          "live_handles": 0,
+          "args": ["{root}/tests/tls/localhost-cert.pem"],
+          "stdout_contains": [
+            "tcp trust: ok\n",
+            "tcp bad pem before any network I/O: ok\n",
+            "tcp reads over tls: ok\n",
+            "http trust: ok\n",
+            "http redirects use the trust on every hop: ok\n",
+            "http streaming trust: ok\n",
+            "http bad pem before any network I/O: ok\n"
+          ]
+        },
+        {
+          "name": "missing-ca-file",
+          "live_handles": 0,
+          "exit_code": 1,
+          "contains": ["Program exited with error: MissingCaFile"]
         }
       ]
     },

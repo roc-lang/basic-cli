@@ -297,7 +297,6 @@ dependencies = [
  "tokio",
  "tokio-rustls",
  "tower-service",
- "webpki-roots",
 ]
 
 [[package]]
@@ -521,6 +520,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tower-service",
+ "webpki-roots",
  "windows-sys 0.59.0",
 ]
 

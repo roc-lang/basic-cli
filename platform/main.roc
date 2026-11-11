@@ -6,7 +6,7 @@ platform ""
 		## launcher-supplied program name is available from Env.program_name!.
 		main! : List([Utf8(Str), UnixBytes(List(U8)), WindowsU16s(List(U16))]) => Try({}, [Exit(I32), Interrupted, ..])
 	}
-	exposes [Cmd, Duration, Env, File, Http, IOErr, Locale, Monotonic, OsStr, Path, Random, Signal, Sleep, Sqlite, Stderr, Stdin, Stdout, System, Tcp, Tty, UnixSocket, Url, Utc]
+	exposes [Cmd, Duration, Env, File, Http, IOErr, Locale, Monotonic, OsStr, Path, Random, Signal, Sleep, Sqlite, Stderr, Stdin, Stdout, System, Tcp, Tls, Tty, UnixSocket, Url, Utc]
 	packages {
 		# HTTP data types (Method, Request, Response) come from the shared
 		# roc-lang/http package so apps and other packages using it see the same
@@ -115,6 +115,7 @@ platform ""
 		"hosted_tcp_accept": Host.tcp_accept!,
 		# TCP hosted functions are likewise kept at the end to avoid renumbering.
 		"hosted_tcp_connect": Host.tcp_connect!,
+		"hosted_tcp_connect_tls": Host.tcp_connect_tls!,
 		"hosted_tcp_listen": Host.tcp_listen!,
 		"hosted_tcp_listener_close": Host.tcp_listener_close!,
 		"hosted_tcp_local_port": Host.tcp_local_port!,
@@ -166,6 +167,7 @@ import Stdin
 import Stdout
 import Stderr
 import Tcp
+import Tls
 import Tty
 import UnixSocket
 import Url
