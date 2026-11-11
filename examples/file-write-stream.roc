@@ -1,6 +1,6 @@
 ## Write a file piece by piece: a report line by line, then a redacted copy
 ## made without holding more than one chunk of the file in memory.
-app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.27.0/9yjxqdGTP4xSpSEmDazwTmRsehfRZzA19pwEKkR6fj1g.tar.zst" }
+app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.28.0/2yhxoR7cZPSYbyUzPWULFw8AA6QEcdsgFNRmzu7pZbst.tar.zst" }
 
 import pf.OsStr
 import pf.Stdout
