@@ -17,6 +17,8 @@ import http.Response
 ## memory. [Http.send_streaming!] returns as soon as the status and headers
 ## have arrived and hands the body over as a `Stream` of chunks, for a
 ## download larger than memory or one whose progress is shown.
+## [Http.start!] sends a request without waiting for it, so that other work,
+## including other requests, can go on while it is in flight.
 ##
 ## Requests default to `User-Agent: roc-basic-cli/0.26`. An explicit
 ## `User-Agent` is preserved, regardless of the header name's casing.
@@ -131,13 +133,17 @@ Http :: [].{
 		decode_json_response(response)
 	}
 
-	## Options for [Http.send_streaming!]. `{}` selects the defaults.
+	## Options for [Http.send_streaming!] and [Http.start!]. `{}` selects the
+	## defaults.
 	##
 	## `idle_timeout` bounds each single wait: for the status and headers, and
 	## then for each part of the body. A server that is silent for that long
 	## has stalled, however much it has already sent. It defaults to 30
 	## seconds; `After(Duration.zero)` expires at once, before anything is
-	## sent, and `NoTimeout` waits for as long as the server takes.
+	## sent, and `NoTimeout` waits for as long as the server takes. For
+	## [Http.start!], the wait for the status and headers counts from
+	## `start!`, or from the redirect that led to the hop, rather than from
+	## the call that waits; see [Http.start!].
 	##
 	## The timeout of the `Request` keeps its meaning: it is the deadline for
 	## the whole exchange, body included, and `NoTimeout` (its default) and
@@ -288,6 +294,133 @@ Http :: [].{
 			}
 		}
 	}
+
+	## Start sending a request and return without waiting for its response.
+	## Wait for the response with [PendingResponse.wait_within!] or
+	## [PendingResponse.wait!]. Meanwhile the app can do other work,
+	## including other requests and other pending requests.
+	##
+	## The request is validated, built and sent as [Http.send_streaming!]
+	## does it, with the same [StreamingOptions], and the waits return the
+	## same [StreamingResponse] and the same errors. Besides an invalid URL,
+	## `start!` fails only when the host cannot hold another request; every
+	## failure of the request itself, including one to build it, is returned
+	## by the waits. `start!` does not wait, so a pending signal does not
+	## stop it.
+	##
+	## **When a request makes progress.** basic-cli runs no background
+	## thread. A pending request is sent, and its response received, only
+	## while the app is inside an HTTP call: `start!` itself, [Http.send!] and
+	## the functions built on it, [Http.send_streaming!], a body read, and
+	## above all [PendingResponse.wait_within!] and [PendingResponse.wait!]. In
+	## between, for example during `Sleep.millis!`, a command or file I/O,
+	## the operating system buffers what arrives, up to a limit. A request
+	## with a large body, or a server that sends a lot before its status
+	## line, can stall until the next such call. Wait with
+	## [PendingResponse.wait_within!] instead of sleeping to keep requests
+	## moving.
+	##
+	## Both timeouts count from `start!`, also while the request is not
+	## making progress. The timeout of the `Request` stays the deadline for
+	## the whole exchange, across redirects and the body. `idle_timeout`
+	## bounds the time each hop has for its status and headers, counted from
+	## `start!` or from the redirect that led to the hop, and then each wait
+	## for part of the body. Status and headers that the host received in
+	## time are returned by a later wait, however late it comes; the body
+	## then has the timeouts of any [StreamingResponse]. For a server that
+	## takes long to answer, set a larger `idle_timeout`, or `NoTimeout`.
+	##
+	## ```roc
+	## commit = Http.start!(commit_request, { idle_timeout: NoTimeout })?
+	## while True {
+	##     match commit.wait_within!(Duration.seconds(1))? {
+	##         Ready(response) => {
+	##             report!(response)?
+	##             break
+	##         }
+	##         NotReady => show_progress!(Http.send!(progress_request, {})?)?
+	##     }
+	## }
+	## ```
+	start! : Request, StreamingOptions => Try(PendingResponse, [InvalidUrl(Url.ParseErr), HttpErr(TransportErr)])
+	start! = |request, options| {
+		url = Url.parse(Request.uri(request)) ? InvalidUrl
+		canonical = Url.without_fragment(url)
+		canonical_request = request_with_defaults(request.with_uri(canonical.to_str()))
+		hop = canonical_request.with_headers(sanitize_headers(Request.headers(canonical_request), False, False))
+		match Host.http_start!(InternalHttp.to_host_request(hop), host_idle_timeout(options.idle_timeout), request_deadline!(request)) {
+			Ok(host) => Ok(PendingResponse.{ host, request: canonical_request, url: canonical, max_redirects: options.max_redirects })
+			Err(message) => Err(HttpErr(Other(message)))
+		}
+	}
+
+	## A request started with [Http.start!] whose response may not have
+	## arrived yet.
+	##
+	## Copies of a pending response share one request. Once its response has
+	## arrived, every wait returns that same [StreamingResponse], and all of
+	## them read its body from one cursor. Until the pending response is
+	## released it keeps the request, body included, and the connection of
+	## a response that has arrived.
+	##
+	## The request is cancelled and its connection closed when the last
+	## reference to the pending response is released, or earlier by
+	## [close!]. A response already returned stays readable until it, too,
+	## is released.
+	PendingResponse :: { host : Resource.HttpPending, request : Request, url : Url.Url, max_redirects : U64 }.{
+
+		## Render the pending response without exposing its host handle.
+		to_inspect : PendingResponse -> Str
+		to_inspect = |_| "Http.PendingResponse(<opaque>)"
+
+		## Check on the request, waiting up to `wait` for its status and
+		## headers: `Ready(response)` once they have arrived, otherwise
+		## `NotReady`, which leaves the request in flight.
+		##
+		## `Duration.zero` returns at once, with a response whose status and
+		## headers the host has already received. A redirect that has arrived
+		## then only starts the next hop, so the result is `NotReady` until
+		## the response to that hop has arrived too. A wait also moves every
+		## other pending request along (see [Http.start!]), so a loop of
+		## `wait_within!` calls needs no separate sleep. Redirects whose
+		## response arrives during a longer wait are followed within it.
+		##
+		## Either timeout of the request expiring is `Err(HttpErr(Timeout))`,
+		## and every later wait returns it again. A caught pending signal is
+		## `Err(Interrupted)` and keeps the request; acknowledge the signal
+		## before waiting again. After [close!] this is `Err(Closed)`.
+		wait_within! : PendingResponse, Duration => Try([Ready(StreamingResponse), NotReady], [Closed, Interrupted, HttpErr(TransportErr)])
+		wait_within! = |pending, wait|
+			match wait_pending!(pending, At(Host.monotonic_now!().plus_saturated(wait.to_nanos()))) {
+				Ok(Ready(response)) => Ok(Ready(response))
+				Ok(NotReady) => Ok(NotReady)
+				Err(Closed) => Err(Closed)
+				Err(Interrupted) => Err(Interrupted)
+				Err(HttpErr(err)) => Err(HttpErr(err))
+			}
+
+		## Wait for the status and headers, as [Http.send_streaming!] would
+		## have, bounded only by the timeouts of the request. Errors are those
+		## of [wait_within!].
+		wait! : PendingResponse => Try(StreamingResponse, [Closed, Interrupted, HttpErr(TransportErr)])
+		wait! = |pending|
+			match wait_pending!(pending, NoTimeout) {
+				Ok(Ready(response)) => Ok(response)
+				# Cannot happen: a wait without a limit of its own ends only
+				# with the response or an error.
+				Ok(NotReady) => wait!(pending)
+				Err(Closed) => Err(Closed)
+				Err(Interrupted) => Err(Interrupted)
+				Err(HttpErr(err)) => Err(HttpErr(err))
+			}
+
+		## Cancel the request if it is still in flight and close its
+		## connection, for every copy of the pending response. A response
+		## already returned is not affected. Afterwards [wait_within!] and [wait!]
+		## return `Err(Closed)`. Closing again does nothing.
+		close! : PendingResponse => {}
+		close! = |pending| Host.http_pending_close!(pending.host)
+	}
 }
 
 # `{}` asks for the default idle timeout; a field given replaces it.
@@ -377,6 +510,51 @@ redirect_step! = |raw, request, url, max_redirects, remaining| {
 		return Err(HttpErr(InsecureRedirect))
 	}
 	Ok(Follow({ request: redirected_request(request, url, next_url, status), url: next_url, status, location }))
+}
+
+## The request, URL and remaining redirects of the hop a pending response is
+## on: its first request with each redirect the host has followed applied
+## again, in order. Each passed [redirect_step!] when it was followed, so
+## applying it again gives the same hop.
+current_hop : Http.PendingResponse, List((U16, Str)) -> Try({ request : Request, url : Url.Url, remaining : U64 }, [HttpErr(Http.TransportErr)])
+current_hop = |pending, followed| {
+	var $hop = { request: pending.request, url: pending.url, remaining: pending.max_redirects }
+	for (status, location) in followed {
+		next_url = redirect_url($hop.url, location) ? |error| HttpErr(InvalidRedirectUrl(error))
+		$hop = { request: redirected_request($hop.request, $hop.url, next_url, status), url: next_url, remaining: $hop.remaining - 1 }
+	}
+	Ok($hop)
+}
+
+## Wait until `until` for the final response of a pending request, sending
+## each redirect hop as soon as its response arrives. One `until` covers
+## every hop.
+wait_pending! : Http.PendingResponse, [NoTimeout, At(U64)] => Try([Ready(Http.StreamingResponse), NotReady], [Closed, Interrupted, HttpErr(Http.TransportErr)])
+wait_pending! = |pending, until| {
+	ready = match Host.http_pending_wait!(pending.host, until) {
+		Ok(Ready(value)) => value
+		Ok(NotReady) => {
+			return Ok(NotReady)
+		}
+		Err(Closed) => {
+			return Err(Closed)
+		}
+		Err(HttpErr(error)) => {
+			return Err(transport_error(error))
+		}
+	}
+	hop = match ready.redirects {
+		[] => { request: pending.request, url: pending.url, remaining: pending.max_redirects }
+		followed => current_hop(pending, followed)?
+	}
+	match redirect_step!(ready.response, hop.request, hop.url, pending.max_redirects, hop.remaining)? {
+		Final(response) => Ok(Ready(response))
+		Follow(next) => {
+			sent = next.request.with_headers(sanitize_headers(Request.headers(next.request), False, False))
+			Host.http_pending_follow!(pending.host, InternalHttp.to_host_request(sent), next.status, next.location)
+			wait_pending!(pending, until)
+		}
+	}
 }
 
 ## HTTP permits network-path references; Url.resolve deliberately does not.
