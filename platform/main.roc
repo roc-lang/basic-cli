@@ -4,7 +4,7 @@ platform ""
 	requires {
 		## The application entry point receives command-line arguments only; the
 		## launcher-supplied program name is available from Env.program_name!.
-		main! : List(OsStr.OsStr) => Try({}, [Exit(I32), Interrupted, ..])
+		main! : List(OsStr) => Try({}, [Exit(I32), Interrupted, ..])
 	}
 	exposes [Cmd, Duration, Env, File, Http, IOErr, Locale, Monotonic, OsStr, Path, Random, Signal, Sleep, Sqlite, Stderr, Stdin, Stdout, System, Tcp, Tty, UnixSocket, Url, Utc]
 	packages {
@@ -173,7 +173,7 @@ import Utc
 
 ## The native host removes the invocation name (argv[0]) before calling this
 ## function. Applications can read that value separately with Env.program_name!.
-main_for_host! : List(OsStr.OsStr) => I32
+main_for_host! : List(OsStr) => I32
 main_for_host! = |args|
 	match main!(args) {
 		Ok({}) => 0
