@@ -35,6 +35,7 @@ mod unix_socket;
 mod roc_platform_abi;
 mod sqlite;
 mod tcp;
+mod tls;
 mod tty;
 
 use crate::roc_platform_abi::*;

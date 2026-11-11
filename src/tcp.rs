@@ -13,12 +13,14 @@ use std::io;
 #[cfg(test)]
 use std::io::{Read, Write};
 use std::net::TcpStream;
+use std::sync::Arc;
 #[cfg(test)]
 use std::thread;
 #[cfg(test)]
 use std::time::{Duration, Instant};
 
 use crate::roc_platform_abi::*;
+use crate::tls::{ConnectError, Trust};
 use crate::{roc_host, roc_u8_list_from_slice};
 
 use crate::socket::normalize;
@@ -34,6 +36,16 @@ pub(crate) struct Connection(crate::socket::BufferedSocket);
 impl Connection {
     pub(crate) fn new(stream: TcpStream) -> io::Result<Self> {
         crate::socket::BufferedSocket::new(stream.into()).map(Self)
+    }
+
+    /// A TLS client connection to `name` over `stream`, its handshake finished within `deadline`.
+    pub(crate) fn new_tls(
+        stream: TcpStream,
+        config: Arc<rustls::ClientConfig>,
+        name: rustls::pki_types::ServerName<'static>,
+        deadline: Deadline,
+    ) -> Result<Self, ConnectError> {
+        crate::socket::BufferedSocket::new_tls(stream.into(), config, name, deadline).map(Self)
     }
 }
 impl std::ops::Deref for Connection {
@@ -57,7 +69,10 @@ pub(crate) fn resolve_with_deadline(
 }
 
 fn connect(host: String, port: u16, timeout_nanos: u64) -> io::Result<TcpStream> {
-    let deadline = Deadline::after_nanos(timeout_nanos)?;
+    connect_until(host, port, Deadline::after_nanos(timeout_nanos)?)
+}
+
+fn connect_until(host: String, port: u16, deadline: Deadline) -> io::Result<TcpStream> {
     let addresses = resolve_with_deadline(host, port, deadline)?;
     let mut last_error = None;
 
@@ -81,6 +96,21 @@ fn connect(host: String, port: u16, timeout_nanos: u64) -> io::Result<TcpStream>
             "hostname resolved to no TCP addresses",
         )
     }))
+}
+
+/// `Tcp.connect_tls!`. The trust and the name are checked before anything touches the network;
+/// resolution, connecting and the handshake then share one deadline.
+fn connect_tls(
+    host: String,
+    port: u16,
+    timeout_nanos: u64,
+    trust: &Trust,
+) -> Result<Connection, ConnectError> {
+    let config = crate::tls::client_config(trust).map_err(ConnectError::Tls)?;
+    let name = crate::tls::server_name(&host).map_err(ConnectError::Tls)?;
+    let deadline = Deadline::after_nanos(timeout_nanos)?;
+    let stream = connect_until(host, port, deadline)?;
+    Connection::new_tls(stream, config, name, deadline)
 }
 
 /// Run `operation` on the connection behind `handle`, then drop the reference
@@ -172,6 +202,55 @@ pub extern "C" fn hosted_tcp_connect(
                 err: ManuallyDrop::new(tcp_io_err(error, roc_host)),
             },
             tag: HostTcpConnectResultTag::Err,
+        },
+    }
+}
+
+/// The error of `Tcp.connect_tls!`. An I/O failure normalises as for `Tcp.connect!`.
+fn connect_tls_err(error: ConnectError, roc_host: &RocHost) -> TcpErrOrTlsErr {
+    match error {
+        ConnectError::Io(error) => TcpErrOrTlsErr {
+            payload: TcpErrOrTlsErrPayload {
+                tcp_err: ManuallyDrop::new(tcp_io_err(error, roc_host)),
+            },
+            tag: TcpErrOrTlsErrTag::TcpErr,
+        },
+        ConnectError::Tls(failure) => TcpErrOrTlsErr {
+            payload: TcpErrOrTlsErrPayload {
+                tls_err: ManuallyDrop::new(failure.to_roc(roc_host)),
+            },
+            tag: TcpErrOrTlsErrTag::TlsErr,
+        },
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn hosted_tcp_connect_tls(
+    host: RocStr,
+    port: u16,
+    timeout_nanos: u64,
+    trust: AddPemOrDangerAcceptInvalidCertsOrDefault,
+) -> HostTcpConnectTlsResult {
+    let roc_host = roc_host();
+    let host_string = host.as_str().to_owned();
+    unsafe { host.decref(roc_host) };
+    let trust = Trust::from_roc(trust, roc_host);
+
+    let handle = connect_tls(host_string, port, timeout_nanos, &trust).and_then(|connection| {
+        crate::resources::box_resource(connection, roc_host).map_err(ConnectError::Io)
+    });
+    match handle {
+        Ok(handle) => HostTcpConnectTlsResult {
+            payload: HostTcpConnectTlsResultPayload {
+                ok: ManuallyDrop::new(handle),
+            },
+            tag: HostTcpConnectTlsResultTag::Ok,
+        },
+        Err(error) => HostTcpConnectTlsResult {
+            payload: HostTcpConnectTlsResultPayload {
+                err: ManuallyDrop::new(connect_tls_err(error, roc_host)),
+            },
+            tag: HostTcpConnectTlsResultTag::Err,
         },
     }
 }
@@ -312,6 +391,7 @@ pub extern "C" fn hosted_tcp_write(
 mod tests {
     use super::*;
     use std::net::{Shutdown, TcpListener};
+    use std::sync::mpsc;
 
     const LONG: u64 = 10_000_000_000;
     const SHORT: u64 = 30_000_000;
@@ -766,5 +846,376 @@ mod tests {
         let message = unsafe { ManuallyDrop::into_inner(other.payload.other) };
         assert_eq!(message.as_str(), "odd failure");
         unsafe { message.decref(&host) };
+    }
+
+    // TLS connections: the same buffered socket, with a rustls session over it.
+
+    use crate::tls::testing::{
+        config_at, finish_handshake, mismatched_key_server_config, serve_one, server_config,
+        tls_pair, LOCALHOST_PEM,
+    };
+    use crate::tls::TlsFailure;
+
+    fn pem() -> Trust {
+        Trust::AddPem(LOCALHOST_PEM.to_vec())
+    }
+
+    fn tls_failure(result: Result<Connection, ConnectError>) -> TlsFailure {
+        match result {
+            Err(ConnectError::Tls(failure)) => failure,
+            Err(ConnectError::Io(error)) => panic!("expected a TLS failure, got {error:?}"),
+            Ok(_) => panic!("expected a TLS failure, got a connection"),
+        }
+    }
+
+    fn connect_kind(result: Result<Connection, ConnectError>) -> io::ErrorKind {
+        match result {
+            Err(ConnectError::Io(error)) => error.kind(),
+            Err(ConnectError::Tls(failure)) => panic!("expected an I/O error, got {failure:?}"),
+            Ok(_) => panic!("expected an I/O error, got a connection"),
+        }
+    }
+
+    /// Handshake with a localhost server, verifying it as `name` under `config`. The server
+    /// ignores a handshake the client gives up on.
+    fn handshake_as(
+        name: &str,
+        config: Arc<rustls::ClientConfig>,
+    ) -> Result<Connection, ConnectError> {
+        let (port, server) = serve_one(server_config(), |mut stream| {
+            let _ = finish_handshake(&mut stream);
+        });
+        let stream = TcpStream::connect(("localhost", port)).unwrap();
+        let name = crate::tls::server_name(name).unwrap();
+        let result = Connection::new_tls(stream, config, name, Deadline::after_nanos(LONG)?);
+        server.join().unwrap();
+        result
+    }
+
+    #[test]
+    fn tls_connect_trusts_added_roots_and_exchanges_data() {
+        let (port, server) = serve_one(server_config(), |mut stream| {
+            let mut line = Vec::new();
+            while line.last() != Some(&b'\n') {
+                let mut byte = [0];
+                stream.read_exact(&mut byte).unwrap();
+                line.push(byte[0]);
+            }
+            stream.write_all(b"you said ").unwrap();
+            stream.write_all(&line).unwrap();
+            stream.flush().unwrap();
+        });
+        let mut connection = connect_tls("localhost".to_string(), port, LONG, &pem()).unwrap();
+        connection.write(b"hello\n", LONG).unwrap();
+        assert_eq!(line(&mut connection, NO_LIMIT).unwrap(), b"you said hello");
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn tls_connect_names_the_failure() {
+        let config = |trust: &Trust| crate::tls::client_config(trust).unwrap();
+        // A self-signed certificate is not issued by any bundled root.
+        assert_eq!(
+            tls_failure(handshake_as("localhost", config(&Trust::Default))),
+            TlsFailure::UnknownIssuer
+        );
+        // The certificate names only `localhost`; the name verified is the one given.
+        assert_eq!(
+            tls_failure(handshake_as("127.0.0.1", config(&pem()))),
+            TlsFailure::NameMismatch
+        );
+        // The certificate is valid until 2036.
+        const JANUARY_2040: u64 = 2_208_988_800;
+        assert_eq!(
+            tls_failure(handshake_as("localhost", config_at(&pem(), JANUARY_2040))),
+            TlsFailure::Expired
+        );
+        // Accepting any certificate accepts each of these.
+        let any = config(&Trust::DangerAcceptInvalidCerts);
+        assert!(handshake_as("127.0.0.1", any.clone()).is_ok());
+        assert!(handshake_as(
+            "localhost",
+            config_at(&Trust::DangerAcceptInvalidCerts, JANUARY_2040)
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn bad_pem_fails_before_connecting() {
+        // Nothing listens on a port that was just released.
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+        let junk = Trust::AddPem(b"junk".to_vec());
+        assert!(matches!(
+            tls_failure(connect_tls("127.0.0.1".to_string(), port, LONG, &junk)),
+            TlsFailure::BadPem(_)
+        ));
+        // Not even an expired deadline is consulted first.
+        assert!(matches!(
+            tls_failure(connect_tls("127.0.0.1".to_string(), port, 0, &junk)),
+            TlsFailure::BadPem(_)
+        ));
+    }
+
+    #[test]
+    fn insecure_mode_still_checks_handshake_signatures() {
+        let any = Trust::DangerAcceptInvalidCerts;
+        let (port, server) = serve_one(mismatched_key_server_config(), |mut stream| {
+            let _ = finish_handshake(&mut stream);
+        });
+        assert!(matches!(
+            tls_failure(connect_tls("localhost".to_string(), port, LONG, &any)),
+            TlsFailure::Other(_)
+        ));
+        server.join().unwrap();
+
+        let (port, server) = serve_one(server_config(), |mut stream| {
+            finish_handshake(&mut stream).unwrap();
+        });
+        assert!(connect_tls("localhost".to_string(), port, LONG, &any).is_ok());
+        server.join().unwrap();
+    }
+
+    /// A server that accepts one connection and says nothing until told to go.
+    fn silent_server() -> (u16, mpsc::Sender<()>, thread::JoinHandle<Vec<u8>>) {
+        let listener = TcpListener::bind(("localhost", 0)).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let (go, wait) = mpsc::channel();
+        let server = thread::spawn(move || {
+            let (mut socket, _) = listener.accept().unwrap();
+            let _ = wait.recv_timeout(Duration::from_secs(3));
+            socket.set_nonblocking(true).unwrap();
+            let mut received = vec![0; 4096];
+            let count = socket.read(&mut received).unwrap_or(0);
+            received.truncate(count);
+            received
+        });
+        (port, go, server)
+    }
+
+    #[test]
+    fn tls_handshake_respects_the_connect_deadline() {
+        let (port, go, server) = silent_server();
+        let started = Instant::now();
+        assert_eq!(
+            connect_kind(connect_tls("localhost".to_string(), port, SHORT, &pem())),
+            io::ErrorKind::TimedOut
+        );
+        assert!(started.elapsed() < Duration::from_secs(1));
+        go.send(()).unwrap();
+        // The client did start the handshake.
+        assert!(!server.join().unwrap().is_empty());
+    }
+
+    #[test]
+    fn tls_handshake_fails_when_the_server_closes_the_connection() {
+        let listener = TcpListener::bind(("localhost", 0)).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = thread::spawn(move || {
+            let (mut socket, _) = listener.accept().unwrap();
+            // Read the ClientHello first: closing with it unread would reset the connection
+            // instead of ending it.
+            let mut hello = [0; 4096];
+            assert_ne!(socket.read(&mut hello).unwrap(), 0);
+        });
+        let started = Instant::now();
+        match tls_failure(connect_tls("localhost".to_string(), port, LONG, &pem())) {
+            TlsFailure::Other(message) => assert!(message.contains("closed the connection")),
+            other => panic!("expected Other, got {other:?}"),
+        }
+        assert!(started.elapsed() < Duration::from_secs(5));
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn tls_handshake_is_interrupted() {
+        struct Reset;
+        impl Drop for Reset {
+            fn drop(&mut self) {
+                crate::signals::set_test_pending(false);
+            }
+        }
+        let (port, go, server) = silent_server();
+        let deadline = Deadline::after_nanos(LONG).unwrap();
+        let stream = connect_until("localhost".to_string(), port, deadline).unwrap();
+        let config = crate::tls::client_config(&pem()).unwrap();
+        let name = crate::tls::server_name("localhost").unwrap();
+        let reset = Reset;
+        crate::signals::set_test_pending(true);
+        assert_eq!(
+            connect_kind(Connection::new_tls(stream, config, name, deadline)),
+            io::ErrorKind::Interrupted
+        );
+        drop(reset);
+        go.send(()).unwrap();
+        // Nothing was sent: not even the ClientHello.
+        assert!(server.join().unwrap().is_empty());
+    }
+
+    #[test]
+    fn tls_timed_out_reads_consume_nothing() {
+        let (mut connection, mut peer) = tls_pair();
+        peer.write_all(b"par").unwrap();
+        peer.flush().unwrap();
+        time_out_until_buffered(&mut connection, b"par");
+
+        assert_eq!(
+            until_kind(connection.read_until(b'|', NO_LIMIT, SHORT)),
+            io::ErrorKind::TimedOut
+        );
+        assert_eq!(
+            kind(connection.read_exactly(5, SHORT)),
+            io::ErrorKind::TimedOut
+        );
+        assert_eq!(kind(connection.read_up_to(3, 0)), io::ErrorKind::TimedOut);
+        assert_eq!(connection.available(), b"par");
+
+        peer.write_all(b"tial\r\nnext").unwrap();
+        peer.flush().unwrap();
+        assert_eq!(line(&mut connection, NO_LIMIT).unwrap(), b"partial");
+        while connection.available() != b"next" {
+            assert_eq!(
+                kind(connection.read_exactly(10, SHORT)),
+                io::ErrorKind::TimedOut
+            );
+        }
+        assert_eq!(connection.read_up_to(4, LONG).unwrap().unwrap(), b"next");
+    }
+
+    #[test]
+    fn tls_reads_take_decrypted_data_before_waiting() {
+        // The server's greeting follows its Finished message in the same flight, so the
+        // handshake decrypts it. Without session tickets nothing follows on the socket to wake a
+        // wait.
+        let mut config = rustls::ServerConfig::clone(&server_config());
+        config.send_half_rtt_data = true;
+        config.send_tls13_tickets = 0;
+        let (port, server) = serve_one(Arc::new(config), |mut stream| {
+            stream.conn.writer().write_all(b"greeting\n").unwrap();
+            finish_handshake(&mut stream).unwrap();
+            // Stay open and silent until the client has read.
+            let mut byte = [0];
+            let _ = stream.read(&mut byte);
+        });
+        let mut connection = connect_tls("localhost".to_string(), port, LONG, &pem()).unwrap();
+        assert_eq!(
+            connection
+                .read_line(NO_LIMIT, 2_000_000_000)
+                .unwrap()
+                .unwrap(),
+            b"greeting"
+        );
+        drop(connection);
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn tls_interrupted_reads_preserve_the_prefix() {
+        struct Reset;
+        impl Drop for Reset {
+            fn drop(&mut self) {
+                crate::signals::set_test_pending(false);
+            }
+        }
+        let (mut connection, mut peer) = tls_pair();
+        peer.write_all(b"prefix").unwrap();
+        peer.flush().unwrap();
+        time_out_until_buffered(&mut connection, b"prefix");
+        let reset = Reset;
+        crate::signals::set_test_pending(true);
+        assert_eq!(
+            until_kind(connection.read_line(NO_LIMIT, LONG)),
+            io::ErrorKind::Interrupted
+        );
+        assert_eq!(
+            kind(connection.read_exactly(7, LONG)),
+            io::ErrorKind::Interrupted
+        );
+        assert_eq!(
+            kind(connection.write(b"not written", LONG)),
+            io::ErrorKind::Interrupted
+        );
+        assert_eq!(connection.available(), b"prefix");
+        drop(reset);
+
+        peer.write_all(b" tail\n").unwrap();
+        peer.flush().unwrap();
+        assert_eq!(line(&mut connection, NO_LIMIT).unwrap(), b"prefix tail");
+    }
+
+    #[test]
+    fn tls_line_limit_applies() {
+        let (mut connection, mut peer) = tls_pair();
+        peer.write_all(b"too long\nok\n").unwrap();
+        peer.flush().unwrap();
+        assert!(matches!(
+            connection.read_line(4, LONG),
+            Err(ReadUntilError::LimitExceeded)
+        ));
+        assert_eq!(line(&mut connection, 4).unwrap(), b"ok");
+    }
+
+    #[test]
+    fn tls_end_of_input_requires_close_notify() {
+        // A clean close: the data, then the end, as often as it is asked for.
+        let (mut connection, mut peer) = tls_pair();
+        peer.write_all(b"bye").unwrap();
+        peer.conn.send_close_notify();
+        peer.flush().unwrap();
+        drop(peer);
+        assert_eq!(connection.read_up_to(8, LONG).unwrap().unwrap(), b"bye");
+        assert_eq!(connection.read_up_to(8, LONG).unwrap(), None);
+        assert_eq!(line(&mut connection, NO_LIMIT), None);
+
+        // The TCP connection ends without close_notify: the data may have been cut off.
+        let (mut connection, mut peer) = tls_pair();
+        peer.write_all(b"cut").unwrap();
+        peer.flush().unwrap();
+        peer.sock.shutdown(Shutdown::Write).unwrap();
+        assert_eq!(connection.read_up_to(8, LONG).unwrap().unwrap(), b"cut");
+        let truncated = connection.read_up_to(8, LONG).unwrap_err();
+        assert_eq!(truncated.kind(), io::ErrorKind::Other);
+        assert!(
+            truncated.to_string().contains("without close_notify"),
+            "{truncated}"
+        );
+        // Not `UnexpectedEof`, which `Tcp.read_exactly!` reports as the end of input.
+        assert_eq!(kind(connection.read_exactly(1, LONG)), io::ErrorKind::Other);
+    }
+
+    #[test]
+    fn dropping_a_tls_connection_sends_close_notify() {
+        let (mut connection, mut peer) = tls_pair();
+        // Take the server's session tickets, so closing does not reset the connection.
+        assert_eq!(
+            kind(connection.read_up_to(1, SHORT)),
+            io::ErrorKind::TimedOut
+        );
+        drop(connection);
+        let mut received = Vec::new();
+        assert_eq!(peer.read_to_end(&mut received).unwrap(), 0);
+    }
+
+    #[test]
+    fn tls_failures_cross_as_tls_err() {
+        let host = crate::resources::make_host();
+
+        let expired = connect_tls_err(ConnectError::Tls(TlsFailure::Expired), &host);
+        assert_eq!(expired.tag, TcpErrOrTlsErrTag::TlsErr);
+        assert_eq!(unsafe { expired.payload.tls_err.tag }, TlsErrTag::Expired);
+
+        let bad_pem = connect_tls_err(ConnectError::Tls(TlsFailure::BadPem("x".into())), &host);
+        assert_eq!(bad_pem.tag, TcpErrOrTlsErrTag::TlsErr);
+        let tls_err = unsafe { ManuallyDrop::into_inner(bad_pem.payload.tls_err) };
+        assert_eq!(tls_err.tag, TlsErrTag::BadPem);
+        let message = unsafe { ManuallyDrop::into_inner(tls_err.payload.bad_pem) };
+        assert_eq!(message.as_str(), "x");
+        unsafe { message.decref(&host) };
+
+        // Connection failures normalise as for `Tcp.connect!`.
+        let stalled = connect_tls_err(ConnectError::Io(io::ErrorKind::WouldBlock.into()), &host);
+        assert_eq!(stalled.tag, TcpErrOrTlsErrTag::TcpErr);
+        assert_eq!(unsafe { stalled.payload.tcp_err.tag }, IOErrTag::TimedOut);
     }
 }
