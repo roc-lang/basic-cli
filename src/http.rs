@@ -589,6 +589,67 @@ struct StreamingHead {
     content_length: Option<u64>,
 }
 
+impl StreamingHead {
+    fn from_parts(parts: &hyper::http::response::Parts) -> Self {
+        Self {
+            status: parts.status.as_u16(),
+            headers: header_pairs(&parts.headers),
+            invalid_location: invalid_location(&parts.headers),
+            content_length: declared_content_length(&parts.headers),
+        }
+    }
+
+    /// The head as Roc receives it, with `body` the handle of its body.
+    fn to_roc(&self, body: *mut u64, roc_host: &RocHost) -> HostHttpSendStreamingOk {
+        let content_length = match self.content_length {
+            Some(length) => KnownOrUnknown {
+                payload: KnownOrUnknownPayload {
+                    known: ManuallyDrop::new(length),
+                },
+                tag: KnownOrUnknownTag::Known,
+            },
+            None => KnownOrUnknown {
+                payload: KnownOrUnknownPayload { unknown: [] },
+                tag: KnownOrUnknownTag::Unknown,
+            },
+        };
+        let invalid_location = match self.invalid_location {
+            Some(byte) => NoneOrSome {
+                payload: NoneOrSomePayload {
+                    some: ManuallyDrop::new(byte),
+                },
+                tag: NoneOrSomeTag::Some,
+            },
+            None => NoneOrSome {
+                payload: NoneOrSomePayload { none: [] },
+                tag: NoneOrSomeTag::None,
+            },
+        };
+        HostHttpSendStreamingOk {
+            content_length,
+            invalid_location,
+            body,
+            headers: build_roc_headers(&self.headers, roc_host),
+            status: self.status,
+        }
+    }
+}
+
+/// The client of every streaming request. It is the same as
+/// `async_send_request`'s, so all entry points put the same request on the
+/// wire. Without a pool the connection is not kept for a later request: it
+/// closes when its response is finished with.
+fn streaming_client() -> hyper_util::client::legacy::Client<
+    hyper_rustls::HttpsConnector<
+        hyper_util::client::legacy::connect::HttpConnector<crate::dns::HttpResolver>,
+    >,
+    http_body_util::Full<bytes::Bytes>,
+> {
+    hyper_util::client::legacy::Client::builder(hyper_util::rt::TokioExecutor::new())
+        .pool_max_idle_per_host(0)
+        .build(https_connector())
+}
+
 /// Send `request` and wait for the status and headers.
 ///
 /// `timeout_ms` is the `Request` timeout, the deadline for the whole exchange,
@@ -612,8 +673,6 @@ fn send_streaming_at(
     idle_timeout: Option<Duration>,
     deadline: Option<Instant>,
 ) -> Result<(StreamingHead, StreamingBody), Failure> {
-    use hyper_util::client::legacy::Client;
-    use hyper_util::rt::TokioExecutor;
     if crate::signals::is_pending() {
         return Err(Failure::Interrupted);
     }
@@ -624,17 +683,8 @@ fn send_streaming_at(
     let budget = wait_budget(idle_timeout, deadline, now).map_err(|()| Failure::Timeout)?;
     let until = budget.and_then(|budget| now.checked_add(budget));
 
-    let response = TOKIO_RUNTIME.block_on(async {
-        // The same client as `async_send_request`, so both entry points put
-        // the same request on the wire. Without a pool the connection is not
-        // kept for a later request: it closes when its response is finished
-        // with.
-        let client: Client<_, http_body_util::Full<bytes::Bytes>> =
-            Client::builder(TokioExecutor::new())
-                .pool_max_idle_per_host(0)
-                .build(https_connector());
-        await_io(until, client.request(request)).await
-    });
+    let response = TOKIO_RUNTIME
+        .block_on(async { await_io(until, streaming_client().request(request)).await });
     let response = match response {
         Ok(Ok(response)) => response,
         Ok(Err(error)) => return Err(Failure::Other(error.to_string())),
@@ -660,12 +710,7 @@ fn send_streaming_at(
     }
 
     let (parts, body) = response.into_parts();
-    let head = StreamingHead {
-        status: parts.status.as_u16(),
-        headers: header_pairs(&parts.headers),
-        invalid_location: invalid_location(&parts.headers),
-        content_length: declared_content_length(&parts.headers),
-    };
+    let head = StreamingHead::from_parts(&parts);
     let body = StreamingBody {
         state: BodyState::Open(body),
         pending: bytes::BytesMut::new(),
@@ -684,6 +729,24 @@ fn streaming_err(failure: &Failure, roc_host: &RocHost) -> HostHttpSendStreaming
     }
 }
 
+/// An instant on the `Host.monotonic_now!` clock.
+fn monotonic_instant(at: AtOrNoTimeout) -> Option<Instant> {
+    match at.tag {
+        AtOrNoTimeoutTag::At => {
+            crate::monotonic_origin().checked_add(Duration::from_nanos(unsafe { *at.payload.at }))
+        }
+        AtOrNoTimeoutTag::NoTimeout => None,
+    }
+}
+
+/// An idle timeout as Roc passes it, in nanoseconds.
+fn idle_duration(after: AfterOrNoTimeout) -> Option<Duration> {
+    match after.tag {
+        AfterOrNoTimeoutTag::After => Some(Duration::from_nanos(unsafe { *after.payload.after })),
+        AfterOrNoTimeoutTag::NoTimeout => None,
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn hosted_http_send_streaming(
     request: HostHttpSendStreamingArg0,
@@ -691,17 +754,8 @@ pub extern "C" fn hosted_http_send_streaming(
     deadline: AtOrNoTimeout,
 ) -> HostHttpSendStreamingResult {
     let roc_host = roc_host();
-    let deadline = match deadline.tag {
-        AtOrNoTimeoutTag::At => crate::monotonic_origin()
-            .checked_add(Duration::from_nanos(unsafe { *deadline.payload.at })),
-        AtOrNoTimeoutTag::NoTimeout => None,
-    };
-    let idle_timeout = match idle_timeout.tag {
-        AfterOrNoTimeoutTag::After => {
-            Some(Duration::from_nanos(unsafe { *idle_timeout.payload.after }))
-        }
-        AfterOrNoTimeoutTag::NoTimeout => None,
-    };
+    let deadline = monotonic_instant(deadline);
+    let idle_timeout = idle_duration(idle_timeout);
 
     // The hyper request copies what it needs, so the Roc values can go.
     let hyper_request = build_hyper_request((&request).into());
@@ -718,39 +772,9 @@ pub extern "C" fn hosted_http_send_streaming(
         Ok(handle) => handle,
         Err(error) => return streaming_err(&Failure::Other(error.to_string()), roc_host),
     };
-    let content_length = match head.content_length {
-        Some(length) => KnownOrUnknown {
-            payload: KnownOrUnknownPayload {
-                known: ManuallyDrop::new(length),
-            },
-            tag: KnownOrUnknownTag::Known,
-        },
-        None => KnownOrUnknown {
-            payload: KnownOrUnknownPayload { unknown: [] },
-            tag: KnownOrUnknownTag::Unknown,
-        },
-    };
-    let invalid_location = match head.invalid_location {
-        Some(byte) => NoneOrSome {
-            payload: NoneOrSomePayload {
-                some: ManuallyDrop::new(byte),
-            },
-            tag: NoneOrSomeTag::Some,
-        },
-        None => NoneOrSome {
-            payload: NoneOrSomePayload { none: [] },
-            tag: NoneOrSomeTag::None,
-        },
-    };
     HostHttpSendStreamingResult {
         payload: HostHttpSendStreamingResultPayload {
-            ok: ManuallyDrop::new(HostHttpSendStreamingOk {
-                content_length,
-                invalid_location,
-                body: handle,
-                headers: build_roc_headers(&head.headers, roc_host),
-                status: head.status,
-            }),
+            ok: ManuallyDrop::new(head.to_roc(handle, roc_host)),
         },
         tag: HostHttpSendStreamingResultTag::Ok,
     }

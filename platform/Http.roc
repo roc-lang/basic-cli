@@ -171,11 +171,7 @@ Http :: [].{
 		url = Url.parse(Request.uri(request)) ? InvalidUrl
 		canonical = Url.without_fragment(url)
 		canonical_request = request_with_defaults(request.with_uri(canonical.to_str()))
-		deadline = match Request.timeout(request) {
-			NoTimeout | TimeoutMilliseconds(0) => NoTimeout
-			TimeoutMilliseconds(ms) => At(Host.monotonic_now!().plus_saturated(ms.times_saturated(1_000_000)))
-		}
-		send_redirected!(canonical_request, canonical, options, options.max_redirects, deadline)
+		send_redirected!(canonical_request, canonical, options, options.max_redirects, request_deadline!(request))
 	}
 
 	## The status and headers of a response, and its body still to be read.
@@ -310,31 +306,55 @@ transport_error = |error|
 		Other(message) => HttpErr(Other(message))
 	}
 
+## The request timeout as an instant on the `monotonic_now!` clock. It is
+## captured once, so that it covers every hop and the final body.
+request_deadline! : Request => [NoTimeout, At(U64)]
+request_deadline! = |request|
+	match Request.timeout(request) {
+		NoTimeout | TimeoutMilliseconds(0) => NoTimeout
+		TimeoutMilliseconds(ms) => At(Host.monotonic_now!().plus_saturated(ms.times_saturated(1_000_000)))
+	}
+
+## The idle timeout as the host takes it, in nanoseconds.
+host_idle_timeout : [NoTimeout, After(Duration)] -> [NoTimeout, After(U64)]
+host_idle_timeout = |idle_timeout|
+	match idle_timeout {
+		NoTimeout => NoTimeout
+		After(duration) => After(duration.to_nanos())
+	}
+
 ## The same driver serves buffered and streamed responses. The deadline is
 ## captured once and is passed unchanged to every native hop and final body.
 send_redirected! : Request, Url.Url, Http.StreamingOptions, U64, [NoTimeout, At(U64)] => Try(Http.StreamingResponse, [Interrupted, HttpErr(Http.TransportErr)])
 send_redirected! = |request, url, options, remaining, deadline| {
-	idle = match options.idle_timeout {
-		NoTimeout => NoTimeout
-		After(duration) => After(duration.to_nanos())
-	}
 	hop = request.with_headers(sanitize_headers(Request.headers(request), False, False))
-	raw = match Host.http_send_streaming!(InternalHttp.to_host_request(hop), idle, deadline) {
+	raw = match Host.http_send_streaming!(InternalHttp.to_host_request(hop), host_idle_timeout(options.idle_timeout), deadline) {
 		Ok(value) => value
 		Err(error) => {
 			return Err(transport_error(error))
 		}
 	}
+	match redirect_step!(raw, request, url, options.max_redirects, remaining)? {
+		Final(response) => Ok(response)
+		Follow(next) => send_redirected!(next.request, next.url, options, remaining - 1, deadline)
+	}
+}
+
+## What the response to one hop means for a request that may follow
+## redirects: the final response, or the next hop to send. The body of a
+## redirect is closed.
+redirect_step! : InternalHttp.StreamingResponseFromHost, Request, Url.Url, U64, U64 => Try([Final(Http.StreamingResponse), Follow({ request : Request, url : Url.Url, status : U16, location : Str })], [HttpErr(Http.TransportErr)])
+redirect_step! = |raw, request, url, max_redirects, remaining| {
 	response = Http.StreamingResponse.{ status: raw.status, headers: InternalHttp.from_host_headers(raw.headers), content_length: raw.content_length, host: raw.body }
 	status = response.status
 	redirect = status == 301 or status == 302 or status == 303 or status == 307 or status == 308
-	if options.max_redirects == 0 or !redirect {
-		return Ok(response)
+	if max_redirects == 0 or !redirect {
+		return Ok(Final(response))
 	}
 	locations = response.headers.keep_if(|header| header.name.with_ascii_lowercased() == "location")
 	location = match locations {
 		[] => {
-			return Ok(response)
+			return Ok(Final(response))
 		}
 		[header] => header.value
 		_ => {
@@ -344,7 +364,7 @@ send_redirected! = |request, url, options, remaining, deadline| {
 	}
 	Host.http_close_body!(response.host)
 	if remaining == 0 {
-		return Err(HttpErr(RedirectLimitExceeded(options.max_redirects)))
+		return Err(HttpErr(RedirectLimitExceeded(max_redirects)))
 	}
 	match raw.invalid_location {
 		Some(byte) => {
@@ -356,8 +376,7 @@ send_redirected! = |request, url, options, remaining, deadline| {
 	if Url.scheme(url) == Https and Url.scheme(next_url) == Http {
 		return Err(HttpErr(InsecureRedirect))
 	}
-	next = redirected_request(request, url, next_url, status)
-	send_redirected!(next, next_url, options, remaining - 1, deadline)
+	Ok(Follow({ request: redirected_request(request, url, next_url, status), url: next_url, status, location }))
 }
 
 ## HTTP permits network-path references; Url.resolve deliberately does not.
