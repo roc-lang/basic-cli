@@ -28,7 +28,7 @@ def pin(lock: Path) -> None:
             shutil.copyfile(directory / "licenses" / license_file, destination)
             components.append({
                 "name": name, "version": version, "license": license_id, "license_file": license_file,
-                "upstream": manifest["recipe"]["musl"]["url"] if name == "musl libc" else "https://ziglang.org/download/0.17.0/",
+                "upstream": manifest["recipe"]["musl"]["url"] if name == "musl libc" else f"https://ziglang.org/download/{manifest['recipe']['zig_version']}/",
                 "origin": document["targets"][target]["url"],
                 "files": {f"platform/targets/{target}/{library}": manifest["files"][library]["sha256"] for library in libraries},
             })
