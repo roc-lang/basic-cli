@@ -83,6 +83,8 @@ def download(record: dict, cache: Path) -> Path:
     destination = cache / digest
     with cache_lock(cache / (digest + ".lock")):
         if destination.is_file() and sha256(destination) == digest:
+            if "size" in record and destination.stat().st_size != record["size"]:
+                raise ValueError("Linker-input size mismatch")
             return destination
         with tempfile.NamedTemporaryFile(dir=cache, delete=False) as temporary:
             pending = Path(temporary.name)

@@ -45,6 +45,8 @@ class LinkerInputTests(unittest.TestCase):
                 self.assertEqual(request.call_count, 1)
             with patch.object(inputs.urllib.request, "urlopen", side_effect=AssertionError("network used")):
                 self.assertEqual(inputs.download(record, cache), cached)
+                with self.assertRaisesRegex(ValueError, "size mismatch"):
+                    inputs.download({**record, "size": len(data) + 1}, cache)
             cached.write_bytes(b"corrupt")
             with patch.object(inputs.urllib.request, "urlopen", return_value=io.BytesIO(data)):
                 self.assertEqual(inputs.download(record, cache).read_bytes(), data)
