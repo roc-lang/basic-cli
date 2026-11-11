@@ -7,7 +7,7 @@
 
 A Roc [platform](https://github.com/roc-lang/roc/wiki/Roc-concepts-explained#platform) for command-line programs.
 
-`basic-cli` supports command execution, directories, environment variables, files, HTTP, locales, paths, random seeds, sleeping, SQLite, standard input/output/error, TCP, terminal raw mode, and UTC time.
+`basic-cli` supports command execution, directories, environment variables, files, HTTP, locales, paths, random seeds, sleeping, SQLite, standard input/output/error, TCP (including TLS client connections), terminal raw mode, and UTC time.
 
 ## Supported targets
 
@@ -35,10 +35,15 @@ These host behaviors may affect application design:
 
 - HTTP and HTTPS use HTTP/1 only. [Issue #455](https://github.com/roc-lang/basic-cli/issues/455)
   tracks research into HTTP/2 support and its tradeoffs.
-- HTTPS certificates are validated against bundled WebPKI roots, not the
-  operating system trust store. A certificate trusted only through a locally
-  installed OS root will therefore be rejected. [Issue #454](https://github.com/roc-lang/basic-cli/issues/454)
-  tracks research into the appropriate trust configuration for basic-cli.
+- HTTPS and `Tcp.connect_tls!` validate certificates against bundled WebPKI
+  roots by default, not the operating system trust store (`SSL_CERT_FILE` is
+  not read either). A certificate trusted only through a locally installed OS
+  root will therefore be rejected. An application can add its own roots from
+  PEM bytes with `tls: { trust: AddPem(bytes) }`, or accept any certificate
+  while developing with `tls: { trust: DangerAcceptInvalidCerts }`, in the
+  options of `Http.send!`, `Http.send_streaming!` or `Tcp.connect_tls!`. The
+  trust applies to every redirect hop. [Issue #454](https://github.com/roc-lang/basic-cli/issues/454)
+  tracks research into the appropriate default trust source for basic-cli.
 - The timeout configured on an HTTP `Request` is the deadline for the whole
   exchange, response body included; `NoTimeout` leaves it unbounded.
   `Http.send!` and the functions built on it buffer the response completely
@@ -86,8 +91,9 @@ These host behaviors may affect application design:
   creating a new regular file. Existing files retain their access grants;
   use `RequireNew` with `OwnerOnly` for private files. Explicit permissions
   replace ACL grants and fail if the filesystem cannot enforce the policy.
-- Several network and TLS failures currently use a generic HTTP transport
-  error ([issue #438](https://github.com/roc-lang/basic-cli/issues/438)).
+- A rejected certificate or failed TLS handshake is `HttpErr(TlsErr(err))`,
+  naming the cause. Several other network failures currently use a generic
+  HTTP transport error ([issue #438](https://github.com/roc-lang/basic-cli/issues/438)).
 - TCP reads and writes always have a timeout: a `Tcp.Connection` holds the
   `io_timeout` it was created with, which bounds each read or write as a
   whole, and `with_timeout` returns the same connection with another. The wait
@@ -96,6 +102,13 @@ These host behaviors may affect application design:
   `TcpErr(TimedOut)`.
 - A TCP read that times out or is interrupted consumes nothing: the bytes that had arrived stay
   buffered for the next read. A write that times out may have sent any prefix.
+- `Tcp.connect_tls!` returns an ordinary `Tcp.Connection`: its
+  `connect_timeout` covers resolution, connecting and the handshake, and reads
+  and writes keep every TCP guarantee above. A bad PEM in `AddPem` is
+  `TlsErr(BadPem(_))`, reported before any network activity. A TLS failure
+  after the handshake is `TcpErr(Other(message))`, and so is a peer that closes
+  without TLS `close_notify`, rather than a clean end of input. Releasing the
+  connection sends `close_notify` without waiting.
 - `Tcp.Connection.read_until!`, `read_line!` and `lines` stop at the
   connection's line limit (1 MiB unless changed with `with_line_limit`),
   preventing an untrusted peer from causing unbounded buffering. The rest of

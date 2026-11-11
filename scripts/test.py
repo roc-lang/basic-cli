@@ -239,6 +239,9 @@ def helper_server(name: str | None) -> Iterator[None]:
     elif name == "tcp":
         args = [sys.executable, str(ROOT / "scripts" / "tcp_echo_server.py")]
         port = 8085
+    elif name == "tls":
+        args = [sys.executable, str(ROOT / "scripts" / "tls_test_server.py")]
+        port = 8443
     else:
         raise SystemExit(f"Unknown helper server: {name}")
     process = subprocess.Popen(args, cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)

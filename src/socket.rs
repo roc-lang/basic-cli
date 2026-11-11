@@ -1,5 +1,7 @@
-//! Buffered, deadline-bounded, interruptible stream sockets shared by TCP and AF_UNIX.
+//! Buffered, deadline-bounded, interruptible stream sockets shared by TCP (optionally over TLS)
+//! and AF_UNIX.
 use std::io::{self, Read, Write};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 pub(crate) fn check_interrupt() -> io::Result<()> {
@@ -14,9 +16,35 @@ pub(crate) fn check_interrupt() -> io::Result<()> {
 /// when its console event cannot participate in the socket provider's poll set.
 const POLL_SLICE: Duration = Duration::from_millis(10);
 
+/// What `wait_for` waits for.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum Interest {
+    Readable,
+    Writable,
+    /// Whichever comes first. A TLS session that must send before it can receive waits for this,
+    /// so a peer that is itself blocked writing to us is noticed while our send buffer is full.
+    Either,
+}
+
 pub(crate) fn wait_ready(
     socket: &socket2::Socket,
     write: bool,
+    deadline: Deadline,
+) -> io::Result<()> {
+    wait_for(
+        socket,
+        if write {
+            Interest::Writable
+        } else {
+            Interest::Readable
+        },
+        deadline,
+    )
+}
+
+pub(crate) fn wait_for(
+    socket: &socket2::Socket,
+    interest: Interest,
     deadline: Deadline,
 ) -> io::Result<()> {
     loop {
@@ -30,7 +58,11 @@ pub(crate) fn wait_ready(
             use std::os::fd::AsRawFd;
             let mut fd = libc::pollfd {
                 fd: socket.as_raw_fd(),
-                events: if write { libc::POLLOUT } else { libc::POLLIN },
+                events: match interest {
+                    Interest::Readable => libc::POLLIN,
+                    Interest::Writable => libc::POLLOUT,
+                    Interest::Either => libc::POLLIN | libc::POLLOUT,
+                },
                 revents: 0,
             };
             let count = unsafe { libc::poll(&mut fd, 1, millis) };
@@ -48,7 +80,11 @@ pub(crate) fn wait_ready(
             };
             let mut fd = WSAPOLLFD {
                 fd: socket.as_raw_socket() as _,
-                events: if write { POLLWRNORM } else { POLLRDNORM },
+                events: match interest {
+                    Interest::Readable => POLLRDNORM,
+                    Interest::Writable => POLLWRNORM,
+                    Interest::Either => POLLRDNORM | POLLWRNORM,
+                },
                 revents: 0,
             };
             let count = unsafe { WSAPoll(&mut fd, 1, millis) };
@@ -191,6 +227,9 @@ impl From<io::Error> for ReadUntilError {
 /// A connected socket and the bytes received from it but not yet returned.
 pub(crate) struct BufferedSocket {
     stream: socket2::Socket,
+    /// The TLS session over `stream`, for a `Tcp.connect_tls!` connection. Plaintext it has
+    /// decrypted is not in `buffer` until `fill` takes it, which it does before any wait.
+    tls: Option<Box<rustls::ClientConnection>>,
     /// Received bytes. Those before `start` have been returned already.
     buffer: Vec<u8>,
     start: usize,
@@ -204,10 +243,28 @@ impl BufferedSocket {
         stream.set_nonblocking(true)?;
         Ok(Self {
             stream,
+            tls: None,
             buffer: Vec::new(),
             start: 0,
             discarding: None,
         })
+    }
+
+    /// Start TLS on a new connection and finish the handshake within `deadline`.
+    pub(crate) fn new_tls(
+        stream: socket2::Socket,
+        config: Arc<rustls::ClientConfig>,
+        name: rustls::pki_types::ServerName<'static>,
+        deadline: Deadline,
+    ) -> Result<Self, crate::tls::ConnectError> {
+        let mut tls = rustls::ClientConnection::new(config, name).map_err(|error| {
+            crate::tls::ConnectError::Tls(crate::tls::TlsFailure::from_rustls(&error))
+        })?;
+        stream.set_nonblocking(true)?;
+        crate::tls::handshake(&mut tls, &stream, deadline)?;
+        let mut socket = Self::new(stream)?;
+        socket.tls = Some(Box::new(tls));
+        Ok(socket)
     }
 
     pub(crate) fn available(&self) -> &[u8] {
@@ -245,9 +302,21 @@ impl BufferedSocket {
             if let Err(error) = deadline.remaining() {
                 break Err(error);
             }
-            match (&self.stream).read(&mut self.buffer[filled..]) {
+            let attempt = match &mut self.tls {
+                None => (&self.stream).read(&mut self.buffer[filled..]),
+                Some(tls) => crate::tls::read(tls, &self.stream, &mut self.buffer[filled..]),
+            };
+            match attempt {
                 Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
-                    if let Err(error) = wait_ready(&self.stream, false, deadline) {
+                    // A TLS session can need to send before it can receive.
+                    // Then readable data must still wake us: the peer may be blocked writing to
+                    // us while our send buffer is full.
+                    let interest = if self.tls.as_ref().is_some_and(|tls| tls.wants_write()) {
+                        Interest::Either
+                    } else {
+                        Interest::Readable
+                    };
+                    if let Err(error) = wait_for(&self.stream, interest, deadline) {
                         break Err(error);
                     }
                 }
@@ -402,6 +471,9 @@ impl BufferedSocket {
     /// Write all of `bytes`. On failure any prefix may have been sent.
     pub(crate) fn write(&mut self, bytes: &[u8], timeout_nanos: u64) -> io::Result<()> {
         let deadline = Deadline::after_nanos(timeout_nanos)?;
+        if let Some(tls) = &mut self.tls {
+            return crate::tls::write_all(tls, &self.stream, bytes, deadline);
+        }
         let mut written = 0;
         while written < bytes.len() {
             deadline.remaining()?;
@@ -416,5 +488,49 @@ impl BufferedSocket {
             }
         }
         Ok(())
+    }
+}
+
+impl Drop for BufferedSocket {
+    fn drop(&mut self) {
+        // Best effort and never waiting: a peer still reading sees a clean end rather than a
+        // truncation.
+        if let Some(tls) = &mut self.tls {
+            crate::tls::close(tls, &self.stream);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::{TcpListener, TcpStream};
+
+    #[test]
+    fn either_interest_wakes_for_readable_data_while_the_send_buffer_is_full() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        let (mut peer, _) = listener.accept().unwrap();
+        let socket = socket2::Socket::from(client);
+        socket.set_nonblocking(true).unwrap();
+        // The peer reads nothing, so this ends when both socket buffers are full.
+        loop {
+            match (&socket).write(&[0; 64 * 1024]) {
+                Ok(_) => {}
+                Err(error) if error.kind() == io::ErrorKind::WouldBlock => break,
+                Err(error) => panic!("{error}"),
+            }
+        }
+        let short = || Deadline::after_nanos(200_000_000).unwrap();
+        let wait = |interest| wait_for(&socket, interest, short()).map_err(|error| error.kind());
+        // Nothing to read and no room to write.
+        assert_eq!(wait(Interest::Either), Err(io::ErrorKind::TimedOut));
+        assert_eq!(wait(Interest::Writable), Err(io::ErrorKind::TimedOut));
+        peer.write_all(b"x").unwrap();
+        peer.flush().unwrap();
+        assert_eq!(wait(Interest::Either), Ok(()));
+        assert_eq!(wait(Interest::Readable), Ok(()));
+        // Still no room to write: a wait for that alone would stall here.
+        assert_eq!(wait(Interest::Writable), Err(io::ErrorKind::TimedOut));
     }
 }

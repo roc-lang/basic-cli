@@ -3,6 +3,7 @@ import http.Method
 import http.Request
 import http.Response
 import Resource
+import Tls
 
 ## Define host-ABI HTTP types and convert them to the shared HTTP package types.
 ## These records map directly to the generated Rust glue types.
@@ -10,7 +11,7 @@ InternalHttp :: [].{
 
 	## Errors raised by the host while sending a request, before a real HTTP
 	## response is available.
-	TransportErr : [Interrupted, Timeout, NetworkError, BadBody, Other(List(U8))]
+	TransportErr : [Interrupted, Timeout, NetworkError, BadBody, Other(List(U8)), TlsErr(Tls.Err)]
 
 	# Generated Rust glue uses tuple headers at the host ABI boundary.
 	HostHeaderTuple : (Str, Str)

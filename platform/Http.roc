@@ -2,6 +2,7 @@ import Duration
 import Host
 import InternalHttp
 import Resource
+import Tls
 import Url
 import http.Method
 import http.Header
@@ -24,17 +25,21 @@ import http.Response
 ## adds no content type. Explicit content types are always preserved.
 ##
 ## See the [host runtime behavior](https://github.com/roc-lang/basic-cli#host-runtime-behavior)
-## for HTTP protocol, TLS trust-store, and timeout details.
+## for HTTP protocol, TLS trust, and timeout details.
 Http :: [].{
 
 	## Failures while sending a request, reading its body or following redirects.
-	TransportErr : [Timeout, NetworkError, BadBody, Other(List(U8)), RedirectLimitExceeded(U64), InvalidRedirectUrl(Url.ParseErr), AmbiguousRedirectLocation, InsecureRedirect]
+	TransportErr : [Timeout, NetworkError, BadBody, Other(List(U8)), RedirectLimitExceeded(U64), InvalidRedirectUrl(Url.ParseErr), AmbiguousRedirectLocation, InsecureRedirect, TlsErr(Tls.Err)]
 
 	## Redirects are opt-in; `{}` returns the first response unchanged.
 	## A positive maximum follows 301/302/303/307/308, using one request
 	## deadline across every hop and the final body. Cross-origin requests
 	## discard credentials; HTTPS-to-HTTP redirects are rejected.
-	SendOptions := { max_redirects : U64 ?? 0 }
+	##
+	## `tls` chooses which server certificates HTTPS accepts, on the first
+	## request and on every redirect hop; `{}` keeps the bundled roots. A
+	## cross-origin redirect is checked with the same trust.
+	SendOptions := { max_redirects : U64 ?? 0, tls : Tls.Options ?? {} }
 
 	## Validate and send an HTTP request.
 	##
@@ -48,7 +53,7 @@ Http :: [].{
 	## ```
 	send! : Request, SendOptions => Try(Response, [Interrupted, InvalidUrl(Url.ParseErr), HttpErr(TransportErr)])
 	send! = |request, options| {
-		response = send_streaming!(request, { idle_timeout: NoTimeout, max_redirects: options.max_redirects })?
+		response = send_streaming!(request, { idle_timeout: NoTimeout, max_redirects: options.max_redirects, tls: options.tls })?
 		body = match response.read_to_end!(NoLimit) {
 			Ok(bytes) => bytes
 			Err(ReadLimitExceeded(_)) => {
@@ -145,10 +150,11 @@ Http :: [].{
 	## leave the request at `NoTimeout` and rely on `idle_timeout`.
 	##
 	## `max_redirects` has the same meaning as the `max_redirects` field of [SendOptions].
+	## `tls` has the same meaning as in [SendOptions].
 	## A caught pending signal returns bare `Interrupted` from a wait. Body
 	## reads preserve their cursor and collected bytes after interruption;
 	## acknowledge the signal before reading again. The deadline keeps running.
-	StreamingOptions := { idle_timeout : [NoTimeout, After(Duration)] ?? After(Duration.seconds(30)), max_redirects : U64 ?? 0 }
+	StreamingOptions := { idle_timeout : [NoTimeout, After(Duration)] ?? After(Duration.seconds(30)), max_redirects : U64 ?? 0, tls : Tls.Options ?? {} }
 
 	## Validate and send an HTTP request, returning once the status and
 	## headers have arrived. The body is read afterwards, through the
@@ -308,6 +314,7 @@ transport_error = |error|
 		NetworkError => HttpErr(NetworkError)
 		BadBody => HttpErr(BadBody)
 		Other(message) => HttpErr(Other(message))
+		TlsErr(err) => HttpErr(TlsErr(err))
 	}
 
 ## The same driver serves buffered and streamed responses. The deadline is
@@ -319,7 +326,7 @@ send_redirected! = |request, url, options, remaining, deadline| {
 		After(duration) => After(duration.to_nanos())
 	}
 	hop = request.with_headers(sanitize_headers(Request.headers(request), False, False))
-	raw = match Host.http_send_streaming!(InternalHttp.to_host_request(hop), idle, deadline) {
+	raw = match Host.http_send_streaming!(InternalHttp.to_host_request(hop), idle, deadline, options.tls.trust) {
 		Ok(value) => value
 		Err(error) => {
 			return Err(transport_error(error))
@@ -420,6 +427,8 @@ sanitize_headers = |headers, cross_origin, drop_body| {
 
 expect Http.SendOptions.{}.max_redirects == 0
 expect Http.StreamingOptions.{}.max_redirects == 0
+expect Http.SendOptions.{}.tls.trust == Default
+expect Http.StreamingOptions.{ tls: { trust: DangerAcceptInvalidCerts } }.tls.trust == DangerAcceptInvalidCerts
 expect redirect_url("https://example.com/a/b", "../c#part") == Url.parse("https://example.com/c")
 expect redirect_url("https://example.com/a", "//other.example/b") == Url.parse("https://other.example/b")
 expect same_origin("https://EXAMPLE.com:443/a", "https://example.com/b")

@@ -3,6 +3,7 @@ import InternalHttp
 import InternalSqlite
 import Resource
 import System
+import Tls
 
 ## Declare the hosted effects and ABI-safe data exchanged with the native host.
 Host :: [].{
@@ -166,7 +167,7 @@ Host :: [].{
 	# reads from the one cursor the response's streams share: `Chunk` is the
 	# next non-empty chunk of at most 64 KiB, `ToEnd(max)` is everything unread,
 	# or `ReadLimitExceeded` once more than `max` bytes of it have arrived.
-	http_send_streaming! : InternalHttp.RequestToAndFromHost, [NoTimeout, After(U64)], [NoTimeout, At(U64)] => Try(InternalHttp.StreamingResponseFromHost, InternalHttp.TransportErr)
+	http_send_streaming! : InternalHttp.RequestToAndFromHost, [NoTimeout, After(U64)], [NoTimeout, At(U64)], Tls.Trust => Try(InternalHttp.StreamingResponseFromHost, InternalHttp.TransportErr)
 	http_read_body! : Resource.HttpResponse, [Chunk, ToEnd(U64)] => Try(List(U8), [EndOfBody, ReadLimitExceeded, HttpErr(InternalHttp.TransportErr)])
 	signal_catch! : List([Interrupt, Terminate(System.Unix), User1(System.Unix), User2(System.Unix), WindowResize(System.Unix)]) => Try({}, [SignalErr(IOErr)])
 	signal_poll! : () => List([Interrupt, Terminate, User1, User2, WindowResize])
@@ -188,4 +189,8 @@ Host :: [].{
 	unix_socket_listen! : NativePath => Try(Resource.UnixSocketListener, [UnixSocketErr(IOErr)])
 	unix_socket_accept! : Resource.UnixSocketListener, [NoTimeout, After(U64)] => Try(Resource.UnixSocketConnection, [Closed, UnixSocketErr(IOErr)])
 	unix_socket_listener_close! : Resource.UnixSocketListener => Try({}, [UnixSocketErr(IOErr)])
+
+	# TLS over TCP. The timeout, in nanoseconds, bounds resolution, connecting
+	# and the handshake. `TlsErr` is a failed handshake or unusable trust roots.
+	tcp_connect_tls! : Str, U16, U64, Tls.Trust => Try(Resource.TcpConnection, [TcpErr(IOErr), TlsErr(Tls.Err)])
 }

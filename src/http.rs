@@ -1,5 +1,5 @@
 use core::mem::ManuallyDrop;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 use std::time::{Duration, Instant};
 
 use crate::roc_platform_abi::*;
@@ -13,9 +13,9 @@ type HttpHeader = HostHttpSendRequestArg0Headers;
 type HttpResult = HostHttpSendRequestResult;
 type HttpResultPayload = HostHttpSendRequestResultPayload;
 type HttpResultTag = HostHttpSendRequestResultTag;
-type HttpTransportErr = BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeout;
-type HttpTransportErrPayload = BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeoutPayload;
-type HttpTransportErrTag = BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeoutTag;
+type HttpTransportErr = BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeoutOrTlsErr;
+type HttpTransportErrPayload = BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeoutOrTlsErrPayload;
+type HttpTransportErrTag = BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeoutOrTlsErrTag;
 
 // Deliberately a `static`, so this runtime is never dropped.
 //
@@ -196,7 +196,9 @@ fn build_roc_headers(pairs: &[(String, String)], roc_host: &RocHost) -> RocList<
     list
 }
 
-fn https_connector() -> hyper_rustls::HttpsConnector<
+fn https_connector(
+    config: Arc<rustls::ClientConfig>,
+) -> hyper_rustls::HttpsConnector<
     hyper_util::client::legacy::connect::HttpConnector<crate::dns::HttpResolver>,
 > {
     let mut http = hyper_util::client::legacy::connect::HttpConnector::new_with_resolver(
@@ -204,7 +206,7 @@ fn https_connector() -> hyper_rustls::HttpsConnector<
     );
     http.enforce_http(false);
     hyper_rustls::HttpsConnectorBuilder::new()
-        .with_webpki_roots()
+        .with_tls_config(rustls::ClientConfig::clone(&config))
         .https_or_http()
         .enable_http1()
         .wrap_connector(http)
@@ -216,7 +218,7 @@ async fn async_send_request(request: HyperRequest, roc_host: &RocHost) -> HttpRe
     use hyper_util::rt::TokioExecutor;
 
     let client: Client<_, http_body_util::Full<bytes::Bytes>> =
-        Client::builder(TokioExecutor::new()).build(https_connector());
+        Client::builder(TokioExecutor::new()).build(https_connector(crate::tls::default_config()));
 
     match client.request(request).await {
         Ok(response) => {
@@ -309,6 +311,7 @@ enum Failure {
     Timeout,
     BadBody,
     Other(String),
+    Tls(crate::tls::TlsFailure),
 }
 
 impl Failure {
@@ -318,6 +321,12 @@ impl Failure {
             Failure::Timeout => http_err_timeout(),
             Failure::BadBody => http_err_bad_body(),
             Failure::Other(message) => http_err_other(message, roc_host),
+            Failure::Tls(failure) => HttpTransportErr {
+                payload: HttpTransportErrPayload {
+                    tls_err: ManuallyDrop::new(failure.to_roc(roc_host)),
+                },
+                tag: HttpTransportErrTag::TlsErr,
+            },
         }
     }
 }
@@ -604,13 +613,27 @@ fn send_streaming(
         0 => None,
         ms => Instant::now().checked_add(Duration::from_millis(ms)),
     };
-    send_streaming_at(request, idle_timeout, deadline)
+    send_streaming_at(
+        request,
+        idle_timeout,
+        deadline,
+        crate::tls::default_config(),
+    )
+}
+
+/// A failed `client.request`: a TLS handshake failure names its cause.
+fn client_failure(error: &hyper_util::client::legacy::Error) -> Failure {
+    match crate::tls::rustls_error_in(error) {
+        Some(tls) => Failure::Tls(crate::tls::TlsFailure::from_rustls(tls)),
+        None => Failure::Other(error.to_string()),
+    }
 }
 
 fn send_streaming_at(
     request: HyperRequest,
     idle_timeout: Option<Duration>,
     deadline: Option<Instant>,
+    config: Arc<rustls::ClientConfig>,
 ) -> Result<(StreamingHead, StreamingBody), Failure> {
     use hyper_util::client::legacy::Client;
     use hyper_util::rt::TokioExecutor;
@@ -632,12 +655,12 @@ fn send_streaming_at(
         let client: Client<_, http_body_util::Full<bytes::Bytes>> =
             Client::builder(TokioExecutor::new())
                 .pool_max_idle_per_host(0)
-                .build(https_connector());
+                .build(https_connector(config));
         await_io(until, client.request(request)).await
     });
     let response = match response {
         Ok(Ok(response)) => response,
-        Ok(Err(error)) => return Err(Failure::Other(error.to_string())),
+        Ok(Err(error)) => return Err(client_failure(&error)),
         Err(failure) => {
             settle();
             return Err(failure);
@@ -689,8 +712,19 @@ pub extern "C" fn hosted_http_send_streaming(
     request: HostHttpSendStreamingArg0,
     idle_timeout: AfterOrNoTimeout,
     deadline: AtOrNoTimeout,
+    trust: AddPemOrDangerAcceptInvalidCertsOrDefault,
 ) -> HostHttpSendStreamingResult {
-    let roc_host = roc_host();
+    http_send_streaming(request, idle_timeout, deadline, trust, roc_host())
+}
+
+fn http_send_streaming(
+    request: HostHttpSendStreamingArg0,
+    idle_timeout: AfterOrNoTimeout,
+    deadline: AtOrNoTimeout,
+    trust: AddPemOrDangerAcceptInvalidCertsOrDefault,
+    roc_host: &RocHost,
+) -> HostHttpSendStreamingResult {
+    let trust = crate::tls::Trust::from_roc(trust, roc_host);
     let deadline = match deadline.tag {
         AtOrNoTimeoutTag::At => crate::monotonic_origin()
             .checked_add(Duration::from_nanos(unsafe { *deadline.payload.at })),
@@ -707,9 +741,10 @@ pub extern "C" fn hosted_http_send_streaming(
     let hyper_request = build_hyper_request((&request).into());
     unsafe { request.decref(roc_host) };
 
-    let sent = hyper_request
-        .map_err(Failure::Other)
-        .and_then(|request| send_streaming_at(request, idle_timeout, deadline));
+    let sent = hyper_request.map_err(Failure::Other).and_then(|request| {
+        let config = crate::tls::client_config(&trust).map_err(Failure::Tls)?;
+        send_streaming_at(request, idle_timeout, deadline, config)
+    });
     let (head, body) = match sent {
         Ok(sent) => sent,
         Err(failure) => return streaming_err(&failure, roc_host),
@@ -926,7 +961,7 @@ mod tests {
         TOKIO_RUNTIME.block_on(async {
             let client: hyper_util::client::legacy::Client<_, http_body_util::Full<bytes::Bytes>> =
                 hyper_util::client::legacy::Client::builder(hyper_util::rt::TokioExecutor::new())
-                    .build(https_connector());
+                    .build(https_connector(crate::tls::default_config()));
             let request = hyper::Request::builder()
                 .uri(format!("https://localhost:{}/", address.port()))
                 .body(http_body_util::Full::new(bytes::Bytes::new()))
@@ -1823,5 +1858,234 @@ mod tests {
             exited,
             "a thread that used the HTTP runtime hung on exit while a blocking task was running"
         );
+    }
+
+    // ---- TLS trust -----------------------------------------------------------
+
+    use crate::tls::{
+        client_config,
+        testing::{server_config, LOCALHOST_PEM},
+        TlsFailure, Trust,
+    };
+
+    /// An HTTPS server for one connection, bound to `host`. It answers any
+    /// request with `200` and `ok`. A client that rejects the certificate ends
+    /// the connection during the handshake, which the server tolerates.
+    fn https_server(host: &str) -> (u16, thread::JoinHandle<()>) {
+        let listener = TcpListener::bind((host, 0)).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = thread::spawn(move || {
+            let (socket, _) = listener.accept().unwrap();
+            socket
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            socket
+                .set_write_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            let connection = rustls::ServerConnection::new(server_config()).unwrap();
+            let mut tls = rustls::StreamOwned::new(connection, socket);
+            let mut head = Vec::new();
+            let mut byte = [0u8];
+            while !head.ends_with(b"\r\n\r\n") {
+                match tls.read(&mut byte) {
+                    Ok(1) => head.push(byte[0]),
+                    _ => return,
+                }
+            }
+            let _ = tls
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok");
+            let _ = tls.flush();
+            tls.conn.send_close_notify();
+            let _ = tls.flush();
+        });
+        (port, server)
+    }
+
+    fn https_request(host: &str, port: u16) -> HyperRequest {
+        hyper::Request::builder()
+            .uri(format!("https://{host}:{port}/"))
+            .body(http_body_util::Full::default())
+            .unwrap()
+    }
+
+    /// Send one request with `trust` to a fresh HTTPS server at `host`.
+    fn https_get(host: &str, trust: &Trust) -> Result<(StreamingHead, StreamingBody), Failure> {
+        let (port, server) = https_server(host);
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let sent = send_streaming_at(
+            https_request(host, port),
+            None,
+            Some(deadline),
+            client_config(trust).unwrap(),
+        );
+        // A rejected certificate may leave the server without a request to read.
+        let sent = sent.map(|(head, mut body)| {
+            assert_eq!(drain(&mut body), b"ok");
+            (head, body)
+        });
+        server.join().unwrap();
+        sent
+    }
+
+    fn failure_of(
+        result: Result<(StreamingHead, StreamingBody), Failure>,
+    ) -> crate::tls::TlsFailure {
+        match result {
+            Err(Failure::Tls(failure)) => failure,
+            Err(Failure::Other(message)) => panic!("expected a TLS failure, got Other({message})"),
+            Err(_) => panic!("expected a TLS failure, got another failure"),
+            Ok((head, _)) => panic!("expected a TLS failure, got status {}", head.status),
+        }
+    }
+
+    #[test]
+    fn https_uses_the_requested_trust() {
+        // Added roots trust the localhost certificate.
+        let (head, _) = https_get("localhost", &Trust::AddPem(LOCALHOST_PEM.to_vec())).unwrap();
+        assert_eq!(head.status, 200);
+
+        // The default roots do not, and the failure names its cause rather
+        // than arriving as `Failure::Other`.
+        assert_eq!(
+            failure_of(https_get("localhost", &Trust::Default)),
+            TlsFailure::UnknownIssuer
+        );
+
+        let (head, _) = https_get("localhost", &Trust::DangerAcceptInvalidCerts).unwrap();
+        assert_eq!(head.status, 200);
+    }
+
+    #[test]
+    fn https_checks_the_name_the_url_gives() {
+        // The certificate is for `localhost` only, so its address does not match,
+        // however much the roots are trusted.
+        let pem = Trust::AddPem(LOCALHOST_PEM.to_vec());
+        assert_eq!(
+            failure_of(https_get("127.0.0.1", &pem)),
+            TlsFailure::NameMismatch
+        );
+        let (head, _) = https_get("127.0.0.1", &Trust::DangerAcceptInvalidCerts).unwrap();
+        assert_eq!(head.status, 200);
+    }
+
+    #[test]
+    fn tls_failures_cross_as_transport_tls_err() {
+        let host = crate::resources::make_host();
+        let tls_err = |failure: TlsFailure| {
+            let error = Failure::Tls(failure).to_roc(&host);
+            assert_eq!(error.tag, HttpTransportErrTag::TlsErr);
+            unsafe { ManuallyDrop::into_inner(error.payload.tls_err) }
+        };
+
+        assert_eq!(
+            tls_err(TlsFailure::UnknownIssuer).tag,
+            TlsErrTag::UnknownIssuer
+        );
+        assert_eq!(tls_err(TlsFailure::Expired).tag, TlsErrTag::Expired);
+        assert_eq!(
+            tls_err(TlsFailure::NameMismatch).tag,
+            TlsErrTag::NameMismatch
+        );
+
+        let bad_pem = tls_err(TlsFailure::BadPem("no CERTIFICATE section found".into()));
+        assert_eq!(bad_pem.tag, TlsErrTag::BadPem);
+        let message = unsafe { ManuallyDrop::into_inner(bad_pem.payload.bad_pem) };
+        assert_eq!(message.as_str(), "no CERTIFICATE section found");
+        unsafe { message.decref(&host) };
+
+        let other = tls_err(TlsFailure::Other("handshake failure".into()));
+        assert_eq!(other.tag, TlsErrTag::Other);
+        let message = unsafe { ManuallyDrop::into_inner(other.payload.other) };
+        assert_eq!(message.as_str(), "handshake failure");
+        unsafe { message.decref(&host) };
+    }
+
+    /// Call `http_send_streaming` with a GET of `uri` and no timeouts.
+    fn hosted_get(uri: &str, trust: Trust, host: &RocHost) -> HostHttpSendStreamingResult {
+        let request = HostHttpSendStreamingArg0 {
+            timeout_ms: 0,
+            body: roc_u8_list_from_slice(b"", host),
+            headers: build_roc_headers(&[], host),
+            method_ext: RocStr::from_str("", host),
+            uri: RocStr::from_str(uri, host),
+            method: 3,
+        };
+        let trust = match trust {
+            Trust::AddPem(pem) => AddPemOrDangerAcceptInvalidCertsOrDefault {
+                payload: AddPemOrDangerAcceptInvalidCertsOrDefaultPayload {
+                    add_pem: ManuallyDrop::new(roc_u8_list_from_slice(&pem, host)),
+                },
+                tag: AddPemOrDangerAcceptInvalidCertsOrDefaultTag::AddPem,
+            },
+            Trust::DangerAcceptInvalidCerts => AddPemOrDangerAcceptInvalidCertsOrDefault {
+                payload: AddPemOrDangerAcceptInvalidCertsOrDefaultPayload {
+                    danger_accept_invalid_certs: [],
+                },
+                tag: AddPemOrDangerAcceptInvalidCertsOrDefaultTag::DangerAcceptInvalidCerts,
+            },
+            Trust::Default => AddPemOrDangerAcceptInvalidCertsOrDefault {
+                payload: AddPemOrDangerAcceptInvalidCertsOrDefaultPayload { default: [] },
+                tag: AddPemOrDangerAcceptInvalidCertsOrDefaultTag::Default,
+            },
+        };
+        http_send_streaming(
+            request,
+            AfterOrNoTimeout {
+                payload: AfterOrNoTimeoutPayload { no_timeout: [] },
+                tag: AfterOrNoTimeoutTag::NoTimeout,
+            },
+            AtOrNoTimeout {
+                payload: AtOrNoTimeoutPayload { no_timeout: [] },
+                tag: AtOrNoTimeoutTag::NoTimeout,
+            },
+            trust,
+            host,
+        )
+    }
+
+    /// The `TlsErr` tag of a failed send, releasing the result.
+    fn hosted_tls_err_tag(result: HostHttpSendStreamingResult, host: &RocHost) -> TlsErrTag {
+        assert_eq!(result.tag, HostHttpSendStreamingResultTag::Err);
+        let error = unsafe { result.borrow_payload_err_unchecked() };
+        assert_eq!(error.tag, HttpTransportErrTag::TlsErr);
+        let tag = unsafe { &error.payload.tls_err }.tag;
+        unsafe { result.decref(host) };
+        tag
+    }
+
+    #[test]
+    fn hosted_send_streaming_applies_the_trust_it_is_given() {
+        let host = crate::resources::make_host();
+        let (port, server) = https_server("localhost");
+        let uri = format!("https://localhost:{port}/");
+        let result = hosted_get(&uri, Trust::AddPem(LOCALHOST_PEM.to_vec()), &host);
+        assert_eq!(result.tag, HostHttpSendStreamingResultTag::Ok);
+        assert_eq!(unsafe { result.borrow_payload_ok_unchecked() }.status, 200);
+        unsafe { result.decref(&host) };
+        server.join().unwrap();
+
+        let (port, server) = https_server("localhost");
+        let uri = format!("https://localhost:{port}/");
+        assert_eq!(
+            hosted_tls_err_tag(hosted_get(&uri, Trust::Default, &host), &host),
+            TlsErrTag::UnknownIssuer
+        );
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn unusable_pem_fails_before_any_connection() {
+        // Nothing listens here, and the URL is plain HTTP: the PEM is still
+        // reported, so a bad CA file does not hide behind an `http://` setup.
+        let host = crate::resources::make_host();
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+        let result = hosted_get(
+            &format!("http://127.0.0.1:{port}/"),
+            Trust::AddPem(b"not a certificate".to_vec()),
+            &host,
+        );
+        assert_eq!(hosted_tls_err_tag(result, &host), TlsErrTag::BadPem);
     }
 }

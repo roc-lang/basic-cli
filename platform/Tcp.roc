@@ -2,6 +2,7 @@ import Duration
 import Host
 import IOErr
 import Resource
+import Tls
 
 ## The line limit a new connection holds: 1 MiB.
 default_line_limit : U64
@@ -24,6 +25,7 @@ accept_wait = |accept_timeout|
 ## results compare with `==`: `result == Err(TcpErr(ConnectionRefused))`.
 ## A caught, pending signal returns bare `Interrupted` from waits. A read that
 ## is interrupted keeps its unread bytes; a write may have sent a prefix.
+## `connect_tls!` adds `TlsErr(Tls.Err)` for a failed handshake.
 ##
 ## Timeouts are [Duration]s. The wait to connect or to accept bounds that one
 ## call. The connection it produces holds its own I/O timeout, which bounds
@@ -371,6 +373,42 @@ Tcp :: [].{
 			Ok(handle) => Ok(Connection.{ host: handle, timeout: options.io_timeout, line_limit: default_line_limit })
 			Err(TcpErr(Interrupted)) => Err(Interrupted)
 			Err(TcpErr(err)) => Err(TcpErr(err))
+		}
+
+	## Options for [connect_tls!]: the two timeouts of [connect!], and TLS
+	## settings that default to `{}`.
+	ConnectTlsOptions := { connect_timeout : Duration, io_timeout : Duration, tls : Tls.Options ?? {} }
+
+	## Open a TLS client connection.
+	##
+	## The handshake verifies the server's certificate for `host`, which is also
+	## sent as the server name (SNI) unless it is an IP address. An IP address is
+	## verified against the certificate's IP address entries.
+	##
+	## `connect_timeout` bounds this call: hostname resolution, connecting, and
+	## the handshake. `io_timeout` is the timeout the new [Connection] holds, as
+	## for [connect!]. The connection behaves exactly like one from [connect!]:
+	## reads that time out or are interrupted consume nothing, and the line
+	## limit applies.
+	##
+	## A failed handshake is `TlsErr(err)`, with [Tls.Err] naming the cause.
+	## `BadPem` is reported before any network activity. A TLS failure later,
+	## while reading or writing, is `TcpErr(Other(message))`. So is a peer
+	## that closes without TLS's `close_notify`: data could have been cut off.
+	## Releasing the connection sends `close_notify` without waiting.
+	##
+	## ```roc
+	## conn = Tcp.connect_tls!("example.com", 443, { connect_timeout: Duration.seconds(5), io_timeout: Duration.seconds(30) })?
+	## conn.write_utf8!("HEAD / HTTP/1.1\r\nHost: example.com\r\nConnection: close\r\n\r\n")?
+	## status_line = conn.read_line!()?
+	## ```
+	connect_tls! : Str, U16, ConnectTlsOptions => Try(Connection, [Interrupted, TlsErr(Tls.Err), TcpErr(IOErr)])
+	connect_tls! = |host, port, options|
+		match Host.tcp_connect_tls!(host, port, options.connect_timeout.to_nanos(), options.tls.trust) {
+			Ok(handle) => Ok(Connection.{ host: handle, timeout: options.io_timeout, line_limit: default_line_limit })
+			Err(TcpErr(Interrupted)) => Err(Interrupted)
+			Err(TcpErr(err)) => Err(TcpErr(err))
+			Err(TlsErr(err)) => Err(TlsErr(err))
 		}
 }
 
