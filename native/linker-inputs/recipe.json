@@ -1,0 +1,18 @@
+{
+  "format_version": 1,
+  "zig_version": "0.17.0",
+  "musl": {
+    "version": "1.2.6",
+    "url": "https://musl.libc.org/releases/musl-1.2.6.tar.gz",
+    "sha256": "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"
+  },
+  "unwind": {
+    "source": "Zig 0.17.0 bundled LLVM libunwind",
+    "tree_sha256": "672d3a4e64506cbe64b50742748afba1a84ac8090ba90419202214012fe8e8b6"
+  },
+  "targets": {
+    "x64musl": "x86_64-linux-musl",
+    "arm64musl": "aarch64-linux-musl",
+    "x64win": "x86_64-windows-msvc"
+  }
+}
