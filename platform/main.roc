@@ -4,7 +4,7 @@ platform ""
 	requires {
 		## The application entry point receives command-line arguments only; the
 		## launcher-supplied program name is available from Env.program_name!.
-		main! : List([Utf8(Str), UnixBytes(List(U8)), WindowsU16s(List(U16))]) => Try({}, [Exit(I32), Interrupted, ..])
+		main! : List(OsStr.OsStr) => Try({}, [Exit(I32), Interrupted, ..])
 	}
 	exposes [Cmd, Duration, Env, File, Http, IOErr, Locale, Monotonic, OsStr, Path, Random, Signal, Sleep, Sqlite, Stderr, Stdin, Stdout, System, Tcp, Tty, UnixSocket, Url, Utc]
 	packages {
