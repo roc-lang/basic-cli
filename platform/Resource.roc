@@ -14,6 +14,7 @@ Resource :: [].{
 	Child : Handle([ChildKind])
 	FileReader : Handle([FileReaderKind])
 	FileWriter : Handle([FileWriterKind])
+	HttpPending : Handle([HttpPendingKind])
 	HttpResponse : Handle([HttpResponseKind])
 	SqliteDb : Handle([SqliteDbKind])
 	SqliteRows : Handle([SqliteRowsKind])

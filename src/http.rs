@@ -582,11 +582,73 @@ impl Drop for StreamingBody {
 }
 
 /// The status line and headers of a response whose body has not been read.
+#[derive(Clone)]
 struct StreamingHead {
     status: u16,
     headers: Vec<(String, String)>,
     invalid_location: Option<u8>,
     content_length: Option<u64>,
+}
+
+impl StreamingHead {
+    fn from_parts(parts: &hyper::http::response::Parts) -> Self {
+        Self {
+            status: parts.status.as_u16(),
+            headers: header_pairs(&parts.headers),
+            invalid_location: invalid_location(&parts.headers),
+            content_length: declared_content_length(&parts.headers),
+        }
+    }
+
+    /// The head as Roc receives it, with `body` the handle of its body.
+    fn to_roc(&self, body: *mut u64, roc_host: &RocHost) -> HostHttpSendStreamingOk {
+        let content_length = match self.content_length {
+            Some(length) => KnownOrUnknown {
+                payload: KnownOrUnknownPayload {
+                    known: ManuallyDrop::new(length),
+                },
+                tag: KnownOrUnknownTag::Known,
+            },
+            None => KnownOrUnknown {
+                payload: KnownOrUnknownPayload { unknown: [] },
+                tag: KnownOrUnknownTag::Unknown,
+            },
+        };
+        let invalid_location = match self.invalid_location {
+            Some(byte) => NoneOrSome {
+                payload: NoneOrSomePayload {
+                    some: ManuallyDrop::new(byte),
+                },
+                tag: NoneOrSomeTag::Some,
+            },
+            None => NoneOrSome {
+                payload: NoneOrSomePayload { none: [] },
+                tag: NoneOrSomeTag::None,
+            },
+        };
+        HostHttpSendStreamingOk {
+            content_length,
+            invalid_location,
+            body,
+            headers: build_roc_headers(&self.headers, roc_host),
+            status: self.status,
+        }
+    }
+}
+
+/// The client of every streaming request. It is the same as
+/// `async_send_request`'s, so all entry points put the same request on the
+/// wire. Without a pool the connection is not kept for a later request: it
+/// closes when its response is finished with.
+fn streaming_client() -> hyper_util::client::legacy::Client<
+    hyper_rustls::HttpsConnector<
+        hyper_util::client::legacy::connect::HttpConnector<crate::dns::HttpResolver>,
+    >,
+    http_body_util::Full<bytes::Bytes>,
+> {
+    hyper_util::client::legacy::Client::builder(hyper_util::rt::TokioExecutor::new())
+        .pool_max_idle_per_host(0)
+        .build(https_connector())
 }
 
 /// Send `request` and wait for the status and headers.
@@ -612,8 +674,6 @@ fn send_streaming_at(
     idle_timeout: Option<Duration>,
     deadline: Option<Instant>,
 ) -> Result<(StreamingHead, StreamingBody), Failure> {
-    use hyper_util::client::legacy::Client;
-    use hyper_util::rt::TokioExecutor;
     if crate::signals::is_pending() {
         return Err(Failure::Interrupted);
     }
@@ -624,17 +684,8 @@ fn send_streaming_at(
     let budget = wait_budget(idle_timeout, deadline, now).map_err(|()| Failure::Timeout)?;
     let until = budget.and_then(|budget| now.checked_add(budget));
 
-    let response = TOKIO_RUNTIME.block_on(async {
-        // The same client as `async_send_request`, so both entry points put
-        // the same request on the wire. Without a pool the connection is not
-        // kept for a later request: it closes when its response is finished
-        // with.
-        let client: Client<_, http_body_util::Full<bytes::Bytes>> =
-            Client::builder(TokioExecutor::new())
-                .pool_max_idle_per_host(0)
-                .build(https_connector());
-        await_io(until, client.request(request)).await
-    });
+    let response = TOKIO_RUNTIME
+        .block_on(async { await_io(until, streaming_client().request(request)).await });
     let response = match response {
         Ok(Ok(response)) => response,
         Ok(Err(error)) => return Err(Failure::Other(error.to_string())),
@@ -660,12 +711,7 @@ fn send_streaming_at(
     }
 
     let (parts, body) = response.into_parts();
-    let head = StreamingHead {
-        status: parts.status.as_u16(),
-        headers: header_pairs(&parts.headers),
-        invalid_location: invalid_location(&parts.headers),
-        content_length: declared_content_length(&parts.headers),
-    };
+    let head = StreamingHead::from_parts(&parts);
     let body = StreamingBody {
         state: BodyState::Open(body),
         pending: bytes::BytesMut::new(),
@@ -684,6 +730,24 @@ fn streaming_err(failure: &Failure, roc_host: &RocHost) -> HostHttpSendStreaming
     }
 }
 
+/// An instant on the `Host.monotonic_now!` clock.
+fn monotonic_instant(at: AtOrNoTimeout) -> Option<Instant> {
+    match at.tag {
+        AtOrNoTimeoutTag::At => {
+            crate::monotonic_origin().checked_add(Duration::from_nanos(unsafe { *at.payload.at }))
+        }
+        AtOrNoTimeoutTag::NoTimeout => None,
+    }
+}
+
+/// An idle timeout as Roc passes it, in nanoseconds.
+fn idle_duration(after: AfterOrNoTimeout) -> Option<Duration> {
+    match after.tag {
+        AfterOrNoTimeoutTag::After => Some(Duration::from_nanos(unsafe { *after.payload.after })),
+        AfterOrNoTimeoutTag::NoTimeout => None,
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn hosted_http_send_streaming(
     request: HostHttpSendStreamingArg0,
@@ -691,17 +755,8 @@ pub extern "C" fn hosted_http_send_streaming(
     deadline: AtOrNoTimeout,
 ) -> HostHttpSendStreamingResult {
     let roc_host = roc_host();
-    let deadline = match deadline.tag {
-        AtOrNoTimeoutTag::At => crate::monotonic_origin()
-            .checked_add(Duration::from_nanos(unsafe { *deadline.payload.at })),
-        AtOrNoTimeoutTag::NoTimeout => None,
-    };
-    let idle_timeout = match idle_timeout.tag {
-        AfterOrNoTimeoutTag::After => {
-            Some(Duration::from_nanos(unsafe { *idle_timeout.payload.after }))
-        }
-        AfterOrNoTimeoutTag::NoTimeout => None,
-    };
+    let deadline = monotonic_instant(deadline);
+    let idle_timeout = idle_duration(idle_timeout);
 
     // The hyper request copies what it needs, so the Roc values can go.
     let hyper_request = build_hyper_request((&request).into());
@@ -718,39 +773,9 @@ pub extern "C" fn hosted_http_send_streaming(
         Ok(handle) => handle,
         Err(error) => return streaming_err(&Failure::Other(error.to_string()), roc_host),
     };
-    let content_length = match head.content_length {
-        Some(length) => KnownOrUnknown {
-            payload: KnownOrUnknownPayload {
-                known: ManuallyDrop::new(length),
-            },
-            tag: KnownOrUnknownTag::Known,
-        },
-        None => KnownOrUnknown {
-            payload: KnownOrUnknownPayload { unknown: [] },
-            tag: KnownOrUnknownTag::Unknown,
-        },
-    };
-    let invalid_location = match head.invalid_location {
-        Some(byte) => NoneOrSome {
-            payload: NoneOrSomePayload {
-                some: ManuallyDrop::new(byte),
-            },
-            tag: NoneOrSomeTag::Some,
-        },
-        None => NoneOrSome {
-            payload: NoneOrSomePayload { none: [] },
-            tag: NoneOrSomeTag::None,
-        },
-    };
     HostHttpSendStreamingResult {
         payload: HostHttpSendStreamingResultPayload {
-            ok: ManuallyDrop::new(HostHttpSendStreamingOk {
-                content_length,
-                invalid_location,
-                body: handle,
-                headers: build_roc_headers(&head.headers, roc_host),
-                status: head.status,
-            }),
+            ok: ManuallyDrop::new(head.to_roc(handle, roc_host)),
         },
         tag: HostHttpSendStreamingResultTag::Ok,
     }
@@ -823,6 +848,424 @@ pub unsafe extern "C" fn hosted_http_read_body(
     // Only now, outside `block_on`: this may be the last reference.
     resources::release(handle, roc_host);
     result
+}
+
+// ============================================================================
+// Pending responses
+//
+// `Http.start!` sends a request from a task on `TOKIO_RUNTIME` and returns at
+// once, leaving the task behind a `Resource.HttpPending` handle. The runtime
+// has no thread of its own (see `TOKIO_RUNTIME`), so the task only runs while
+// a hosted call is inside `block_on`: any HTTP call, body read or wait.
+// Between those calls the kernel's socket buffers hold what arrives. A wait
+// that gives up keeps the task. Closing or dropping the handle aborts it and
+// turns the runtime so that its connection closes, as `StreamingBody::close`
+// does.
+//
+// The task notes when the head arrived, and the head is judged by that time,
+// not by when a wait comes for it: a head that came in time during another
+// HTTP call is not lost to a timeout while the app does other work.
+//
+// Redirects are decided in Roc. To follow one, Roc replaces the request behind
+// the same handle, and the host records the status and `Location` that led
+// there. Each wait that returns a head returns that list too, so that Roc can
+// rebuild the hop it is on.
+// ----------------------------------------------------------------------------
+
+type SendResult = Result<hyper::Response<hyper::body::Incoming>, hyper_util::client::legacy::Error>;
+
+enum PendingState {
+    /// The request is in flight, or its result, with the time it came, waits
+    /// in the finished task.
+    Sending(tokio::task::JoinHandle<(Instant, SendResult)>),
+    /// The head arrived at `at` during a wait that an interruption ended. The
+    /// next wait returns it.
+    Arrived {
+        at: Instant,
+        response: hyper::Response<hyper::body::Incoming>,
+    },
+    /// The head has been handed to Roc. Every later wait hands over the same
+    /// head and another reference to the same body handle.
+    Ready { head: StreamingHead, body: *mut u64 },
+    /// The request failed for good. Every later wait reports the same failure.
+    Failed(Failure),
+    /// Closed by `Http.PendingResponse.close!`.
+    Closed,
+}
+
+/// The resource behind a `Resource.HttpPending` handle.
+pub struct PendingResponse {
+    state: PendingState,
+    idle_timeout: Option<Duration>,
+    /// The `Request` timeout, fixed at `Http.start!` for every hop and the body.
+    deadline: Option<Instant>,
+    /// When the status and headers of the current hop must have arrived.
+    head_until: Option<Instant>,
+    /// The status and `Location` of each redirect followed so far, in order.
+    redirects: Vec<(u16, String)>,
+    /// Releases the body reference held in `Ready`.
+    host: RocHost,
+}
+
+/// What a wait for a pending response found.
+enum Waited {
+    NotReady,
+    /// The head and a new reference to the body handle, owned by the caller.
+    Ready(StreamingHead, *mut u64),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum PendingErr {
+    Closed,
+    Failed(Failure),
+}
+
+/// Let the caller's own limit of a wait pass, after a few turns of the
+/// runtime. The `select!` it is raced in polls the request first. Without the
+/// turns, a limit that has passed would end the wait after the first turn:
+/// that turn reads what has arrived on the socket and wakes the tasks that
+/// handle it, but `block_on` polls this future again before it runs them. The
+/// turns let those tasks run, so that even a wait whose limit has passed
+/// returns a head that is already on the socket. (`sleep_until` rounds up to
+/// the next millisecond, which hides this for a limit that has only just
+/// passed, but not for one that passed a millisecond or more ago.)
+async fn give_up_at(until: Option<Instant>) {
+    for _ in 0..SETTLE_TURNS {
+        tokio::task::yield_now().await;
+    }
+    match until {
+        Some(until) => tokio::time::sleep_until(tokio::time::Instant::from_std(until)).await,
+        None => std::future::pending::<()>().await,
+    }
+}
+
+impl PendingResponse {
+    fn new(idle_timeout: Option<Duration>, deadline: Option<Instant>) -> Self {
+        Self {
+            state: PendingState::Closed,
+            idle_timeout,
+            deadline,
+            head_until: None,
+            redirects: Vec::new(),
+            host: resources::make_host(),
+        }
+    }
+
+    /// Start sending `request` as the current hop, giving up any earlier one.
+    fn send(&mut self, request: Result<HyperRequest, String>) {
+        self.release();
+        self.state = match self.spawn(request) {
+            Ok(task) => PendingState::Sending(task),
+            Err(failure) => PendingState::Failed(failure),
+        };
+    }
+
+    fn spawn(
+        &mut self,
+        request: Result<HyperRequest, String>,
+    ) -> Result<tokio::task::JoinHandle<(Instant, SendResult)>, Failure> {
+        let request = request.map_err(Failure::Other)?;
+        // As in `send_streaming_at`: nothing is sent once a timeout has expired.
+        if self.idle_timeout == Some(Duration::ZERO) {
+            return Err(Failure::Timeout);
+        }
+        let now = Instant::now();
+        let budget =
+            wait_budget(self.idle_timeout, self.deadline, now).map_err(|()| Failure::Timeout)?;
+        self.head_until = budget.and_then(|budget| now.checked_add(budget));
+        let task = TOKIO_RUNTIME.spawn(async move {
+            let sent = streaming_client().request(request).await;
+            (Instant::now(), sent)
+        });
+        // Put the request on its way (connect, write what fits) without waiting.
+        settle();
+        Ok(task)
+    }
+
+    /// Follow a redirect: record it and send `request` as the next hop.
+    fn follow(&mut self, status: u16, location: String, request: Result<HyperRequest, String>) {
+        if matches!(self.state, PendingState::Closed) {
+            return;
+        }
+        self.redirects.push((status, location));
+        self.send(request);
+    }
+
+    /// Wait until `until` for the status and headers of the current hop.
+    fn wait(&mut self, until: Option<Instant>) -> Result<Waited, PendingErr> {
+        if matches!(self.state, PendingState::Closed) {
+            return Err(PendingErr::Closed);
+        }
+        if crate::signals::is_pending() {
+            return Err(PendingErr::Failed(Failure::Interrupted));
+        }
+        let head_until = self.head_until;
+        if let PendingState::Sending(task) = &mut self.state {
+            let sent = if task.is_finished() {
+                // The result came during an earlier hosted call. Take it
+                // without a look at the clock: it is judged below by the
+                // time it came.
+                Ok(Some(TOKIO_RUNTIME.block_on(task)))
+            } else {
+                // Only the borrow of the task is given up when the wait ends
+                // without it, never the task.
+                TOKIO_RUNTIME.block_on(await_io(head_until, async {
+                    tokio::select! {
+                        biased;
+                        sent = task => Some(sent),
+                        () = give_up_at(until) => None,
+                    }
+                }))
+            };
+            let arrived = match sent {
+                Ok(None) => return Ok(Waited::NotReady),
+                // The task keeps the request; the next wait continues it.
+                Err(Failure::Interrupted) => {
+                    return Err(PendingErr::Failed(Failure::Interrupted));
+                }
+                Err(failure) => return Err(PendingErr::Failed(self.fail(failure))),
+                Ok(Some(Err(error))) => {
+                    return Err(PendingErr::Failed(
+                        self.fail(Failure::Other(error.to_string())),
+                    ));
+                }
+                Ok(Some(Ok((_, Err(error))))) => {
+                    return Err(PendingErr::Failed(
+                        self.fail(Failure::Other(error.to_string())),
+                    ));
+                }
+                Ok(Some(Ok((at, Ok(response))))) => PendingState::Arrived { at, response },
+            };
+            self.state = arrived;
+        }
+        let arrived_at = match &self.state {
+            PendingState::Failed(failure) => return Err(PendingErr::Failed(failure.clone())),
+            PendingState::Ready { head, body } => return Ok(Self::hand_over(head.clone(), *body)),
+            PendingState::Arrived { at, .. } => *at,
+            PendingState::Sending(_) | PendingState::Closed => {
+                unreachable!("a wait leaves no request in flight without returning")
+            }
+        };
+        // As in `send_streaming_at`: an event that came while the head was
+        // being polled wins over it. An interruption keeps the head for later.
+        if crate::signals::is_pending() {
+            return Err(PendingErr::Failed(Failure::Interrupted));
+        }
+        // The head counts from when it arrived, which may be long before this
+        // wait.
+        if head_until.is_some_and(|until| until <= arrived_at) {
+            return Err(PendingErr::Failed(self.fail(Failure::Timeout)));
+        }
+        let PendingState::Arrived { response, .. } =
+            std::mem::replace(&mut self.state, PendingState::Closed)
+        else {
+            unreachable!("only a head that has arrived is left");
+        };
+        let (parts, body) = response.into_parts();
+        let head = StreamingHead::from_parts(&parts);
+        let body = StreamingBody {
+            state: BodyState::Open(body),
+            pending: bytes::BytesMut::new(),
+            idle_timeout: self.idle_timeout,
+            deadline: self.deadline,
+        };
+        let body = match resources::box_resource(body, &self.host) {
+            Ok(body) => body,
+            Err(error) => {
+                return Err(PendingErr::Failed(
+                    self.fail(Failure::Other(error.to_string())),
+                ));
+            }
+        };
+        self.state = PendingState::Ready {
+            head: head.clone(),
+            body,
+        };
+        Ok(Self::hand_over(head, body))
+    }
+
+    /// The redirects followed so far, as Roc receives them.
+    fn redirects_to_roc(&self, roc_host: &RocHost) -> RocList<NotReadyOrReadyReadyRedirects> {
+        let list = unsafe {
+            RocList::<NotReadyOrReadyReadyRedirects>::allocate(self.redirects.len(), roc_host)
+        };
+        for (index, (status, location)) in self.redirects.iter().enumerate() {
+            let redirect = NotReadyOrReadyReadyRedirects {
+                _0: *status,
+                _1: RocStr::from_str(location, roc_host),
+            };
+            unsafe {
+                list.elements.add(index).write(redirect);
+            }
+        }
+        list
+    }
+
+    /// A new reference to the body for the caller; this resource keeps its own.
+    fn hand_over(head: StreamingHead, body: *mut u64) -> Waited {
+        unsafe { incref_box(body.cast(), 1) };
+        Waited::Ready(head, body)
+    }
+
+    /// Give up the request and whatever it holds; the state is `Closed` after.
+    fn release(&mut self) {
+        match std::mem::replace(&mut self.state, PendingState::Closed) {
+            PendingState::Sending(task) => {
+                task.abort();
+                drop(task);
+                settle();
+            }
+            PendingState::Arrived { response, .. } => {
+                drop(response);
+                settle();
+            }
+            PendingState::Ready { body, .. } => resources::release(body, &self.host),
+            PendingState::Failed(_) | PendingState::Closed => {}
+        }
+    }
+
+    fn fail(&mut self, failure: Failure) -> Failure {
+        self.release();
+        self.state = PendingState::Failed(failure.clone());
+        failure
+    }
+}
+
+impl Drop for PendingResponse {
+    fn drop(&mut self) {
+        // A request in flight still holds its connection.
+        self.release();
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn hosted_http_start(
+    request: HostHttpStartArg0,
+    idle_timeout: AfterOrNoTimeout,
+    deadline: AtOrNoTimeout,
+) -> HostHttpStartResult {
+    let roc_host = roc_host();
+    // The hyper request copies what it needs, so the Roc values can go.
+    let hyper_request = build_hyper_request((&request).into());
+    unsafe { request.decref(roc_host) };
+
+    // Make the handle before anything is sent, so that a failure to make it
+    // sends nothing.
+    let pending = PendingResponse::new(idle_duration(idle_timeout), monotonic_instant(deadline));
+    let handle = match resources::box_resource(pending, roc_host) {
+        Ok(handle) => handle,
+        Err(error) => {
+            return HostHttpStartResult {
+                payload: HostHttpStartResultPayload {
+                    err: ManuallyDrop::new(roc_u8_list_from_slice(
+                        error.to_string().as_bytes(),
+                        roc_host,
+                    )),
+                },
+                tag: HostHttpStartResultTag::Err,
+            };
+        }
+    };
+    unsafe { resources::resource_ref::<PendingResponse>(handle) }.send(hyper_request);
+    HostHttpStartResult {
+        payload: HostHttpStartResultPayload {
+            ok: ManuallyDrop::new(handle),
+        },
+        tag: HostHttpStartResultTag::Ok,
+    }
+}
+
+fn pending_wait_ok(ok: HostHttpPendingWaitOk) -> HostHttpPendingWaitResult {
+    HostHttpPendingWaitResult {
+        payload: HostHttpPendingWaitResultPayload {
+            ok: ManuallyDrop::new(ok),
+        },
+        tag: HostHttpPendingWaitResultTag::Ok,
+    }
+}
+
+fn pending_wait_err(err: HostHttpPendingWaitErr) -> HostHttpPendingWaitResult {
+    HostHttpPendingWaitResult {
+        payload: HostHttpPendingWaitResultPayload {
+            err: ManuallyDrop::new(err),
+        },
+        tag: HostHttpPendingWaitResultTag::Err,
+    }
+}
+
+/// # Safety
+///
+/// `handle` must be a live handle from `hosted_http_start`.
+#[no_mangle]
+pub unsafe extern "C" fn hosted_http_pending_wait(
+    handle: *mut u64,
+    until: AtOrNoTimeout,
+) -> HostHttpPendingWaitResult {
+    let roc_host = roc_host();
+    let pending = unsafe { resources::resource_ref::<PendingResponse>(handle) };
+    let result = match pending.wait(monotonic_instant(until)) {
+        Ok(Waited::NotReady) => pending_wait_ok(HostHttpPendingWaitOk {
+            payload: HostHttpPendingWaitOkPayload { not_ready: [] },
+            tag: HostHttpPendingWaitOkTag::NotReady,
+        }),
+        Ok(Waited::Ready(head, body)) => pending_wait_ok(HostHttpPendingWaitOk {
+            payload: HostHttpPendingWaitOkPayload {
+                ready: ManuallyDrop::new(HostHttpPendingWaitOkReady {
+                    response: head.to_roc(body, roc_host),
+                    redirects: pending.redirects_to_roc(roc_host),
+                }),
+            },
+            tag: HostHttpPendingWaitOkTag::Ready,
+        }),
+        Err(PendingErr::Closed) => pending_wait_err(HostHttpPendingWaitErr {
+            payload: HostHttpPendingWaitErrPayload { closed: [] },
+            tag: HostHttpPendingWaitErrTag::Closed,
+        }),
+        Err(PendingErr::Failed(failure)) => pending_wait_err(HostHttpPendingWaitErr {
+            payload: HostHttpPendingWaitErrPayload {
+                http_err: ManuallyDrop::new(failure.to_roc(roc_host)),
+            },
+            tag: HostHttpPendingWaitErrTag::HttpErr,
+        }),
+    };
+    // Only now, outside `block_on`: this may be the last reference.
+    resources::release(handle, roc_host);
+    result
+}
+
+/// # Safety
+///
+/// `handle` must be a live handle from `hosted_http_start`.
+#[no_mangle]
+pub unsafe extern "C" fn hosted_http_pending_follow(
+    handle: *mut u64,
+    request: HostHttpPendingFollowArg1,
+    status: u16,
+    location: RocStr,
+) {
+    let roc_host = roc_host();
+    let hyper_request = build_hyper_request((&request).into());
+    let followed = location.as_str().to_owned();
+    unsafe {
+        request.decref(roc_host);
+        location.decref(roc_host);
+    }
+    unsafe { resources::resource_ref::<PendingResponse>(handle) }.follow(
+        status,
+        followed,
+        hyper_request,
+    );
+    resources::release(handle, roc_host);
+}
+
+/// # Safety
+///
+/// `handle` must be a live handle from `hosted_http_start`.
+#[no_mangle]
+pub unsafe extern "C" fn hosted_http_pending_close(handle: *mut u64) {
+    let roc_host = roc_host();
+    unsafe { resources::resource_ref::<PendingResponse>(handle) }.release();
+    resources::release(handle, roc_host);
 }
 
 #[cfg(test)]
@@ -1783,6 +2226,535 @@ mod tests {
         assert_eq!(from_args.headers(), from_record.headers());
         // `record` shares the Roc values with `args`; release them once.
         unsafe { args.decref(&host) };
+    }
+
+    // ---- Pending requests ---------------------------------------------------
+
+    fn get_request(uri: &str) -> HyperRequest {
+        hyper::Request::builder()
+            .uri(uri)
+            .body(http_body_util::Full::default())
+            .unwrap()
+    }
+
+    fn start_get(
+        uri: &str,
+        idle_timeout: Option<Duration>,
+        deadline: Option<Instant>,
+    ) -> PendingResponse {
+        let mut pending = PendingResponse::new(idle_timeout, deadline);
+        pending.send(Ok(get_request(uri)));
+        pending
+    }
+
+    /// The head and body reference of a wait that must have found a response.
+    fn ready(waited: Result<Waited, PendingErr>) -> (StreamingHead, *mut u64) {
+        match waited {
+            Ok(Waited::Ready(head, body)) => (head, body),
+            Ok(Waited::NotReady) => panic!("the response was not ready"),
+            Err(error) => panic!("the wait failed: {error:?}"),
+        }
+    }
+
+    /// A wait that is generous enough for a local response on a loaded machine.
+    fn within_seconds(seconds: u64) -> Option<Instant> {
+        Some(Instant::now() + Duration::from_secs(seconds))
+    }
+
+    /// Wait without waiting until the head is there. Tests run in parallel and
+    /// share one runtime, which only the thread inside `block_on` turns, so one
+    /// attempt may not reach the task. (A single thread, as in a Roc app, does
+    /// on the first; tests/http-in-flight.roc checks that.)
+    fn zero_waits_until_ready(pending: &mut PendingResponse) -> (StreamingHead, *mut u64) {
+        for _ in 0..100 {
+            match pending.wait(Some(Instant::now())) {
+                Ok(Waited::NotReady) => thread::sleep(Duration::from_millis(20)),
+                waited => return ready(waited),
+            }
+        }
+        panic!("a response that had arrived was not returned in 2 s of zero waits");
+    }
+
+    fn read_all(body: *mut u64) -> Vec<u8> {
+        unsafe { crate::resources::resource_ref::<StreamingBody>(body) }
+            .read_to_end(u64::MAX)
+            .unwrap()
+            .to_vec()
+    }
+
+    const OK_HELLO: &[u8] = b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello";
+
+    #[test]
+    fn a_pending_request_is_not_ready_until_its_head_arrives() {
+        let (release_tx, release_rx) = mpsc::channel::<()>();
+        let (uri, server) = local_server(move |mut stream| {
+            release_rx.recv().unwrap();
+            stream.write_all(OK_HELLO).unwrap();
+        });
+        let mut pending = start_get(&uri, None, None);
+        // Waiting without a response is not an error, and it can be repeated.
+        for _ in 0..2 {
+            let started = Instant::now();
+            let waited = pending.wait(Some(started + Duration::from_millis(100)));
+            assert!(matches!(waited, Ok(Waited::NotReady)));
+            assert!(started.elapsed() >= Duration::from_millis(100));
+            assert!(matches!(pending.state, PendingState::Sending(_)));
+        }
+        release_tx.send(()).unwrap();
+        let (head, body) = ready(pending.wait(within_seconds(5)));
+        assert_eq!(head.status, 200);
+        assert_eq!(&read_all(body)[..], b"hello");
+        // Another wait hands over the same response: the same body, whose
+        // cursor is at its end.
+        let (again_head, again) = ready(pending.wait(Some(Instant::now())));
+        assert_eq!(again_head.status, 200);
+        assert_eq!(again, body);
+        assert_eq!(&read_all(again)[..], b"");
+        let host = crate::resources::make_host();
+        crate::resources::release(body, &host);
+        crate::resources::release(again, &host);
+        drop(pending);
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn a_zero_wait_returns_a_head_that_has_arrived() {
+        let (written_tx, written_rx) = mpsc::channel::<()>();
+        let (uri, server) = local_server(move |mut stream| {
+            stream
+                .write_all(b"HTTP/1.1 204 No Content\r\n\r\n")
+                .unwrap();
+            written_tx.send(()).unwrap();
+            thread::sleep(Duration::from_millis(300));
+        });
+        let mut pending = start_get(&uri, None, None);
+        // The answer is in the socket, though nothing has read it yet.
+        written_rx.recv_timeout(Duration::from_secs(10)).unwrap();
+        // A wait that does not wait still turns the runtime, so this finds it.
+        let (head, body) = zero_waits_until_ready(&mut pending);
+        assert_eq!(head.status, 204);
+        crate::resources::release(body, &crate::resources::make_host());
+        drop(pending);
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn starting_a_request_sends_it_without_a_wait() {
+        let (sent_tx, sent_rx) = mpsc::channel::<()>();
+        let (uri, server) = local_server(move |mut stream| {
+            sent_tx.send(()).unwrap();
+            let _ = peer_closed(&mut stream);
+        });
+        // The request reaches the server although the app makes no HTTP call
+        // after `start`; here, only the test thread could have turned the
+        // runtime, and it waits for the server instead.
+        let pending = start_get(&uri, None, None);
+        assert_eq!(sent_rx.recv_timeout(Duration::from_secs(10)), Ok(()));
+        drop(pending);
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn other_http_calls_drive_and_do_not_block_a_pending_request() {
+        let host = crate::resources::make_host();
+        let (release_tx, release_rx) = mpsc::channel::<()>();
+        let (written_tx, written_rx) = mpsc::channel::<()>();
+        let (uri_a, server_a) = local_server(move |mut stream| {
+            release_rx.recv().unwrap();
+            stream.write_all(OK_HELLO).unwrap();
+            written_tx.send(()).unwrap();
+        });
+        let mut slow = start_get(&uri_a, None, None);
+        assert!(matches!(
+            slow.wait(Some(Instant::now() + Duration::from_millis(100))),
+            Ok(Waited::NotReady)
+        ));
+
+        // A plain request completes while the first one is in flight ...
+        let (uri_b, server_b) = local_server(|mut stream| stream.write_all(OK_HELLO).unwrap());
+        let result = get(&uri_b, 5_000, &host);
+        assert!(result.tag == HttpResultTag::Ok);
+        unsafe { result.decref(&host) };
+        server_b.join().unwrap();
+
+        // ... and so does a second pending request.
+        let (uri_c, server_c) = local_server(|mut stream| stream.write_all(OK_HELLO).unwrap());
+        let mut fast = start_get(&uri_c, None, None);
+        let (head, body) = ready(fast.wait(within_seconds(5)));
+        assert_eq!(head.status, 200);
+        crate::resources::release(body, &host);
+        server_c.join().unwrap();
+        assert!(matches!(slow.state, PendingState::Sending(_)));
+
+        // The held request goes on while the app is in other HTTP calls, so a
+        // wait that does not wait finds it ready.
+        release_tx.send(()).unwrap();
+        written_rx.recv_timeout(Duration::from_secs(10)).unwrap();
+        let (uri_d, server_d) = local_server(|mut stream| stream.write_all(OK_HELLO).unwrap());
+        let result = get(&uri_d, 5_000, &host);
+        assert!(result.tag == HttpResultTag::Ok);
+        unsafe { result.decref(&host) };
+        server_d.join().unwrap();
+        let (head, body) = zero_waits_until_ready(&mut slow);
+        assert_eq!(head.status, 200);
+        assert_eq!(&read_all(body)[..], b"hello");
+        crate::resources::release(body, &host);
+        server_a.join().unwrap();
+    }
+
+    #[test]
+    fn an_interrupted_wait_keeps_the_request() {
+        struct Reset;
+        impl Drop for Reset {
+            fn drop(&mut self) {
+                crate::signals::set_test_pending(false);
+            }
+        }
+        let (release_tx, release_rx) = mpsc::channel::<()>();
+        let (uri, server) = local_server(move |mut stream| {
+            release_rx.recv().unwrap();
+            stream.write_all(OK_HELLO).unwrap();
+        });
+        let mut pending = start_get(&uri, None, None);
+        let reset = Reset;
+        crate::signals::set_test_pending(true);
+        for _ in 0..2 {
+            assert_eq!(
+                pending.wait(within_seconds(5)).err(),
+                Some(PendingErr::Failed(Failure::Interrupted))
+            );
+            assert!(matches!(pending.state, PendingState::Sending(_)));
+        }
+        drop(reset);
+        // As after a timeout, the request is still in flight.
+        release_tx.send(()).unwrap();
+        let (head, body) = ready(pending.wait(within_seconds(5)));
+        assert_eq!(head.status, 200);
+        assert_eq!(&read_all(body)[..], b"hello");
+        crate::resources::release(body, &crate::resources::make_host());
+        drop(pending);
+        server.join().unwrap();
+    }
+
+    // Each way of giving a request up while it is in flight must close its
+    // connection without another hosted call: dropping the resource, releasing
+    // the last reference to its handle through the allocator, and `close!`.
+    #[test]
+    fn dropping_or_closing_a_pending_request_closes_its_connection() {
+        for mode in ["drop", "handle", "close"] {
+            let (closed_tx, closed_rx) = mpsc::channel::<bool>();
+            let (uri, server) = local_server(move |mut stream| {
+                closed_tx.send(peer_closed(&mut stream)).unwrap();
+            });
+            let mut pending = start_get(&uri, None, None);
+            assert!(matches!(
+                pending.wait(Some(Instant::now() + Duration::from_millis(100))),
+                Ok(Waited::NotReady)
+            ));
+            match mode {
+                "drop" => drop(pending),
+                "handle" => {
+                    let host = crate::resources::make_host();
+                    let handle = crate::resources::box_resource(pending, &host).unwrap();
+                    crate::resources::release(handle, &host);
+                }
+                _ => {
+                    pending.release();
+                    assert_eq!(pending.wait(None).err(), Some(PendingErr::Closed));
+                    assert_eq!(pending.wait(None).err(), Some(PendingErr::Closed));
+                }
+            }
+            assert_eq!(
+                closed_rx.recv_timeout(Duration::from_secs(10)),
+                Ok(true),
+                "the connection stayed open ({mode})"
+            );
+            server.join().unwrap();
+        }
+    }
+
+    #[test]
+    fn giving_up_a_pending_request_leaves_a_returned_response_readable() {
+        for close in [false, true] {
+            let (resume_tx, resume_rx) = mpsc::channel::<()>();
+            let (uri, server) = local_server(move |mut stream| {
+                stream
+                    .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhe")
+                    .unwrap();
+                resume_rx.recv().unwrap();
+                stream.write_all(b"llo").unwrap();
+            });
+            let mut pending = start_get(&uri, None, None);
+            let (head, body) = ready(pending.wait(within_seconds(5)));
+            assert_eq!(head.status, 200);
+            if close {
+                pending.release();
+            } else {
+                drop(pending);
+            }
+            resume_tx.send(()).unwrap();
+            assert_eq!(&read_all(body)[..], b"hello");
+            crate::resources::release(body, &crate::resources::make_host());
+            server.join().unwrap();
+        }
+    }
+
+    #[test]
+    fn the_request_timeout_counts_from_start() {
+        let (uri, server) = local_server(|mut stream| {
+            let _ = peer_closed(&mut stream);
+        });
+        // The deadline passes while the app is not in any HTTP call.
+        let mut pending = start_get(
+            &uri,
+            None,
+            Some(Instant::now() + Duration::from_millis(300)),
+        );
+        thread::sleep(Duration::from_millis(500));
+        let started = Instant::now();
+        assert_eq!(
+            pending.wait(within_seconds(5)).err(),
+            Some(PendingErr::Failed(Failure::Timeout))
+        );
+        assert!(started.elapsed() < Duration::from_secs(2));
+        // The failure is final.
+        assert_eq!(
+            pending.wait(within_seconds(5)).err(),
+            Some(PendingErr::Failed(Failure::Timeout))
+        );
+        assert!(matches!(
+            pending.state,
+            PendingState::Failed(Failure::Timeout)
+        ));
+        drop(pending);
+        server.join().unwrap();
+
+        // A wait with a limit of its own longer than the deadline reports the
+        // deadline's timeout, not "not ready".
+        let (uri, server) = local_server(|mut stream| {
+            let _ = peer_closed(&mut stream);
+        });
+        let mut pending = start_get(
+            &uri,
+            None,
+            Some(Instant::now() + Duration::from_millis(300)),
+        );
+        let started = Instant::now();
+        assert_eq!(
+            pending.wait(within_seconds(30)).err(),
+            Some(PendingErr::Failed(Failure::Timeout))
+        );
+        assert!(started.elapsed() < Duration::from_secs(10));
+        drop(pending);
+        server.join().unwrap();
+
+        // A head that comes only after the deadline is a timeout, although
+        // the wait finds it there.
+        let (written_tx, written_rx) = mpsc::channel::<()>();
+        let (uri, server) = local_server(move |mut stream| {
+            thread::sleep(Duration::from_millis(500));
+            stream.write_all(OK_HELLO).unwrap();
+            written_tx.send(()).unwrap();
+            let _ = peer_closed(&mut stream);
+        });
+        let mut pending = start_get(
+            &uri,
+            None,
+            Some(Instant::now() + Duration::from_millis(300)),
+        );
+        written_rx.recv_timeout(Duration::from_secs(10)).unwrap();
+        assert_eq!(
+            pending.wait(within_seconds(5)).err(),
+            Some(PendingErr::Failed(Failure::Timeout))
+        );
+        drop(pending);
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn a_head_that_arrived_in_time_outlives_the_timeouts() {
+        let host = crate::resources::make_host();
+        let (written_tx, written_rx) = mpsc::channel::<()>();
+        let (uri, server) = local_server(move |mut stream| {
+            stream.write_all(OK_HELLO).unwrap();
+            written_tx.send(()).unwrap();
+            let _ = peer_closed(&mut stream);
+        });
+        let mut pending = start_get(&uri, Some(Duration::from_secs(1)), None);
+        let head_until = pending.head_until.unwrap();
+        written_rx.recv_timeout(Duration::from_secs(10)).unwrap();
+        // Other HTTP calls turn the runtime, and the task reads the head.
+        while !matches!(&pending.state, PendingState::Sending(task) if task.is_finished()) {
+            assert!(Instant::now() < head_until, "the head was not read in time");
+            let (other_uri, other) = local_server(|mut stream| stream.write_all(OK_HELLO).unwrap());
+            let result = get(&other_uri, 5_000, &host);
+            assert!(result.tag == HttpResultTag::Ok);
+            unsafe { result.decref(&host) };
+            other.join().unwrap();
+        }
+        // The app does other work until the idle timeout has passed, and
+        // only then waits.
+        thread::sleep(head_until.saturating_duration_since(Instant::now()));
+        thread::sleep(Duration::from_millis(100));
+        let (head, body) = ready(pending.wait(Some(Instant::now())));
+        assert_eq!(head.status, 200);
+        assert_eq!(&read_all(body)[..], b"hello");
+        crate::resources::release(body, &host);
+        drop(pending);
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn the_idle_timeout_bounds_the_head_of_a_pending_request() {
+        let (release_tx, release_rx) = mpsc::channel::<()>();
+        let (uri, server) = local_server(move |_stream| {
+            let _ = release_rx.recv();
+        });
+        let mut pending = start_get(&uri, Some(IDLE), None);
+        let started = Instant::now();
+        assert_eq!(
+            pending.wait(within_seconds(30)).err(),
+            Some(PendingErr::Failed(Failure::Timeout))
+        );
+        assert!(started.elapsed() < Duration::from_secs(10));
+        drop(pending);
+        drop(release_tx);
+        server.join().unwrap();
+
+        // A zero idle timeout expires before anything is sent.
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let uri = format!("http://{}/", listener.local_addr().unwrap());
+        let mut pending = start_get(&uri, Some(Duration::ZERO), None);
+        assert!(matches!(
+            pending.state,
+            PendingState::Failed(Failure::Timeout)
+        ));
+        assert_eq!(
+            pending.wait(within_seconds(5)).err(),
+            Some(PendingErr::Failed(Failure::Timeout))
+        );
+        assert_eq!(
+            listener.accept().unwrap_err().kind(),
+            std::io::ErrorKind::WouldBlock
+        );
+    }
+
+    #[test]
+    fn transport_errors_come_back_from_the_wait() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let uri = format!("http://{}/", listener.local_addr().unwrap());
+        drop(listener);
+        let mut pending = start_get(&uri, None, None);
+        let first = pending.wait(within_seconds(10));
+        let Err(PendingErr::Failed(Failure::Other(message))) = first else {
+            panic!("expected a transport error");
+        };
+        assert!(!message.is_empty());
+        // The same failure, every time.
+        assert_eq!(
+            pending.wait(None).err(),
+            Some(PendingErr::Failed(Failure::Other(message)))
+        );
+
+        // A request that could not be built fails the same way.
+        let mut pending = PendingResponse::new(None, None);
+        pending.send(Err("invalid HTTP method".into()));
+        assert_eq!(
+            pending.wait(None).err(),
+            Some(PendingErr::Failed(Failure::Other(
+                "invalid HTTP method".into()
+            )))
+        );
+    }
+
+    #[test]
+    fn a_redirect_hop_keeps_the_deadline() {
+        let (release_tx, release_rx) = mpsc::channel::<()>();
+        let (second_uri, second) = local_server(move |_stream| {
+            let _ = release_rx.recv();
+        });
+        let location = format!("{second_uri}next");
+        let (first_uri, first) = local_server(move |mut stream| {
+            stream
+                .write_all(
+                    format!(
+                        "HTTP/1.1 302 Found\r\nLocation: {location}\r\nContent-Length: 0\r\n\r\n"
+                    )
+                    .as_bytes(),
+                )
+                .unwrap();
+        });
+        let host = crate::resources::make_host();
+        let started = Instant::now();
+        let mut pending = start_get(
+            &first_uri,
+            None,
+            Some(started + Duration::from_millis(1200)),
+        );
+        let (head, body) = ready(pending.wait(within_seconds(5)));
+        assert_eq!(head.status, 302);
+        crate::resources::release(body, &host);
+        // The first hop took almost none of the time; the next hop is not
+        // given a new allowance.
+        thread::sleep(Duration::from_millis(600));
+        pending.follow(
+            302,
+            "/next".to_string(),
+            Ok(get_request(&format!("{second_uri}next"))),
+        );
+        assert_eq!(pending.redirects, [(302, "/next".to_string())]);
+        assert_eq!(
+            pending.wait(within_seconds(30)).err(),
+            Some(PendingErr::Failed(Failure::Timeout))
+        );
+        assert!(
+            started.elapsed() < Duration::from_millis(1800),
+            "the deadline restarted with the redirect"
+        );
+        drop(pending);
+        drop(release_tx);
+        first.join().unwrap();
+        second.join().unwrap();
+    }
+
+    #[test]
+    fn a_pending_request_sends_the_same_request_as_a_streaming_one() {
+        let host = crate::resources::make_host();
+        let build = |uri: &str, headers: &[(&str, &str)]| {
+            let args = request_args(7, "", uri, headers, &host);
+            let request = build_hyper_request((&args).into());
+            unsafe { args.decref(&host) };
+            request
+        };
+        for headers in [
+            &[][..],
+            &[("Content-Type", "application/json"), ("X-A", "b")],
+        ] {
+            let streamed = captured_request(|uri| {
+                let (head, mut stream) = send_streaming(
+                    build(uri, headers).unwrap(),
+                    5_000,
+                    Some(Duration::from_secs(5)),
+                )
+                .unwrap();
+                assert_eq!(head.status, 200);
+                assert_eq!(stream.read_chunk(), Ok(None));
+            });
+            let pending = captured_request(|uri| {
+                let mut pending = PendingResponse::new(
+                    Some(Duration::from_secs(5)),
+                    Some(Instant::now() + Duration::from_secs(5)),
+                );
+                pending.send(build(uri, headers));
+                let (head, body) = ready(pending.wait(within_seconds(5)));
+                assert_eq!(head.status, 200);
+                crate::resources::release(body, &host);
+            });
+            assert_eq!(pending, streamed);
+            assert!(pending.starts_with("POST /path?query=1 HTTP/1.1\r\n"));
+            assert!(pending.ends_with("\r\n\r\npayload"));
+        }
     }
 
     // Guards the shape of `TOKIO_RUNTIME`: a thread that used it must be able to

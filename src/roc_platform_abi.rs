@@ -1521,6 +1521,60 @@ const _: () = assert!(core::mem::size_of::<SystemUnix>() == 1, "SystemUnix size 
 #[cfg(target_pointer_width = "32")]
 const _: () = assert!(core::mem::align_of::<SystemUnix>() == 1, "SystemUnix alignment mismatch");
 
+/// Element type for __AnonStruct_57b3856c59c615c8
+#[cfg(target_pointer_width = "32")]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct AnonStruct57b3856c59c615c8 {
+    pub response: AnonStruct60cbed700549ed13,
+    pub redirects: RocList<AnonStruct453a8dc75d4311da>,
+}
+
+/// Element type for __AnonStruct_57b3856c59c615c8
+#[cfg(not(target_pointer_width = "32"))]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct AnonStruct57b3856c59c615c8 {
+    pub response: AnonStruct60cbed700549ed13,
+    pub redirects: RocList<AnonStruct453a8dc75d4311da>,
+}
+
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::size_of::<AnonStruct57b3856c59c615c8>() == 80, "AnonStruct57b3856c59c615c8 size mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::align_of::<AnonStruct57b3856c59c615c8>() == 8, "AnonStruct57b3856c59c615c8 alignment mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::size_of::<AnonStruct57b3856c59c615c8>() == 56, "AnonStruct57b3856c59c615c8 size mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::align_of::<AnonStruct57b3856c59c615c8>() == 8, "AnonStruct57b3856c59c615c8 alignment mismatch");
+
+/// Element type for __AnonStruct_453a8dc75d4311da
+#[cfg(target_pointer_width = "32")]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct AnonStruct453a8dc75d4311da {
+    pub _1: RocStr,
+    pub _0: u16,
+}
+
+/// Element type for __AnonStruct_453a8dc75d4311da
+#[cfg(not(target_pointer_width = "32"))]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct AnonStruct453a8dc75d4311da {
+    pub _1: RocStr,
+    pub _0: u16,
+}
+
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::size_of::<AnonStruct453a8dc75d4311da>() == 32, "AnonStruct453a8dc75d4311da size mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::align_of::<AnonStruct453a8dc75d4311da>() == 8, "AnonStruct453a8dc75d4311da alignment mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::size_of::<AnonStruct453a8dc75d4311da>() == 16, "AnonStruct453a8dc75d4311da size mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::align_of::<AnonStruct453a8dc75d4311da>() == 4, "AnonStruct453a8dc75d4311da alignment mismatch");
+
 /// Element type for System.Target
 #[cfg(target_pointer_width = "32")]
 #[repr(C)]
@@ -13940,6 +13994,442 @@ const _: () = assert!(core::mem::align_of::<ClosedOrUnixSocketErr>() == 4, "Clos
 #[cfg(target_pointer_width = "32")]
 const _: () = assert!(core::mem::offset_of!(ClosedOrUnixSocketErr, tag) == 16, "ClosedOrUnixSocketErr tag offset mismatch");
 
+/// Tag discriminant for Try.
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HostHttpStartResultTag {
+    Err = 0,
+    Ok = 1,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub union HostHttpStartResultPayload {
+    pub err: core::mem::ManuallyDrop<RocListWith<u8, false>>,
+    pub ok: core::mem::ManuallyDrop<*mut u64>,
+}
+
+#[cfg(target_pointer_width = "32")]
+#[repr(align(4))]
+#[derive(Clone, Copy)]
+pub struct HostHttpStartResultPayloadAlignment;
+
+/// Tag union: Try
+#[cfg(target_pointer_width = "32")]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostHttpStartResult {
+    pub _payload_alignment: [HostHttpStartResultPayloadAlignment; 0],
+    pub payload: [u8; 12],
+    pub tag: HostHttpStartResultTag,
+}
+
+/// Tag union: Try
+#[cfg(not(target_pointer_width = "32"))]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostHttpStartResult {
+    pub payload: HostHttpStartResultPayload,
+    pub tag: HostHttpStartResultTag,
+}
+
+impl HostHttpStartResult {
+    /// Borrow the `Err` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostHttpStartResultTag::Err` and the payload must still be initialized.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn borrow_payload_err_unchecked(&self) -> &RocListWith<u8, false> {
+        unsafe { &*(self.payload.as_ptr() as *const RocListWith<u8, false>) }
+    }
+
+    /// Borrow the `Err` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostHttpStartResultTag::Err` and the payload must still be initialized.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn borrow_payload_err_unchecked(&self) -> &RocListWith<u8, false> {
+        unsafe { &*(&self.payload.err as *const core::mem::ManuallyDrop<RocListWith<u8, false>> as *const RocListWith<u8, false>) }
+    }
+
+    /// Move the `Err` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostHttpStartResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn take_payload_err_unchecked(&mut self) -> RocListWith<u8, false> {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const RocListWith<u8, false>) }
+    }
+
+    /// Move the `Err` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostHttpStartResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn take_payload_err_unchecked(&mut self) -> RocListWith<u8, false> {
+        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.err) }
+    }
+
+    /// Borrow the `Ok` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostHttpStartResultTag::Ok` and the payload must still be initialized.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &*mut u64 {
+        unsafe { &*(self.payload.as_ptr() as *const *mut u64) }
+    }
+
+    /// Borrow the `Ok` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostHttpStartResultTag::Ok` and the payload must still be initialized.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &*mut u64 {
+        unsafe { &*(&self.payload.ok as *const core::mem::ManuallyDrop<*mut u64> as *const *mut u64) }
+    }
+
+    /// Move the `Ok` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostHttpStartResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn take_payload_ok_unchecked(&mut self) -> *mut u64 {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const *mut u64) }
+    }
+
+    /// Move the `Ok` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostHttpStartResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn take_payload_ok_unchecked(&mut self) -> *mut u64 {
+        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.ok) }
+    }
+
+}
+
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::size_of::<HostHttpStartResult>() == 32, "HostHttpStartResult size mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::align_of::<HostHttpStartResult>() == 8, "HostHttpStartResult alignment mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::offset_of!(HostHttpStartResult, tag) == 24, "HostHttpStartResult tag offset mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::size_of::<HostHttpStartResult>() == 16, "HostHttpStartResult size mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::align_of::<HostHttpStartResult>() == 4, "HostHttpStartResult alignment mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::offset_of!(HostHttpStartResult, tag) == 12, "HostHttpStartResult tag offset mismatch");
+
+/// Tag discriminant for Try.
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HostHttpPendingWaitResultTag {
+    Err = 0,
+    Ok = 1,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub union HostHttpPendingWaitResultPayload {
+    pub err: core::mem::ManuallyDrop<ClosedOrHttpErr>,
+    pub ok: core::mem::ManuallyDrop<NotReadyOrReady>,
+}
+
+#[cfg(target_pointer_width = "32")]
+#[repr(align(8))]
+#[derive(Clone, Copy)]
+pub struct HostHttpPendingWaitResultPayloadAlignment;
+
+/// Tag union: Try
+#[cfg(target_pointer_width = "32")]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostHttpPendingWaitResult {
+    pub _payload_alignment: [HostHttpPendingWaitResultPayloadAlignment; 0],
+    pub payload: [u8; 64],
+    pub tag: HostHttpPendingWaitResultTag,
+}
+
+/// Tag union: Try
+#[cfg(not(target_pointer_width = "32"))]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostHttpPendingWaitResult {
+    pub payload: HostHttpPendingWaitResultPayload,
+    pub tag: HostHttpPendingWaitResultTag,
+}
+
+impl HostHttpPendingWaitResult {
+    /// Borrow the `Err` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostHttpPendingWaitResultTag::Err` and the payload must still be initialized.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn borrow_payload_err_unchecked(&self) -> &ClosedOrHttpErr {
+        unsafe { &*(self.payload.as_ptr() as *const ClosedOrHttpErr) }
+    }
+
+    /// Borrow the `Err` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostHttpPendingWaitResultTag::Err` and the payload must still be initialized.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn borrow_payload_err_unchecked(&self) -> &ClosedOrHttpErr {
+        unsafe { &*(&self.payload.err as *const core::mem::ManuallyDrop<ClosedOrHttpErr> as *const ClosedOrHttpErr) }
+    }
+
+    /// Move the `Err` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostHttpPendingWaitResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn take_payload_err_unchecked(&mut self) -> ClosedOrHttpErr {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const ClosedOrHttpErr) }
+    }
+
+    /// Move the `Err` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostHttpPendingWaitResultTag::Err`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn take_payload_err_unchecked(&mut self) -> ClosedOrHttpErr {
+        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.err) }
+    }
+
+    /// Borrow the `Ok` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostHttpPendingWaitResultTag::Ok` and the payload must still be initialized.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &NotReadyOrReady {
+        unsafe { &*(self.payload.as_ptr() as *const NotReadyOrReady) }
+    }
+
+    /// Borrow the `Ok` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostHttpPendingWaitResultTag::Ok` and the payload must still be initialized.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn borrow_payload_ok_unchecked(&self) -> &NotReadyOrReady {
+        unsafe { &*(&self.payload.ok as *const core::mem::ManuallyDrop<NotReadyOrReady> as *const NotReadyOrReady) }
+    }
+
+    /// Move the `Ok` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostHttpPendingWaitResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn take_payload_ok_unchecked(&mut self) -> NotReadyOrReady {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const NotReadyOrReady) }
+    }
+
+    /// Move the `Ok` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `HostHttpPendingWaitResultTag::Ok`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn take_payload_ok_unchecked(&mut self) -> NotReadyOrReady {
+        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.ok) }
+    }
+
+}
+
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::size_of::<HostHttpPendingWaitResult>() == 96, "HostHttpPendingWaitResult size mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::align_of::<HostHttpPendingWaitResult>() == 8, "HostHttpPendingWaitResult alignment mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::offset_of!(HostHttpPendingWaitResult, tag) == 88, "HostHttpPendingWaitResult tag offset mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::size_of::<HostHttpPendingWaitResult>() == 72, "HostHttpPendingWaitResult size mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::align_of::<HostHttpPendingWaitResult>() == 8, "HostHttpPendingWaitResult alignment mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::offset_of!(HostHttpPendingWaitResult, tag) == 64, "HostHttpPendingWaitResult tag offset mismatch");
+
+/// Tag discriminant for ClosedOrHttpErr.
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClosedOrHttpErrTag {
+    Closed = 0,
+    HttpErr = 1,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub union ClosedOrHttpErrPayload {
+    pub closed: [u8; 0],
+    pub http_err: core::mem::ManuallyDrop<BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeout>,
+}
+
+#[cfg(target_pointer_width = "32")]
+#[repr(align(4))]
+#[derive(Clone, Copy)]
+pub struct ClosedOrHttpErrPayloadAlignment;
+
+/// Tag union: ClosedOrHttpErr
+#[cfg(target_pointer_width = "32")]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ClosedOrHttpErr {
+    pub _payload_alignment: [ClosedOrHttpErrPayloadAlignment; 0],
+    pub payload: [u8; 16],
+    pub tag: ClosedOrHttpErrTag,
+}
+
+/// Tag union: ClosedOrHttpErr
+#[cfg(not(target_pointer_width = "32"))]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ClosedOrHttpErr {
+    pub payload: ClosedOrHttpErrPayload,
+    pub tag: ClosedOrHttpErrTag,
+}
+
+impl ClosedOrHttpErr {
+    /// Borrow the `HttpErr` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `ClosedOrHttpErrTag::HttpErr` and the payload must still be initialized.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn borrow_payload_http_err_unchecked(&self) -> &BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeout {
+        unsafe { &*(self.payload.as_ptr() as *const BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeout) }
+    }
+
+    /// Borrow the `HttpErr` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `ClosedOrHttpErrTag::HttpErr` and the payload must still be initialized.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn borrow_payload_http_err_unchecked(&self) -> &BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeout {
+        unsafe { &*(&self.payload.http_err as *const core::mem::ManuallyDrop<BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeout> as *const BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeout) }
+    }
+
+    /// Move the `HttpErr` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `ClosedOrHttpErrTag::HttpErr`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn take_payload_http_err_unchecked(&mut self) -> BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeout {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeout) }
+    }
+
+    /// Move the `HttpErr` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `ClosedOrHttpErrTag::HttpErr`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn take_payload_http_err_unchecked(&mut self) -> BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeout {
+        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.http_err) }
+    }
+
+}
+
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::size_of::<ClosedOrHttpErr>() == 40, "ClosedOrHttpErr size mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::align_of::<ClosedOrHttpErr>() == 8, "ClosedOrHttpErr alignment mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::offset_of!(ClosedOrHttpErr, tag) == 32, "ClosedOrHttpErr tag offset mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::size_of::<ClosedOrHttpErr>() == 20, "ClosedOrHttpErr size mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::align_of::<ClosedOrHttpErr>() == 4, "ClosedOrHttpErr alignment mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::offset_of!(ClosedOrHttpErr, tag) == 16, "ClosedOrHttpErr tag offset mismatch");
+
+/// Tag discriminant for NotReadyOrReady.
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NotReadyOrReadyTag {
+    NotReady = 0,
+    Ready = 1,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub union NotReadyOrReadyPayload {
+    pub not_ready: [u8; 0],
+    pub ready: core::mem::ManuallyDrop<AnonStruct57b3856c59c615c8>,
+}
+
+#[cfg(target_pointer_width = "32")]
+#[repr(align(8))]
+#[derive(Clone, Copy)]
+pub struct NotReadyOrReadyPayloadAlignment;
+
+/// Tag union: NotReadyOrReady
+#[cfg(target_pointer_width = "32")]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct NotReadyOrReady {
+    pub _payload_alignment: [NotReadyOrReadyPayloadAlignment; 0],
+    pub payload: [u8; 56],
+    pub tag: NotReadyOrReadyTag,
+}
+
+/// Tag union: NotReadyOrReady
+#[cfg(not(target_pointer_width = "32"))]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct NotReadyOrReady {
+    pub payload: NotReadyOrReadyPayload,
+    pub tag: NotReadyOrReadyTag,
+}
+
+impl NotReadyOrReady {
+    /// Borrow the `Ready` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `NotReadyOrReadyTag::Ready` and the payload must still be initialized.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn borrow_payload_ready_unchecked(&self) -> &AnonStruct57b3856c59c615c8 {
+        unsafe { &*(self.payload.as_ptr() as *const AnonStruct57b3856c59c615c8) }
+    }
+
+    /// Borrow the `Ready` payload without creating another owner.
+    ///
+    /// # Safety
+    /// `self.tag` must be `NotReadyOrReadyTag::Ready` and the payload must still be initialized.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn borrow_payload_ready_unchecked(&self) -> &AnonStruct57b3856c59c615c8 {
+        unsafe { &*(&self.payload.ready as *const core::mem::ManuallyDrop<AnonStruct57b3856c59c615c8> as *const AnonStruct57b3856c59c615c8) }
+    }
+
+    /// Move the `Ready` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `NotReadyOrReadyTag::Ready`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(target_pointer_width = "32")]
+    pub unsafe fn take_payload_ready_unchecked(&mut self) -> AnonStruct57b3856c59c615c8 {
+        unsafe { core::ptr::read(self.payload.as_ptr() as *const AnonStruct57b3856c59c615c8) }
+    }
+
+    /// Move the `Ready` payload out of one owned tag-union shell.
+    ///
+    /// # Safety
+    /// `self.tag` must be `NotReadyOrReadyTag::Ready`. After this call, `self` is logically uninitialized and must not be read or destroyed.
+    #[cfg(not(target_pointer_width = "32"))]
+    pub unsafe fn take_payload_ready_unchecked(&mut self) -> AnonStruct57b3856c59c615c8 {
+        unsafe { core::mem::ManuallyDrop::take(&mut self.payload.ready) }
+    }
+
+}
+
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::size_of::<NotReadyOrReady>() == 88, "NotReadyOrReady size mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::align_of::<NotReadyOrReady>() == 8, "NotReadyOrReady alignment mismatch");
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(core::mem::offset_of!(NotReadyOrReady, tag) == 80, "NotReadyOrReady tag offset mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::size_of::<NotReadyOrReady>() == 64, "NotReadyOrReady size mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::align_of::<NotReadyOrReady>() == 8, "NotReadyOrReady alignment mismatch");
+#[cfg(target_pointer_width = "32")]
+const _: () = assert!(core::mem::offset_of!(NotReadyOrReady, tag) == 56, "NotReadyOrReady tag offset mismatch");
+
 /// Tag union: Arm64OrX64
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -14934,6 +15424,37 @@ pub struct HostHttpCloseBodyArgs {
     pub arg0: *mut u64,
 }
 
+/// Arguments for Host.http_pending_close!
+/// Roc signature: Resource.Handle([HttpPendingKind]) => {}
+/// Refcounted fields are owned by the hosted function.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostHttpPendingCloseArgs {
+    pub arg0: *mut u64,
+}
+
+/// Arguments for Host.http_pending_follow!
+/// Roc signature: Resource.Handle([HttpPendingKind]), { body : List(U8), headers : List((Str, Str)), method : U8, method_ext : Str, timeout_ms : U64, uri : Str }, U16, Str => {}
+/// Refcounted fields are owned by the hosted function.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostHttpPendingFollowArgs {
+    pub arg0: *mut u64,
+    pub arg1: AnonStruct8bbc5017d7a8cb36,
+    pub arg2: u16,
+    pub arg3: RocStr,
+}
+
+/// Arguments for Host.http_pending_wait!
+/// Roc signature: Resource.Handle([HttpPendingKind]), [At(U64), NoTimeout] => Try([NotReady, Ready({ redirects : List((U16, Str)), response : { body : Resource.Handle([HttpResponseKind]), content_length : [Known(U64), Unknown], headers : List((Str, Str)), invalid_location : [None, Some(U8)], status : U16 } })], [Closed, HttpErr([BadBody, Interrupted, NetworkError, Other(List(U8)), Timeout])])
+/// Refcounted fields are owned by the hosted function.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostHttpPendingWaitArgs {
+    pub arg0: *mut u64,
+    pub arg1: AtOrNoTimeout,
+}
+
 /// Arguments for Host.http_read_body!
 /// Roc signature: Resource.Handle([HttpResponseKind]), [Chunk, ToEnd(U64)] => Try(List(U8), [EndOfBody, HttpErr([BadBody, Interrupted, NetworkError, Other(List(U8)), Timeout]), ReadLimitExceeded])
 /// Refcounted fields are owned by the hosted function.
@@ -15024,6 +15545,17 @@ unsafe impl RocRelease<HostHttpSendRequestArgs> for HostHttpSendRequestArgsRelea
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct HostHttpSendStreamingArgs {
+    pub arg0: AnonStruct8bbc5017d7a8cb36,
+    pub arg1: AfterOrNoTimeout,
+    pub arg2: AtOrNoTimeout,
+}
+
+/// Arguments for Host.http_start!
+/// Roc signature: { body : List(U8), headers : List((Str, Str)), method : U8, method_ext : Str, timeout_ms : U64, uri : Str }, [After(U64), NoTimeout], [At(U64), NoTimeout] => Try(Resource.Handle([HttpPendingKind]), List(U8))
+/// Refcounted fields are owned by the hosted function.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HostHttpStartArgs {
     pub arg0: AnonStruct8bbc5017d7a8cb36,
     pub arg1: AfterOrNoTimeout,
     pub arg2: AtOrNoTimeout,
@@ -15689,6 +16221,25 @@ pub type HostFileWriterWriteBytesResultTag = HostFileAppendBytesResultTag;
 pub type HostFileWriterWriteUtf8Result = HostFileAppendBytesResult;
 pub type HostFileWriterWriteUtf8ResultPayload = HostFileAppendBytesResultPayload;
 pub type HostFileWriterWriteUtf8ResultTag = HostFileAppendBytesResultTag;
+pub type HostHttpPendingFollowArg1 = AnonStruct8bbc5017d7a8cb36;
+pub type HostHttpPendingFollowArg1Headers = AnonStruct77eaba63dfee299d;
+pub type HostHttpPendingWaitErr = ClosedOrHttpErr;
+pub type HostHttpPendingWaitErrPayload = ClosedOrHttpErrPayload;
+pub type HostHttpPendingWaitErrTag = ClosedOrHttpErrTag;
+pub type HostHttpPendingWaitErrHttpErr = BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeout;
+pub type HostHttpPendingWaitErrHttpErrPayload = BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeoutPayload;
+pub type HostHttpPendingWaitErrHttpErrTag = BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeoutTag;
+pub type HostHttpPendingWaitOk = NotReadyOrReady;
+pub type HostHttpPendingWaitOkPayload = NotReadyOrReadyPayload;
+pub type HostHttpPendingWaitOkTag = NotReadyOrReadyTag;
+pub type HostHttpPendingWaitOkReady = AnonStruct57b3856c59c615c8;
+pub type ClosedOrHttpErrHttpErr = BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeout;
+pub type ClosedOrHttpErrHttpErrPayload = BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeoutPayload;
+pub type ClosedOrHttpErrHttpErrTag = BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeoutTag;
+pub type NotReadyOrReadyReady = AnonStruct57b3856c59c615c8;
+pub type NotReadyOrReadyReadyResponse = AnonStruct60cbed700549ed13;
+pub type NotReadyOrReadyReadyResponseHeaders = AnonStruct77eaba63dfee299d;
+pub type NotReadyOrReadyReadyRedirects = AnonStruct453a8dc75d4311da;
 pub type HostHttpReadBodyErr = EndOfBodyOrHttpErrOrReadLimitExceeded;
 pub type HostHttpReadBodyErrPayload = EndOfBodyOrHttpErrOrReadLimitExceededPayload;
 pub type HostHttpReadBodyErrTag = EndOfBodyOrHttpErrOrReadLimitExceededTag;
@@ -15712,6 +16263,8 @@ pub type HostHttpSendStreamingErrPayload = BadBodyOrInterruptedOrNetworkErrorOrO
 pub type HostHttpSendStreamingErrTag = BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeoutTag;
 pub type HostHttpSendStreamingOk = AnonStruct60cbed700549ed13;
 pub type HostHttpSendStreamingOkHeaders = AnonStruct77eaba63dfee299d;
+pub type HostHttpStartArg0 = AnonStruct8bbc5017d7a8cb36;
+pub type HostHttpStartArg0Headers = AnonStruct77eaba63dfee299d;
 pub type HostPathAbsoluteResult = HostEnvCreateTempDirResult;
 pub type HostPathAbsoluteResultPayload = HostEnvCreateTempDirResultPayload;
 pub type HostPathAbsoluteResultTag = HostEnvCreateTempDirResultTag;
@@ -21623,6 +22176,250 @@ unsafe impl RocRelease<ClosedOrUnixSocketErr> for ClosedOrUnixSocketErrRelease {
     }
 }
 
+impl HostHttpStartResult {
+    /// Recursively decrement Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must own one live Roc reference for each refcounted payload.
+    pub unsafe fn decref(self, roc_host: &RocHost) {
+        let mut value = self;
+        let _ = roc_host;
+        match value.tag {
+            HostHttpStartResultTag::Err => {
+                let payload = unsafe { value.take_payload_err_unchecked() };
+                unsafe { payload.decref(roc_host); }
+            },
+            HostHttpStartResultTag::Ok => {
+                let payload = unsafe { value.take_payload_ok_unchecked() };
+                unsafe { decref_box_with(payload as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
+            },
+        }
+    }
+
+    /// Increment Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must point at live Roc allocations. The retained references must
+    /// be balanced by later decrefs.
+    pub unsafe fn incref(self, amount: isize) {
+        let value = self;
+        let _ = amount;
+        match value.tag {
+            HostHttpStartResultTag::Err => {
+                let payload = unsafe { core::ptr::read(value.borrow_payload_err_unchecked()) };
+                unsafe { payload.incref(amount); }
+            },
+            HostHttpStartResultTag::Ok => {
+                let payload = unsafe { core::ptr::read(value.borrow_payload_ok_unchecked()) };
+                unsafe { incref_box(payload as RocBox, amount); }
+            },
+        }
+    }
+}
+
+pub struct HostHttpStartResultRelease;
+
+unsafe impl RocRelease<HostHttpStartResult> for HostHttpStartResultRelease {
+    unsafe fn release(value: HostHttpStartResult, roc_host: &RocHost) {
+        unsafe { value.decref(roc_host); }
+    }
+}
+
+impl HostHttpPendingWaitResult {
+    /// Recursively decrement Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must own one live Roc reference for each refcounted payload.
+    pub unsafe fn decref(self, roc_host: &RocHost) {
+        let mut value = self;
+        let _ = roc_host;
+        match value.tag {
+            HostHttpPendingWaitResultTag::Err => {
+                let payload = unsafe { value.take_payload_err_unchecked() };
+                unsafe { payload.decref(roc_host); }
+            },
+            HostHttpPendingWaitResultTag::Ok => {
+                let payload = unsafe { value.take_payload_ok_unchecked() };
+                unsafe { payload.decref(roc_host); }
+            },
+        }
+    }
+
+    /// Increment Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must point at live Roc allocations. The retained references must
+    /// be balanced by later decrefs.
+    pub unsafe fn incref(self, amount: isize) {
+        let value = self;
+        let _ = amount;
+        match value.tag {
+            HostHttpPendingWaitResultTag::Err => {
+                let payload = unsafe { core::ptr::read(value.borrow_payload_err_unchecked()) };
+                unsafe { payload.incref(amount); }
+            },
+            HostHttpPendingWaitResultTag::Ok => {
+                let payload = unsafe { core::ptr::read(value.borrow_payload_ok_unchecked()) };
+                unsafe { payload.incref(amount); }
+            },
+        }
+    }
+}
+
+pub struct HostHttpPendingWaitResultRelease;
+
+unsafe impl RocRelease<HostHttpPendingWaitResult> for HostHttpPendingWaitResultRelease {
+    unsafe fn release(value: HostHttpPendingWaitResult, roc_host: &RocHost) {
+        unsafe { value.decref(roc_host); }
+    }
+}
+
+impl ClosedOrHttpErr {
+    /// Recursively decrement Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must own one live Roc reference for each refcounted payload.
+    pub unsafe fn decref(self, roc_host: &RocHost) {
+        let mut value = self;
+        let _ = roc_host;
+        match value.tag {
+            ClosedOrHttpErrTag::Closed => {},
+            ClosedOrHttpErrTag::HttpErr => {
+                let payload = unsafe { value.take_payload_http_err_unchecked() };
+                unsafe { payload.decref(roc_host); }
+            },
+        }
+    }
+
+    /// Increment Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must point at live Roc allocations. The retained references must
+    /// be balanced by later decrefs.
+    pub unsafe fn incref(self, amount: isize) {
+        let value = self;
+        let _ = amount;
+        match value.tag {
+            ClosedOrHttpErrTag::Closed => {},
+            ClosedOrHttpErrTag::HttpErr => {
+                let payload = unsafe { core::ptr::read(value.borrow_payload_http_err_unchecked()) };
+                unsafe { payload.incref(amount); }
+            },
+        }
+    }
+}
+
+pub struct ClosedOrHttpErrRelease;
+
+unsafe impl RocRelease<ClosedOrHttpErr> for ClosedOrHttpErrRelease {
+    unsafe fn release(value: ClosedOrHttpErr, roc_host: &RocHost) {
+        unsafe { value.decref(roc_host); }
+    }
+}
+
+impl NotReadyOrReady {
+    /// Recursively decrement Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must own one live Roc reference for each refcounted payload.
+    pub unsafe fn decref(self, roc_host: &RocHost) {
+        let mut value = self;
+        let _ = roc_host;
+        match value.tag {
+            NotReadyOrReadyTag::NotReady => {},
+            NotReadyOrReadyTag::Ready => {
+                let payload = unsafe { value.take_payload_ready_unchecked() };
+                unsafe { payload.decref(roc_host); }
+            },
+        }
+    }
+
+    /// Increment Roc-owned payloads.
+    ///
+    /// # Safety
+    /// `self` must point at live Roc allocations. The retained references must
+    /// be balanced by later decrefs.
+    pub unsafe fn incref(self, amount: isize) {
+        let value = self;
+        let _ = amount;
+        match value.tag {
+            NotReadyOrReadyTag::NotReady => {},
+            NotReadyOrReadyTag::Ready => {
+                let payload = unsafe { core::ptr::read(value.borrow_payload_ready_unchecked()) };
+                unsafe { payload.incref(amount); }
+            },
+        }
+    }
+}
+
+pub struct NotReadyOrReadyRelease;
+
+unsafe impl RocRelease<NotReadyOrReady> for NotReadyOrReadyRelease {
+    unsafe fn release(value: NotReadyOrReady, roc_host: &RocHost) {
+        unsafe { value.decref(roc_host); }
+    }
+}
+
+impl AnonStruct57b3856c59c615c8 {
+    /// Recursively decrement Roc-owned fields.
+    ///
+    /// # Safety
+    /// `self` must own one live Roc reference for each refcounted field.
+    pub unsafe fn decref(self, roc_host: &RocHost) {
+        let value = self;
+        unsafe { value.response.decref(roc_host); }
+        unsafe { decref_list_of_anon_struct453a8dc75d4311da(value.redirects, roc_host); }
+    }
+
+    /// Increment Roc-owned fields.
+    ///
+    /// # Safety
+    /// `self` must point at live Roc allocations. The retained references must
+    /// be balanced by later decrefs.
+    pub unsafe fn incref(self, amount: isize) {
+        let value = self;
+        unsafe { value.response.incref(amount); }
+        unsafe { value.redirects.incref(amount); }
+    }
+}
+
+pub struct AnonStruct57b3856c59c615c8Release;
+
+unsafe impl RocRelease<AnonStruct57b3856c59c615c8> for AnonStruct57b3856c59c615c8Release {
+    unsafe fn release(value: AnonStruct57b3856c59c615c8, roc_host: &RocHost) {
+        unsafe { value.decref(roc_host); }
+    }
+}
+
+impl AnonStruct453a8dc75d4311da {
+    /// Recursively decrement Roc-owned fields.
+    ///
+    /// # Safety
+    /// `self` must own one live Roc reference for each refcounted field.
+    pub unsafe fn decref(self, roc_host: &RocHost) {
+        let value = self;
+        unsafe { value._1.decref(roc_host); }
+    }
+
+    /// Increment Roc-owned fields.
+    ///
+    /// # Safety
+    /// `self` must point at live Roc allocations. The retained references must
+    /// be balanced by later decrefs.
+    pub unsafe fn incref(self, amount: isize) {
+        let value = self;
+        unsafe { value._1.incref(amount); }
+    }
+}
+
+pub struct AnonStruct453a8dc75d4311daRelease;
+
+unsafe impl RocRelease<AnonStruct453a8dc75d4311da> for AnonStruct453a8dc75d4311daRelease {
+    unsafe fn release(value: AnonStruct453a8dc75d4311da, roc_host: &RocHost) {
+        unsafe { value.decref(roc_host); }
+    }
+}
+
 impl SystemTarget {
     /// Recursively decrement Roc-owned fields.
     ///
@@ -21954,6 +22751,17 @@ pub unsafe fn decref_list_of_bytes_or_integer_or_null_or_real_or_text(value: Roc
 /// `value` must own one live Roc list reference.
 pub unsafe fn decref_list_of_anon_struct69eee2ff6c448fed(value: RocList<AnonStruct69eee2ff6c448fed>, roc_host: &RocHost) {
     unsafe { value.release_with::<AnonStruct69eee2ff6c448fedRelease>(roc_host); }
+}
+
+/// Release one owned reference to a `RocList<AnonStruct453a8dc75d4311da>`.
+///
+/// The allocation's final reference is claimed atomically before any element
+/// is read, so concurrent owners cannot skip or duplicate element teardown.
+///
+/// # Safety
+/// `value` must own one live Roc list reference.
+pub unsafe fn decref_list_of_anon_struct453a8dc75d4311da(value: RocList<AnonStruct453a8dc75d4311da>, roc_host: &RocHost) {
+    unsafe { value.release_with::<AnonStruct453a8dc75d4311daRelease>(roc_host); }
 }
 
 /// Release one owned reference to a `RocList<OsStr>`.
@@ -22445,6 +23253,31 @@ unsafe extern "C" {
     ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
     pub fn hosted_http_close_body(arg0: *mut u64);
 
+    /// Hosted symbol for Host.http_pending_close!
+    /// Roc signature: Resource.Handle([HttpPendingKind]) => {}
+    /// Owned arguments. Release each exactly once before returning, unless it is
+    /// moved into storage or into the result:
+    ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
+    pub fn hosted_http_pending_close(arg0: *mut u64);
+
+    /// Hosted symbol for Host.http_pending_follow!
+    /// Roc signature: Resource.Handle([HttpPendingKind]), { body : List(U8), headers : List((Str, Str)), method : U8, method_ext : Str, timeout_ms : U64, uri : Str }, U16, Str => {}
+    /// Owned arguments. Release each exactly once before returning, unless it is
+    /// moved into storage or into the result:
+    ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
+    ///     unsafe { arg1.decref(roc_host); }
+    ///     unsafe { arg3.decref(roc_host); }
+    pub fn hosted_http_pending_follow(arg0: *mut u64, arg1: AnonStruct8bbc5017d7a8cb36, arg2: u16, arg3: RocStr);
+
+    /// Hosted symbol for Host.http_pending_wait!
+    /// Roc signature: Resource.Handle([HttpPendingKind]), [At(U64), NoTimeout] => Try([NotReady, Ready({ redirects : List((U16, Str)), response : { body : Resource.Handle([HttpResponseKind]), content_length : [Known(U64), Unknown], headers : List((Str, Str)), invalid_location : [None, Some(U8)], status : U16 } })], [Closed, HttpErr([BadBody, Interrupted, NetworkError, Other(List(U8)), Timeout])])
+    /// Owned arguments. Release each exactly once before returning, unless it is
+    /// moved into storage or into the result:
+    ///     unsafe { decref_box_with(arg0 as RocBox, core::mem::align_of::<u64>(), false, None, roc_host); }
+    ///     unsafe { arg1.decref(roc_host); }
+    /// The result is owned by Roc: return exactly one owned reference.
+    pub fn hosted_http_pending_wait(arg0: *mut u64, arg1: AtOrNoTimeout) -> HostHttpPendingWaitResult;
+
     /// Hosted symbol for Host.http_read_body!
     /// Roc signature: Resource.Handle([HttpResponseKind]), [Chunk, ToEnd(U64)] => Try(List(U8), [EndOfBody, HttpErr([BadBody, Interrupted, NetworkError, Other(List(U8)), Timeout]), ReadLimitExceeded])
     /// Owned arguments. Release each exactly once before returning, unless it is
@@ -22471,6 +23304,16 @@ unsafe extern "C" {
     ///     unsafe { arg2.decref(roc_host); }
     /// The result is owned by Roc: return exactly one owned reference.
     pub fn hosted_http_send_streaming(arg0: AnonStruct8bbc5017d7a8cb36, arg1: AfterOrNoTimeout, arg2: AtOrNoTimeout) -> HostHttpSendStreamingResult;
+
+    /// Hosted symbol for Host.http_start!
+    /// Roc signature: { body : List(U8), headers : List((Str, Str)), method : U8, method_ext : Str, timeout_ms : U64, uri : Str }, [After(U64), NoTimeout], [At(U64), NoTimeout] => Try(Resource.Handle([HttpPendingKind]), List(U8))
+    /// Owned arguments. Release each exactly once before returning, unless it is
+    /// moved into storage or into the result:
+    ///     unsafe { arg0.decref(roc_host); }
+    ///     unsafe { arg1.decref(roc_host); }
+    ///     unsafe { arg2.decref(roc_host); }
+    /// The result is owned by Roc: return exactly one owned reference.
+    pub fn hosted_http_start(arg0: AnonStruct8bbc5017d7a8cb36, arg1: AfterOrNoTimeout, arg2: AtOrNoTimeout) -> HostHttpStartResult;
 
     /// Hosted symbol for Host.locale_all!
     /// Roc signature: {} => List(Str)
