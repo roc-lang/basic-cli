@@ -411,8 +411,8 @@ Path := [
 	parent = |path|
 		match path {
 			Utf8(str) => parent_slash_units(Str.to_utf8(str)).map_ok(|bytes| Utf8(str_from_valid_utf8(bytes)))
-			UnixBytes(bytes) => parent_slash_units(bytes).map_ok(|parent| UnixBytes(parent))
-			WindowsU16s(units) => parent_windows_units(units).map_ok(|parent| WindowsU16s(parent))
+			UnixBytes(bytes) => parent_slash_units(bytes).map_ok(|parent_bytes| UnixBytes(parent_bytes))
+			WindowsU16s(units) => parent_windows_units(units).map_ok(|parent_units| WindowsU16s(parent_units))
 		}
 
 	## Iterate over this path and its successive [parent] paths, starting with
