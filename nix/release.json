@@ -1,8 +1,8 @@
 {
-  "version": "0.28.0",
-  "compiler": "nightly-2026-11-06-34f137a",
-  "url": "https://github.com/roc-lang/basic-cli/releases/download/0.28.0/2yhxoR7cZPSYbyUzPWULFw8AA6QEcdsgFNRmzu7pZbst.tar.zst",
-  "hash": "sha256-i5TvImrTUKPDI4/7djkuVhoMg0ZIJ4r1Z0dwgI1IX3Y=",
+  "version": "0.28.1",
+  "compiler": "nightly-2026-11-13-03dce41",
+  "url": "https://github.com/roc-lang/basic-cli/releases/download/0.28.1/7brgwR8YUqfeGrkdfF1V4GPPN7DnP7ftqub9KcrTEZtr.tar.zst",
+  "hash": "sha256-qrtLJLrKBPhmB7ZEvp9OyP83PeExua6pCeLsci6Qg1Y=",
   "dependencies": {
     "http": {
       "url": "https://github.com/roc-lang/http/releases/download/1.0.0/6ZUwqYhCS8PU9Mo6MF7oV82ET2o7KYb57CLKDq4cq4sS.tar.zst",
