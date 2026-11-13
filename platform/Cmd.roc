@@ -169,271 +169,7 @@ Cmd :: [].{
 		}
 
 	## A reusable command configuration.
-	Command :: {
-		args : List(OsStr),
-		clear_envs : Bool,
-		envs : List((OsStr, OsStr)),
-		program : OsStr,
-		cwd_value : [Inherit, Dir(Path)],
-		stdin_value : [Unset, Set([Inherit, Null, Bytes(List(U8)), Pipe])],
-		stdout_value : [Unset, Set(StdoutMode)],
-		stderr_value : [Unset, Set(StderrMode)],
-		timeout_value : [NoTimeout, After(Duration)],
-		output_limit_value : [NoLimit, MaxBytes(U64)],
-		pending_limit_value : U64,
-		manage_tree_value : Bool,
-	}.{
-
-		## Add a single argument to the command.
-		## ❗ Shell features like variable substitution (e.g. `$FOO`), glob patterns (e.g. `*.txt`), ... are not available.
-		##
-		## ```roc
-		## cmd = Cmd.new("ls").arg("-l")
-		## ```
-		arg : Command, OsStr -> Command
-		arg = |cmd, a| {
-			..cmd,
-			args: cmd.args.append(a),
-		}
-
-		## Add multiple arguments to the command.
-		## ❗ Shell features like variable substitution (e.g. `$FOO`), glob patterns (e.g. `*.txt`), ... are not available.
-		##
-		## ```roc
-		## cmd = Cmd.new("ls").args(["-l", "-a"])
-		## ```
-		##
-		## For a `List(Str)` use `cmd.args(names.map(OsStr.from_str))`.
-		args : Command, List(OsStr) -> Command
-		args = |cmd, new_args| {
-			..cmd,
-			args: cmd.args.concat(new_args),
-		}
-
-		## Add a single environment variable to the command.
-		##
-		## ```roc
-		## cmd = Cmd.new("env").env("FOO", "bar") # add the environment variable "FOO" with value "bar"
-		## ```
-		env : Command, OsStr, OsStr -> Command
-		env = |cmd, key, value| {
-			{ ..cmd, envs: cmd.envs.append((key, value)) }
-		}
-
-		## Add multiple environment variables to the command.
-		##
-		## ```roc
-		## cmd = Cmd.new("env").envs([("FOO", "bar"), ("BAZ", "qux")])
-		## ```
-		envs : Command, List((OsStr, OsStr)) -> Command
-		envs = |cmd, pairs| { ..cmd, envs: cmd.envs.concat(pairs) }
-
-		## Clear all environment variables before running the command.
-		## Only environment variables added via `env` or `envs` will be available.
-		## Useful if you want a clean command run that does not behave unexpectedly if the user has some env var set.
-		##
-		## ```roc
-		## cmd =
-		##     Cmd.new("env")
-		##         .clear_envs()
-		##         .env("ONLY_THIS", "visible")
-		## ```
-		clear_envs : Command -> Command
-		clear_envs = |cmd| { ..cmd, clear_envs: True }
-
-		## Set the child working directory without changing the parent directory.
-		## Use an absolute executable path or a bare PATH name: resolving a relative
-		## executable against cwd is platform-specific.
-		cwd : Command, Path -> Command
-		cwd = |cmd, path| { ..cmd, cwd_value: Dir(path) }
-
-		## Choose the child's standard input; see [StdinMode].
-		##
-		## When this is not called, [run!] gives the child `Null`, and [call!],
-		## [capture!] and [spawn!] let it inherit the parent's standard input.
-		stdin : Command, StdinMode -> Command
-		stdin = |cmd, mode| { ..cmd, stdin_value: Set(mode) }
-
-		## Choose where the child's standard output goes; see [StdoutMode].
-		##
-		## When this is not called, [run!] and [capture!] capture it, and [call!] and
-		## [spawn!] let it go to the parent's standard output.
-		stdout : Command, StdoutMode -> Command
-		stdout = |cmd, mode| { ..cmd, stdout_value: Set(mode) }
-
-		## Choose where the child's standard error goes; see [StderrMode].
-		##
-		## When this is not called, [run!] captures it, and [call!], [capture!] and
-		## [spawn!] let it go to the parent's standard error.
-		stderr : Command, StderrMode -> Command
-		stderr = |cmd, mode| { ..cmd, stderr_value: Set(mode) }
-
-		## Let the child use the parent's standard input, output and error, however
-		## the command is run. With [run!] this gives the exit status of a command
-		## that prints to the terminal:
-		##
-		## ```roc
-		## status = Cmd.new("roc").args(["check", "main.roc"]).inherit_stdio().run!()?.status
-		## ```
-		inherit_stdio : Command -> Command
-		inherit_stdio = |cmd| { ..cmd, stdin_value: Set(Inherit), stdout_value: Set(Inherit), stderr_value: Set(Inherit) }
-
-		## Stop the command when it has run for longer than `duration`. The deadline
-		## covers the whole run, including reading the rest of its output.
-		##
-		## A command that reaches its deadline is killed, and the result is
-		## `Err(CmdErr(TimedOut(partial)))` with the output captured so far. That is
-		## also what [Child.wait!] and [Child.poll!] return for a child started with
-		## [spawn!]. When `timeout` is not called there is no deadline;
-		## `Duration.zero` expires immediately.
-		timeout : Command, Duration -> Command
-		timeout = |cmd, duration| { ..cmd, timeout_value: After(duration) }
-
-		## Limit how many bytes of standard output and standard error are captured,
-		## counted together. The default is `MaxBytes(16777216)`, 16 MiB.
-		##
-		## A command that prints more is killed, and the result is
-		## `Err(CmdErr(OutputLimitExceeded(partial)))` with the output captured up to
-		## the limit. `NoLimit` captures whatever the command prints.
-		output_limit : Command, [NoLimit, MaxBytes(U64)] -> Command
-		output_limit = |cmd, limit| { ..cmd, output_limit_value: limit }
-
-		## Limit how many bytes of `Pipe` output may wait to be read with
-		## [Child.read!], counted over both streams (default 1 MiB). A child that
-		## gets further ahead of its reader is killed, and [Child.wait!] returns
-		## `Err(CmdErr(OutputLimitExceeded(partial)))`.
-		pending_limit : Command, U64 -> Command
-		pending_limit = |cmd, bytes| { ..cmd, pending_limit_value: bytes }
-
-		## Also terminate descendants on cancellation, using a Unix process group
-		## or Windows Job Object. Disabled by default; descendants must not escape it.
-		manage_tree : Command, Bool -> Command
-		manage_tree = |cmd, enabled| { ..cmd, manage_tree_value: enabled }
-
-		# A tag union that crosses the host boundary is closed by design, so the
-		# four entry points below, like the `Child` methods, rebuild the error they
-		# forward from the host. That gives callers an open union, which `?` can
-		# combine with other error types however the function is called.
-		# `tests/cmd-api.roc` covers the function-value form.
-
-		## Run the command on the parent's terminal and require it to succeed.
-		##
-		## Standard input, output and error are inherited unless the command sets
-		## them. Any status other than exit code 0 is `Err(BadExitStatus(output))`.
-		##
-		## ```roc
-		## Cmd.new("cargo").args(["build", "--release"]).call!()?
-		## ```
-		call! : Command => Try({}, [CmdErr(Err), BadExitStatus(Output), Interrupted])
-		call! = |cmd|
-			match finish!(cmd, Call) {
-				Ok(output) =>
-					match output.require_success() {
-						Ok(_) => Ok({})
-						Err(BadExitStatus(failed)) => Err(BadExitStatus(failed))
-					}
-				Err(CmdErr(err)) => Err(CmdErr(err))
-				Err(Interrupted) => Err(Interrupted)
-			}
-
-		## Run the command, require it to succeed, and return its standard output as
-		## text.
-		##
-		## Standard output is captured unless the command sets it. Standard input and
-		## standard error are inherited unless the command sets them, so warnings
-		## still reach the terminal, as with a shell's `$(..)`. Any status other than
-		## exit code 0 is `Err(BadExitStatus(output))`, and output that is not UTF-8
-		## is `Err(BadUtf8(..))`.
-		##
-		## The text is returned as printed, including a final newline:
-		##
-		## ```roc
-		## sha = Cmd.new("git").args(["rev-parse", "${branch}"]).capture!()?.trim()
-		## ```
-		capture! : Command => Try(Str, [CmdErr(Err), BadExitStatus(Output), BadUtf8({ problem : Str.Utf8Problem, index : U64 }), Interrupted])
-		capture! = |cmd|
-			match finish!(cmd, Capture) {
-				Ok(output) =>
-					match output.require_success() {
-						Ok(succeeded) =>
-							match succeeded.stdout_utf8() {
-								Ok(text) => Ok(text)
-								Err(BadUtf8(problem)) => Err(BadUtf8(problem))
-							}
-						Err(BadExitStatus(failed)) => Err(BadExitStatus(failed))
-					}
-				Err(CmdErr(err)) => Err(CmdErr(err))
-				Err(Interrupted) => Err(Interrupted)
-			}
-
-		## Run the command and return its exit status and output as data. A non-zero
-		## exit code or a signal is not an error here: match on `output.status`, or
-		## call [Output.require_success].
-		##
-		## Standard output and standard error are captured, and standard input is
-		## `Null`, unless the command sets them. The result is returned once the
-		## command has exited and all of its output has been read.
-		##
-		## ```roc
-		## output = Cmd.new("roc").args(["check", "main.roc"]).run!()?
-		## ```
-		run! : Command => Try(Output, [CmdErr(Err), Interrupted])
-		run! = |cmd|
-			match finish!(cmd, Run) {
-				Ok(output) => Ok(output)
-				Err(CmdErr(err)) => Err(CmdErr(err))
-				Err(Interrupted) => Err(Interrupted)
-			}
-
-		## Start the command and return a [Child] without waiting for it.
-		##
-		## Standard input, output and error are inherited unless the command sets
-		## them. Set a stream to `Pipe` to exchange data with the child while it runs.
-		## Keep the returned child for later reads, waits or cleanup; an unused
-		## binding such as `_child` does not keep the process alive. See [Child].
-		spawn! : Command => Try(Child, [CmdErr(Err), Interrupted])
-		spawn! = |cmd|
-			match Host.cmd_spawn!(to_host_cmd(cmd, Spawn)) {
-				Ok(handle) =>
-					Ok(
-						Child.{
-							host: handle,
-							pid_value: Host.child_pid!(handle),
-							command: to_str(cmd),
-							program: cmd.program,
-						},
-					)
-				Err(CmdErr(err)) => Err(CmdErr(from_host_err(err, cmd.program)))
-				Err(Interrupted) => Err(Interrupted)
-			}
-
-		## The program and its arguments, separated by spaces, for messages and logs.
-		## An argument that is empty or contains a space or a quote is written as a
-		## quoted, escaped string. The environment, the working directory and the
-		## other settings are not included.
-		##
-		## ```roc
-		## expect Cmd.new("git").args(["commit", "-m", "first draft"]).to_str() == "git commit -m \"first draft\""
-		## ```
-		to_str : Command -> Str
-		to_str = |cmd|
-			Str.join_with([cmd.program].concat(cmd.args).map(display_word), " ")
-
-		## Customize command output for `Str.inspect`: the full configuration, with
-		## the names of the environment variables it sets but never their values, and
-		## the length of `Bytes` input but not its content.
-		to_inspect : Command -> Str
-		to_inspect = |cmd| {
-			env_names = cmd.envs.map(|(name, _)| name)
-			stdin_text =
-				match cmd.stdin_value {
-					Set(Bytes(bytes)) => "Set(Bytes(<${bytes.len().to_str()} bytes>))"
-					other => Str.inspect(other)
-				}
-
-			"Cmd.Command({ program: ${Str.inspect(cmd.program)}, args: ${Str.inspect(cmd.args)}, env_names: ${Str.inspect(env_names)}, clear_envs: ${Str.inspect(cmd.clear_envs)}, cwd: ${Str.inspect(cmd.cwd_value)}, stdin: ${stdin_text}, stdout: ${Str.inspect(cmd.stdout_value)}, stderr: ${Str.inspect(cmd.stderr_value)}, timeout: ${Str.inspect(cmd.timeout_value)}, output_limit: ${Str.inspect(cmd.output_limit_value)}, pending_limit: ${Str.inspect(cmd.pending_limit_value)}, manage_tree: ${Str.inspect(cmd.manage_tree_value)} })"
-		}
-	}
+	Command : CommandConfig
 
 	## Report whether `command` can be found on the system as something runnable.
 	##
@@ -676,6 +412,275 @@ Cmd :: [].{
 		## Write text to a piped standard input as UTF-8; see [write_bytes!].
 		write_utf8! : Child, Str, Duration => Try({}, [CmdErr(Cmd.Err), Closed, Interrupted])
 		write_utf8! = |child, text, wait| write_bytes!(child, text.to_utf8(), wait)
+	}
+}
+
+# Keep the opaque implementation outside Cmd so its execution methods do not
+# shadow the namespace convenience functions. Cmd.Command is its public alias.
+## A reusable command configuration.
+CommandConfig :: {
+	args : List(OsStr),
+	clear_envs : Bool,
+	envs : List((OsStr, OsStr)),
+	program : OsStr,
+	cwd_value : [Inherit, Dir(Path)],
+	stdin_value : [Unset, Set([Inherit, Null, Bytes(List(U8)), Pipe])],
+	stdout_value : [Unset, Set(Cmd.StdoutMode)],
+	stderr_value : [Unset, Set(Cmd.StderrMode)],
+	timeout_value : [NoTimeout, After(Duration)],
+	output_limit_value : [NoLimit, MaxBytes(U64)],
+	pending_limit_value : U64,
+	manage_tree_value : Bool,
+}.{
+
+	## Add a single argument to the command.
+	## ❗ Shell features like variable substitution (e.g. `$FOO`), glob patterns (e.g. `*.txt`), ... are not available.
+	##
+	## ```roc
+	## cmd = Cmd.new("ls").arg("-l")
+	## ```
+	arg : CommandConfig, OsStr -> CommandConfig
+	arg = |cmd, a| {
+		..cmd,
+		args: cmd.args.append(a),
+	}
+
+	## Add multiple arguments to the command.
+	## ❗ Shell features like variable substitution (e.g. `$FOO`), glob patterns (e.g. `*.txt`), ... are not available.
+	##
+	## ```roc
+	## cmd = Cmd.new("ls").args(["-l", "-a"])
+	## ```
+	##
+	## For a `List(Str)` use `cmd.args(names.map(OsStr.from_str))`.
+	args : CommandConfig, List(OsStr) -> CommandConfig
+	args = |cmd, new_args| {
+		..cmd,
+		args: cmd.args.concat(new_args),
+	}
+
+	## Add a single environment variable to the command.
+	##
+	## ```roc
+	## cmd = Cmd.new("env").env("FOO", "bar") # add the environment variable "FOO" with value "bar"
+	## ```
+	env : CommandConfig, OsStr, OsStr -> CommandConfig
+	env = |cmd, key, value| {
+		{ ..cmd, envs: cmd.envs.append((key, value)) }
+	}
+
+	## Add multiple environment variables to the command.
+	##
+	## ```roc
+	## cmd = Cmd.new("env").envs([("FOO", "bar"), ("BAZ", "qux")])
+	## ```
+	envs : CommandConfig, List((OsStr, OsStr)) -> CommandConfig
+	envs = |cmd, pairs| { ..cmd, envs: cmd.envs.concat(pairs) }
+
+	## Clear all environment variables before running the command.
+	## Only environment variables added via `env` or `envs` will be available.
+	## Useful if you want a clean command run that does not behave unexpectedly if the user has some env var set.
+	##
+	## ```roc
+	## cmd =
+	##     Cmd.new("env")
+	##         .clear_envs()
+	##         .env("ONLY_THIS", "visible")
+	## ```
+	clear_envs : CommandConfig -> CommandConfig
+	clear_envs = |cmd| { ..cmd, clear_envs: True }
+
+	## Set the child working directory without changing the parent directory.
+	## Use an absolute executable path or a bare PATH name: resolving a relative
+	## executable against cwd is platform-specific.
+	cwd : CommandConfig, Path -> CommandConfig
+	cwd = |cmd, path| { ..cmd, cwd_value: Dir(path) }
+
+	## Choose the child's standard input; see [Cmd.StdinMode].
+	##
+	## When this is not called, [run!] gives the child `Null`, and [call!],
+	## [capture!] and [spawn!] let it inherit the parent's standard input.
+	stdin : CommandConfig, Cmd.StdinMode -> CommandConfig
+	stdin = |cmd, mode| { ..cmd, stdin_value: Set(mode) }
+
+	## Choose where the child's standard output goes; see [Cmd.StdoutMode].
+	##
+	## When this is not called, [run!] and [capture!] capture it, and [call!] and
+	## [spawn!] let it go to the parent's standard output.
+	stdout : CommandConfig, Cmd.StdoutMode -> CommandConfig
+	stdout = |cmd, mode| { ..cmd, stdout_value: Set(mode) }
+
+	## Choose where the child's standard error goes; see [Cmd.StderrMode].
+	##
+	## When this is not called, [run!] captures it, and [call!], [capture!] and
+	## [spawn!] let it go to the parent's standard error.
+	stderr : CommandConfig, Cmd.StderrMode -> CommandConfig
+	stderr = |cmd, mode| { ..cmd, stderr_value: Set(mode) }
+
+	## Let the child use the parent's standard input, output and error, however
+	## the command is run. With [run!] this gives the exit status of a command
+	## that prints to the terminal:
+	##
+	## ```roc
+	## status = Cmd.new("roc").args(["check", "main.roc"]).inherit_stdio().run!()?.status
+	## ```
+	inherit_stdio : CommandConfig -> CommandConfig
+	inherit_stdio = |cmd| { ..cmd, stdin_value: Set(Inherit), stdout_value: Set(Inherit), stderr_value: Set(Inherit) }
+
+	## Stop the command when it has run for longer than `duration`. The deadline
+	## covers the whole run, including reading the rest of its output.
+	##
+	## A command that reaches its deadline is killed, and the result is
+	## `Err(CmdErr(TimedOut(partial)))` with the output captured so far. That is
+	## also what [Cmd.Child.wait!] and [Cmd.Child.poll!] return for a child started with
+	## [spawn!]. When `timeout` is not called there is no deadline;
+	## `Duration.zero` expires immediately.
+	timeout : CommandConfig, Duration -> CommandConfig
+	timeout = |cmd, duration| { ..cmd, timeout_value: After(duration) }
+
+	## Limit how many bytes of standard output and standard error are captured,
+	## counted together. The default is `MaxBytes(16777216)`, 16 MiB.
+	##
+	## A command that prints more is killed, and the result is
+	## `Err(CmdErr(OutputLimitExceeded(partial)))` with the output captured up to
+	## the limit. `NoLimit` captures whatever the command prints.
+	output_limit : CommandConfig, [NoLimit, MaxBytes(U64)] -> CommandConfig
+	output_limit = |cmd, limit| { ..cmd, output_limit_value: limit }
+
+	## Limit how many bytes of `Pipe` output may wait to be read with
+	## [Cmd.Child.read!], counted over both streams (default 1 MiB). A child that
+	## gets further ahead of its reader is killed, and [Cmd.Child.wait!] returns
+	## `Err(CmdErr(OutputLimitExceeded(partial)))`.
+	pending_limit : CommandConfig, U64 -> CommandConfig
+	pending_limit = |cmd, bytes| { ..cmd, pending_limit_value: bytes }
+
+	## Also terminate descendants on cancellation, using a Unix process group
+	## or Windows Job Object. Disabled by default; descendants must not escape it.
+	manage_tree : CommandConfig, Bool -> CommandConfig
+	manage_tree = |cmd, enabled| { ..cmd, manage_tree_value: enabled }
+
+	# A tag union that crosses the host boundary is closed by design, so the
+	# four entry points below, like the `Cmd.Child` methods, rebuild the error they
+	# forward from the host. That gives callers an open union, which `?` can
+	# combine with other error types however the function is called.
+	# `tests/cmd-api.roc` covers the function-value form.
+
+	## Run the command on the parent's terminal and require it to succeed.
+	##
+	## Standard input, output and error are inherited unless the command sets
+	## them. Any status other than exit code 0 is `Err(BadExitStatus(output))`.
+	##
+	## ```roc
+	## Cmd.new("cargo").args(["build", "--release"]).call!()?
+	## ```
+	call! : CommandConfig => Try({}, [CmdErr(Cmd.Err), BadExitStatus(Cmd.Output), Interrupted])
+	call! = |cmd|
+		match finish!(cmd, Call) {
+			Ok(output) =>
+				match output.require_success() {
+					Ok(_) => Ok({})
+					Err(BadExitStatus(failed)) => Err(BadExitStatus(failed))
+				}
+			Err(CmdErr(err)) => Err(CmdErr(err))
+			Err(Interrupted) => Err(Interrupted)
+		}
+
+	## Run the command, require it to succeed, and return its standard output as
+	## text.
+	##
+	## Standard output is captured unless the command sets it. Standard input and
+	## standard error are inherited unless the command sets them, so warnings
+	## still reach the terminal, as with a shell's `$(..)`. Any status other than
+	## exit code 0 is `Err(BadExitStatus(output))`, and output that is not UTF-8
+	## is `Err(BadUtf8(..))`.
+	##
+	## The text is returned as printed, including a final newline:
+	##
+	## ```roc
+	## sha = Cmd.new("git").args(["rev-parse", "${branch}"]).capture!()?.trim()
+	## ```
+	capture! : CommandConfig => Try(Str, [CmdErr(Cmd.Err), BadExitStatus(Cmd.Output), BadUtf8({ problem : Str.Utf8Problem, index : U64 }), Interrupted])
+	capture! = |cmd|
+		match finish!(cmd, Capture) {
+			Ok(output) =>
+				match output.require_success() {
+					Ok(succeeded) =>
+						match succeeded.stdout_utf8() {
+							Ok(text) => Ok(text)
+							Err(BadUtf8(problem)) => Err(BadUtf8(problem))
+						}
+					Err(BadExitStatus(failed)) => Err(BadExitStatus(failed))
+				}
+			Err(CmdErr(err)) => Err(CmdErr(err))
+			Err(Interrupted) => Err(Interrupted)
+		}
+
+	## Run the command and return its exit status and output as data. A non-zero
+	## exit code or a signal is not an error here: match on `output.status`, or
+	## call [Cmd.Output.require_success].
+	##
+	## Standard output and standard error are captured, and standard input is
+	## `Null`, unless the command sets them. The result is returned once the
+	## command has exited and all of its output has been read.
+	##
+	## ```roc
+	## output = Cmd.new("roc").args(["check", "main.roc"]).run!()?
+	## ```
+	run! : CommandConfig => Try(Cmd.Output, [CmdErr(Cmd.Err), Interrupted])
+	run! = |cmd|
+		match finish!(cmd, Run) {
+			Ok(output) => Ok(output)
+			Err(CmdErr(err)) => Err(CmdErr(err))
+			Err(Interrupted) => Err(Interrupted)
+		}
+
+	## Start the command and return a [Cmd.Child] without waiting for it.
+	##
+	## Standard input, output and error are inherited unless the command sets
+	## them. Set a stream to `Pipe` to exchange data with the child while it runs.
+	## Keep the returned child for later reads, waits or cleanup; an unused
+	## binding such as `_child` does not keep the process alive. See [Cmd.Child].
+	spawn! : CommandConfig => Try(Cmd.Child, [CmdErr(Cmd.Err), Interrupted])
+	spawn! = |cmd|
+		match Host.cmd_spawn!(to_host_cmd(cmd, Spawn)) {
+			Ok(handle) =>
+				Ok(
+					Cmd.Child.{
+						host: handle,
+						pid_value: Host.child_pid!(handle),
+						command: to_str(cmd),
+						program: cmd.program,
+					},
+				)
+			Err(CmdErr(err)) => Err(CmdErr(from_host_err(err, cmd.program)))
+			Err(Interrupted) => Err(Interrupted)
+		}
+
+	## The program and its arguments, separated by spaces, for messages and logs.
+	## An argument that is empty or contains a space or a quote is written as a
+	## quoted, escaped string. The environment, the working directory and the
+	## other settings are not included.
+	##
+	## ```roc
+	## expect Cmd.new("git").args(["commit", "-m", "first draft"]).to_str() == "git commit -m \"first draft\""
+	## ```
+	to_str : CommandConfig -> Str
+	to_str = |cmd|
+		Str.join_with([cmd.program].concat(cmd.args).map(display_word), " ")
+
+	## Customize command output for `Str.inspect`: the full configuration, with
+	## the names of the environment variables it sets but never their values, and
+	## the length of `Bytes` input but not its content.
+	to_inspect : CommandConfig -> Str
+	to_inspect = |cmd| {
+		env_names = cmd.envs.map(|(name, _)| name)
+		stdin_text =
+			match cmd.stdin_value {
+				Set(Bytes(bytes)) => "Set(Bytes(<${bytes.len().to_str()} bytes>))"
+				other => Str.inspect(other)
+			}
+
+		"Cmd.Command({ program: ${Str.inspect(cmd.program)}, args: ${Str.inspect(cmd.args)}, env_names: ${Str.inspect(env_names)}, clear_envs: ${Str.inspect(cmd.clear_envs)}, cwd: ${Str.inspect(cmd.cwd_value)}, stdin: ${stdin_text}, stdout: ${Str.inspect(cmd.stdout_value)}, stderr: ${Str.inspect(cmd.stderr_value)}, timeout: ${Str.inspect(cmd.timeout_value)}, output_limit: ${Str.inspect(cmd.output_limit_value)}, pending_limit: ${Str.inspect(cmd.pending_limit_value)}, manage_tree: ${Str.inspect(cmd.manage_tree_value)} })"
 	}
 }
 

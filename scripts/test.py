@@ -749,6 +749,9 @@ def run_suite(
         if "validate" in operations:
             print("\n=== RUST TEST ===")
             command("cargo", "test", "--locked", "--lib")
+            print("\n=== PLATFORM CHECK ===")
+            # Reevaluate dependency constants and fail on warnings as consumers do.
+            command(ROC, "check", ROOT / "platform" / "main.roc", "--no-cache", "--max-transitive-mb=256")
             print("\n=== PLATFORM TEST ===")
             command(ROC, "test", ROOT / "platform" / "main.roc", *roc_extra_args())
         for stage in ("fmt", "check", "test"):
