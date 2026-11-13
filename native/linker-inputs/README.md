@@ -26,9 +26,13 @@ python3 scripts/linker_inputs.py build --target x64musl --directory dist/linker-
 Publication requires each target to have passed validation on its native OS and
 architecture. The workflow publishes only after all three producers succeed.
 
-## Removal in the release after 0.28.0
+## Fixed-address compatibility removal
 
-Move the Roc pin to a nightly containing roc-lang/roc#12949, remove the temporary
-Static runtime compatibility workflow and the fixed-address startup patch in
-the producer, then publish and pin new linker inputs using unpatched `rcrt1.o`.
-Update the producer's fixed-address checks and documentation with that change.
+0.28.1 moves the Roc pin past roc-lang/roc#12949. Static runtime validation now
+uses that official nightly for static PIE, development-backend callbacks, and
+native execution. The pinned linker inputs still include the fixed-address
+startup compatibility patch; it is harmless for PIE and does not need rebuilding
+for this source compatibility patch release.
+
+At the next linker-input update, remove the fixed-address startup patch and its
+producer checks, then publish and pin new inputs using unpatched `rcrt1.o`.

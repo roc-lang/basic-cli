@@ -138,9 +138,9 @@ and run `python3 scripts/pin_linker_inputs.py /path/to/linker-inputs.lock.json`,
 then regenerate third-party notices and commit the lock and text metadata.
 Generated target objects and libraries must stay outside Git.
 
-Linux startup supports fixed-address executables from the pinned Roc nightly
-and static PIE from the compiler's ASLR change. The compatibility workflow tests
-both compilers against the same pinned runtime release. Linux Rust and C host
+The pinned Roc nightly emits static PIE on Linux. The Static runtime validation
+workflow checks randomized loading, development-backend callbacks, and native
+execution against the pinned runtime release. Linux Rust and C host
 code is built as PIC. The producer also validates startup with stored function
 pointers, thread-local data, and threads on both Linux architectures.
 

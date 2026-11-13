@@ -1,6 +1,4 @@
-# TODO for the release after 0.28.0: pin a Roc nightly containing #12949,
-# remove this workflow, and retire the fixed-address musl startup patch.
-name: Static runtime compatibility
+name: Static runtime validation
 on:
   pull_request:
   workflow_dispatch:
@@ -13,7 +11,6 @@ jobs:
       fail-fast: false
       matrix:
         target: [x64musl, arm64musl, x64mac, arm64mac, x64win]
-        compiler: [pinned, pie]
         include:
           - {target: x64musl, os: ubuntu-24.04}
           - {target: arm64musl, os: ubuntu-24.04-arm}
@@ -23,36 +20,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
-      - uses: mlugg/setup-zig@8d6198c65fb0feaa111df26e6b467fea8345e46f
-        if: matrix.compiler == 'pie'
-        with:
-          version: 0.17.1
       - uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427
-        if: matrix.compiler == 'pinned'
         with:
           version: nightly-new-compiler
-          nightly-tag: nightly-2026-11-06-34f137a
-      - uses: actions/checkout@v7
-        if: matrix.compiler == 'pie'
-        with:
-          repository: roc-lang/roc
-          ref: c080bd1bc565531389f74444d3736d1bfb8e5352
-          path: target/roc-pie
-      - uses: actions/cache@v5
-        if: matrix.compiler == 'pie'
-        id: compiler-cache
-        with:
-          path: target/roc-pie/zig-out/bin
-          key: roc-pie-${{ runner.os }}-${{ runner.arch }}-c080bd1bc565531389f74444d3736d1bfb8e5352-zig-0.17.1-strip
-      - name: Build the pinned PIE compiler
-        if: matrix.compiler == 'pie' && steps.compiler-cache.outputs.cache-hit != 'true'
-        shell: bash
-        working-directory: target/roc-pie
-        run: zig build roc -Doptimize=ReleaseFast -Dstrip -j2
-      - name: Select the PIE compiler
-        shell: bash
-        if: matrix.compiler == 'pie'
-        run: echo "ROC=$GITHUB_WORKSPACE/target/roc-pie/zig-out/bin/roc${{ runner.os == 'Windows' && '.exe' || '' }}" >> "$GITHUB_ENV"
+          nightly-tag: nightly-2026-11-13-03dce41
       - uses: mlugg/setup-zig@8d6198c65fb0feaa111df26e6b467fea8345e46f
         with:
           version: 0.17.0
@@ -82,7 +53,7 @@ jobs:
           dist/dev-compat/tcp-server > target/dev-tcp-server.log
           "$compiler" build tests/resource-lifetimes/resource-lifetime.roc --opt=dev --target="$TARGET" --output=dist/dev-compat/resources
           dist/dev-compat/resources
-          python3 scripts/check_static_executables.py dist/dev-compat --format ${{ matrix.compiler }}
+          python3 scripts/check_static_executables.py dist/dev-compat --format pie
       - name: Verify executable format
         if: endsWith(matrix.target, 'musl')
-        run: python3 scripts/check_static_executables.py dist/example-binaries/${{ matrix.target }} --format ${{ matrix.compiler }}
+        run: python3 scripts/check_static_executables.py dist/example-binaries/${{ matrix.target }} --format pie
