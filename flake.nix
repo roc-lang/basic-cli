@@ -62,12 +62,29 @@
           ];
         };
       releaseFor = system: import ./nix/release.nix { pkgs = pkgsFor system; };
+      # Keep in sync with the nightly pinned in .github/workflows.
+      developmentCompilerFor = system: (pkgsFor system).rocpkgs."nightly-2026-11-13-03dce41";
     in
     {
       formatter = forAllSystems (system: (pkgsFor system).nixfmt);
 
       packages = forAllSystems (system: (releaseFor system).packages);
-      checks = forAllSystems (system: (releaseFor system).checks);
+      checks = forAllSystems (
+        system:
+        let
+          pkgs = pkgsFor system;
+          compiler = developmentCompilerFor system;
+        in
+        (releaseFor system).checks
+        // {
+          development-compiler = pkgs.runCommand "basic-cli-development-compiler" {
+            nativeBuildInputs = [ compiler ];
+          } ''
+            test "$(roc version)" = "Roc compiler version ${compiler.version}"
+            touch "$out"
+          '';
+        }
+      );
 
       devShells = forAllSystems (
         system:
@@ -80,8 +97,7 @@
         {
           default = pkgs.mkShell {
             packages = [
-              # Keep in sync with the nightly pinned in .github/workflows.
-              pkgs.rocpkgs."nightly-2026-11-13-03dce41"
+              (developmentCompilerFor system)
               pkgs.python3
               rustToolchain
               pkgs.simple-http-server
