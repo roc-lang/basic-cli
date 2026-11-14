@@ -363,6 +363,25 @@
       ]
     },
     {
+      "path": "examples/http-pending.roc",
+      "cases": [
+        {
+          "name": "server-available",
+          "helper": "http",
+          "timeout": 15,
+          "live_handles": 0,
+          "stdout_contains": ["Checked progress while the commit ran: True\nCommit finished with status 200: waited 2000 ms\n"],
+          "valgrind": false
+        },
+        {
+          "name": "connection-refused",
+          "live_handles": 0,
+          "exit_code": 1,
+          "contains": ["CommitFailed(HttpErr(Other("]
+        }
+      ]
+    },
+    {
       "path": "examples/http-simple.roc",
       "cases": [
         {
@@ -905,6 +924,56 @@
           "temp_cwd": true,
           "live_handles": 0,
           "stdout_contains": ["UnixSocket buffering, streams and explicit pathname cleanup: ok\n"]
+        }
+      ]
+    },
+    {
+      "path": "tests/http-in-flight.roc",
+      "cases": [
+        {
+          "name": "in-flight-requests",
+          "args": ["in-flight"],
+          "helper": "http",
+          "timeout": 20,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["waiting while other requests are sent: ok\nthe response is returned again: ok\na zero wait returns what has arrived: ok\n"]
+        },
+        {
+          "name": "redirects-and-one-deadline",
+          "args": ["redirects"],
+          "helper": "http",
+          "timeout": 30,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["following redirects: ok\nthe redirect limit: ok\nsecurity checks: ok\nredirects across waits and one deadline: ok\n"]
+        },
+        {
+          "name": "start-does-not-wait-and-the-timeout-counts-from-start",
+          "args": ["timing"],
+          "helper": "http",
+          "timeout": 20,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["start! returns at once: ok\nthe timeout counts from start!: ok\na response that arrived in time is kept: ok\n"],
+          "valgrind": false
+        },
+        {
+          "name": "close-and-errors",
+          "args": ["close-and-errors"],
+          "helper": "http",
+          "timeout": 20,
+          "temp_cwd": true,
+          "live_handles": 0,
+          "stdout_contains": ["close! cancels: ok\nfailures come back from the waits: ok\nerror rows: ok\n"]
+        },
+        {
+          "name": "extra-argument-is-the-callers-error",
+          "args": ["close-and-errors", "unexpected"],
+          "temp_cwd": true,
+          "live_handles": 0,
+          "exit_code": 1,
+          "contains": ["Program exited with error: UnexpectedArguments"]
         }
       ]
     },

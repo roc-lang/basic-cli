@@ -86,6 +86,17 @@ async fn handle_request(req: Request<Incoming>) -> Result<Response<BoxBody>, Gen
     if req.uri().path().starts_with("/redirect/") {
         return handle_redirect(req).await;
     }
+    // Answers only after the given number of milliseconds, as a server does
+    // with a long-running request. Used by tests/http-in-flight.roc and
+    // examples/http-pending.roc.
+    if let Some(ms) = req.uri().path().strip_prefix("/delay/") {
+        let ms: u64 = ms.parse()?;
+        tokio::time::sleep(Duration::from_millis(ms)).await;
+        return Ok(Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "text/plain; charset=utf-8")
+            .body(full(format!("waited {ms} ms")))?);
+    }
     let response = match (req.method(), req.uri().path()) {
         (&Method::GET, "/utf8test") => {
             // UTF-8 encoded "Hello utf8"

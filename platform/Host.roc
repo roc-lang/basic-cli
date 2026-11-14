@@ -188,4 +188,19 @@ Host :: [].{
 	unix_socket_listen! : NativePath => Try(Resource.UnixSocketListener, [UnixSocketErr(IOErr)])
 	unix_socket_accept! : Resource.UnixSocketListener, [NoTimeout, After(U64)] => Try(Resource.UnixSocketConnection, [Closed, UnixSocketErr(IOErr)])
 	unix_socket_listener_close! : Resource.UnixSocketListener => Try({}, [UnixSocketErr(IOErr)])
+
+	# `http_start!` sends a request from a task on the HTTP runtime and returns
+	# at once; the task runs only while a hosted HTTP call or wait is inside the
+	# runtime. Every failure of the request, including one to build it, is
+	# reported by `http_pending_wait!`; the error here means that no handle
+	# could be made. `http_pending_wait!` gives up at the `At` instant (the
+	# `monotonic_now!` clock) with `NotReady`, which keeps the request. Once the
+	# head has arrived, every wait returns it with the same body handle, and
+	# with the status and `Location` of each redirect followed so far, in
+	# order. `http_pending_follow!` replaces the request behind a handle by the
+	# next redirect hop and records the status and `Location` that led there.
+	http_start! : InternalHttp.RequestToAndFromHost, [NoTimeout, After(U64)], [NoTimeout, At(U64)] => Try(Resource.HttpPending, List(U8))
+	http_pending_wait! : Resource.HttpPending, [NoTimeout, At(U64)] => Try([Ready({ response : InternalHttp.StreamingResponseFromHost, redirects : List((U16, Str)) }), NotReady], [Closed, HttpErr(InternalHttp.TransportErr)])
+	http_pending_follow! : Resource.HttpPending, InternalHttp.RequestToAndFromHost, U16, Str => {}
+	http_pending_close! : Resource.HttpPending => {}
 }

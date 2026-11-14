@@ -50,7 +50,15 @@ These host behaviors may affect application design:
   leave the `Request` at `NoTimeout`. After an idle timeout the response can
   still be read; the `Request` deadline passing is final. Each streaming
   response has its own connection, closed when the body ends or fails, or when
-  the response and its streams are released. Request bodies are not streamed.
+  the response and its streams (and, for `Http.start!`, its pending request)
+  are released. Request bodies are not streamed.
+- `Http.start!` keeps a request in flight while the app does other work,
+  including other requests; `pending.wait_within!(duration)` waits for its
+  response for up to `duration`. There is no background thread: requests make
+  progress only during HTTP calls and waits. Both timeouts count from
+  `start!`, so a slow server needs a larger `idle_timeout`; a response that
+  arrived in time is not lost to a later wait. Releasing the last reference to
+  the pending request, or `pending.close!()`, cancels it.
 - HTTP redirects are opt-in through trailing options, `{ max_redirects: n }`;
   the default is zero. The request deadline covers every hop and the final
   body. Cross-origin hops strip credentials; HTTPS downgrades are refused.
