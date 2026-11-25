@@ -143,6 +143,7 @@ main! = |_args| {
 	# Example: delete all rows where ID is greater than 3 (cleanup so this example is repeatable)
 	db.execute!("DELETE FROM todos WHERE id > ${Integer(3)}") ? |err| CleanupInsertedTodosFailed(err)
 
+	# SQLite integers are `I64`. A failed `map_try` conversion is a row error.
 	count = db.query_one!(
 		"SELECT COUNT(*) AS count FROM todos",
 		Decoder.i64("count").map_try(|n| n.to_u64_try()),
