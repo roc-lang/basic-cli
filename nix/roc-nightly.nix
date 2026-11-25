@@ -13,7 +13,7 @@ in
       passthru = old.passthru // {
         inherit tag source;
         compilerVersion = tag;
-        compilerCommit = "03dce412cc30ec237e4829b633f98549d01faf14";
+        compilerCommit = "d5a4f1e9e128359a8d4d3caea40fe3ba7e6eb1e2";
       };
       meta = old.meta // {
         changelog = "https://github.com/roc-lang/nightlies/releases/tag/${tag}";

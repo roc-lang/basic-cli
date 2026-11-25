@@ -6,7 +6,7 @@
     # nixos-unstable no longer supports Intel macOS.
     nixpkgs-x86-darwin.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
     roc-overlay = {
-      url = "github:roc-lang/roc-overlay/67491987eb6ef2423d9a6e5901f6a8e439d8566c";
+      url = "github:roc-lang/roc-overlay/1302f9d1a99237c7fe0f4edff0660be5c3a5b368";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.nixpkgs-darwin.follows = "nixpkgs-x86-darwin";
     };
@@ -56,14 +56,14 @@
           inherit system;
           overlays = [
             roc-overlay.overlays.default
-            # Until roc-overlay records the November 13 nightly.
+            # Supply the development nightly until roc-overlay records it.
             (import ./nix/roc-nightly.nix)
             rust-overlay.overlays.default
           ];
         };
       releaseFor = system: import ./nix/release.nix { pkgs = pkgsFor system; };
       # Keep in sync with the nightly pinned in .github/workflows.
-      developmentCompilerFor = system: (pkgsFor system).rocpkgs."nightly-2026-11-13-03dce41";
+      developmentCompilerFor = system: (pkgsFor system).rocpkgs."nightly-2026-11-25-d5a4f1e";
     in
     {
       formatter = forAllSystems (system: (pkgsFor system).nixfmt);

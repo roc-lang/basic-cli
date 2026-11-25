@@ -31,9 +31,9 @@ type ChildUnitResultTag = HostChildKillResultTag;
 
 // Generated aliases for the error-only [Failed(IOErr), Interrupted] result
 // of Host.cmd_exec!, kept independent of the generator's numbered type name.
-type ExecFailure = FailedOrInterrupted;
-type ExecFailureTag = FailedOrInterruptedTag;
-type ExecFailurePayload = FailedOrInterruptedPayload;
+type ExecFailure = HostCmdExec;
+type ExecFailureTag = HostCmdExecTag;
+type ExecFailurePayload = HostCmdExecPayload;
 
 fn take_arg_list(
     list: &RocList<NativeOsStr>,
@@ -780,7 +780,7 @@ mod ownership_tests {
         let frees = FREES.with(|frees| std::mem::take(&mut *frees.borrow_mut()));
         assert_eq!(frees.len(), expected);
         for (ptr, alignment) in frees {
-            DefaultAllocators::roc_dealloc(&mut host, ptr, alignment);
+            unsafe { DefaultAllocators::roc_dealloc(&mut host, ptr, alignment) };
         }
     }
     fn utf8(value: &str, host: &RocHost) -> NativeOsStr {

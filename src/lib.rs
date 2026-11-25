@@ -2227,43 +2227,59 @@ pub extern "C" fn hosted_utc_now() -> HostUtcNowResult {
     }
 }
 
+/// # Safety
+/// `alignment` must be a power of two, and `length` plus the allocation header
+/// must form a valid layout.
 #[no_mangle]
-pub extern "C" fn roc_alloc(length: usize, alignment: usize) -> NonNull<c_void> {
-    DefaultAllocators::roc_alloc(roc_host_ptr(), length, alignment)
+pub unsafe extern "C" fn roc_alloc(length: usize, alignment: usize) -> NonNull<c_void> {
+    unsafe { DefaultAllocators::roc_alloc(roc_host_ptr(), length, alignment) }
 }
 
+/// # Safety
+/// `ptr` must be a live allocation from this host with the same `alignment`.
+/// The caller must retire the pointer after this call.
 #[no_mangle]
-pub extern "C" fn roc_dealloc(ptr: *mut c_void, alignment: usize) {
-    resources::dealloc(roc_host_ptr(), ptr, alignment);
+pub unsafe extern "C" fn roc_dealloc(ptr: *mut c_void, alignment: usize) {
+    unsafe { resources::dealloc(roc_host_ptr(), ptr, alignment) };
 }
 
+/// # Safety
+/// `ptr` must be a live, non-resource allocation from this host with the
+/// same `alignment`. The new length and allocation header must form a valid
+/// layout, and the caller must retire the original pointer.
 #[no_mangle]
-pub extern "C" fn roc_realloc(
+pub unsafe extern "C" fn roc_realloc(
     ptr: *mut c_void,
     new_length: usize,
     alignment: usize,
 ) -> NonNull<c_void> {
-    resources::realloc(roc_host_ptr(), ptr, new_length, alignment)
+    unsafe { resources::realloc(roc_host_ptr(), ptr, new_length, alignment) }
 }
 
+/// # Safety
+/// `bytes` must point to `len` readable bytes of valid UTF-8.
 #[no_mangle]
-pub extern "C" fn roc_dbg(bytes: *const u8, len: usize) {
+pub unsafe extern "C" fn roc_dbg(bytes: *const u8, len: usize) {
     DEBUG_OR_EXPECT_CALLED.store(true, Ordering::Release);
-    DefaultHandlers::roc_dbg(roc_host_ptr(), bytes, len);
+    unsafe { DefaultHandlers::roc_dbg(roc_host_ptr(), bytes, len) };
 }
 
+/// # Safety
+/// `bytes` must point to `len` readable bytes of valid UTF-8.
 #[no_mangle]
-pub extern "C" fn roc_expect_failed(bytes: *const u8, len: usize) {
+pub unsafe extern "C" fn roc_expect_failed(bytes: *const u8, len: usize) {
     DEBUG_OR_EXPECT_CALLED.store(true, Ordering::Release);
-    DefaultHandlers::roc_expect_failed(roc_host_ptr(), bytes, len);
+    unsafe { DefaultHandlers::roc_expect_failed(roc_host_ptr(), bytes, len) };
 }
 
+/// # Safety
+/// `bytes` must point to `len` readable bytes of valid UTF-8.
 #[no_mangle]
-pub extern "C" fn roc_crashed(bytes: *const u8, len: usize) {
+pub unsafe extern "C" fn roc_crashed(bytes: *const u8, len: usize) {
     // The default handler exits the process, so control never returns to
     // rust_main. Restore first so the crash message is not printed in raw mode.
     tty::restore();
-    DefaultHandlers::roc_crashed(roc_host_ptr(), bytes, len);
+    unsafe { DefaultHandlers::roc_crashed(roc_host_ptr(), bytes, len) };
 }
 
 #[cfg(unix)]

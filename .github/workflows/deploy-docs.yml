@@ -37,10 +37,9 @@ jobs:
         uses: actions/configure-pages@v6
 
       - name: Install Roc
-        uses: roc-lang/setup-roc@cbe782d6f165b89c87d99f50a59ac4f5f73b4427 # ratchet:roc-lang/setup-roc@v0.3.0
+        uses: lukewilliamboswell/roc-automation/actions/setup-roc-nightly@dd30a5dd576973b6e224db70d96e3e12c96bcc95 # tools-0.12.0
         with:
-          version: nightly-new-compiler
-          nightly-tag: nightly-2026-11-13-03dce41
+          nightly-tag: nightly-2026-11-25-d5a4f1e
 
       - name: Restore released docs
         env:
