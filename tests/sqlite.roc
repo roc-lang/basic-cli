@@ -1,7 +1,7 @@
 ## Print what `Sqlite` calls return for the cases the examples do not show, so
 ## that scripts/test.py can check them: stream order and early exit, closing,
 ## transactions, decoders, parameters and errors.
-app [main!] { pf: platform "../platform/main.roc" }
+app [main!] { pf: platform "http://127.0.0.1:35395/7Tp5rV3dncqm6thwTdWc7AC8x14vfa3b869QtcBisPKj.tar.zst" }
 
 import pf.Duration
 import pf.Env
@@ -299,7 +299,7 @@ decoders! = || {
 	# TODO(roc-lang/roc#12264): drop the `map_err` once that is fixed.
 	narrow = {
 		blob: Decoder.value("b"),
-		byte: Decoder.i64("i").map_try(|n| n.to_u8_try().map_err(|OutOfRange| OutOfRange)),
+		byte: Decoder.i64("i").map_try(|n| n.to_u8_try()),
 	}.Decoder
 	show!("map_try, ok", one!(3, narrow))?
 	show!("map_try, own error", one!(1, narrow))?

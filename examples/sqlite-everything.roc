@@ -1,5 +1,5 @@
 ## Shows SQLite queries, decoders, nullable values, transactions, and errors.
-app [main!] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.28.1/7brgwR8YUqfeGrkdfF1V4GPPN7DnP7ftqub9KcrTEZtr.tar.zst" }
+app [main!] { pf: platform "http://127.0.0.1:35395/7Tp5rV3dncqm6thwTdWc7AC8x14vfa3b869QtcBisPKj.tar.zst" }
 
 import pf.OsStr
 import pf.Env
@@ -151,7 +151,7 @@ main! = |_args| {
 	# error keeps its tag when it joins the decoder's other errors.
 	count = db.query_one!(
 		"SELECT COUNT(*) AS count FROM todos",
-		Decoder.i64("count").map_try(|n| n.to_u64_try().map_err(|OutOfRange| OutOfRange)),
+		Decoder.i64("count").map_try(|n| n.to_u64_try()),
 	) ? |err| CountTodosFailed(err)
 
 	Stdout.line!("")?
