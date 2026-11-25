@@ -520,7 +520,7 @@ mod tests {
             .write(b"buffered, then freed by Roc")
             .unwrap();
         assert_eq!(fs::read(&freed).unwrap(), b"");
-        resources::dealloc(&mut host, allocation_base(handle), align_of::<u64>());
+        unsafe { resources::dealloc(&mut host, allocation_base(handle), align_of::<u64>()) };
         assert_eq!(fs::read(&freed).unwrap(), b"buffered, then freed by Roc");
         assert_eq!(live_writers(), before);
 

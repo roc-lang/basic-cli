@@ -296,10 +296,9 @@ decoders! = || {
 	show!("map", one!(1, Decoder.i64("i").map(|n| n * 2)))?
 	# A builtin's one-tag error has to be rebuilt before it joins the decoder's
 	# other errors, here `value`'s and `i64`'s.
-	# TODO(roc-lang/roc#12264): drop the `map_err` once that is fixed.
 	narrow = {
 		blob: Decoder.value("b"),
-		byte: Decoder.i64("i").map_try(|n| n.to_u8_try().map_err(|OutOfRange| OutOfRange)),
+		byte: Decoder.i64("i").map_try(|n| n.to_u8_try()),
 	}.Decoder
 	show!("map_try, ok", one!(3, narrow))?
 	show!("map_try, own error", one!(1, narrow))?

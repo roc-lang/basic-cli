@@ -483,9 +483,9 @@ pub fn release(handle: *mut u64, host: &RocHost) {
 
 /// `roc_dealloc`: destroy the resource and recycle the slot when `ptr` is a
 /// handle allocation, and free ordinary memory otherwise.
-pub extern "C" fn dealloc(host: *mut RocHost, ptr: *mut c_void, alignment: usize) {
+pub unsafe extern "C" fn dealloc(host: *mut RocHost, ptr: *mut c_void, alignment: usize) {
     if !destroy_if_resource(ptr) {
-        DefaultAllocators::roc_dealloc(host, ptr, alignment);
+        unsafe { DefaultAllocators::roc_dealloc(host, ptr, alignment) };
     }
 }
 
@@ -504,14 +504,14 @@ fn destroy_if_resource(ptr: *mut c_void) -> bool {
 }
 
 /// `roc_realloc`: handle boxes have a fixed size, so Roc never resizes one.
-pub extern "C" fn realloc(
+pub unsafe extern "C" fn realloc(
     host: *mut RocHost,
     ptr: *mut c_void,
     new_length: usize,
     alignment: usize,
 ) -> NonNull<c_void> {
     assert_not_resource(ptr);
-    DefaultAllocators::roc_realloc(host, ptr, new_length, alignment)
+    unsafe { DefaultAllocators::roc_realloc(host, ptr, new_length, alignment) }
 }
 
 fn assert_not_resource(ptr: *mut c_void) {
@@ -653,7 +653,7 @@ mod tests {
         let mut host = make_host();
         let (handle, count) = probe::<0>(&host);
         // Compiled Roc frees the allocation directly after decrementing to zero.
-        dealloc(&mut host, allocation_base(handle), align_of::<u64>());
+        unsafe { dealloc(&mut host, allocation_base(handle), align_of::<u64>()) };
         assert_eq!(count.get(), 1);
     }
 

@@ -577,11 +577,8 @@ Sqlite :: [].{
 
 		## Decode an integer column.
 		##
-		## For a narrower type, convert with [map_try]:
-		## `Decoder.i64("n").map_try(|n| n.to_u8_try().map_err(|OutOfRange| OutOfRange))`.
-		# TODO(roc-lang/roc#12264): shorten the example to
-		# `map_try(|n| n.to_u8_try())` once a builtin's one-tag error keeps its
-		# tag when it joins the decoder's other errors.
+		## For a narrower type, convert with [Decoder.map_try]:
+		## `Decoder.i64("n").map_try(|n| n.to_u8_try())`.
 		i64 : Column -> Decoder(I64, [UnexpectedType({ column : Str, found : [Null, Integer, Real, String, Bytes] })])
 		i64 = |column|
 			leaf(

@@ -143,15 +143,10 @@ main! = |_args| {
 	# Example: delete all rows where ID is greater than 3 (cleanup so this example is repeatable)
 	db.execute!("DELETE FROM todos WHERE id > ${Integer(3)}") ? |err| CleanupInsertedTodosFailed(err)
 
-	# Example: count the number of rows
-	#
-	# SQLite integers are `I64`; `map_try` converts to another type, and its
-	# error fails the row like any other decoding error.
-	# TODO(roc-lang/roc#12264): drop the `map_err` once a builtin's one-tag
-	# error keeps its tag when it joins the decoder's other errors.
+	# SQLite integers are `I64`. A failed `map_try` conversion is a row error.
 	count = db.query_one!(
 		"SELECT COUNT(*) AS count FROM todos",
-		Decoder.i64("count").map_try(|n| n.to_u64_try().map_err(|OutOfRange| OutOfRange)),
+		Decoder.i64("count").map_try(|n| n.to_u64_try()),
 	) ? |err| CountTodosFailed(err)
 
 	Stdout.line!("")?
