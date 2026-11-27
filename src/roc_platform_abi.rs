@@ -202,9 +202,11 @@ pub type RocErasedCallableOnDrop = extern "C" fn(*mut u8, *mut RocHost);
 pub struct RocErasedCallablePayload {
     pub callable_fn_ptr: RocErasedCallableFn,
     pub on_drop: Option<RocErasedCallableOnDrop>,
+    pub on_copy: Option<extern "C" fn(*mut u8, isize)>,
+    pub capture_size: usize,
 }
 
-const _: () = assert!(core::mem::size_of::<RocErasedCallablePayload>() == 2 * core::mem::size_of::<usize>(), "RocErasedCallablePayload size mismatch");
+const _: () = assert!(core::mem::size_of::<RocErasedCallablePayload>() == 4 * core::mem::size_of::<usize>(), "RocErasedCallablePayload size mismatch");
 const _: () = assert!(core::mem::offset_of!(RocErasedCallablePayload, callable_fn_ptr) == 0, "RocErasedCallablePayload.callable_fn_ptr offset mismatch");
 const _: () = assert!(core::mem::offset_of!(RocErasedCallablePayload, on_drop) == core::mem::size_of::<usize>(), "RocErasedCallablePayload.on_drop offset mismatch");
 
@@ -264,7 +266,7 @@ pub unsafe fn roc_erased_callable_allocate(
     let rc = data.sub(core::mem::size_of::<isize>()) as *mut isize;
     *rc = 1;
     let payload = roc_erased_callable_payload_ptr(data);
-    *payload = RocErasedCallablePayload { callable_fn_ptr, on_drop };
+    *payload = RocErasedCallablePayload { callable_fn_ptr, on_drop, on_copy: None, capture_size };
     data
 }
 
