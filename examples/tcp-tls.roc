@@ -15,7 +15,7 @@ import pf.Tcp
 #     $ roc examples/tcp-tls.roc -- tests/tls/localhost-cert.pem
 #
 # Without an argument only the bundled public roots are trusted, so the same
-# server is rejected with `TlsErr(UnknownIssuer)`.
+# server is rejected with `TlsErr({ host: "localhost", reason: UnknownIssuer, .. })`.
 main! : List(OsStr) => Try({}, _)
 main! = |args| {
 	trust = match args {

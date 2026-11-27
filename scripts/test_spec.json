@@ -565,14 +565,14 @@
           "timeout": 20,
           "live_handles": 0,
           "exit_code": 1,
-          "contains": ["Program exited with error: TlsErr(UnknownIssuer)"]
+          "contains": ["Program exited with error: TlsErr(", "host: \"localhost\"", "reason: UnknownIssuer"]
         },
         {
           "name": "bad-pem-before-connecting",
           "live_handles": 0,
           "args": ["{root}/LICENSE"],
           "exit_code": 1,
-          "contains": ["Program exited with error: TlsErr(BadPem("]
+          "contains": ["Program exited with error: BadPem("]
         }
       ]
     },

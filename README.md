@@ -91,9 +91,12 @@ These host behaviors may affect application design:
   creating a new regular file. Existing files retain their access grants;
   use `RequireNew` with `OwnerOnly` for private files. Explicit permissions
   replace ACL grants and fail if the filesystem cannot enforce the policy.
-- A rejected certificate or failed TLS handshake is `HttpErr(TlsErr(err))`,
-  naming the cause. Several other network failures currently use a generic
-  HTTP transport error ([issue #438](https://github.com/roc-lang/basic-cli/issues/438)).
+- A rejected certificate or failed TLS handshake is
+  `HttpErr(TlsErr({ host, reason, detail }))`: `host` is the hop that failed,
+  `reason` a `Tls.Reason` to match on, and `detail` diagnostic text. Unusable
+  `AddPem` roots are `HttpErr(BadPem(message))`, before any network activity.
+  Several other network failures currently use a generic HTTP transport error
+  ([issue #438](https://github.com/roc-lang/basic-cli/issues/438)).
 - TCP reads and writes always have a timeout: a `Tcp.Connection` holds the
   `io_timeout` it was created with, which bounds each read or write as a
   whole, and `with_timeout` returns the same connection with another. The wait
@@ -104,11 +107,12 @@ These host behaviors may affect application design:
   buffered for the next read. A write that times out may have sent any prefix.
 - `Tcp.connect_tls!` returns an ordinary `Tcp.Connection`: its
   `connect_timeout` covers resolution, connecting and the handshake, and reads
-  and writes keep every TCP guarantee above. A bad PEM in `AddPem` is
-  `TlsErr(BadPem(_))`, reported before any network activity. A TLS failure
-  after the handshake is `TcpErr(Other(message))`, and so is a peer that closes
-  without TLS `close_notify`, rather than a clean end of input. Releasing the
-  connection sends `close_notify` without waiting.
+  and writes keep every TCP guarantee above. A failed handshake is
+  `TlsErr({ host, reason, detail })`, and a bad PEM in `AddPem` is `BadPem(_)`,
+  reported before any network activity. A TLS failure after the handshake is
+  `TcpErr(Other(message))`, and so is a peer that closes without TLS
+  `close_notify`, rather than a clean end of input. Releasing the connection
+  sends `close_notify` without waiting.
 - `Tcp.Connection.read_until!`, `read_line!` and `lines` stop at the
   connection's line limit (1 MiB unless changed with `with_line_limit`),
   preventing an untrusted peer from causing unbounded buffering. The rest of

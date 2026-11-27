@@ -28,39 +28,60 @@ Tls :: [].{
 	## ```
 	Options := { trust : Trust ?? Default }
 
-	## Why a TLS handshake failed, or why the settings were rejected before
-	## connecting.
+	## Why a TLS handshake failed.
 	##
 	## - `UnknownIssuer`: the certificate does not chain to a trusted root.
 	## - `Expired`: the certificate, or one it chains to, has expired.
 	## - `NameMismatch`: the certificate is not valid for the host name or IP
 	##   address that was connected to.
-	## - `BadPem(message)`: the `AddPem` bytes hold no usable certificate.
-	## - `Other(message)`: any other handshake failure, such as no common
-	##   protocol version or an alert from the server.
-	Err := [UnknownIssuer, Expired, NameMismatch, BadPem(Str), Other(Str)].{
+	## - `Other`: any other handshake failure, such as no common protocol
+	##   version, an alert from the server, or a server that closed the
+	##   connection during the handshake.
+	Reason := [UnknownIssuer, Expired, NameMismatch, Other].{
 
-		## Compare two TLS errors, so results that contain one work with `==`.
+		## Compare two reasons, so results that contain one work with `==`.
 		is_eq : _
 
-		## Describe the error for display.
-		to_str : Err -> Str
-		to_str = |err|
-			match err {
+		## Describe the reason for display.
+		to_str : Reason -> Str
+		to_str = |reason|
+			match reason {
 				UnknownIssuer => "the server certificate is not issued by a trusted certificate authority"
 				Expired => "the server certificate has expired"
 				NameMismatch => "the server certificate is not valid for the requested host"
-				BadPem(message) => "the PEM trust roots cannot be used: ${message}"
-				Other(message) => message
+				Other => "the TLS handshake failed"
 			}
 	}
+
+	## A failed TLS handshake, carried as `TlsErr(err)`.
+	##
+	## - `host`: the server whose handshake failed. Over HTTP with redirects
+	##   this is the hop that failed, which may not be the first host.
+	## - `reason`: the cause, for matching.
+	## - `detail`: the TLS library's description, for diagnostics only. Its
+	##   wording may change between releases, so match on `reason` instead.
+	##
+	## ```roc
+	## match Tcp.connect_tls!(host, port, options) {
+	## 	Err(TlsErr({ reason: UnknownIssuer, .. })) => Stderr.line!("Pass the server's CA with --cacert")
+	## 	...
+	## }
+	## ```
+	##
+	## Trust roots that cannot be used are a separate error, `BadPem(message)`,
+	## reported before any network activity.
+	Err : { host : Str, reason : Reason, detail : Str }
 }
 
 expect Tls.Options.{}.trust == Default
 expect Tls.Options.{ trust: AddPem([1]) }.trust == AddPem([1])
-expect Tls.Err.to_str(Expired) == "the server certificate has expired"
+expect Tls.Reason.to_str(Expired) == "the server certificate has expired"
 expect {
 	result : Try({}, [TlsErr(Tls.Err)])
-	result = Err(TlsErr(NameMismatch))
-	result == Err(TlsErr(NameMismatch)) and result != Err(TlsErr(Expired))
+	result = Err(TlsErr({ host: "localhost", reason: NameMismatch, detail: "x" }))
+	matched = match result {
+		Err(TlsErr({ reason: NameMismatch, .. })) => True
+		_ => False
+	}
+	matched and result != Err(TlsErr({ host: "localhost", reason: Expired, detail: "x" }))
 }

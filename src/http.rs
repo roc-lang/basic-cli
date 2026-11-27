@@ -13,9 +13,10 @@ type HttpHeader = HostHttpSendRequestArg0Headers;
 type HttpResult = HostHttpSendRequestResult;
 type HttpResultPayload = HostHttpSendRequestResultPayload;
 type HttpResultTag = HostHttpSendRequestResultTag;
-type HttpTransportErr = BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeoutOrTlsErr;
-type HttpTransportErrPayload = BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeoutOrTlsErrPayload;
-type HttpTransportErrTag = BadBodyOrInterruptedOrNetworkErrorOrOtherOrTimeoutOrTlsErrTag;
+type HttpTransportErr = BadBodyOrBadPemOrInterruptedOrNetworkErrorOrOtherOrTimeoutOrTlsErr;
+type HttpTransportErrPayload =
+    BadBodyOrBadPemOrInterruptedOrNetworkErrorOrOtherOrTimeoutOrTlsErrPayload;
+type HttpTransportErrTag = BadBodyOrBadPemOrInterruptedOrNetworkErrorOrOtherOrTimeoutOrTlsErrTag;
 
 // Deliberately a `static`, so this runtime is never dropped.
 //
@@ -311,7 +312,14 @@ enum Failure {
     Timeout,
     BadBody,
     Other(String),
-    Tls(crate::tls::TlsFailure),
+    /// A failed TLS handshake with `host`, the hop that was being sent.
+    Tls {
+        host: String,
+        reason: crate::tls::Reason,
+        detail: String,
+    },
+    /// Unusable `AddPem` roots, found before anything was sent.
+    BadPem(String),
 }
 
 impl Failure {
@@ -321,14 +329,48 @@ impl Failure {
             Failure::Timeout => http_err_timeout(),
             Failure::BadBody => http_err_bad_body(),
             Failure::Other(message) => http_err_other(message, roc_host),
-            Failure::Tls(failure) => HttpTransportErr {
+            Failure::Tls {
+                host,
+                reason,
+                detail,
+            } => HttpTransportErr {
                 payload: HttpTransportErrPayload {
-                    tls_err: ManuallyDrop::new(failure.to_roc(roc_host)),
+                    tls_err: ManuallyDrop::new(crate::tls::tls_err_to_roc(
+                        host, *reason, detail, roc_host,
+                    )),
                 },
                 tag: HttpTransportErrTag::TlsErr,
             },
+            Failure::BadPem(message) => HttpTransportErr {
+                payload: HttpTransportErrPayload {
+                    bad_pem: ManuallyDrop::new(RocStr::from_str(message, roc_host)),
+                },
+                tag: HttpTransportErrTag::BadPem,
+            },
         }
     }
+
+    /// A TLS failure on the way to `host`.
+    fn tls(host: &str, failure: crate::tls::TlsFailure) -> Self {
+        match failure {
+            crate::tls::TlsFailure::Handshake { reason, detail } => Failure::Tls {
+                host: host.to_string(),
+                reason,
+                detail,
+            },
+            crate::tls::TlsFailure::BadPem(message) => Failure::BadPem(message),
+        }
+    }
+}
+
+/// The host a request is sent to, as `Tcp.connect_tls!` would be given it: an IPv6 address
+/// without its URI brackets.
+fn request_host(request: &HyperRequest) -> String {
+    let host = request.uri().host().unwrap_or_default();
+    host.strip_prefix('[')
+        .and_then(|inner| inner.strip_suffix(']'))
+        .unwrap_or(host)
+        .to_string()
 }
 
 /// Poll cancellation, then the clock, then readiness. `tokio::time::timeout`
@@ -621,10 +663,10 @@ fn send_streaming(
     )
 }
 
-/// A failed `client.request`: a TLS handshake failure names its cause.
-fn client_failure(error: &hyper_util::client::legacy::Error) -> Failure {
+/// A failed `client.request` to `host`: a TLS handshake failure names its cause.
+fn client_failure(error: &hyper_util::client::legacy::Error, host: &str) -> Failure {
     match crate::tls::rustls_error_in(error) {
-        Some(tls) => Failure::Tls(crate::tls::TlsFailure::from_rustls(tls)),
+        Some(tls) => Failure::tls(host, crate::tls::TlsFailure::from_rustls(tls)),
         None => Failure::Other(error.to_string()),
     }
 }
@@ -646,6 +688,7 @@ fn send_streaming_at(
     let now = Instant::now();
     let budget = wait_budget(idle_timeout, deadline, now).map_err(|()| Failure::Timeout)?;
     let until = budget.and_then(|budget| now.checked_add(budget));
+    let host = request_host(&request);
 
     let response = TOKIO_RUNTIME.block_on(async {
         // The same client as `async_send_request`, so both entry points put
@@ -660,7 +703,7 @@ fn send_streaming_at(
     });
     let response = match response {
         Ok(Ok(response)) => response,
-        Ok(Err(error)) => return Err(client_failure(&error)),
+        Ok(Err(error)) => return Err(client_failure(&error, &host)),
         Err(failure) => {
             settle();
             return Err(failure);
@@ -742,7 +785,8 @@ fn http_send_streaming(
     unsafe { request.decref(roc_host) };
 
     let sent = hyper_request.map_err(Failure::Other).and_then(|request| {
-        let config = crate::tls::client_config(&trust).map_err(Failure::Tls)?;
+        let config = crate::tls::client_config(&trust)
+            .map_err(|failure| Failure::tls(&request_host(&request), failure))?;
         send_streaming_at(request, idle_timeout, deadline, config)
     });
     let (head, body) = match sent {
@@ -1865,7 +1909,7 @@ mod tests {
     use crate::tls::{
         client_config,
         testing::{server_config, LOCALHOST_PEM},
-        TlsFailure, Trust,
+        Reason, Trust,
     };
 
     /// An HTTPS server for one connection, bound to `host`. It answers any
@@ -1927,11 +1971,10 @@ mod tests {
         sent
     }
 
-    fn failure_of(
-        result: Result<(StreamingHead, StreamingBody), Failure>,
-    ) -> crate::tls::TlsFailure {
+    /// The host and reason of a failed handshake.
+    fn failure_of(result: Result<(StreamingHead, StreamingBody), Failure>) -> (String, Reason) {
         match result {
-            Err(Failure::Tls(failure)) => failure,
+            Err(Failure::Tls { host, reason, .. }) => (host, reason),
             Err(Failure::Other(message)) => panic!("expected a TLS failure, got Other({message})"),
             Err(_) => panic!("expected a TLS failure, got another failure"),
             Ok((head, _)) => panic!("expected a TLS failure, got status {}", head.status),
@@ -1948,7 +1991,7 @@ mod tests {
         // than arriving as `Failure::Other`.
         assert_eq!(
             failure_of(https_get("localhost", &Trust::Default)),
-            TlsFailure::UnknownIssuer
+            ("localhost".to_string(), Reason::UnknownIssuer)
         );
 
         let (head, _) = https_get("localhost", &Trust::DangerAcceptInvalidCerts).unwrap();
@@ -1962,42 +2005,42 @@ mod tests {
         let pem = Trust::AddPem(LOCALHOST_PEM.to_vec());
         assert_eq!(
             failure_of(https_get("127.0.0.1", &pem)),
-            TlsFailure::NameMismatch
+            ("127.0.0.1".to_string(), Reason::NameMismatch)
         );
         let (head, _) = https_get("127.0.0.1", &Trust::DangerAcceptInvalidCerts).unwrap();
         assert_eq!(head.status, 200);
     }
 
     #[test]
-    fn tls_failures_cross_as_transport_tls_err() {
+    fn tls_failures_cross_as_transport_tls_err_or_bad_pem() {
         let host = crate::resources::make_host();
-        let tls_err = |failure: TlsFailure| {
-            let error = Failure::Tls(failure).to_roc(&host);
-            assert_eq!(error.tag, HttpTransportErrTag::TlsErr);
-            unsafe { ManuallyDrop::into_inner(error.payload.tls_err) }
-        };
 
-        assert_eq!(
-            tls_err(TlsFailure::UnknownIssuer).tag,
-            TlsErrTag::UnknownIssuer
-        );
-        assert_eq!(tls_err(TlsFailure::Expired).tag, TlsErrTag::Expired);
-        assert_eq!(
-            tls_err(TlsFailure::NameMismatch).tag,
-            TlsErrTag::NameMismatch
-        );
+        let error = Failure::Tls {
+            host: "::1".into(),
+            reason: Reason::Expired,
+            detail: "certificate expired".into(),
+        }
+        .to_roc(&host);
+        assert_eq!(error.tag, HttpTransportErrTag::TlsErr);
+        let tls_err = unsafe { ManuallyDrop::into_inner(error.payload.tls_err) };
+        assert_eq!(tls_err.host.as_str(), "::1");
+        assert_eq!(tls_err.reason, TlsReason::Expired);
+        assert_eq!(tls_err.detail.as_str(), "certificate expired");
+        unsafe {
+            tls_err.host.decref(&host);
+            tls_err.detail.decref(&host);
+        }
 
-        let bad_pem = tls_err(TlsFailure::BadPem("no CERTIFICATE section found".into()));
-        assert_eq!(bad_pem.tag, TlsErrTag::BadPem);
-        let message = unsafe { ManuallyDrop::into_inner(bad_pem.payload.bad_pem) };
+        let error = Failure::BadPem("no CERTIFICATE section found".into()).to_roc(&host);
+        assert_eq!(error.tag, HttpTransportErrTag::BadPem);
+        let message = unsafe { ManuallyDrop::into_inner(error.payload.bad_pem) };
         assert_eq!(message.as_str(), "no CERTIFICATE section found");
         unsafe { message.decref(&host) };
 
-        let other = tls_err(TlsFailure::Other("handshake failure".into()));
-        assert_eq!(other.tag, TlsErrTag::Other);
-        let message = unsafe { ManuallyDrop::into_inner(other.payload.other) };
-        assert_eq!(message.as_str(), "handshake failure");
-        unsafe { message.decref(&host) };
+        // The URI's brackets are not part of an IPv6 host.
+        let request = |uri: &str| hyper::Request::get(uri).body(Default::default()).unwrap();
+        assert_eq!(request_host(&request("https://[::1]:9443/")), "::1");
+        assert_eq!(request_host(&request("https://localhost/")), "localhost");
     }
 
     /// Call `http_send_streaming` with a GET of `uri` and no timeouts.
@@ -2043,14 +2086,20 @@ mod tests {
         )
     }
 
-    /// The `TlsErr` tag of a failed send, releasing the result.
-    fn hosted_tls_err_tag(result: HostHttpSendStreamingResult, host: &RocHost) -> TlsErrTag {
+    /// The tag of a failed send, and for `TlsErr` its host and reason, releasing the result.
+    fn hosted_err(
+        result: HostHttpSendStreamingResult,
+        host: &RocHost,
+    ) -> (HttpTransportErrTag, Option<(String, TlsReason)>) {
         assert_eq!(result.tag, HostHttpSendStreamingResultTag::Err);
         let error = unsafe { result.borrow_payload_err_unchecked() };
-        assert_eq!(error.tag, HttpTransportErrTag::TlsErr);
-        let tag = unsafe { &error.payload.tls_err }.tag;
+        let tls = (error.tag == HttpTransportErrTag::TlsErr).then(|| {
+            let tls_err = unsafe { &error.payload.tls_err };
+            (tls_err.host.as_str().to_string(), tls_err.reason)
+        });
+        let tag = error.tag;
         unsafe { result.decref(host) };
-        tag
+        (tag, tls)
     }
 
     #[test]
@@ -2067,8 +2116,11 @@ mod tests {
         let (port, server) = https_server("localhost");
         let uri = format!("https://localhost:{port}/");
         assert_eq!(
-            hosted_tls_err_tag(hosted_get(&uri, Trust::Default, &host), &host),
-            TlsErrTag::UnknownIssuer
+            hosted_err(hosted_get(&uri, Trust::Default, &host), &host),
+            (
+                HttpTransportErrTag::TlsErr,
+                Some(("localhost".to_string(), TlsReason::UnknownIssuer))
+            )
         );
         server.join().unwrap();
     }
@@ -2086,6 +2138,9 @@ mod tests {
             Trust::AddPem(b"not a certificate".to_vec()),
             &host,
         );
-        assert_eq!(hosted_tls_err_tag(result, &host), TlsErrTag::BadPem);
+        assert_eq!(
+            hosted_err(result, &host),
+            (HttpTransportErrTag::BadPem, None)
+        );
     }
 }

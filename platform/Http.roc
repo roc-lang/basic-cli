@@ -29,7 +29,11 @@ import http.Response
 Http :: [].{
 
 	## Failures while sending a request, reading its body or following redirects.
-	TransportErr : [Timeout, NetworkError, BadBody, Other(List(U8)), RedirectLimitExceeded(U64), InvalidRedirectUrl(Url.ParseErr), AmbiguousRedirectLocation, InsecureRedirect, TlsErr(Tls.Err)]
+	##
+	## `TlsErr(err)` is a failed TLS handshake with the host in `err.host`, which
+	## may be a redirect hop. `BadPem(message)` is unusable `AddPem` trust roots,
+	## reported before any network activity.
+	TransportErr : [Timeout, NetworkError, BadBody, Other(List(U8)), RedirectLimitExceeded(U64), InvalidRedirectUrl(Url.ParseErr), AmbiguousRedirectLocation, InsecureRedirect, TlsErr(Tls.Err), BadPem(Str)]
 
 	## Redirects are opt-in; `{}` returns the first response unchanged.
 	## A positive maximum follows 301/302/303/307/308, using one request
@@ -315,6 +319,7 @@ transport_error = |error|
 		BadBody => HttpErr(BadBody)
 		Other(message) => HttpErr(Other(message))
 		TlsErr(err) => HttpErr(TlsErr(err))
+		BadPem(message) => HttpErr(BadPem(message))
 	}
 
 ## The same driver serves buffered and streamed responses. The deadline is

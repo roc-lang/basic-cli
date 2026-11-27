@@ -11,7 +11,7 @@ InternalHttp :: [].{
 
 	## Errors raised by the host while sending a request, before a real HTTP
 	## response is available.
-	TransportErr : [Interrupted, Timeout, NetworkError, BadBody, Other(List(U8)), TlsErr(Tls.Err)]
+	TransportErr : [Interrupted, Timeout, NetworkError, BadBody, Other(List(U8)), TlsErr(Tls.Err), BadPem(Str)]
 
 	# Generated Rust glue uses tuple headers at the host ABI boundary.
 	HostHeaderTuple : (Str, Str)

@@ -191,6 +191,7 @@ Host :: [].{
 	unix_socket_listener_close! : Resource.UnixSocketListener => Try({}, [UnixSocketErr(IOErr)])
 
 	# TLS over TCP. The timeout, in nanoseconds, bounds resolution, connecting
-	# and the handshake. `TlsErr` is a failed handshake or unusable trust roots.
-	tcp_connect_tls! : Str, U16, U64, Tls.Trust => Try(Resource.TcpConnection, [TcpErr(IOErr), TlsErr(Tls.Err)])
+	# and the handshake. `TlsErr` is a failed handshake, `BadPem` unusable trust
+	# roots, found before any network activity.
+	tcp_connect_tls! : Str, U16, U64, Tls.Trust => Try(Resource.TcpConnection, [TcpErr(IOErr), TlsErr(Tls.Err), BadPem(Str)])
 }

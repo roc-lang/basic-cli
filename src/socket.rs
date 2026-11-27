@@ -504,33 +504,60 @@ impl Drop for BufferedSocket {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::net::{TcpListener, TcpStream};
+
+    /// Write until a write blocks, and repeat until a round adds nothing. A non-blocking write
+    /// takes whatever fits, so one round leaves no room by poll's measure. But data still moving
+    /// to the peer can open room afterwards (on macOS it did), so one round is not enough.
+    /// Bounded, so a peer that keeps taking data fails the test instead of looping.
+    fn fill(socket: &socket2::Socket) {
+        let chunk = [0; 64 * 1024];
+        for _ in 0..100 {
+            let mut wrote = false;
+            loop {
+                match (&*socket).write(&chunk) {
+                    Ok(_) => wrote = true,
+                    Err(error) if error.kind() == io::ErrorKind::WouldBlock => break,
+                    Err(error) if error.kind() == io::ErrorKind::Interrupted => {}
+                    Err(error) => panic!("{error}"),
+                }
+            }
+            if !wrote {
+                return;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        panic!("the send path never filled");
+    }
 
     #[test]
     fn either_interest_wakes_for_readable_data_while_the_send_buffer_is_full() {
-        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
-        let client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
-        let (mut peer, _) = listener.accept().unwrap();
-        let socket = socket2::Socket::from(client);
+        use socket2::{Domain, Socket, Type};
+        // Fixed buffer sizes: an explicit size turns off the kernels' buffer autotuning,
+        // which would otherwise open room after the buffers have been filled.
+        let listener = Socket::new(Domain::IPV4, Type::STREAM, None).unwrap();
+        listener.set_recv_buffer_size(16 * 1024).unwrap();
+        listener
+            .bind(&std::net::SocketAddr::from(([127, 0, 0, 1], 0)).into())
+            .unwrap();
+        listener.listen(1).unwrap();
+        let socket = Socket::new(Domain::IPV4, Type::STREAM, None).unwrap();
+        socket.set_send_buffer_size(16 * 1024).unwrap();
+        socket.connect(&listener.local_addr().unwrap()).unwrap();
+        let (peer, _) = listener.accept().unwrap();
         socket.set_nonblocking(true).unwrap();
         // The peer reads nothing, so this ends when both socket buffers are full.
-        loop {
-            match (&socket).write(&[0; 64 * 1024]) {
-                Ok(_) => {}
-                Err(error) if error.kind() == io::ErrorKind::WouldBlock => break,
-                Err(error) => panic!("{error}"),
-            }
-        }
+        fill(&socket);
         let short = || Deadline::after_nanos(200_000_000).unwrap();
         let wait = |interest| wait_for(&socket, interest, short()).map_err(|error| error.kind());
         // Nothing to read and no room to write.
         assert_eq!(wait(Interest::Either), Err(io::ErrorKind::TimedOut));
         assert_eq!(wait(Interest::Writable), Err(io::ErrorKind::TimedOut));
-        peer.write_all(b"x").unwrap();
-        peer.flush().unwrap();
+        (&peer).write_all(b"x").unwrap();
+        (&peer).flush().unwrap();
         assert_eq!(wait(Interest::Either), Ok(()));
         assert_eq!(wait(Interest::Readable), Ok(()));
         // Still no room to write: a wait for that alone would stall here.
+        fill(&socket);
         assert_eq!(wait(Interest::Writable), Err(io::ErrorKind::TimedOut));
     }
 }

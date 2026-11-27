@@ -20,6 +20,27 @@ import http.Response
 check : Bool, Str -> Try({}, [CheckFailed(Str)])
 check = |condition, message| if (condition) Ok({}) else Err(CheckFailed(message))
 
+## What a failed handshake reports, apart from its wording: the host, the
+## reason, and whether there is a detail. Anything else is `NotTls`.
+Failure : [Failed({ host : Str, reason : Tls.Reason, has_detail : Bool }), NotTls]
+
+failed : Str, Tls.Reason -> Failure
+failed = |host, reason| Failed({ host, reason, has_detail: True })
+
+tcp_failure : Try(a, [TlsErr(Tls.Err), .._others]) -> Failure
+tcp_failure = |result|
+	match result {
+		Err(TlsErr({ host, reason, detail })) => Failed({ host, reason, has_detail: detail != "" })
+		_ => NotTls
+	}
+
+http_failure : Try(a, [HttpErr(Http.TransportErr), .._others]) -> Failure
+http_failure = |result|
+	match result {
+		Err(HttpErr(TlsErr({ host, reason, detail }))) => Failed({ host, reason, has_detail: detail != "" })
+		_ => NotTls
+	}
+
 main! : List(OsStr) => Try({}, _)
 main! = |args| {
 	ca = match args {
@@ -46,7 +67,7 @@ main! = |args| {
 }
 
 ## Connect to the helper's echo server on `host` and port 8443.
-connect! : Str, Tls.Trust => Try(Tcp.Connection, [Interrupted, TlsErr(Tls.Err), TcpErr(_)])
+connect! : Str, Tls.Trust => Try(Tcp.Connection, [Interrupted, TlsErr(Tls.Err), BadPem(Str), TcpErr(_)])
 connect! = |host, trust| Tcp.connect_tls!(host, 8443, { connect_timeout: Duration.seconds(5), io_timeout: Duration.seconds(5), tls: { trust } })
 
 ## Connect and send one line through the echo server.
@@ -61,18 +82,18 @@ tcp_trust! : List(U8) => Try({}, _)
 tcp_trust! = |ca| {
 	# The private authority is trusted only when it is added.
 	check(echoes!("localhost", AddPem(ca)) == Ok("ping"), "AddPem echoes")?
-	check(echoes!("localhost", Default) == Err(TlsErr(UnknownIssuer)), "Default rejects the private certificate")?
+	check(tcp_failure(echoes!("localhost", Default)) == failed("localhost", UnknownIssuer), "Default rejects the private certificate")?
 	check(echoes!("localhost", DangerAcceptInvalidCerts) == Ok("ping"), "DangerAcceptInvalidCerts echoes")?
 
 	# The certificate names `localhost` only, so an address is a mismatch
 	# unless every certificate is accepted.
-	check(echoes!("127.0.0.1", AddPem(ca)) == Err(TlsErr(NameMismatch)), "AddPem still checks the name")?
+	check(tcp_failure(echoes!("127.0.0.1", AddPem(ca))) == failed("127.0.0.1", NameMismatch), "AddPem still checks the name")?
 	check(echoes!("127.0.0.1", DangerAcceptInvalidCerts) == Ok("ping"), "DangerAcceptInvalidCerts accepts any name")?
 
 	# The default options trust nothing but the bundled roots.
 	defaults = Tcp.connect_tls!("localhost", 8443, { connect_timeout: Duration.seconds(5), io_timeout: Duration.seconds(5) }).map_ok(|_| {})
-	check(defaults == Err(TlsErr(UnknownIssuer)), "omitted tls is Default")?
-	check(Tls.Err.to_str(UnknownIssuer) != "", "UnknownIssuer describes itself")
+	check(tcp_failure(defaults) == failed("localhost", UnknownIssuer), "omitted tls is Default")?
+	check(Tls.Reason.to_str(UnknownIssuer) != "", "UnknownIssuer describes itself")
 }
 
 tcp_bad_pem! : List(U8) => Try({}, _)
@@ -89,7 +110,7 @@ tcp_bad_pem! = |_ca| {
 	# `BadPem` shows that the roots are rejected before any network I/O.
 	options = { connect_timeout: Duration.seconds(5), io_timeout: Duration.seconds(5), tls: { trust: AddPem(bad) } }
 	unreachable = match Tcp.connect_tls!("127.0.0.1", 1, options) {
-		Err(TlsErr(BadPem(_))) => True
+		Err(BadPem(_)) => True
 		_ => False
 	}
 	check(unreachable, "BadPem before connecting")?
@@ -101,7 +122,7 @@ tcp_bad_pem! = |_ca| {
 rejects_roots! : Tls.Trust => Bool
 rejects_roots! = |trust|
 	match connect!("localhost", trust) {
-		Err(TlsErr(BadPem(message))) => message != ""
+		Err(BadPem(message)) => message != ""
 		_ => False
 	}
 
@@ -162,9 +183,9 @@ http_trust! = |ca| {
 	check(Response.status(missing) == 404 and text(missing) == "not found", "AddPem reaches a 404")?
 
 	untrusted = Http.send!(get("/hello"), {}).map_ok(|_| {})
-	check(untrusted == Err(HttpErr(TlsErr(UnknownIssuer))), "Default rejects the private certificate")?
+	check(http_failure(untrusted) == failed("localhost", UnknownIssuer), "Default rejects the private certificate")?
 	explicit_default = Http.send!(get("/hello"), { tls: { trust: Default } }).map_ok(|_| {})
-	check(explicit_default == Err(HttpErr(TlsErr(UnknownIssuer))), "Default is the same as omitting tls")?
+	check(http_failure(explicit_default) == failed("localhost", UnknownIssuer), "Default is the same as omitting tls")?
 
 	accepted = Http.send!(get("/hello"), { tls: { trust: DangerAcceptInvalidCerts } })?
 	check(Response.status(accepted) == 200 and text(accepted) == "ok", "DangerAcceptInvalidCerts fetches /hello")?
@@ -174,7 +195,7 @@ http_trust! = |ca| {
 	# The certificate is for `localhost`, so the address does not match.
 	by_address = Request.from_method(GET).with_uri("https://127.0.0.1:9443/hello")
 	mismatch = Http.send!(by_address, { tls: { trust: AddPem(ca) } }).map_ok(|_| {})
-	check(mismatch == Err(HttpErr(TlsErr(NameMismatch))), "AddPem still checks the name")
+	check(http_failure(mismatch) == failed("127.0.0.1", NameMismatch), "AddPem still checks the name")
 }
 
 http_redirects! : List(U8) => Try({}, _)
@@ -191,13 +212,13 @@ http_redirects! = |ca| {
 	check(Response.status(accepted) == 200 and text(accepted) == "ok", "DangerAcceptInvalidCerts on both hops")?
 
 	untrusted = Http.send!(get("/redirect"), { max_redirects: 1 }).map_ok(|_| {})
-	check(untrusted == Err(HttpErr(TlsErr(UnknownIssuer))), "Default rejects the first hop")?
+	check(http_failure(untrusted) == failed("localhost", UnknownIssuer), "Default rejects the first hop")?
 
 	# The redirect leads to another origin: the same server by address, which the
 	# certificate does not name. Trust is checked again on that hop and not
 	# inherited from the first.
 	cross = Http.send!(get("/redirect-cross"), { max_redirects: 1, tls: { trust: AddPem(ca) } }).map_ok(|_| {})
-	check(cross == Err(HttpErr(TlsErr(NameMismatch))), "AddPem checks the name on a cross-origin hop")?
+	check(http_failure(cross) == failed("127.0.0.1", NameMismatch), "AddPem checks the name on a cross-origin hop, and TlsErr names that hop")?
 	cross_accepted = Http.send!(get("/redirect-cross"), { max_redirects: 1, tls: { trust: DangerAcceptInvalidCerts } })?
 	check(Response.status(cross_accepted) == 200 and text(cross_accepted) == "ok", "DangerAcceptInvalidCerts on a cross-origin hop")
 }
@@ -210,7 +231,7 @@ http_streaming! = |ca| {
 	check(body == "ok".to_utf8(), "streamed body")?
 
 	untrusted = Http.send_streaming!(get("/hello"), {}).map_ok(|_| {})
-	check(untrusted == Err(HttpErr(TlsErr(UnknownIssuer))), "Default rejects a streamed request")?
+	check(http_failure(untrusted) == failed("localhost", UnknownIssuer), "Default rejects a streamed request")?
 
 	accepted = Http.send_streaming!(get("/hello"), { tls: { trust: DangerAcceptInvalidCerts } })?
 	check(accepted.read_to_end!(NoLimit) == Ok("ok".to_utf8()), "DangerAcceptInvalidCerts streams")
@@ -221,12 +242,12 @@ http_bad_pem! = || {
 	# Nothing listens on port 1; the roots are rejected before a connection.
 	request = Request.from_method(GET).with_uri("https://127.0.0.1:1/")
 	sent = match Http.send!(request, { tls: { trust: AddPem("x".to_utf8()) } }) {
-		Err(HttpErr(TlsErr(BadPem(_)))) => True
+		Err(HttpErr(BadPem(_))) => True
 		_ => False
 	}
 	check(sent, "send! with a bad PEM")?
 	streamed = match Http.send_streaming!(request, { tls: { trust: AddPem([]) } }) {
-		Err(HttpErr(TlsErr(BadPem(_)))) => True
+		Err(HttpErr(BadPem(_))) => True
 		_ => False
 	}
 	check(streamed, "send_streaming! with a bad PEM")?

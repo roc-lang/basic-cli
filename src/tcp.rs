@@ -20,7 +20,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::roc_platform_abi::*;
-use crate::tls::{ConnectError, Trust};
+use crate::tls::{ConnectError, TlsFailure, Trust};
 use crate::{roc_host, roc_u8_list_from_slice};
 
 use crate::socket::normalize;
@@ -206,20 +206,29 @@ pub extern "C" fn hosted_tcp_connect(
     }
 }
 
-/// The error of `Tcp.connect_tls!`. An I/O failure normalises as for `Tcp.connect!`.
-fn connect_tls_err(error: ConnectError, roc_host: &RocHost) -> TcpErrOrTlsErr {
+/// The error of `Tcp.connect_tls!` for a connection to `host`. An I/O failure normalises as for
+/// `Tcp.connect!`.
+fn connect_tls_err(error: ConnectError, host: &str, roc_host: &RocHost) -> BadPemOrTcpErrOrTlsErr {
     match error {
-        ConnectError::Io(error) => TcpErrOrTlsErr {
-            payload: TcpErrOrTlsErrPayload {
+        ConnectError::Io(error) => BadPemOrTcpErrOrTlsErr {
+            payload: BadPemOrTcpErrOrTlsErrPayload {
                 tcp_err: ManuallyDrop::new(tcp_io_err(error, roc_host)),
             },
-            tag: TcpErrOrTlsErrTag::TcpErr,
+            tag: BadPemOrTcpErrOrTlsErrTag::TcpErr,
         },
-        ConnectError::Tls(failure) => TcpErrOrTlsErr {
-            payload: TcpErrOrTlsErrPayload {
-                tls_err: ManuallyDrop::new(failure.to_roc(roc_host)),
+        ConnectError::Tls(TlsFailure::Handshake { reason, detail }) => BadPemOrTcpErrOrTlsErr {
+            payload: BadPemOrTcpErrOrTlsErrPayload {
+                tls_err: ManuallyDrop::new(crate::tls::tls_err_to_roc(
+                    host, reason, &detail, roc_host,
+                )),
             },
-            tag: TcpErrOrTlsErrTag::TlsErr,
+            tag: BadPemOrTcpErrOrTlsErrTag::TlsErr,
+        },
+        ConnectError::Tls(TlsFailure::BadPem(message)) => BadPemOrTcpErrOrTlsErr {
+            payload: BadPemOrTcpErrOrTlsErrPayload {
+                bad_pem: ManuallyDrop::new(RocStr::from_str(&message, roc_host)),
+            },
+            tag: BadPemOrTcpErrOrTlsErrTag::BadPem,
         },
     }
 }
@@ -236,9 +245,10 @@ pub extern "C" fn hosted_tcp_connect_tls(
     unsafe { host.decref(roc_host) };
     let trust = Trust::from_roc(trust, roc_host);
 
-    let handle = connect_tls(host_string, port, timeout_nanos, &trust).and_then(|connection| {
-        crate::resources::box_resource(connection, roc_host).map_err(ConnectError::Io)
-    });
+    let handle =
+        connect_tls(host_string.clone(), port, timeout_nanos, &trust).and_then(|connection| {
+            crate::resources::box_resource(connection, roc_host).map_err(ConnectError::Io)
+        });
     match handle {
         Ok(handle) => HostTcpConnectTlsResult {
             payload: HostTcpConnectTlsResultPayload {
@@ -248,7 +258,7 @@ pub extern "C" fn hosted_tcp_connect_tls(
         },
         Err(error) => HostTcpConnectTlsResult {
             payload: HostTcpConnectTlsResultPayload {
-                err: ManuallyDrop::new(connect_tls_err(error, roc_host)),
+                err: ManuallyDrop::new(connect_tls_err(error, &host_string, roc_host)),
             },
             tag: HostTcpConnectTlsResultTag::Err,
         },
@@ -854,7 +864,7 @@ mod tests {
         config_at, finish_handshake, mismatched_key_server_config, serve_one, server_config,
         tls_pair, LOCALHOST_PEM,
     };
-    use crate::tls::TlsFailure;
+    use crate::tls::Reason;
 
     fn pem() -> Trust {
         Trust::AddPem(LOCALHOST_PEM.to_vec())
@@ -916,19 +926,19 @@ mod tests {
         let config = |trust: &Trust| crate::tls::client_config(trust).unwrap();
         // A self-signed certificate is not issued by any bundled root.
         assert_eq!(
-            tls_failure(handshake_as("localhost", config(&Trust::Default))),
-            TlsFailure::UnknownIssuer
+            tls_failure(handshake_as("localhost", config(&Trust::Default))).reason(),
+            Some(Reason::UnknownIssuer)
         );
         // The certificate names only `localhost`; the name verified is the one given.
         assert_eq!(
-            tls_failure(handshake_as("127.0.0.1", config(&pem()))),
-            TlsFailure::NameMismatch
+            tls_failure(handshake_as("127.0.0.1", config(&pem()))).reason(),
+            Some(Reason::NameMismatch)
         );
         // The certificate is valid until 2036.
         const JANUARY_2040: u64 = 2_208_988_800;
         assert_eq!(
-            tls_failure(handshake_as("localhost", config_at(&pem(), JANUARY_2040))),
-            TlsFailure::Expired
+            tls_failure(handshake_as("localhost", config_at(&pem(), JANUARY_2040))).reason(),
+            Some(Reason::Expired)
         );
         // Accepting any certificate accepts each of these.
         let any = config(&Trust::DangerAcceptInvalidCerts);
@@ -966,7 +976,10 @@ mod tests {
         });
         assert!(matches!(
             tls_failure(connect_tls("localhost".to_string(), port, LONG, &any)),
-            TlsFailure::Other(_)
+            TlsFailure::Handshake {
+                reason: Reason::Other,
+                ..
+            }
         ));
         server.join().unwrap();
 
@@ -1021,7 +1034,10 @@ mod tests {
         });
         let started = Instant::now();
         match tls_failure(connect_tls("localhost".to_string(), port, LONG, &pem())) {
-            TlsFailure::Other(message) => assert!(message.contains("closed the connection")),
+            TlsFailure::Handshake {
+                reason: Reason::Other,
+                detail,
+            } => assert!(detail.contains("closed the connection")),
             other => panic!("expected Other, got {other:?}"),
         }
         assert!(started.elapsed() < Duration::from_secs(5));
@@ -1198,24 +1214,44 @@ mod tests {
     }
 
     #[test]
-    fn tls_failures_cross_as_tls_err() {
+    fn tls_failures_cross_as_tls_err_or_bad_pem() {
         let host = crate::resources::make_host();
 
-        let expired = connect_tls_err(ConnectError::Tls(TlsFailure::Expired), &host);
-        assert_eq!(expired.tag, TcpErrOrTlsErrTag::TlsErr);
-        assert_eq!(unsafe { expired.payload.tls_err.tag }, TlsErrTag::Expired);
+        let expired = connect_tls_err(
+            ConnectError::Tls(TlsFailure::Handshake {
+                reason: Reason::Expired,
+                detail: "certificate expired".into(),
+            }),
+            "db.internal",
+            &host,
+        );
+        assert_eq!(expired.tag, BadPemOrTcpErrOrTlsErrTag::TlsErr);
+        let tls_err = unsafe { ManuallyDrop::into_inner(expired.payload.tls_err) };
+        assert_eq!(tls_err.host.as_str(), "db.internal");
+        assert_eq!(tls_err.reason, TlsReason::Expired);
+        assert_eq!(tls_err.detail.as_str(), "certificate expired");
+        unsafe {
+            tls_err.host.decref(&host);
+            tls_err.detail.decref(&host);
+        }
 
-        let bad_pem = connect_tls_err(ConnectError::Tls(TlsFailure::BadPem("x".into())), &host);
-        assert_eq!(bad_pem.tag, TcpErrOrTlsErrTag::TlsErr);
-        let tls_err = unsafe { ManuallyDrop::into_inner(bad_pem.payload.tls_err) };
-        assert_eq!(tls_err.tag, TlsErrTag::BadPem);
-        let message = unsafe { ManuallyDrop::into_inner(tls_err.payload.bad_pem) };
+        let bad_pem = connect_tls_err(
+            ConnectError::Tls(TlsFailure::BadPem("x".into())),
+            "db.internal",
+            &host,
+        );
+        assert_eq!(bad_pem.tag, BadPemOrTcpErrOrTlsErrTag::BadPem);
+        let message = unsafe { ManuallyDrop::into_inner(bad_pem.payload.bad_pem) };
         assert_eq!(message.as_str(), "x");
         unsafe { message.decref(&host) };
 
         // Connection failures normalise as for `Tcp.connect!`.
-        let stalled = connect_tls_err(ConnectError::Io(io::ErrorKind::WouldBlock.into()), &host);
-        assert_eq!(stalled.tag, TcpErrOrTlsErrTag::TcpErr);
+        let stalled = connect_tls_err(
+            ConnectError::Io(io::ErrorKind::WouldBlock.into()),
+            "db.internal",
+            &host,
+        );
+        assert_eq!(stalled.tag, BadPemOrTcpErrOrTlsErrTag::TcpErr);
         assert_eq!(unsafe { stalled.payload.tcp_err.tag }, IOErrTag::TimedOut);
     }
 }

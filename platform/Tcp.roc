@@ -25,7 +25,8 @@ accept_wait = |accept_timeout|
 ## results compare with `==`: `result == Err(TcpErr(ConnectionRefused))`.
 ## A caught, pending signal returns bare `Interrupted` from waits. A read that
 ## is interrupted keeps its unread bytes; a write may have sent a prefix.
-## `connect_tls!` adds `TlsErr(Tls.Err)` for a failed handshake.
+## `connect_tls!` adds `TlsErr(Tls.Err)` for a failed handshake and `BadPem(Str)`
+## for trust roots that cannot be used.
 ##
 ## Timeouts are [Duration]s. The wait to connect or to accept bounds that one
 ## call. The connection it produces holds its own I/O timeout, which bounds
@@ -391,10 +392,12 @@ Tcp :: [].{
 	## reads that time out or are interrupted consume nothing, and the line
 	## limit applies.
 	##
-	## A failed handshake is `TlsErr(err)`, with [Tls.Err] naming the cause.
-	## `BadPem` is reported before any network activity. A TLS failure later,
-	## while reading or writing, is `TcpErr(Other(message))`. So is a peer
-	## that closes without TLS's `close_notify`: data could have been cut off.
+	## A failed handshake is `TlsErr(err)`: [Tls.Err] holds `host`, a matchable
+	## `reason` and a diagnostic `detail`. Trust roots that cannot be used are
+	## `BadPem(message)`, reported before any network activity. A TLS failure
+	## later, while reading or writing, is `TcpErr(Other(message))`. So is a
+	## peer that closes without TLS's `close_notify`: data could have been cut
+	## off.
 	## Releasing the connection sends `close_notify` without waiting.
 	##
 	## ```roc
@@ -402,13 +405,14 @@ Tcp :: [].{
 	## conn.write_utf8!("HEAD / HTTP/1.1\r\nHost: example.com\r\nConnection: close\r\n\r\n")?
 	## status_line = conn.read_line!()?
 	## ```
-	connect_tls! : Str, U16, ConnectTlsOptions => Try(Connection, [Interrupted, TlsErr(Tls.Err), TcpErr(IOErr)])
+	connect_tls! : Str, U16, ConnectTlsOptions => Try(Connection, [Interrupted, TlsErr(Tls.Err), BadPem(Str), TcpErr(IOErr)])
 	connect_tls! = |host, port, options|
 		match Host.tcp_connect_tls!(host, port, options.connect_timeout.to_nanos(), options.tls.trust) {
 			Ok(handle) => Ok(Connection.{ host: handle, timeout: options.io_timeout, line_limit: default_line_limit })
 			Err(TcpErr(Interrupted)) => Err(Interrupted)
 			Err(TcpErr(err)) => Err(TcpErr(err))
 			Err(TlsErr(err)) => Err(TlsErr(err))
+			Err(BadPem(message)) => Err(BadPem(message))
 		}
 }
 

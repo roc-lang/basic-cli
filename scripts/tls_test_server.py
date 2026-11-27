@@ -10,11 +10,12 @@ Serves the self-signed `localhost` certificate from tests/tls over TLS:
     -> 404.
 
 Both bind ::1 (best effort) and 127.0.0.1. Windows resolves `localhost` to ::1
-first, while scripts/test.py polls 127.0.0.1 for readiness, so ::1 is bound
-first and 127.0.0.1 last. Handshake failures (clients rejecting the
-certificate, plain-TCP readiness probes) never stop the servers.
+first, while scripts/test.py polls 127.0.0.1:8443 for readiness, so every other
+listener is bound first and 127.0.0.1:8443 last. Handshake failures (clients
+rejecting the certificate, plain-TCP readiness probes) never stop the servers.
 """
 import socket
+import socketserver
 import ssl
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -91,6 +92,15 @@ class HttpsServer(ThreadingHTTPServer):
         self.address_family = family
         super().__init__((host, HTTPS_PORT), Handler)
 
+    def server_bind(self) -> None:
+        # HTTPServer.server_bind also resolves its own name with socket.getfqdn,
+        # a reverse DNS lookup that took seconds on macOS CI runners: long enough
+        # for scripts/test.py to give up waiting. Nothing here uses the name.
+        socketserver.TCPServer.server_bind(self)
+        host, port = self.server_address[:2]
+        self.server_name = host
+        self.server_port = port
+
     def finish_request(self, request, client_address) -> None:  # type: ignore[no-untyped-def]
         # Handshake in the per-connection thread so a bad client cannot block accept.
         request.settimeout(30)
@@ -111,11 +121,18 @@ def listen_echo(family: socket.AddressFamily, host: str) -> socket.socket:
 def main() -> None:
     echo_listeners = []
     https_servers = []
-    # ::1 first: the runner's readiness probe polls 127.0.0.1, which must come up last.
-    for family, host in [(socket.AF_INET6, "::1"), (socket.AF_INET, "127.0.0.1")]:
+    # The runner's readiness probe polls 127.0.0.1:8443, so that listener comes
+    # up last: once it accepts, so does every other one. ::1 is best effort.
+    addresses = [(socket.AF_INET6, "::1"), (socket.AF_INET, "127.0.0.1")]
+    for family, host in addresses:
+        try:
+            https_servers.append(HttpsServer(family, host))
+        except OSError:
+            if family == socket.AF_INET:
+                raise
+    for family, host in addresses:
         try:
             echo_listeners.append(listen_echo(family, host))
-            https_servers.append(HttpsServer(family, host))
         except OSError:
             if family == socket.AF_INET:
                 raise

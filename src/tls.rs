@@ -5,7 +5,6 @@
 //! A session is driven step by step on the connection's non-blocking socket, so the deadline,
 //! signal polling and buffer of `socket.rs` apply unchanged. Plaintext that rustls has already
 //! decrypted is always taken before the socket is waited on.
-use core::mem::ManuallyDrop;
 use std::io::{self, Read, Write};
 use std::sync::{Arc, LazyLock, Mutex, PoisonError};
 
@@ -51,62 +50,91 @@ impl Trust {
     }
 }
 
-/// `Tls.Err` as the host produces it.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum TlsFailure {
+/// `Tls.Reason`: why a handshake failed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Reason {
     UnknownIssuer,
     Expired,
     NameMismatch,
+    Other,
+}
+
+impl Reason {
+    fn to_roc(self) -> TlsReason {
+        match self {
+            Self::UnknownIssuer => TlsReason::UnknownIssuer,
+            Self::Expired => TlsReason::Expired,
+            Self::NameMismatch => TlsReason::NameMismatch,
+            Self::Other => TlsReason::Other,
+        }
+    }
+}
+
+/// The `Tls.Err` record carried by `TlsErr`, as the glue names it.
+pub(crate) type RocTlsErr = HostTcpConnectTlsErrTlsErr;
+
+/// A TLS failure as the host produces it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum TlsFailure {
+    /// `TlsErr`: a failed handshake. The host is added where the failure crosses to Roc, since
+    /// that is where it is known (an HTTP redirect hop, or the host given to `connect_tls!`).
+    Handshake { reason: Reason, detail: String },
+    /// `BadPem`: `AddPem` bytes that hold no usable certificate, found before any I/O.
     BadPem(String),
-    Other(String),
 }
 
 impl TlsFailure {
-    /// Name the certificate failures Roc can match on; keep rustls's description of the rest.
-    /// webpki reports the `…Context` spellings, so both forms of each are named.
-    pub(crate) fn from_rustls(error: &rustls::Error) -> Self {
-        match error {
-            rustls::Error::InvalidCertificate(CertificateError::UnknownIssuer) => {
-                Self::UnknownIssuer
-            }
-            rustls::Error::InvalidCertificate(
-                CertificateError::Expired | CertificateError::ExpiredContext { .. },
-            ) => Self::Expired,
-            rustls::Error::InvalidCertificate(
-                CertificateError::NotValidForName | CertificateError::NotValidForNameContext { .. },
-            ) => Self::NameMismatch,
-            other => Self::Other(other.to_string()),
+    /// A handshake failure without a more specific reason.
+    pub(crate) fn other(detail: impl Into<String>) -> Self {
+        Self::Handshake {
+            reason: Reason::Other,
+            detail: detail.into(),
         }
     }
 
-    pub(crate) fn to_roc(&self, roc_host: &RocHost) -> TlsErr {
-        let message = |text: &str| ManuallyDrop::new(RocStr::from_str(text, roc_host));
-        match self {
-            Self::UnknownIssuer => TlsErr {
-                payload: TlsErrPayload { unknown_issuer: [] },
-                tag: TlsErrTag::UnknownIssuer,
-            },
-            Self::Expired => TlsErr {
-                payload: TlsErrPayload { expired: [] },
-                tag: TlsErrTag::Expired,
-            },
-            Self::NameMismatch => TlsErr {
-                payload: TlsErrPayload { name_mismatch: [] },
-                tag: TlsErrTag::NameMismatch,
-            },
-            Self::BadPem(text) => TlsErr {
-                payload: TlsErrPayload {
-                    bad_pem: message(text),
-                },
-                tag: TlsErrTag::BadPem,
-            },
-            Self::Other(text) => TlsErr {
-                payload: TlsErrPayload {
-                    other: message(text),
-                },
-                tag: TlsErrTag::Other,
-            },
+    /// Name the certificate failures Roc can match on, keeping rustls's description of every
+    /// one as the detail. webpki reports the `…Context` spellings, so both forms of each are
+    /// named.
+    pub(crate) fn from_rustls(error: &rustls::Error) -> Self {
+        let reason = match error {
+            rustls::Error::InvalidCertificate(CertificateError::UnknownIssuer) => {
+                Reason::UnknownIssuer
+            }
+            rustls::Error::InvalidCertificate(
+                CertificateError::Expired | CertificateError::ExpiredContext { .. },
+            ) => Reason::Expired,
+            rustls::Error::InvalidCertificate(
+                CertificateError::NotValidForName | CertificateError::NotValidForNameContext { .. },
+            ) => Reason::NameMismatch,
+            _ => Reason::Other,
+        };
+        Self::Handshake {
+            reason,
+            detail: error.to_string(),
         }
+    }
+
+    /// The reason of a handshake failure; `None` for `BadPem`.
+    #[cfg(test)]
+    pub(crate) fn reason(&self) -> Option<Reason> {
+        match self {
+            Self::Handshake { reason, .. } => Some(*reason),
+            Self::BadPem(_) => None,
+        }
+    }
+}
+
+/// The `Tls.Err` record for a handshake with `host` that failed.
+pub(crate) fn tls_err_to_roc(
+    host: &str,
+    reason: Reason,
+    detail: &str,
+    roc_host: &RocHost,
+) -> RocTlsErr {
+    RocTlsErr {
+        detail: RocStr::from_str(detail, roc_host),
+        host: RocStr::from_str(host, roc_host),
+        reason: reason.to_roc(),
     }
 }
 
@@ -177,7 +205,7 @@ fn build_config(trust: &Trust, time: Arc<dyn TimeProvider>) -> Result<ClientConf
     let provider = Arc::new(ring::default_provider());
     let builder = ClientConfig::builder_with_details(provider.clone(), time)
         .with_safe_default_protocol_versions()
-        .map_err(|error| TlsFailure::Other(error.to_string()))?;
+        .map_err(|error| TlsFailure::other(error.to_string()))?;
     let mut roots = RootCertStore::empty();
     roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
     let builder = match trust {
@@ -213,7 +241,7 @@ pub(crate) fn server_name(host: &str) -> Result<ServerName<'static>, TlsFailure>
     ServerName::try_from(host)
         .map(|name| name.to_owned())
         .map_err(|_| {
-            TlsFailure::Other(format!(
+            TlsFailure::other(format!(
                 "{host:?} is not a valid name for TLS server verification"
             ))
         })
@@ -270,8 +298,8 @@ pub(crate) fn handshake(
         }
         match conn.read_tls(&mut &*socket) {
             Ok(0) => {
-                return Err(ConnectError::Tls(TlsFailure::Other(
-                    "the server closed the connection during the TLS handshake".to_string(),
+                return Err(ConnectError::Tls(TlsFailure::other(
+                    "the server closed the connection during the TLS handshake",
                 )))
             }
             Ok(_) => {
@@ -568,47 +596,76 @@ mod tests {
     }
 
     #[test]
-    fn certificate_errors_are_named() {
+    fn certificate_errors_are_named_and_keep_their_detail() {
         use rustls::Error::InvalidCertificate;
-        let named = |error: rustls::Error| TlsFailure::from_rustls(&error);
+        let reason = |error: rustls::Error| TlsFailure::from_rustls(&error).reason();
         let now = UnixTime::now();
         assert_eq!(
-            named(InvalidCertificate(CertificateError::UnknownIssuer)),
-            TlsFailure::UnknownIssuer
+            reason(InvalidCertificate(CertificateError::UnknownIssuer)),
+            Some(Reason::UnknownIssuer)
         );
         assert_eq!(
-            named(InvalidCertificate(CertificateError::Expired)),
-            TlsFailure::Expired
+            reason(InvalidCertificate(CertificateError::Expired)),
+            Some(Reason::Expired)
         );
         assert_eq!(
-            named(InvalidCertificate(CertificateError::ExpiredContext {
+            reason(InvalidCertificate(CertificateError::ExpiredContext {
                 time: now,
                 not_after: now,
             })),
-            TlsFailure::Expired
+            Some(Reason::Expired)
         );
         assert_eq!(
-            named(InvalidCertificate(CertificateError::NotValidForName)),
-            TlsFailure::NameMismatch
+            reason(InvalidCertificate(CertificateError::NotValidForName)),
+            Some(Reason::NameMismatch)
         );
         assert_eq!(
-            named(InvalidCertificate(
+            reason(InvalidCertificate(
                 CertificateError::NotValidForNameContext {
                     expected: server_name("localhost").unwrap(),
                     presented: vec!["DNS:example.com".to_string()],
                 }
             )),
-            TlsFailure::NameMismatch
+            Some(Reason::NameMismatch)
         );
-        // Anything else keeps rustls's description.
-        let other = rustls::Error::InvalidCertificate(CertificateError::NotValidYet);
-        assert_eq!(named(other.clone()), TlsFailure::Other(other.to_string()));
+        // A named reason still keeps rustls's description, which says more than the reason.
+        let mismatch = InvalidCertificate(CertificateError::NotValidForNameContext {
+            expected: server_name("localhost").unwrap(),
+            presented: vec!["DNS:example.com".to_string()],
+        });
+        assert_eq!(
+            TlsFailure::from_rustls(&mismatch),
+            TlsFailure::Handshake {
+                reason: Reason::NameMismatch,
+                detail: mismatch.to_string(),
+            }
+        );
+        assert!(mismatch.to_string().contains("example.com"));
+        // Anything else is `Other`, with rustls's description.
+        let other = InvalidCertificate(CertificateError::NotValidYet);
+        assert_eq!(
+            TlsFailure::from_rustls(&other),
+            TlsFailure::other(other.to_string())
+        );
         assert_eq!(
             server_name("not a host name"),
-            Err(TlsFailure::Other(
-                "\"not a host name\" is not a valid name for TLS server verification".to_string()
+            Err(TlsFailure::other(
+                "\"not a host name\" is not a valid name for TLS server verification"
             ))
         );
+    }
+
+    #[test]
+    fn tls_errors_cross_with_host_reason_and_detail() {
+        let host = crate::resources::make_host();
+        let err = tls_err_to_roc("db.internal", Reason::Expired, "certificate expired", &host);
+        assert_eq!(err.host.as_str(), "db.internal");
+        assert_eq!(err.reason, TlsReason::Expired);
+        assert_eq!(err.detail.as_str(), "certificate expired");
+        unsafe {
+            err.host.decref(&host);
+            err.detail.decref(&host);
+        }
     }
 
     #[test]
